@@ -55,7 +55,7 @@ SwiftUI screens  ◄─ JSON ─  "engine" (hidden WKWebView, same cookie store)
 
 ## Building without Xcode's UI
 
-No `xcodegen`/`tuist` on this Mac. A hand-written `project.pbxproj` with `objectVersion = 77` and a `PBXFileSystemSynchronizedRootGroup` (Xcode 16+) works: every Swift file in the folder is compiled automatically, with no per-file entries. Use `GENERATE_INFOPLIST_FILE = YES` and `INFOPLIST_KEY_UILaunchScreen_Generation = YES`. `xcodebuild -list` autogenerates the scheme. Simulator builds need no signing team; device builds need the user's Personal Team set in Xcode.
+**XcodeGen 2.46.0 is installed** (`brew install xcodegen`, 2026-10-07). For the real app, prefer a `project.yml` + `xcodegen generate` and keep the generated `.xcodeproj` out of git, or committed but never hand-edited. Fallback used for the login test, before XcodeGen was installed: a hand-written `project.pbxproj` with `objectVersion = 77` and a `PBXFileSystemSynchronizedRootGroup` (Xcode 16+) works: every Swift file in the folder is compiled automatically, with no per-file entries. Use `GENERATE_INFOPLIST_FILE = YES` and `INFOPLIST_KEY_UILaunchScreen_Generation = YES`. `xcodebuild -list` autogenerates the scheme. Simulator builds need no signing team; device builds need the user's Personal Team set in Xcode.
 
 ## Next steps
 

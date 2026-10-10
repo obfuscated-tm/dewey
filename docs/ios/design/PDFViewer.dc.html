@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PDF viewer</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D5EA8;text-decoration:none}a:hover{color:#164A86}
+button{font:inherit;cursor:pointer}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.line{height:8px;border-radius:4px;background:#E3E6EA}
+.tool{min-width:64px;min-height:48px;border:0;background:none;color:{{accent}};display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11px;font-weight:600}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #E9ECEF; font-family: 'Instrument Sans', system-ui, sans-serif; color: #1F2429; position: relative; overflow: hidden; display: flex; flex-direction: column">
+
+  <div style="padding: 50px 8px 6px; background: rgba(255,255,255,.96); border-bottom: 1px solid #DCE0E5; display: flex; align-items: center">
+    <a href="Materials.dc.html" style="min-height: 44px; display: flex; align-items: center; padding: 0 10px; font-size: 17px; font-weight: 600; color: {{accent}}">Done</a>
+    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 1px">
+      <span style="font-size: 15px; font-weight: 600">Lab 8.1 handout.pdf</span>
+      <span style="font-size: 12px; color: #5E6670">AP Comp Sci A · Lesson 8</span>
+    </div>
+    <button aria-label="Share" style="width: 44px; height: 44px; border: 0; background: none; color: {{accent}}; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"></path><path d="M7 8l5-5 5 5"></path><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"></path></svg>
+    </button>
+  </div>
+
+  <main style="flex: 1; overflow: hidden; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+    <div style="background: #FFFFFF; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.12); padding: 28px 24px; display: flex; flex-direction: column; gap: 12px; height: 470px; box-sizing: border-box">
+      <div style="font-family: Georgia, serif; font-size: 20px; font-weight: 700">Lab 8.1 CheckMail</div>
+      <div class="line" style="width: 92%"></div>
+      <div class="line" style="width: 85%"></div>
+      <div class="line" style="width: 70%"></div>
+      <div style="height: 8px"></div>
+      <div class="line" style="width: 40%; background: #CED3D9"></div>
+      <div class="line" style="width: 95%"></div>
+      <div class="line" style="width: 88%"></div>
+      <div class="line" style="width: 91%"></div>
+      <div class="line" style="width: 60%"></div>
+      <div style="margin: 6px 0; height: 90px; border-radius: 4px; background: #F6F7F9; border: 1px solid #E3E6EA"></div>
+      <div class="line" style="width: 93%"></div>
+      <div class="line" style="width: 79%"></div>
+    </div>
+    <div style="background: #FFFFFF; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.12); height: 120px"></div>
+  </main>
+
+  <div class="mono" style="position: absolute; left: 50%; top: 128px; transform: translateX(-50%); background: rgba(31,36,41,.75); color: #FFFFFF; font-size: 12px; padding: 4px 10px; border-radius: 10px">1 of 2</div>
+
+  <nav style="flex: none; padding: 6px 16px 30px; background: rgba(255,255,255,.96); border-top: 1px solid #DCE0E5; display: flex; justify-content: space-around">
+    <button class="tool">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+      Find
+    </button>
+    <button class="tool">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l4-1 11-11-3-3L5 16z"></path></svg>
+      Mark up
+    </button>
+    <button class="tool">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M12 10v6"></path><path d="M9 13l3 3 3-3"></path></svg>
+      Save to Files
+    </button>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1D5EA8","options":["#1D5EA8","#23794A","#6A4BA8","#A8324A"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { accent: this.props.accent ?? '#1D5EA8' };
+}
+}
+</script>
+</body>
+</html>

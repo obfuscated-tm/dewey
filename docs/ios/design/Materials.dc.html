@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AP Comp Sci A materials</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D5EA8;text-decoration:none}a:hover{color:#164A86}
+button{font:inherit;cursor:pointer}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.frow{display:flex;align-items:center;gap:12px;padding:0 16px;min-height:58px;border-top:1px solid #EEF0F3;color:#1F2429}
+.folder{width:30px;height:24px;border-radius:5px;background:#D9A23A;flex:none}
+.item{display:flex;align-items:center;gap:12px;padding:0 14px 0 30px;min-height:56px;border-top:1px solid #EEF0F3;color:#1F2429}
+.ico{width:30px;height:30px;border-radius:7px;color:#FFFFFF;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;font-size:9px;font-weight:700;flex:none}
+.iname{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.iname > span:first-child{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iname > span:last-child{font-size:12.5px;color:#5E6670}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F6F7F9; font-family: 'Instrument Sans', system-ui, sans-serif; color: #1F2429; position: relative; overflow: hidden; display: flex; flex-direction: column">
+
+  <div style="padding: 50px 8px 0; display: flex; align-items: center; justify-content: space-between">
+    <a href="Classes.dc.html" style="min-height: 44px; display: flex; align-items: center; gap: 2px; padding: 0 8px; font-size: 17px; color: {{accent}}">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+      Classes
+    </a>
+    <button aria-label="Save this class offline" style="width: 44px; height: 44px; border: 0; background: none; color: {{accent}}; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11"></path><path d="M7 10l5 5 5-5"></path><path d="M5 20h14"></path></svg>
+    </button>
+  </div>
+
+  <main style="flex: 1; overflow: hidden; padding: 0 12px; display: flex; flex-direction: column; gap: 12px">
+    <div style="padding: 0 8px; display: flex; flex-direction: column; gap: 10px">
+      <h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.01em">AP Comp Sci A</h1>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #EAEDF0; border-radius: 10px; padding: 3px">
+        <button style="height: 36px; border: 0; border-radius: 8px; background: #FFFFFF; color: #1F2429; font-size: 14px; font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.12)">Materials</button>
+        <a href="CourseGrades.dc.html" style="height: 36px; border-radius: 8px; color: #5E6670; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center">Grades</a>
+        <button style="height: 36px; border: 0; border-radius: 8px; background: transparent; color: #5E6670; font-size: 14px; font-weight: 600">Updates</button>
+      </div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px; padding: 0 8px">
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 1px">
+        <span style="font-size: 15px; font-weight: 600">Only open work</span>
+        <span class="mono" style="font-size: 12.5px; color: #5E6670">3 open in this class</span>
+      </span>
+      <button role="switch" aria-checked="{{onlyOpenAria}}" aria-label="Only open work" onClick="{{toggle}}" style="{{switchStyle}}">
+        <span style="width: 28px; height: 28px; border-radius: 14px; background: #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,.25)"></span>
+      </button>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 16px; overflow: hidden">
+      <sc-if value="{{showAll}}" hint-placeholder-val="{{ true }}">
+        <a class="frow" href="#" style="border-top: 0">
+          <span class="folder"></span>
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15.5px; font-weight: 600">Course Information</span><span style="font-size: 13px; color: #23794A">All turned in</span></span>
+          <span class="mono" style="font-size: 13.5px; color: #5E6670">100.0%</span>
+        </a>
+      </sc-if>
+      <a class="frow" href="#" style="{{firstBorder}}">
+        <span class="folder"></span>
+        <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15.5px; font-weight: 600">Lesson 6 - Libraries and APIs</span><span style="font-size: 13px; color: #5E6670">1 to do</span></span>
+        <span class="mono" style="font-size: 13.5px; color: #5E6670">95.0%</span>
+      </a>
+      <div style="border-top: 1px solid #EEF0F3; background: #FBFBFC">
+        <div class="frow" style="border-top: 0">
+          <span class="folder" style="background: #C98E22"></span>
+          <span style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15.5px; font-weight: 600">Lesson 8 - Control Structures</span><span style="font-size: 13px; color: #B8430F; font-weight: 500">1 missing · 1 to turn in</span></span>
+          <span class="mono" style="font-size: 13.5px; color: #5E6670">100.0%</span>
+        </div>
+
+        <a class="item" href="Assignment.dc.html">
+          <span class="ico" style="background: #1F2429"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><path d="M8.5 12.2l2.3 2.3 4.7-4.7"></path></svg></span>
+          <span class="iname"><span>Lab 8.1 CheckMail</span><span>Assignment</span></span>
+          <span class="mono" style="font-size: 12px; font-weight: 600; color: #B8430F; background: #FBEDE5; padding: 3px 7px; border-radius: 5px">Missing</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A929B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+        </a>
+
+        <sc-if value="{{showAll}}" hint-placeholder-val="{{ true }}">
+          <a class="item" href="PDFViewer.dc.html">
+            <span class="ico" style="background: #B8430F">PDF</span>
+            <span class="iname"><span>Lab 8.1 handout.pdf</span><span>PDF · opens here</span></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A929B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+          </a>
+          <a class="item" href="#">
+            <span class="ico" style="background: #2B63C9">DOC</span>
+            <span class="iname"><span>Lesson 8 guided notes</span><span>Google Doc · opens in browser</span></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5E6670" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M9 7h8v8"></path></svg>
+          </a>
+          <a class="item" href="#">
+            <span class="ico" style="background: #5E6670"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"></path><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"></path></svg></span>
+            <span class="iname"><span>Lesson 8 on the class site</span><span>Link · apcs.tinocs.com</span></span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5E6670" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M9 7h8v8"></path></svg>
+          </a>
+        </sc-if>
+
+        <a class="item" href="SubmitSheet.dc.html">
+          <span class="ico" style="background: #2F7D5B"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3.5" width="14" height="17" rx="2"></rect><path d="M9 9h6"></path><path d="M9 13h6"></path></svg></span>
+          <span class="iname"><span>Lab 8.2 Loops</span><span>Google Assignment · opens in Schoology</span></span>
+          <span class="mono" style="font-size: 12px; font-weight: 600; color: {{accent}}; background: {{accentSoft}}; padding: 3px 7px; border-radius: 5px">To do</span>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5E6670" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M9 7h8v8"></path></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="mono" style="padding: 0 8px; font-size: 12px; color: #5E6670">Saved offline 2 days ago · Files app › Schoology</div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1D5EA8","options":["#1D5EA8","#23794A","#6A4BA8","#A8324A"]},"accentSoft":{"editor":"color","default":"#E7EFF8"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { onlyOpen: false }; }
+renderVals() {
+const accent = this.props.accent ?? '#1D5EA8';
+const on = this.state.onlyOpen;
+return {
+accent, accentSoft: this.props.accentSoft ?? '#E7EFF8',
+showAll: !on,
+firstBorder: on ? 'border-top: 0' : '',
+onlyOpenAria: on ? 'true' : 'false',
+toggle: () => this.setState({ onlyOpen: !on }),
+switchStyle: 'width: 52px; height: 32px; border-radius: 16px; border: 0; padding: 2px; display: flex; align-items: center; transition: background .2s; background: ' + (on ? accent : '#C9CED4') + '; justify-content: ' + (on ? 'flex-end' : 'flex-start')
+};
+}
+}
+</script>
+</body>
+</html>

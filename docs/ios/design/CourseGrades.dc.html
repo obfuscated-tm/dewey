@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>AP Comp Sci A grades</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D5EA8;text-decoration:none}a:hover{color:#164A86}
+button{font:inherit;cursor:pointer}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.srow{display:flex;align-items:center;gap:10px;padding:10px 12px 10px 16px;border-top:1px solid #EEF0F3;min-height:58px;box-sizing:border-box;color:#1F2429}
+.sname{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+.sname > span:first-child{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hints{display:flex;align-items:center;gap:8px;font-size:12px;color:#5E6670}
+.hint{display:flex;align-items:center;gap:3px}
+.score{display:flex;flex-direction:column;align-items:flex-end;gap:2px}
+.chev{flex:none}
+.cathead{display:flex;flex-direction:column;gap:2px;padding:11px 16px;background:#F6F7F9}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F6F7F9; font-family: 'Instrument Sans', system-ui, sans-serif; color: #1F2429; position: relative; overflow: hidden; display: flex; flex-direction: column">
+
+  <div style="padding: 50px 8px 0; display: flex; align-items: center; justify-content: space-between">
+    <a href="Grades.dc.html" style="min-height: 44px; display: flex; align-items: center; gap: 2px; padding: 0 8px; font-size: 17px; color: {{accent}}">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+      Grades
+    </a>
+    <button style="height: 34px; margin-right: 8px; padding: 0 12px; border-radius: 17px; border: 1px solid #DCE0E5; background: #FFFFFF; color: #5E6670; font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 6px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"></path><path d="M4 15l5-5 4 3 7-7"></path></svg>
+      What-if
+    </button>
+  </div>
+
+  <main style="flex: 1; overflow: hidden; padding: 0 12px; display: flex; flex-direction: column; gap: 12px">
+    <div style="padding: 0 8px; display: flex; flex-direction: column; gap: 4px">
+      <h1 style="margin: 0; font-size: 26px; font-weight: 700; letter-spacing: -0.01em">AP Computer Science A</h1>
+      <div style="display: flex; align-items: baseline; gap: 10px">
+        <span style="font-size: 20px; font-weight: 700">A</span>
+        <span class="mono" style="font-size: 18px">97.0%</span>
+        <span style="font-size: 13px; color: #5E6670">26-27 T1</span>
+        <span class="mono" style="margin-left: auto; font-size: 14px; font-weight: 600; color: {{accent}}">3.92 above A</span>
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 16px; padding: 10px 12px 6px">
+      <svg width="340" height="72" viewBox="0 0 340 72" fill="none" aria-label="Course grade over the term">
+        <line x1="0" y1="44" x2="340" y2="44" stroke="#B8430F" stroke-width="1" stroke-dasharray="4 4"></line>
+        <text x="326" y="39" font-family="JetBrains Mono, monospace" font-size="10" fill="#B8430F">A</text>
+        <path d="M0 6 H140 V26 H200 V22 H245 V23 H300 V24 H312" stroke="{{accent}}" stroke-width="2.2" stroke-linejoin="round"></path>
+        <circle cx="312" cy="24" r="4" fill="{{accent}}"></circle>
+      </svg>
+      <div class="mono" style="display: flex; justify-content: space-between; font-size: 10.5px; color: #5E6670">
+        <span>Aug 17</span><span>Sep 14</span><span>Today</span>
+      </div>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 16px; overflow: hidden">
+      <div class="cathead">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <span style="font-size: 15px; font-weight: 700">Tests &amp; Quizzes</span>
+          <span class="mono" style="font-size: 13px; color: #5E6670">75%</span>
+          <span class="mono" style="margin-left: auto; font-size: 14px; font-weight: 600">A · 95.9%</span>
+        </div>
+        <div style="font-size: 12.5px; color: {{accent}}">A holds down to <span class="mono" style="font-weight: 600">90.7%</span></div>
+      </div>
+      <a class="srow" href="GradeDetail.dc.html">
+        <span class="sname"><span>Lesson 0-4 Test</span>
+          <span class="hints"><span class="mono">Sep 14</span>
+            <span class="hint" style="color: {{accent}}; font-weight: 600"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"></path></svg>Comment</span>
+          </span>
+        </span>
+        <span class="score"><span class="mono" style="font-size: 15px; font-weight: 500">47.44/50</span><span class="mono" style="font-size: 12px; color: #5E6670">94.9% · <span style="color: #B8430F">−0.64</span></span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A929B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+      </a>
+      <a class="srow" href="GradeDetail.dc.html">
+        <span class="sname"><span>HW Quiz 5-6</span><span class="hints"><span class="mono">Sep 17</span></span></span>
+        <span class="score"><span class="mono" style="font-size: 15px; font-weight: 500">10/10</span><span class="mono" style="font-size: 12px; color: #5E6670">100% · <span style="color: #23794A">+0.31</span></span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A929B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+      </a>
+      <a class="srow" href="GradeDetail.dc.html">
+        <span class="sname"><span>HW Quiz 7-8</span><span class="hints"><span class="mono">Sep 24</span></span></span>
+        <span class="score"><span style="font-size: 13px; color: #5E6670">Not graded yet</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A929B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+      </a>
+    </div>
+
+    <div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 16px; overflow: hidden">
+      <div class="cathead">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <span style="font-size: 15px; font-weight: 700">Labs &amp; Homework</span>
+          <span class="mono" style="font-size: 13px; color: #5E6670">25%</span>
+          <span class="mono" style="margin-left: auto; font-size: 14px; font-weight: 600">A · 100%</span>
+        </div>
+        <div style="font-size: 12.5px; color: {{accent}}">A holds down to <span class="mono" style="font-weight: 600">84.3%</span></div>
+      </div>
+      <a class="srow" href="GradeDetail.dc.html">
+        <span class="sname"><span>Lab 7.1 Receipt</span>
+          <span class="hints"><span class="mono">Sep 20</span>
+            <span class="hint" style="color: {{accent}}; font-weight: 600"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><path d="M4 10h16"></path><path d="M10 10v10"></path></svg>Rubric</span>
+            <span class="hint" style="color: {{accent}}; font-weight: 600"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H9l-5 4z"></path></svg>Comment</span>
+          </span>
+        </span>
+        <span class="score"><span class="mono" style="font-size: 15px; font-weight: 500">10/10</span><span class="mono" style="font-size: 12px; color: #5E6670">100%</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A929B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+      </a>
+      <a class="srow" href="GradeDetail.dc.html">
+        <span class="sname"><span>Academic Integrity Policy</span><span class="hints"><span class="mono">Aug 17</span></span></span>
+        <span class="score"><span class="mono" style="font-size: 15px; font-weight: 500">5/5</span><span class="mono" style="font-size: 12px; color: #5E6670">100%</span></span>
+        <svg class="chev" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A929B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+      </a>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1D5EA8","options":["#1D5EA8","#23794A","#6A4BA8","#A8324A"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { accent: this.props.accent ?? '#1D5EA8' };
+}
+}
+</script>
+</body>
+</html>

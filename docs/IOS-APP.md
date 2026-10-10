@@ -1,115 +1,101 @@
-# iOS app: findings and plan
+# iOS app: start here
 
-Notes for anyone (human or Claude Code session) picking up the native iOS version of this toolkit. Status: **exploration only**, no app code in the repo yet. Findings below were tested on 2026-10-07.
+A native SwiftUI app with Schoology built in, giving the extension's features a phone-first UI: To Do grouped by class with Done / Turn in, grades with comments and rubrics first and what-if second, materials that open natively, and full Schoology as a fallback tab.
 
-## Goal
+**Status (2026-10-10):** design and research done, **no app code yet**. Next is milestone 1. Keep the "Progress" table at the bottom current.
 
-A native SwiftUI app that has Schoology built in and gives the extension's features a phone-first UI: To Do grouped by class with Done / Turn in, the Grades graph + what-if + "above an A", Materials status, the assignment status chip, and the neo-plan type switch. Anything not built natively falls back to a full Schoology web view in the same app.
+## Read these first
 
-## Constraints (verified)
+| File | What it holds | When |
+|---|---|---|
+| this file | rules, repo layout, milestones in order with "done when" | always |
+| [ios/FINDINGS.md](ios/FINDINGS.md) | verified facts: login, free-account limits, how each class turns in, Google Assignments, grades, rubrics | before touching login, submit status, or grades |
+| [ios/ENGINE.md](ios/ENGINE.md) | the JS ↔ Swift contract: which extension modules run in the app, engine ops, JSON shapes, fetch rules, neo-plan API | before milestone 1 and any data work |
+| [ios/SCREENS.md](ios/SCREENS.md) | every screen: what it shows, data, taps; colours and fonts | before building any screen |
+| [ios/design/](ios/design/) | the mockups, one HTML file per screen | to see what a screen looks like |
 
-| Constraint | Consequence |
-|---|---|
-| FUHSD (`fuhsd.schoology.com`) does **not** give students `/api` keys | No official REST API. The app must use the real web session (cookies) and read pages, exactly as the extension does in Chrome. |
-| School login is **Google SSO** | Expected Google to block embedded web views (`disallowed_useragent`). It does **not**, see below. |
-| Only a **free Apple Personal Team** (no paid Developer Program) | Builds expire after 7 days (re-run from Xcode); max 3 sideloaded apps per device (user already uses 1); max 10 new bundle IDs per week; no TestFlight / App Store / APNs push; App Groups likely unavailable (so no easy widget data sharing). Simulator has no limits. Local notifications, Keychain, `WKWebView`, `BGAppRefreshTask` all work. |
+## Rules for every session
 
-## Login test result
+1. **Read-only on Schoology.** The app and any testing you do only GET. Never open quiz-taking pages (`/assessment`, take/start/resume, `/course/{c}/assessments/{id}` unless the student taps it). Never press Submit on a real assignment. Never enter or store Owen's passwords; he signs in himself.
+2. **Never copy a parser into Swift.** Schoology parsing lives in `schoology_archiver_extension/reader/parse/` and runs in the app through the engine. A selector fix goes there, with a test, and fixes the extension too.
+3. **Keep the extension working.** After any change under `schoology_archiver_extension/`, run `node --test test/*.test.js` from that folder (all must pass; `war.test.js` checks the manifest lists every module an overlay imports). Note: `node --test test/` does not work.
+4. **Native screens read; changing Schoology happens in the Schoology sheet** (SCREENS.md, "The rule"). Never show "Submitted" unless Schoology's dropbox says so.
+5. **One bundle ID forever.** Pick it once in `ios/project.yml` (M2) and never change it: the free account allows 10 new IDs a week.
+6. Learned something new about Schoology? Add it to FINDINGS.md in the same change. Finished a milestone? Update "Progress" below.
+7. Commit only when Owen asks.
 
-A throwaway SwiftUI app (one `WKWebView`, persistent `WKWebsiteDataStore.default()`) loaded `https://fuhsd.schoology.com/`, which redirected to Google ("Sign in to continue to Schoology Integration").
-
-- **Google sign-in completed in a plain `WKWebView` with the default user agent**: cookies fully cleared first, then a fresh sign-in. No `disallowed_useragent` block.
-- It also works with a Mobile-Safari user agent.
-- After login, `fetch('/home', {credentials: 'include'})` run inside the page returned the signed-in home page, so same-origin fetches from the web view carry the session. The full dashboard and To Do column rendered.
-- The session lives in `WKWebsiteDataStore.default()`, so it persists across app launches.
-
-### Login design decided
-
-1. Default: plain `WKWebView`, default UA.
-2. **Automatic fallback**: if a Google page shows `disallowed_useragent` / "doesn't comply with Google's policies" / "This browser or app may not be secure", switch to a Safari UA, persist that choice, and reload login. Also expose it as a "Login compatibility mode" toggle in Settings.
-   ```swift
-   // Default WKWebView UA lacks the Version/… Safari/… tokens Google keys on.
-   webView.customUserAgent = defaultUA + " Version/26.0 Mobile/15E148 Safari/604.1"
-   ```
-3. Last resort if Google ever blocks both: a **"Connect iPhone" QR handoff** from the Chrome extension. The extension reads the Schoology session cookie (needs the `cookies` permission) and shows it as a QR code; the app scans it and puts it in its cookie store. Treat the QR code like a password: show it on screen only, never upload it.
-
-Ruled out: `ASWebAuthenticationSession` / `SFSafariViewController` (Google allows them, but their cookies are walled off from the app), the official API (no keys), and a Safari Web Extension passing the session to the app (needs App Groups = paid).
-
-Popups: Google SSO may call `window.open`. Handle `createWebViewWith` by loading the request in the same view.
-
-## Architecture plan
+## Repo layout (target)
 
 ```
-SwiftUI screens  ◄─ JSON ─  "engine" (hidden WKWebView, same cookie store)
-                            runs the extension's parsers + grade math,
-                            fetches schoology.com pages same-origin
-"Schoology" tab = visible WKWebView for everything not native yet
+schoology_archiver_extension/      the Chrome extension (exists). Source of all parsing + grade math.
+  engine/engine.js                 NEW (M1): the app engine entry; imports the pure modules
+ios/                               NEW (M2)
+  project.yml                      XcodeGen spec (committed). Run `xcodegen generate` in ios/.
+  SchoolApp.xcodeproj              generated; gitignored, never hand-edited
+  scripts/build-engine.sh          bundles engine.js → App/Resources/engine.js
+  App/
+    SchoolApp.swift                @main, tabs
+    Engine/Engine.swift            hidden WKWebView + callAsyncJavaScript (ENGINE.md)
+    Engine/Models.swift            Codable structs for engine results
+    Web/SchoologyWebView.swift     shared WKWebView wrapper (login, sheet, tab 4)
+    Web/SchoologySheet.swift       1c
+    Store/                         SwiftData models: ItemState (done, studied, turnedIn, type), caches
+    NeoPlan/NeoPlanClient.swift    URLSession client + Keychain token
+    Screens/ToDo/, Assignment/, Grades/, Classes/, Settings/
+    Resources/engine.js            GENERATED (gitignored or committed, but never hand-edited)
+  Tests/                           XCTest: model decoding from saved engine JSON, state logic
 ```
 
-- Run the parsers in a hidden `WKWebView` (not JavaScriptCore), because they need `DOMParser` / DOM. Return JSON to Swift via `WKScriptMessageHandler` or `callAsyncJavaScript`.
-- **Reuse, don't port**: the logic in `schoology_archiver_extension/reader/parse/*.js`, `overlays/grademath.js`, `overlays/asgstate.js` (and likely `matstate.js`, `todorows.js`) is what the app needs. First repo step: split pure logic from page/`chrome.*` code and bundle it into one `engine.js` that both the extension and the app load. Today `reader/parse/materials.js`, `overlays/grademath.js` and `overlays/asgstate.js` reference `document.` or `chrome.`, so check those for coupling first.
-- Neo-plan sync: reuse what `panel/np.js` does (it talks to `neo-plan.vercel.app`).
-- Notifications: local only (`UNUserNotificationCenter`) scheduled from fetched due dates, refreshed with `BGAppRefreshTask` (best effort).
-- Archiving: if ported at all, save to the app's Documents folder so it shows in the Files app. Full-course archive probably stays a desktop feature.
-- App Store naming (if ever paid): can't use "Schoology" or its logo as the app's name/branding.
+Build settings: iOS 17+ (SwiftData), `GENERATE_INFOPLIST_FILE = YES`, `INFOPLIST_KEY_UILaunchScreen_Generation = YES`, `INFOPLIST_KEY_NSCameraUsageDescription` set. Simulator builds need no signing; device builds use Owen's Personal Team (he picks it in Xcode once).
 
-## Building without Xcode's UI
+Build and run from the command line:
+```bash
+cd ios && xcodegen generate && xcodebuild -scheme SchoolApp -destination 'platform=iOS Simulator,name=iPhone 17' build
+```
+In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `launch` the built `.app`) to see and tap it. Owen has to sign in to Schoology in the simulator himself the first time.
 
-**XcodeGen 2.46.0 is installed** (`brew install xcodegen`, 2026-10-07). For the real app, prefer a `project.yml` + `xcodegen generate` and keep the generated `.xcodeproj` out of git, or committed but never hand-edited. Fallback used for the login test, before XcodeGen was installed: a hand-written `project.pbxproj` with `objectVersion = 77` and a `PBXFileSystemSynchronizedRootGroup` (Xcode 16+) works: every Swift file in the folder is compiled automatically, with no per-file entries. Use `GENERATE_INFOPLIST_FILE = YES` and `INFOPLIST_KEY_UILaunchScreen_Generation = YES`. `xcodebuild -list` autogenerates the scheme. Simulator builds need no signing team; device builds need the user's Personal Team set in Xcode.
+## Milestones (in order; don't start one before the previous is done)
 
-## UI plan (2026-10-07)
+### M1 · Engine bundle (extension repo work only)
+- Move `isQuizTakingUrl` out of `reader/client.js` into a pure module (client.js re-exports it). Move the pure functions of `overlays/todorows.js` into `overlays/todologic.js` (todorows re-exports; add it to `manifest.json` `web_accessible_resources`).
+- Write `schoology_archiver_extension/engine/engine.js`: the ops and fetch rules in ENGINE.md. Export them on a global `SchoologyEngine`.
+- Add a bundler: `esbuild --bundle --format=iife --global-name=SchoologyEngine engine/engine.js --outfile=…`. esbuild isn't installed yet; ask Owen before installing it (`brew install esbuild` or a devDependency in a new `ios/package.json`).
+- Tests: Node tests for the pure parts of engine.js (URL guard, op → path, result shaping) with fake `fetch`.
+- **Done when:** all extension tests pass; the bundle builds; pasting the bundle into the console of a logged-in Schoology tab and running `await SchoologyEngine.todo()`, `gradebook({sectionId})`, `assignment({id})`, `rubric(...)` returns the documented shapes (read-only; World History has rubric rows and Google Assignments to check against).
 
-Mockups: [iOS App Screens canvas](https://claude.ai/artifact/GSX8QmamsY6nkjpdjckhue) (private to Owen). 13 screens in 4 rows, each with a note under it saying what it shows, where its data comes from, and what each tap does. Row 5 lists the open holes. Look: the extension overlay's tokens (accent `#1D5EA8`, Instrument Sans, JetBrains Mono for numbers), 44pt minimum touch targets.
+### M2 · Xcode project, login, engine bridge
+- `ios/project.yml`, tabs with placeholder screens, the shared web view wrapper with the login flow and automatic Safari-UA fallback (FINDINGS.md), `Engine.swift`.
+- A debug screen (Settings → Developer) that runs each engine op and prints the JSON.
+- **Done when:** in the simulator, Owen signs in once; after a relaunch he is still signed in; the debug screen shows real `courses()` and `todo()` results; `error: 'login'` after clearing cookies sends the app to Sign in.
 
-**The rule.** Native screens *read* Schoology and keep the student's *own* state (done, studied, marked turned in, neo-plan type, what-if). Anything that *changes* Schoology (submit, take a quiz, post, Google Assignments / external tools) happens on Schoology's real page in a reusable in-app **Schoology sheet** (WKWebView, same cookies), which watches for "Submitted" and then clears the item in neo-plan, the same as the extension's submit detection.
+### M3 · Spikes (each answers a question; write the answer into FINDINGS.md)
+- **S1 upload:** open AP Physics's next real "Scan PDF" Submit dialog in the sheet; check Photos / Camera / Files appear and a file attaches. Owen presses Submit only if it's real homework. Also open a World History Google Assignment in the sheet: does Google's frame load?
+- **S3 Docs:** a docs.google.com link with `.universalLinksOnly` opens the Docs app with the school account (device only; needs the Docs app).
 
-**Two kinds of "turned in", never mixed up:** *Submit on Schoology ↗* (solid blue, opens the sheet; a filled green check once Schoology shows a submission) vs *Mark as turned in* (quiet, neo-plan only, for paper / elsewhere; an outline green check). `›` opens a native screen, `↗` opens Schoology or a website.
+### M4 · To Do (1a)
+- SwiftData `ItemState` (done, studied, turnedIn, type, updatedAt) keyed by Schoology id; the merge of `todo()` with the saved list; type rule; Older group; counts filter; swipe actions; pull to refresh; all 4c states.
+- **Done when:** the list matches Schoology's To Do for every class, paper work stays after Schoology drops it, and the state survives relaunch.
 
-Tabs: **To Do · Grades · Classes · Schoology** (full site). Screens: To Do, Assignment, Schoology sheet, Grades, Course grades (facts first; what-if is a mode behind a button), Graded work (score, teacher comments, rubric, submitted files), Classes, Materials (every item says where it opens), File viewer (PDFKit/QuickLook: Find, Mark up, Save to Files, Share), Schoology tab (with an "Open in app" pill), First launch, Settings, Shared states (first load, offline, signed out, couldn't-read-page fallback, neo-plan not connected, nothing due).
+### M5 · Assignment (1b) + Schoology sheet (1c)
+- The five-way Submission card, Mark as turned in, the sheet with re-check on close.
+- **Done when:** a Physics dropbox item shows its real state; after submitting in the sheet the row turns green without a manual refresh; AP CS shows the lab-site button; a Google Assignment shows "Open in Schoology ↗" and never "Submitted".
 
-Data already parsed by the extension: gradebook rows include a `comment` column (`reader/parse/grades.js`); the submission page gives grade, comments, revisions and files (`parseDropbox`); `parseAssignment` flags quizzes (`isQuiz`; never open `/assessment`) and external tools (`isExternalTool`).
+### M6 · Grades (2a, 2b, 2c)
+- Grade math through `math.*`; rubric criteria; comments; what-if mode.
+- **Done when:** each class's % matches the Schoology gradebook (or the extension's grades overlay) and the World History rubric items show their criteria.
 
-### Holes: what was found (checked live, 2026-10-07)
+### M7 · Classes, Materials, file viewer, Schoology tab (3a–3d)
 
-**Turning in**
-- Only some work has a Schoology dropbox. AP Physics "Scan PDF" homework uses it (`submission.state: submitted`). AP CS has none: labs are turned in on apcs.tinocs.com (linked from the instructions). Most other work is paper (`no_dropbox`).
-- A dropbox doesn't mean the class uses it. Pre-Calc HW #13 is graded 5/5 with the dropbox `not_submitted`. Learn per class: graded items with nothing submitted mean "paper class", and show its dropbox card in grey, not red.
-- Schoology's overdue list holds unsubmitted dropbox work and quizzes only. Paper work drops off once it's past due, so the app has to keep its own list. Pre-Calc HW #18 shows as overdue, though it's probably on paper.
-- So **Submit ↗** shows only when the item has a dropbox. If the instructions link a submit page (AP CS), the button opens that page instead. Otherwise the item offers only **Mark as turned in**.
-- **Google Assignments exist in World History** (the Quick Writes, "Submit response in Schoology"; the Haitian Revolution Document Packet). **The parser can't see them**: the page reads as no instructions, no attachments and `no_dropbox`, and `isExternalTool` misses it, because the Google part loads in an embedded app. Until their markup is known (spike S4), treat any assignment with an empty body as "Open in Schoology ↗" with a manual mark. Whether Schoology ever shows them as submitted is unknown.
-- Quizzes come as `/course/{id}/assessments/{id}` in the overdue list. Never open them without a tap.
-- Bad due dates exist: French "Interro: PC ou imparfait" is due in 2025 (teacher typo). Put overdue items older than 60 days under "Older".
-- Upload: an iOS `WKWebView` shows the Photos / Camera / Files menu for `<input type=file>` with no extra code. Add `NSCameraUsageDescription`, or "Take Photo" crashes. It still needs one test on the real Submit dialog (spike S1).
+### M8 · Settings, neo-plan sync, reminders (4a, 4b)
+- neo-plan is optional; when connected it is the shared copy (newer edit wins; offline taps queue).
 
-**Grades**
-- Comments are real and sometimes long (a World Lit paragraph; "added 0.5 to factoring problem"; "score (104.45) capped at 100").
-- A grade cell can hold an exception word after a dash: `—Collected`. "Missing" will probably look the same, so parse that word rather than looking for a separate marker.
-- Scores to handle: extra credit over 100% (`25 / 24`), `0 / 0` items, raw and curved copies of the same test. Skip the empty "(no grading period)" block.
-- Grading scales differ by course. Physics tops out at "A (100%)" while the others show A+. World History has a category at "A- (92%)", so its A line is above 92. Keep 93 as an approximate line, narrow it with the letter/% pairs seen in that course, and let the user set it.
-- Rubrics: **Schoology rubrics are used in World History.** "The Enlightenment (Robinson) Annotations" (4.6 / 5, id 8562611325) is the item `parseGrades` was written around. `parseGrades` deletes the `.s-grades-rubric-grading-launch-btn` button to read the score and never reports it, so the MCP shows no rubric. Fix: return `rubric: true` on the row. The criteria still load from wherever that button points (spike S2). Other "rubrics" are attached Google Docs or PDFs (French "UTILISEZ la RUBRIC", "French Revolution Essay AS + Rubric"): list them from the attachments.
-- The dropbox comments include system lines ("Revision 1 submitted"). Filter them out.
+## Progress
 
-**Your own state (decided)**
-- Done, Studied, Turned in and type live locally (SwiftData). The app works with no neo-plan. Connecting neo-plan is fully supported: same token and ops as the extension, and once connected it is the shared copy, so the app, the extension and the website all stay in sync. When the extension also edited an item, the newer edit wins. Taps made offline are queued.
-- HW vs Test without neo-plan: from the gradebook category (Tests, Quiz, Tests/Quizzes, Summatives) and title words (Exam, Quiz, Interro). neo-plan's type wins when connected.
-
-**Freshness (decided)**
-- A full refresh is about 15 requests: 1 course list, 2 home lists, 6 gradebooks, 6 feeds, plus 1 per unsubmitted dropbox item.
-- To Do loads its 3 requests on open and on pull to refresh. A class's gradebook loads when you open it, or at most every 30 min. A dropbox is checked only for its row. The feed loads only on Updates.
-- New-grade alerts compare against the last saved gradebook; iOS background refresh is best effort.
-
-**Google Docs (decided, to confirm)**
-- Open with `UIApplication.open(url, options: [.universalLinksOnly: true])` so the Docs app takes it if installed. If not, use the in-app web view, which is already signed in to Google from the school login (spike S3).
-
-**Still open**
-- Spikes S1 (upload), S2 (rubric source: tap the Enlightenment Annotations rubric button and log the request), S3 (Docs app), S4 (Google Assignment markup and submitted state on the Quick Write page). S2 and S4 can also be done read-only in Chrome on the desktop before the app exists.
-- Parser breakage: the couldn't-read fallback on every screen, plus the shared, tested `engine.js`.
-- Not designed: Updates feed, messages, calendar, dark mode, Dynamic Type, VoiceOver actions for swipes, iPad, app name and icon. Saving a whole class offline is out of v1.
-
-## Next steps
-
-1. Refactor the extension: extract a shared `engine.js` (parse + grade math + state), keep the extension working, add tests.
-2. Create the real Xcode project (keep one stable bundle ID to save the free-account ID quota), with login + automatic UA fallback.
-3. Spikes: S1 file upload in the Schoology sheet (Physics dropbox), S2 rubric source (log the gradebook rubric button's request), S3 Docs app via universal link, S4 Google Assignment markup.
-4. First native screen: To Do (grouped by class, overdue/due-today, Done, Submit ↗ / Mark turned in), backed by the engine.
-5. Then Assignment + Schoology sheet, Grades, Materials + file viewer, Settings.
+| Milestone | State | Notes |
+|---|---|---|
+| Research + design | done | FINDINGS.md, SCREENS.md, design/ |
+| Parser gaps found in research | done | rubric ids + `rubric.js`, Google Assignment detection (verified on live pages 2026-10-10) |
+| M1 Engine bundle | not started | |
+| M2 Xcode project + login | not started | a throwaway login test app proved the approach; nothing kept |
+| M3 Spikes S1, S3 | not started | S2 rubric source and S4 Google Assignment markup are done |
+| M4–M8 | not started | |

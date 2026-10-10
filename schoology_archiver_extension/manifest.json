@@ -92,6 +92,7 @@
         "reader/md.js",
         "reader/ratelimit.js",
         "reader/parse/grades.js",
+        "reader/parse/rubric.js",
         "reader/parse/materials.js",
         "reader/parse/sync.js",
         "util.js",

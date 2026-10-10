@@ -21,8 +21,13 @@ export function parseAssignment(doc, client, finalUrl = '') {
   // Assignment-based Test/Quiz: has "My Submissions" (/assessment_view) and "Test/Quiz" (/assessment) tabs.
   // We only ever read /assessment_view. /assessment is the quiz-taking page and must never be opened.
   const isQuiz = tabs.some((t) => /\/assessment$/.test(t.href.split('?')[0]) || /test\/quiz/i.test(t.text));
-  // External-tool (LTI) assignments redirect to /assignments/ID/info and have no Schoology instructions.
-  const isExternalTool = /\/assignments\/\d+/.test(finalUrl) || (!body && !!doc.querySelector('a[href*="external_tool"]'));
+  // External-tool (LTI) assignments, e.g. Google Assignments: no Schoology instructions, no
+  // dropbox, the tool in <iframe id="external-tool-iframe" src="/external_tool/ID/launch/iframe">
+  // and lti-app-grading on <body> (both in the served HTML, not added by script).
+  const isExternalTool = /\/assignments\/\d+/.test(finalUrl)
+    || !!doc.querySelector('#external-tool-iframe, iframe[src*="/external_tool/"]')
+    || !!doc.body?.classList.contains('lti-app-grading')
+    || (!body && !!doc.querySelector('a[href*="external_tool"]'));
   return {
     due,
     bodyEl: body,

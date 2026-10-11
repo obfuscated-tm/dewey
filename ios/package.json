@@ -1,0 +1,11 @@
+{
+  "name": "schoolapp-ios-tools",
+  "private": true,
+  "description": "Build tools for the iOS app: bundles schoology_archiver_extension/engine/engine.js into App/Resources/engine.js.",
+  "scripts": {
+    "engine": "scripts/build-engine.sh"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2"
+  }
+}

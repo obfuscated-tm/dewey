@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Classes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D5EA8;text-decoration:none}a:hover{color:#164A86}
+button,input{font:inherit}
+button{cursor:pointer}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding-top:8px;min-height:49px;color:#5E6670;font-size:10.5px;font-weight:500;position:relative}
+.tab svg{width:26px;height:26px}
+.tile{display:flex;flex-direction:column;background:#FFFFFF;border:1px solid #E3E6EA;border-radius:16px;overflow:hidden;color:#1F2429;min-height:150px}
+.tile-body{padding:12px 14px 14px;display:flex;flex-direction:column;gap:6px;flex:1}
+.label{font-size:12px;font-weight:600;color:#5E6670;letter-spacing:.05em;text-transform:uppercase}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F6F7F9; font-family: 'Instrument Sans', system-ui, sans-serif; color: #1F2429; position: relative; overflow: hidden; display: flex; flex-direction: column">
+
+  <header style="padding: 58px 20px 12px; display: flex; flex-direction: column; gap: 12px">
+    <h1 style="margin: 0; font-size: 34px; font-weight: 700; letter-spacing: -0.01em">Classes</h1>
+    <label style="height: 44px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-radius: 12px; background: #EAEDF0; color: #5E6670">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-4-4"></path></svg>
+      <input placeholder="Search every class's materials" aria-label="Search materials" style="flex: 1; border: 0; background: transparent; font-size: 16px; color: #1F2429; outline: none">
+    </label>
+  </header>
+
+  <main style="flex: 1; overflow: hidden; padding: 0 12px; display: flex; flex-direction: column; gap: 16px">
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <a class="tile" href="Materials.dc.html">
+        <div style="height: 44px; background: #7A4B2A; display: flex; align-items: flex-end; padding: 0 14px 8px; color: #FFFFFF; font-size: 12px; font-weight: 600; letter-spacing: .04em" class="mono">P2</div>
+        <div class="tile-body">
+          <span style="font-size: 16px; font-weight: 700; line-height: 1.2">AP Comp Sci A</span>
+          <span class="mono" style="font-size: 14px; color: #5E6670">A · 97.0%</span>
+          <span style="margin-top: auto; font-size: 13px; font-weight: 600; color: #B8430F">1 missing · 1 to turn in</span>
+        </div>
+      </a>
+      <a class="tile" href="Materials.dc.html">
+        <div style="height: 44px; background: #A8324A; display: flex; align-items: flex-end; padding: 0 14px 8px; color: #FFFFFF; font-size: 12px; font-weight: 600; letter-spacing: .04em" class="mono">P4</div>
+        <div class="tile-body">
+          <span style="font-size: 16px; font-weight: 700; line-height: 1.2">Pre-Calculus H</span>
+          <span class="mono" style="font-size: 14px; color: #5E6670">B+ · 89.4%</span>
+          <span style="margin-top: auto; font-size: 13px; font-weight: 600; color: {{accent}}">1 to turn in · test Tue</span>
+        </div>
+      </a>
+      <a class="tile" href="Materials.dc.html">
+        <div style="height: 44px; background: #2F7D5B; display: flex; align-items: flex-end; padding: 0 14px 8px; color: #FFFFFF; font-size: 12px; font-weight: 600; letter-spacing: .04em" class="mono">P5</div>
+        <div class="tile-body">
+          <span style="font-size: 16px; font-weight: 700; line-height: 1.2">AP Biology</span>
+          <span class="mono" style="font-size: 14px; color: #5E6670">A · 93.1%</span>
+          <span style="margin-top: auto; font-size: 13px; color: #23794A; font-weight: 600">All turned in</span>
+        </div>
+      </a>
+      <a class="tile" href="#" style="background: #FFFFFF; border-style: dashed">
+        <div style="height: 44px; background: #EEF0F3; display: flex; align-items: center; padding: 0 14px; color: #5E6670">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11H8l-4 4z"></path></svg>
+        </div>
+        <div class="tile-body">
+          <span style="font-size: 16px; font-weight: 700; line-height: 1.2">Updates</span>
+          <span style="font-size: 14px; color: #5E6670">Announcements from all classes</span>
+          <span class="mono" style="margin-top: auto; font-size: 13px; font-weight: 600; color: {{accent}}">3 new</span>
+        </div>
+      </a>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <div class="label" style="padding: 0 8px">Recently opened</div>
+      <div style="background: #FFFFFF; border: 1px solid #E3E6EA; border-radius: 16px; overflow: hidden">
+        <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 56px; color: #1F2429">
+          <span class="mono" style="width: 32px; height: 32px; border-radius: 7px; background: #B8430F; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700">PDF</span>
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15px; font-weight: 500">Lab 8.1 handout.pdf</span><span style="font-size: 12.5px; color: #5E6670">AP Comp Sci A · Lesson 8</span></span>
+        </a>
+        <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 0 16px; min-height: 56px; color: #1F2429; border-top: 1px solid #EEF0F3">
+          <span class="mono" style="width: 32px; height: 32px; border-radius: 7px; background: #1D5EA8; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700">DOC</span>
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 15px; font-weight: 500">Syllabus</span><span style="font-size: 12.5px; color: #5E6670">AP Comp Sci A</span></span>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <nav style="height: 83px; flex: none; box-sizing: border-box; background: rgba(255,255,255,.94); border-top: 1px solid #DCE0E5; display: flex; padding: 0 8px 26px">
+    <a class="tab" href="Main.dc.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M8 12.5l2.8 2.8L16.5 9.5"></path></svg>
+      To Do
+      <span class="mono" style="position: absolute; top: 4px; left: 54%; min-width: 18px; height: 18px; border-radius: 9px; background: #B8430F; color: #FFFFFF; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center; padding: 0 4px; box-sizing: border-box">1</span>
+    </a>
+    <a class="tab" href="Grades.dc.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"></path><path d="M4 15l5-5 4 3 7-7"></path></svg>
+      Grades
+    </a>
+    <a class="tab" href="Classes.dc.html" style="color: {{accent}}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"></rect><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"></rect><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"></rect></svg>
+      Classes
+    </a>
+    <a class="tab" href="SchoologyTab.dc.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18"></path></svg>
+      Schoology
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1D5EA8","options":["#1D5EA8","#23794A","#6A4BA8","#A8324A"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { accent: this.props.accent ?? '#1D5EA8' };
+}
+}
+</script>
+</body>
+</html>

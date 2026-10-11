@@ -7,7 +7,7 @@ import { PROXY_OPS } from './outputs/archive/chrome-bridge.js';
 import { isValidCourseId, sanitizeOptions, reduceProgress } from './outputs/archive/state.js';
 import { getSavedFolder } from './outputs/archive/folder.js';
 import { connectBridge, pushSnapshot, closeBridge, bridgeConnected, setBridgePaused } from './outputs/mcp/bridge.js';
-import { isQuizPageUrl, quizTabOpen } from './sync/quiet.js';
+import { isQuizPageUrl, quizTabOpen, noteQuizPage } from './sync/quiet.js';
 
 const SYNC_ALARM = 'neoplan-sync';
 const SYNC_SOON_ALARM = 'neoplan-sync-soon';
@@ -152,6 +152,12 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     else if (from === 'content') contentNeoplan(msg).then(reply);
     else return false;
     return true; // async reply
+  }
+  if (msg?.type === 'quizPage') {
+    // overlays/quizpage.js: this tab shows only a quiz's start page, or an attempt has started.
+    if (from !== 'content' || sender.frameId !== 0 || !sender.tab) return false;
+    noteQuizPage(sender.tab.id, sender.url, msg.state).then(() => quizGate()).then(() => reply({ ok: true }), () => reply({ ok: false }));
+    return true;
   }
   if (msg?.type === 'submitted') {
     if (from !== 'content') return false;
@@ -314,7 +320,10 @@ function quizCheckSoon() {
   clearTimeout(quizCheckTimer);
   quizCheckTimer = setTimeout(() => { quizGate().catch(() => {}); }, 1500);
 }
-chrome.tabs.onRemoved.addListener(() => { if (quiet) quizCheckSoon(); });
+chrome.tabs.onRemoved.addListener((tabId) => {
+  noteQuizPage(tabId, null, 'gone').catch(() => {});
+  if (quiet) quizCheckSoon();
+});
 
 chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (await quizGate().catch(() => false)) return;
@@ -326,6 +335,8 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   // A tab going into (or out of) a quiz page: check as soon as the URL changes.
   if (info.url || info.status === 'loading') {
+    // A new load starts unknown again: quizpage.js says what it is once it has looked.
+    if (info.status === 'loading') await noteQuizPage(tabId, null, 'reload').catch(() => {});
     if (isQuizPageUrl(info.url || tab?.url) || quiet) quizCheckSoon();
   }
   if (info.status !== 'complete') return;

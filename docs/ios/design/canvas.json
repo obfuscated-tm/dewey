@@ -1,0 +1,321 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Assignment.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "1b Assignment",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "Classes.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "3a Classes (tab 3)",
+      "w": 390,
+      "x": 0,
+      "y": 3440
+    },
+    "CourseGrades.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "2b Course grades",
+      "w": 390,
+      "x": 470,
+      "y": 1720
+    },
+    "GradeDetail.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "2c Graded work",
+      "w": 390,
+      "x": 940,
+      "y": 1720
+    },
+    "Grades.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "2a Grades (tab 2)",
+      "w": 390,
+      "x": 0,
+      "y": 1720
+    },
+    "Main.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "1a To Do (tab 1)",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "Materials.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "3b Materials",
+      "w": 390,
+      "x": 470,
+      "y": 3440
+    },
+    "PDFViewer.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "3c File viewer",
+      "w": 390,
+      "x": 940,
+      "y": 3440
+    },
+    "SchoologyTab.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "3d Schoology (tab 4)",
+      "w": 390,
+      "x": 1410,
+      "y": 3440
+    },
+    "Settings.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "4b Settings",
+      "w": 390,
+      "x": 470,
+      "y": 5160
+    },
+    "SignIn.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "4a First launch",
+      "w": 390,
+      "x": 0,
+      "y": 5160
+    },
+    "States.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "4c Shared states",
+      "w": 390,
+      "x": 940,
+      "y": 5160
+    },
+    "SubmitSheet.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "radius": 44,
+      "title": "1c Schoology sheet (submit)",
+      "w": 390,
+      "x": 940,
+      "y": 0
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-10-07T12:00:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "h1": {
+      "fill": "green",
+      "maxH": 900,
+      "text": "ANSWERED · TURNING IN (checked live, 7 Oct)\n\n• Only some work has a Schoology dropbox. Physics 'Scan PDF' homework uses it. AP CS has none: labs are turned in on apcs.tinocs.com. Most other work is paper.\n• Pre-Calc has dropboxes but grades paper: HW #13 is 5/5 with nothing submitted. So 'not submitted' ≠ missing. Learn it per class and grey the card.\n• Schoology's overdue list = unsubmitted dropbox work + quizzes. HW #18 (Pre-Calc) shows as overdue though it's likely on paper. Paper work never shows as overdue.\n• Google Assignments ARE used in World History (Quick Writes, Haitian Revolution packet), marked by lti-app-grading on <body> + an /external_tool/ iframe. The parser now flags them (S4 done). Schoology never says if you turned one in, so: 'Open in Schoology ↗' + manual mark.\n• Quizzes come as /course/…/assessments/…: never open by itself.",
+      "w": 390,
+      "x": 0,
+      "y": 6880
+    },
+    "h2": {
+      "fill": "green",
+      "maxH": 900,
+      "text": "ANSWERED · GRADES DATA\n\n• Comments: real and sometimes long (World Lit paragraph, 'added 0.5 to factoring', 'score (104.45) capped at 100').\n• Grade cells can be '—Collected' (an exception word after a dash). Missing will likely look the same: '—Missing'. Parse that word.\n• Scores: extra credit over 100% (25/24), 0/0 items, raw + curved duplicates. Never divide by 0; show >100% as is.\n• Scales differ: Physics tops out at 'A (100%)', others say A+. World History shows 'A- (92%)', so its A line is above 92. Use 93 as 'about', narrowed by the letter/% pairs seen in that class; let the user set it.\n• Skip the empty '(no grading period)' block.\n• Refresh: ~15 requests for everything (1 courses + 2 home lists + 6 gradebooks + 6 feeds) + 1 per open dropbox item.",
+      "w": 390,
+      "x": 470,
+      "y": 6880
+    },
+    "h3": {
+      "fill": "green",
+      "maxH": 900,
+      "text": "DECIDED · YOUR OWN STATE\n\n• The app keeps Done / Studied / Turned in / type locally (SwiftData), so it works with no neo-plan. Connecting neo-plan stays fully supported (same token and ops as the extension); once connected, app, extension and website share one copy.\n• HW vs TEST without neo-plan: from the gradebook category (Tests, Quiz, Tests/Quizzes, Summatives) and title words (Exam, Quiz, Interro). neo-plan's type wins when connected.\n• Conflicts with the extension: neo-plan's newer edit wins. Offline taps queue and send later.\n• Bad due dates exist: French 'Interro: PC ou imparfait' is due in 2025 (teacher typo) and shows as a year overdue. Hide overdue > 60 days behind 'Older'.\n• Refresh: To Do on open + pull (3 requests); a class's gradebook when you open it or every 30 min; dropbox checks only for unsubmitted dropbox rows; feed only on Updates.",
+      "w": 390,
+      "x": 940,
+      "y": 6880
+    },
+    "h4": {
+      "fill": "orange",
+      "maxH": 900,
+      "text": "STILL OPEN · needs the app running\n\nS1 Upload: open Physics HW 10/7's Submit dialog in the sheet and attach a photo + a PDF. Don't press Submit unless it's real homework.\nDONE: S2 rubric source (two /iapi JSON GETs), S4 Google Assignment markup.\nAlso test with S1: does a Google Assignment's cross-site frame load inside the sheet (iOS third-party cookies)?\nS3 Google Docs: check the Docs app opens a docs.google.com link (universal link) and has the school account.\n\nSTILL TO DECIDE\n• Not designed: Updates feed, messages, calendar, dark mode, Dynamic Type, VoiceOver for swipes, iPad.\n• App name and icon.\n• Free account: rebuild every 7 days; local notifications only.",
+      "w": 390,
+      "x": 1410,
+      "y": 6880
+    },
+    "n1a": {
+      "maxH": 560,
+      "text": "1a TO DO · build first\n\nSHOWS: everything due, grouped by class in Course Dashboard order. Overdue in red with days late. The 3 counts at the top filter the list.\n\nDATA: the home page's upcoming + overdue lists, plus the app's own list (see h3). Schoology's overdue list only holds dropbox work and quizzes: paper work drops off once it's past due, so the app keeps it until you tick it. Type: Test if its gradebook category says Test/Quiz/Exam/Summative, else HW; neo-plan overrides.\n\nTAPS: circle = Done (square = Studied). Submit ↗ only on dropbox work (1c). Swipe left = Mark turned in + the class's real turn-in place (Schoology, a lab site, or none for paper). Row → 1b. Pull = refresh. Gear → 4b.",
+      "w": 390,
+      "x": 0,
+      "y": 884
+    },
+    "n1b": {
+      "maxH": 560,
+      "text": "1b ASSIGNMENT\n\nDATA: assignment page (parseAssignment) + dropbox (submitted, late, revisions) + gradebook (category, score, comment).\n\nSUBMISSION card, one of four:\n• Dropbox, used by the class → Submitted / Not submitted, with when it was checked.\n• Dropbox, but the class grades paper (graded items with nothing submitted, like Pre-Calc) → grey 'Not used by this class'.\n• No dropbox → 'Turned in outside Schoology'; if the instructions link a submit page (AP CS lab site) show that as the ↗ button.\n• Quiz (/assessments/) → 'Take on Schoology ↗' only on your tap.\n• Google Assignment (empty body, World History) → 'Open in Schoology ↗'.\n'Mark as turned in' is always there and only changes your list.",
+      "w": 390,
+      "x": 470,
+      "y": 884
+    },
+    "n1c": {
+      "maxH": 560,
+      "text": "1c SCHOOLOGY SHEET · one reusable component\n\nA WKWebView in a sheet, same login. Used for submit, quizzes, discussions and every 'Open in Schoology'; the same sheet opens outside pages (lab site, Google Docs fallback).\n\nDone closes it and re-checks the dropbox; if it now says submitted: toast + clear.\n\nUPLOAD: iOS web views show the Photos / Camera / Files menu for a file input with no extra code. Info.plist needs NSCameraUsageDescription or 'Take Photo' crashes. Still to test once on Schoology's real Submit dialog (spike S1).",
+      "w": 390,
+      "x": 940,
+      "y": 884
+    },
+    "n2a": {
+      "maxH": 460,
+      "text": "2a GRADES\n\nDATA: each course's gradebook page (parseGrades) + grademath (distance to A, graph, +/- effect of each score).\n\nCARD: letter + %, small graph, distance to the A line, latest score and its effect. Tap → 2b.\nRECENTLY GRADED: newest scores across all classes. Needs a saved copy of the last fetch to know what's new.\n\nNOT DRAWN: a class with no grades yet, pass/fail or ungraded classes, other terms.",
+      "w": 390,
+      "x": 0,
+      "y": 2604
+    },
+    "n2b": {
+      "maxH": 460,
+      "text": "2b COURSE GRADES\n\nEvery item: score, %, date, effect on the grade, plus Comment / Rubric markers when Schoology has them. Categories show weight and 'A holds down to'. Row → 2c.\n\nWHAT-IF (button, top right) switches on what-if mode: ungraded rows get an input, 'Plan an upcoming test' lives there. Off by default.\n\nDATA: gradebook rows already include a comment column (parseGrades). Rubrics only appear as a button (spike S2). Scores can be over 100% (25/24) or 0/0; grade cells can say '—Collected'.",
+      "w": 390,
+      "x": 470,
+      "y": 2604
+    },
+    "n2c": {
+      "maxH": 560,
+      "text": "2c GRADED WORK\n\nScore, teacher comment (can be a long paragraph: World Lit), rubric, submitted files, effect on the course grade. What-if is a small link.\n\nDATA: gradebook row (score, comment) + dropbox (grade, comments, revisions, files). Drop system comments such as 'Revision 1 submitted'.\n\nRUBRIC: most 'rubrics' are attached Google Docs or PDFs (French, World History): list them from the assignment's attachments. Schoology rubrics ARE used (World History, Enlightenment Annotations 4.6/5). S2 done: parseGrades now returns rubric ids; criteria come from /iapi/grades/rubric/{id} + /iapi/grades/rubric_grade_info/{id}/{item}/{enrollment} (JSON; rubric.js parses them). Show each criterion: points, level text, comment.\n\n[Brackets] = placeholder text.",
+      "w": 390,
+      "x": 940,
+      "y": 2604
+    },
+    "n3a": {
+      "maxH": 460,
+      "text": "3a CLASSES\n\nTiles in Course Dashboard order: grade + open work (matstate counts). Colours are ours (Schoology has none); period label from the section title if there is one.\n\nSEARCH: every class's materials by name (like the MCP's find_material). That walks every Materials tree, so keep a cached index.\n\nUPDATES tile = announcements: SCREEN NOT DESIGNED.\nRECENTLY OPENED = local history.",
+      "w": 390,
+      "x": 0,
+      "y": 4324
+    },
+    "n3b": {
+      "maxH": 560,
+      "text": "3b MATERIALS\n\nFolders with open-work status and score (matstate). 'Only open work' toggle works.\n\nEVERY ITEM SAYS WHERE IT OPENS\n• Assignment → 1b ›\n• PDF, Word, PowerPoint, image → 3c ›\n• Google Doc / Slides / Sheet → Google's app if installed, else the in-app browser (already signed in from the school login) ↗\n• Other link → in-app browser ↗\n• Quiz, discussion → 1c ↗\n\nMaterials / Grades / Updates switch for the class. Save-a-class-offline: left out of v1.",
+      "w": 390,
+      "x": 470,
+      "y": 4324
+    },
+    "n3c": {
+      "maxH": 460,
+      "text": "3c FILE VIEWER\n\nThe app downloads the file with the Schoology login, then shows it natively (PDFKit / QuickLook): Find, Mark up, Save to Files, Share. QuickLook also covers Word, PowerPoint and images.\n\nOpened files are cached so they work offline.\n\nGoogle Docs are NOT shown here: they open in Google's app if installed, else the in-app browser.",
+      "w": 390,
+      "x": 940,
+      "y": 4324
+    },
+    "n3d": {
+      "maxH": 460,
+      "text": "3d SCHOOLOGY TAB\n\nThe full website in a WKWebView, for everything that isn't native: messages, calendar, groups, discussions, profile.\n\nBottom bar: back, forward, reload, share. When the page is something the app has a screen for (assignment, gradebook, materials), a pill offers 'Open in app'.\n\nShares one cookie store with the hidden engine and the sheets.",
+      "w": 390,
+      "x": 1410,
+      "y": 4324
+    },
+    "n4a": {
+      "maxH": 460,
+      "text": "4a FIRST LAUNCH\n\n1 Sign in (required): fuhsd.schoology.com in a web view → Google SSO. Switches to the Safari user agent by itself if Google refuses (docs/IOS-APP.md).\n2 neo-plan (optional): paste the token or scan a QR code from the extension. Kept in Keychain.\n3 Reminders (optional): asks for notification permission.\n\nAPP NAME: not decided (can't be 'Schoology').",
+      "w": 390,
+      "x": 0,
+      "y": 6044
+    },
+    "n4b": {
+      "maxH": 460,
+      "text": "4b SETTINGS (gear on To Do)\n\nSchoology account + sign out. neo-plan: status, token, class matching (same as the extension's settings panel). Reminders: evening-before time, new grades (best effort). Accent colour. Login compatibility mode. This build's expiry (free Apple account: 7 days).",
+      "w": 390,
+      "x": 470,
+      "y": 6044
+    },
+    "n4c": {
+      "maxH": 460,
+      "text": "4c SHARED STATES · every screen needs these\n\nFirst load (skeleton rows) · Offline: show the last copy and how old it is · Signed out by Schoology · Couldn't read the page: a parser broke, so offer Schoology's page, never a blank screen · neo-plan not connected · Nothing due.",
+      "w": 390,
+      "x": 940,
+      "y": 6044
+    },
+    "rule": {
+      "fill": "blue",
+      "maxH": 520,
+      "text": "THE RULE FOR THE WHOLE APP\n\nNative screens READ Schoology and keep YOUR OWN state: done, studied, marked turned in, neo-plan type, what-if.\n\nAnything that CHANGES Schoology (submit, take a quiz, post in a discussion, a Google Assignment) happens on the real page, in the Schoology sheet (1c). The app watches for 'Submitted' when there's a dropbox; for paper or lab-site work you mark it yourself.\n\nCHECK MARKS\nFilled blue = you marked it done\nFilled green = Schoology shows a submission (dropbox work only)\nOutline green = you marked it turned in (paper, elsewhere)\nSquare = a test (Studied / not)\nDashed = not in neo-plan yet\n\nARROWS\n› = opens a screen in the app\n↗ = opens Schoology or a website",
+      "w": 390,
+      "x": 1410,
+      "y": 0
+    },
+    "t1": {
+      "kind": "title1",
+      "maxW": 1800,
+      "text": "1 · To Do and turning in",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "t2": {
+      "kind": "title1",
+      "maxW": 1800,
+      "text": "2 · Grades: the facts first, what-if second",
+      "w": 240,
+      "x": 0,
+      "y": 1420
+    },
+    "t3": {
+      "kind": "title1",
+      "maxW": 1800,
+      "text": "3 · Classes, materials, files, full Schoology",
+      "w": 240,
+      "x": 0,
+      "y": 3140
+    },
+    "t4": {
+      "kind": "title1",
+      "maxW": 1800,
+      "text": "4 · Setup and shared states",
+      "w": 240,
+      "x": 0,
+      "y": 4860
+    },
+    "t5": {
+      "kind": "title1",
+      "maxW": 1800,
+      "text": "5 · Holes: what we found",
+      "w": 240,
+      "x": 0,
+      "y": 6580
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Assignment.dc.html",
+    "SubmitSheet.dc.html",
+    "Grades.dc.html",
+    "CourseGrades.dc.html",
+    "GradeDetail.dc.html",
+    "Classes.dc.html",
+    "Materials.dc.html",
+    "PDFViewer.dc.html",
+    "SchoologyTab.dc.html",
+    "SignIn.dc.html",
+    "Settings.dc.html",
+    "States.dc.html"
+  ],
+  "pages": [],
+  "title": "iOS App Screens"
+}

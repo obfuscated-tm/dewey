@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Assignment</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D5EA8;text-decoration:none}a:hover{color:#164A86}
+button,input{font:inherit}
+button{cursor:pointer}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.card{background:#FFFFFF;border:1px solid #E3E6EA;border-radius:14px;padding:14px 16px}
+.label{font-size:12px;font-weight:600;color:#5E6670;letter-spacing:.05em;text-transform:uppercase}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F6F7F9; font-family: 'Instrument Sans', system-ui, sans-serif; color: #1F2429; position: relative; overflow: hidden; display: flex; flex-direction: column">
+
+  <div style="padding: 50px 8px 0; display: flex; align-items: center; justify-content: space-between">
+    <a href="Main.dc.html" style="min-height: 44px; display: flex; align-items: center; gap: 2px; padding: 0 8px; font-size: 17px; color: {{accent}}">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+      To Do
+    </a>
+    <a href="SubmitSheet.dc.html" aria-label="Open this page in Schoology" style="width: 44px; height: 44px; color: {{accent}}; display: flex; align-items: center; justify-content: center">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18"></path><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18"></path></svg>
+    </a>
+  </div>
+
+  <main style="flex: 1; overflow: hidden; padding: 4px 16px 0; display: flex; flex-direction: column; gap: 12px">
+    <div style="display: flex; flex-direction: column; gap: 6px; padding: 0 4px">
+      <div style="display: flex; align-items: center; gap: 6px; font-size: 13.5px; color: #5E6670">
+        <span style="width: 8px; height: 8px; border-radius: 4px; background: #2F6F8F"></span>
+        AP Physics 1 · Unit 2 - Forces
+      </div>
+      <h1 style="margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.01em; line-height: 1.15">HW 10/2 Scan PDF</h1>
+      <div class="mono" style="font-size: 13px; color: #5E6670">Due Mon Oct 5, 8:30 am · 20 pts</div>
+    </div>
+
+    <div class="card" style="display: flex; flex-direction: column; gap: 12px">
+      <div class="label">Submission</div>
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span style="width: 34px; height: 34px; border-radius: 17px; background: #FBEDE5; color: #B8430F; display: flex; align-items: center; justify-content: center; flex: none">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7.5v5"></path><path d="M12 16.2v.3"></path></svg>
+        </span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 1px">
+          <span style="font-size: 16px; font-weight: 600; color: #B8430F">Not submitted on Schoology</span>
+          <span style="font-size: 13px; color: #5E6670">This class turns in through Schoology. Checked 2 min ago.</span>
+        </span>
+      </div>
+      <button style="min-height: 44px; border: 0; border-top: 1px solid #EEF0F3; background: none; padding: 10px 0 0; display: flex; align-items: center; gap: 10px; text-align: left; color: #1F2429">
+        <svg width="22" height="22" viewBox="0 0 26 26" style="flex: none"><circle cx="13" cy="13" r="11.5" fill="none" stroke="#5E6670" stroke-width="2"></circle><path d="M8 13.5l3.2 3.2L18 9.8" fill="none" stroke="#5E6670" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 1px">
+          <span style="font-size: 15px; font-weight: 600">Mark as turned in</span>
+          <span style="font-size: 12.5px; color: #5E6670">Handed in on paper or somewhere else. Only changes your planner.</span>
+        </span>
+      </button>
+    </div>
+
+    <div class="card" style="display: flex; flex-direction: column; gap: 12px">
+      <div class="label">Instructions</div>
+      <p style="margin: 0; font-size: 16px; line-height: 1.45">Worksheet 2.2 Forces and Tension. Scan it into one PDF and submit it here.</p>
+      <a href="PDFViewer.dc.html" style="min-height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 10px; background: #F6F7F9; color: #1F2429">
+        <span class="mono" style="width: 32px; height: 32px; border-radius: 7px; background: #B8430F; color: #FFFFFF; display: flex; align-items: center; justify-content: center; font-size: 9.5px; font-weight: 700">PDF</span>
+        <span style="flex: 1; font-size: 15px; font-weight: 500">Worksheet 2.2.pdf</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8A929B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg>
+      </a>
+      <div style="font-size: 13px; color: #5E6670">Posted Fri Oct 2, 3:10 pm · No comments</div>
+    </div>
+
+    <div class="card" style="display: flex; flex-direction: column; gap: 10px">
+      <div class="label">In neo-plan as</div>
+      <div role="radiogroup" aria-label="neo-plan type" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; background: #EEF0F3; border-radius: 10px; padding: 3px">
+        <sc-for list="{{types}}" as="t" hint-placeholder-count="4">
+          <button role="radio" aria-checked="{{t.on}}" onClick="{{t.pick}}" style="{{t.style}}">{{t.label}}</button>
+        </sc-for>
+      </div>
+    </div>
+
+    <button style="min-height: 48px; border: 1px dashed #C9CED4; border-radius: 14px; background: transparent; display: flex; align-items: center; gap: 8px; padding: 0 16px; color: #5E6670; font-size: 15px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19h16"></path><path d="M4 15l5-5 4 3 7-7"></path></svg>
+      What if I get <span class="mono">__ / 20</span>?
+      <span class="mono" style="margin-left: auto; font-size: 13px">100%</span>
+    </button>
+  </main>
+
+  <div style="flex: none; padding: 12px 16px 34px; background: rgba(255,255,255,.96); border-top: 1px solid #DCE0E5; display: flex; gap: 10px">
+    <button style="height: 52px; padding: 0 18px; border-radius: 14px; border: 1px solid #DCE0E5; background: #FFFFFF; color: #1F2429; font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>
+      Done
+    </button>
+    <a href="SubmitSheet.dc.html" style="flex: 1; height: 52px; border-radius: 14px; background: {{accent}}; color: #FFFFFF; font-size: 16px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px">
+      Submit on Schoology
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"></path><path d="M9 7h8v8"></path></svg>
+    </a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1D5EA8","options":["#1D5EA8","#23794A","#6A4BA8","#A8324A"]},"accentSoft":{"editor":"color","default":"#E7EFF8"},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+constructor(props) { super(props); this.state = { type: 'HW' }; }
+renderVals() {
+const accent = this.props.accent ?? '#1D5EA8';
+const base = 'height: 40px; border: 0; border-radius: 8px; font-size: 15px; font-weight: 600; ';
+const types = ['HW', 'Test', 'Task', 'CW'].map((label) => {
+const on = this.state.type === label;
+return {
+label, on: on ? 'true' : 'false',
+style: base + (on ? 'background: #FFFFFF; color: ' + accent + '; box-shadow: 0 1px 2px rgba(0,0,0,.12)' : 'background: transparent; color: #5E6670'),
+pick: () => this.setState({ type: label })
+};
+});
+return { accent, accentSoft: this.props.accentSoft ?? '#E7EFF8', types };
+}
+}
+</script>
+</body>
+</html>

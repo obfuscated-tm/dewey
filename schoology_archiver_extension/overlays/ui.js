@@ -139,6 +139,16 @@ try {
   overlayOn = true; // not in the extension (tests)
 }
 
+/**
+ * Take every overlay off this page for good: each host is removed and no
+ * listener hears another change (overlays/quizpage.js, when an attempt starts).
+ */
+export function removeAllHosts() {
+  for (const { host } of hosts) host.remove();
+  hosts.clear();
+  listeners.clear();
+}
+
 /** Is the overlay on? (true until the setting says otherwise) */
 export const isOverlayOn = () => overlayOn !== false;
 

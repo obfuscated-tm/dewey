@@ -66,7 +66,9 @@ With a token saved, the extension also reads Schoology for neo-plan in the backg
 
 Remove and Add back need neo-plan's side (`neo-plan/docs/EXTENSION-CONTRACT-5.md`); until it has it they say **neo-plan needs an update**. Staying signed in to neo-plan inside the card needs the same update (its sign-in cookie has to allow being inside another site's page); until then the card shows neo-plan's sign-in, and **Open in a tab** works.
 
-The overlays only read the page and draw in their own isolated elements: they never click, submit or change anything of Schoology's (the Grades page adds rows and a column of its own to the gradebook, and tints a row with a what-if score; **Only open work** hides Materials rows until it's unticked), and they never run on quiz or dropbox-submit pages.
+The overlays only read the page and draw in their own isolated elements: they never click, submit or change anything of Schoology's (the Grades page adds rows and a column of its own to the gradebook, and tints a row with a what-if score; **Only open work** hides Materials rows until it's unticked), and they never run on dropbox-submit pages or while you take a quiz.
+
+**Quiz pages.** A newer quiz's start page (Start Attempt and Previous Attempts) gets the assignment chip and your theme; an old-style quiz's attempts and answer review get your theme. The moment you start an attempt, everything comes off that page and the background goes quiet (no sync, no Claude bridge, no Archive) until the quiz tab is gone. Schoology runs a newer quiz's start page and its attempt on the same URL, so the extension goes by the page: it counts as the start page only while it shows Schoology's start page and no answer field.
 
 ## Stopping (kill switch)
 

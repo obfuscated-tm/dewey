@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#1D5EA8;text-decoration:none}a:hover{color:#164A86}
+button{font:inherit;cursor:pointer}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.glabel{font-size:12px;font-weight:600;color:#5E6670;letter-spacing:.05em;text-transform:uppercase;padding:0 16px 6px}
+.group{background:#FFFFFF;border:1px solid #E3E6EA;border-radius:14px;overflow:hidden}
+.srow{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px 0 16px;border-top:1px solid #EEF0F3;font-size:15.5px;color:#1F2429;box-sizing:border-box}
+.srow:first-child{border-top:0}
+.val{margin-left:auto;font-size:14px;color:#5E6670}
+.sw{width:50px;height:30px;border-radius:15px;border:0;padding:2px;display:flex;align-items:center;flex:none}
+.knob{width:26px;height:26px;border-radius:13px;background:#FFFFFF;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.cap{font-size:12.5px;color:#5E6670;padding:6px 16px 0;line-height:1.4}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #F6F7F9; font-family: 'Instrument Sans', system-ui, sans-serif; color: #1F2429; position: relative; overflow: hidden; display: flex; flex-direction: column">
+
+  <div style="padding: 50px 8px 0; display: flex; align-items: center">
+    <a href="Main.dc.html" style="min-height: 44px; display: flex; align-items: center; gap: 2px; padding: 0 8px; font-size: 17px; color: {{accent}}">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"></path></svg>
+      To Do
+    </a>
+  </div>
+
+  <main style="flex: 1; overflow: hidden; padding: 0 12px; display: flex; flex-direction: column; gap: 16px">
+    <h1 style="margin: 0 8px; font-size: 30px; font-weight: 700; letter-spacing: -0.01em">Settings</h1>
+
+    <div>
+      <div class="glabel">Schoology</div>
+      <div class="group">
+        <div class="srow"><span>Signed in</span><span class="val mono">fuhsd.schoology.com</span></div>
+        <button class="srow" style="width: 100%; border-left: 0; border-right: 0; border-bottom: 0; background: none; color: #B8430F; text-align: left">Sign out</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="glabel">neo-plan</div>
+      <div class="group">
+        <div class="srow"><span>Status</span><span class="val" style="color: #23794A; font-weight: 600">Connected · synced 2 min ago</span></div>
+        <a class="srow" href="#"><span>Token</span><span class="val mono">••••3f2a</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A929B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></a>
+        <a class="srow" href="#"><span>Classes</span><span class="val">3 matched</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#8A929B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5l7 7-7 7"></path></svg></a>
+      </div>
+    </div>
+
+    <div>
+      <div class="glabel">Reminders</div>
+      <div class="group">
+        <div class="srow"><span>Evening before it's due</span><span class="val mono">8:00 pm</span><button class="sw" role="switch" aria-checked="true" aria-label="Evening reminders" style="background: {{accent}}; justify-content: flex-end"><span class="knob"></span></button></div>
+        <div class="srow"><span>New grades</span><button class="sw" role="switch" aria-checked="false" aria-label="New grade alerts" style="margin-left: auto; background: #C9CED4; justify-content: flex-start"><span class="knob"></span></button></div>
+      </div>
+      <div class="cap">New-grade alerts only arrive when iOS lets the app check in the background.</div>
+    </div>
+
+    <div>
+      <div class="glabel">Look and sign-in</div>
+      <div class="group">
+        <div class="srow"><span>Accent</span>
+          <span style="margin-left: auto; display: flex; gap: 8px">
+            <span style="width: 24px; height: 24px; border-radius: 12px; background: #1D5EA8; box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #1D5EA8"></span>
+            <span style="width: 24px; height: 24px; border-radius: 12px; background: #23794A"></span>
+            <span style="width: 24px; height: 24px; border-radius: 12px; background: #6A4BA8"></span>
+            <span style="width: 24px; height: 24px; border-radius: 12px; background: #A8324A"></span>
+          </span>
+        </div>
+        <div class="srow"><span>Login compatibility mode</span><button class="sw" role="switch" aria-checked="false" aria-label="Login compatibility mode" style="margin-left: auto; background: #C9CED4; justify-content: flex-start"><span class="knob"></span></button></div>
+      </div>
+      <div class="cap">Turns itself on if Google refuses the sign-in page.</div>
+    </div>
+
+    <div>
+      <div class="glabel">This build</div>
+      <div class="group">
+        <div class="srow"><span>Stops opening in</span><span class="val mono" style="color: #B8430F; font-weight: 600">4 days</span></div>
+      </div>
+      <div class="cap">Free Apple account: re-run from Xcode every 7 days. Your data stays.</div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#1D5EA8","options":["#1D5EA8","#23794A","#6A4BA8","#A8324A"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return { accent: this.props.accent ?? '#1D5EA8' };
+}
+}
+</script>
+</body>
+</html>

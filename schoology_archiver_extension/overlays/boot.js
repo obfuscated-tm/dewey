@@ -8,6 +8,15 @@
   const p = location.pathname;
   const load = (which) => import(chrome.runtime.getURL(`overlays/${which}.js`)).catch((e) => console.debug('[neo-plan overlay]', e));
 
+  // Quiz pages. A newer quiz's start page gets overlays/quizpage.js, which
+  // takes everything off again the moment an attempt starts. An old-style
+  // quiz's attempts and answer review (/assignment/ID/assessment_view…) get
+  // only the theme (theme-early.js). Taking a quiz: nothing at all.
+  if (/assessment/i.test(p) || /\/(start|take|resume)[_-]?(attempt|quiz)/i.test(p)) {
+    if (/^\/course\/\d+\/assessments\/\d+\/?$/.test(p)) load('quizpage');
+    return;
+  }
+
   let page = null;
   if (/^\/assignment\/\d+(\/info)?\/?$/.test(p)) page = 'assignment';
   else if (/^\/home(\/assignments)?\/?$/.test(p)) page = 'home';

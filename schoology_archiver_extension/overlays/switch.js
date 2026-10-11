@@ -154,6 +154,8 @@ export function start({ doc = document, loc = location } = {}) {
   gear.setAttribute('aria-expanded', 'false');
   gear.innerHTML = GEAR_SVG;
 
+  // Declared before draw() runs: a page that loads with the overlay off closes it at once.
+  let popOpen = false;
   const pop = el('div', 'pop');
   pop.hidden = true;
   pop.setAttribute('role', 'dialog');
@@ -273,7 +275,6 @@ export function start({ doc = document, loc = location } = {}) {
   onSettings(drawSettings);
   percentBox.addEventListener('change', () => setSetting('percent', percentBox.checked));
 
-  let popOpen = false;
   function openPop() {
     if (popOpen) return;
     popOpen = true;

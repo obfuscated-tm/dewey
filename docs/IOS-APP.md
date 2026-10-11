@@ -2,7 +2,7 @@
 
 A native SwiftUI app with Schoology built in, giving the extension's features a phone-first UI: To Do grouped by class with Done / Turn in, grades with comments and rubrics first and what-if second, materials that open natively, and full Schoology as a fallback tab.
 
-**Status (2026-10-10):** design and research done, **no app code yet**. Next is milestone 1. Keep the "Progress" table at the bottom current.
+**Status (2026-10-10):** M1 done except the live check; every screen of M2–M8 is written and builds, unit tests pass, and the app launches to Sign in in the simulator. Next: Owen signs in once in the simulator, then the live checks below. Keep the "Progress" table at the bottom current.
 
 ## Read these first
 
@@ -59,7 +59,7 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 ### M1 · Engine bundle (extension repo work only)
 - Move `isQuizTakingUrl` out of `reader/client.js` into a pure module (client.js re-exports it). Move the pure functions of `overlays/todorows.js` into `overlays/todologic.js` (todorows re-exports; add it to `manifest.json` `web_accessible_resources`).
 - Write `schoology_archiver_extension/engine/engine.js`: the ops and fetch rules in ENGINE.md. Export them on a global `SchoologyEngine`.
-- Add a bundler: `esbuild --bundle --format=iife --global-name=SchoologyEngine engine/engine.js --outfile=…`. esbuild isn't installed yet; ask Owen before installing it (`brew install esbuild` or a devDependency in a new `ios/package.json`).
+- Add a bundler: `esbuild --bundle --format=iife --global-name=SchoologyEngine engine/engine.js --outfile=…`. esbuild is a devDependency in `ios/package.json` (`npm install` in ios/); `ios/scripts/build-engine.sh` runs it, and the Xcode pre-build step calls that script.
 - Tests: Node tests for the pure parts of engine.js (URL guard, op → path, result shaping) with fake `fetch`.
 - **Done when:** all extension tests pass; the bundle builds; pasting the bundle into the console of a logged-in Schoology tab and running `await SchoologyEngine.todo()`, `gradebook({sectionId})`, `assignment({id})`, `rubric(...)` returns the documented shapes (read-only; World History has rubric rows and Google Assignments to check against).
 
@@ -95,7 +95,8 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 |---|---|---|
 | Research + design | done | FINDINGS.md, SCREENS.md, design/ |
 | Parser gaps found in research | done | rubric ids + `rubric.js`, Google Assignment detection (verified on live pages 2026-10-10) |
-| M1 Engine bundle | not started | |
-| M2 Xcode project + login | not started | a throwaway login test app proved the approach; nothing kept |
+| M1 Engine bundle | built, live check pending | engine.js + guard.js + todologic.js, `test/engine.test.js`; extension tests 200/200; bundle 68 KB, no `chrome.` refs. Live check moves to the app's Developer screen (Chrome bridge timed out on localhost). |
+| M2 Xcode project + login | built, live check pending | `ios/` builds for the simulator (Xcode 27, iOS 27 sim); bundle ID `com.owenleung.classwork`; launches to Sign in. Build with default DerivedData: a build folder under ~/Documents fails codesign ("resource fork … detritus"). |
 | M3 Spikes S1, S3 | not started | S2 rubric source and S4 Google Assignment markup are done |
-| M4–M8 | not started | |
+| M4–M8 | built, tested live in the simulator | Checked live 2026-10-10: To Do, Assignment, PDF attachment viewer, Submit sheet (opened, never pressed). Fixed: session cookie lost on relaunch, Submit pill truncating due dates. Earlier:  To Do, Assignment + sheet, Grades (2a–2c, what-if, plan a test), Classes/Materials/file viewer/Schoology tab, Settings (neo-plan, reminders, per-class turn-in, Developer). 10 XCTest cases pass (decoding, TodoLogic, routes, widget data). Owen's calls: one-tap status like the extension (circle = Done, pill = Turn in / Submit ↗ / Undo; long-press for all three), grade categories start collapsed (Expand all; remembered per class), Appearance setting (System / Light / Dark), Schoology always in its desktop layout. |
+| Widgets + Live Activity | built, needs a look on the phone | `ClassworkWidgets` extension: Up next (small/medium/large, Lock Screen rectangular/inline), Due count (Lock Screen circle), and a due-time countdown Live Activity with a Dynamic Island, started from the Assignment screen (work due within 12 h). Data: `Shared/WidgetData.swift` through the App Group; `App/Widgets/WidgetBridge.swift` writes it after each refresh or mark. Links: `classwork://assignment/{id}`. |

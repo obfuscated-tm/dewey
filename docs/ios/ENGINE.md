@@ -58,7 +58,7 @@ Every op is `async`, takes one plain object, and returns one of:
 | Op | Request(s) | Parser | `data` |
 |---|---|---|---|
 | `courses()` | `GET /iapi/course/active` | `parseKind('courses')` | `[{ section_id, title, section_title }]` in Course Dashboard order |
-| `todo()` | `GET /home/upcoming_submissions_ajax`, `GET /home/overdue_submissions_ajax`, `GET /home/upcoming_ajax` | `parseKind('homeList')` ×2, `parseKind('events')` | `{ upcoming: [{ schoology_id, realm, title, due? }], overdue: [...], events: [{ schoology_id, realm }] }`. Map `realm` → section with `sectionsByRealm(courses)`. |
+| `todo()` | `GET /v2/events/overdue`, `GET /v2/events/upcoming`, following `@links.next` (the same source as `overlays/todo.js`) | `parseEventsJson` (reader/parse/sync.js) | `{ overdue: [{ schoology_id, title, course, section_id, due, graded, url }], upcoming: [...] }`. Chosen over the home ajax lists because it carries `section_id`, `url` (quiz detection: `/assessment` in it) and `graded`. |
 | `gradebook({ sectionId })` | `GET /course/{id}/student_grades` | `parseMcpKind('gradesFull')` | rows `[{ level: course\|period\|category\|item, title, due, grade, comment, weight?, id?, rubric?: { rubricId, enrollmentId } }]`. Feed to `periodsFromRows` for grade math. |
 | `assignment({ id })` | `GET /assignment/{id}` | `parseMcpKind('assignmentFull')` | `{ title, type: 'assignment'\|'quiz'\|'external_tool', due, instructions_md, attachments: [{ url, title }], submission: { state, late? } \| null, dropboxUrl }` |
 | `status({ id })` | `GET /assignment/{id}/info` with **`redirect: 'manual'`** | `parseKind('status')` | `{ state: 'submitted'\|'not_submitted'\|'no_dropbox'\|'unknown', late?, quiz? }`. A redirect means a quiz: return `{ state: 'unknown', quiz: true }` without following it. |
@@ -68,6 +68,11 @@ Every op is `async`, takes one plain object, and returns one of:
 | `material({ path })` | `GET {path}` (only the shapes `outputs/mcp/ops.js` allows: `/course/{c}/materials/gp/{id}`, `/course/{c}/materials/link/view/{id}`, `/page/{id}`, `/discussion/{id}`, `/assignment/{id}`) | `parseMcpKind('materialFull')` | `{ url, kind, title, body_md, target, files, links }` |
 | `feed({ sectionId, page })` | `GET /course/{id}/feed?page={n}` | `parseMcpKind('updatesFeed')` | `[{ author, date, body_md }]` |
 | `math.*` | none | grademath / asgstate / matstate / todologic | pass-through to the pure functions, e.g. `math.grade({ course, opts })`, `math.impact({ course, id, opts })` |
+| `courseGrade({ rows, opts, target })` | none | grademath | `{ period, pct, letter, mode, categories: [{ title, weight, earned, possible, pct, floor, floor_status }], items: [{ id, category, title, due, grade, comment, rubric, earned, possible, pct, impact }], history, periods }`. `opts.whatIf: { [id]: { earned, possible } }`. Swift keeps the raw gradebook rows and passes them back. |
+| `planTest({ rows, category, possible, target, opts })` | none | grademath `needFor` | `{ status: 'any'\|'out'\|'need'\|'none', need? }` |
+| `annotate({ items, now })` | none | todologic | `annotateItems` pass-through |
+
+Swift calls everything through `SchoologyEngine.callJSON(op, args)`, which returns the result object as a JSON string (`callAsyncJavaScript` can't return nested dictionaries reliably). A fetch that throws `TypeError` is told apart by probing `/iapi/course/active` with `redirect: 'manual'`: a redirect → `login`, a failure → `network`.
 
 `outputs/mcp/ops.js` already does almost exactly these fetch+parse pairs for the MCP. Read it before writing `engine.js`; copy its request shapes, not its Chrome plumbing.
 

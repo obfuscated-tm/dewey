@@ -10,8 +10,8 @@ Start at [../IOS-APP.md](../IOS-APP.md) for the build plan.
 |---|---|
 | FUHSD (`fuhsd.schoology.com`) does **not** give students `/api` keys | No official REST API. The app uses the real web session (cookies) and reads pages, exactly as the extension does in Chrome. |
 | School login is **Google SSO** | Expected Google to block embedded web views (`disallowed_useragent`). It does **not**: see below. |
-| Only a **free Apple Personal Team** (no paid Developer Program) | Builds expire after 7 days (re-run from Xcode); max 3 sideloaded apps per device (Owen already uses 1); max 10 new bundle IDs per week, so keep **one** bundle ID; no TestFlight / App Store / APNs push; App Groups likely unavailable (so no easy widget data sharing). The simulator has no limits. Local notifications, Keychain, `WKWebView` and `BGAppRefreshTask` all work. |
-| Tooling on this Mac | Xcode 16+, XcodeGen 2.46.0 (`brew install xcodegen`), Node 25. No esbuild yet. |
+| Only a **free Apple Personal Team** (no paid Developer Program) | Builds expire after 7 days (re-run from Xcode); max 3 sideloaded apps per device (Owen already uses 1); max 10 new bundle IDs per week, so keep **one** bundle ID; no TestFlight / App Store / APNs push; App Groups **do** sign on the free team (checked 2026-10-10: `group.com.owenleung.classwork` is in both the app's and the widget extension's signed entitlements), so widgets share data through it. The widget extension adds a second bundle ID, `com.owenleung.classwork.widgets`; never change it either. The simulator has no limits. Local notifications, Keychain, `WKWebView` and `BGAppRefreshTask` all work. |
+| Tooling on this Mac | Xcode 16+, XcodeGen 2.46.0 (`brew install xcodegen`), Node 25. esbuild 0.28 via `ios/package.json`. Xcode 27 with iOS 26.2 / 27.0 simulators. Build outside ~/Documents (default DerivedData): codesign rejects the extended attributes files get there. |
 
 ## Login (tested with a throwaway app)
 
@@ -19,7 +19,7 @@ One `WKWebView` with the persistent `WKWebsiteDataStore.default()` loaded `https
 
 - **Google sign-in completed in a plain `WKWebView` with the default user agent**, with cookies fully cleared first. No `disallowed_useragent` block. It also works with a Mobile Safari user agent.
 - After login, `fetch('/home', {credentials: 'include'})` run inside the page returned the signed-in home page. Same-origin fetches from a web view on the Schoology origin carry the session.
-- The session lives in `WKWebsiteDataStore.default()`, so it persists across launches.
+- The session lives in `WKWebsiteDataStore.default()`, **but Schoology's login cookies are session-only** (no expiry; checked 2026-10-10: after a quit and relaunch the app's `Library/Cookies` was empty and the engine got the login page). WebKit drops session cookies when the process ends. The app gives the `*.schoology.com` session cookies a 30-day expiry after sign-in, on each launch and on going to the background (`WebConfig.keepSession`), so they are written to the app's own cookie file. Schoology still decides when the session really ends.
 - Google SSO may call `window.open`: handle `WKUIDelegate.webView(_:createWebViewWith:for:windowFeatures:)` by loading the request in the same view and returning nil.
 
 Login design (decided):
@@ -31,7 +31,11 @@ Login design (decided):
    ```
 3. Last resort if Google ever blocks both: a "Connect iPhone" QR handoff from the Chrome extension (it reads the Schoology session cookie, needs the `cookies` permission, shows it as a QR code; the app puts it in its cookie store). Not built; only if needed. Show it on screen only, never upload it.
 
-Ruled out: `ASWebAuthenticationSession` / `SFSafariViewController` (their cookies are walled off from the app), the official API (no keys), a Safari Web Extension handing the session to the app (needs App Groups = paid).
+Ruled out: `ASWebAuthenticationSession` / `SFSafariViewController` (their cookies are walled off from the app), the official API (no keys), a Safari Web Extension handing the session to the app (App Groups turned out to work on the free team, but the login cookies are session-only and the in-app login works, so it is not needed).
+
+## Schoology's pages on a phone
+
+Schoology has no phone layout: no viewport meta tag, a fixed 1200 px page (`#sidebar-left` 180 px floated left, `#main-content-wrapper` with `margin-left: 180px`, `#center-wrapper`/`#center-inner` 978 px, `#right-column` on assignment pages holding "Submit Assignment"). WebKit shows it at 980 px, so the text is small. The app tried a phone fit (a device-width viewport plus CSS that un-floats those columns) and dropped it on Owen's call: the app's web views always show Schoology's desktop layout, like the extension does, and the student pinches to zoom. Opening an `/assignment/{id}` link for a quiz redirects to `/course/{c}/assessments/{id}` (the quiz landing page): don't use assignment links from the home page for testing.
 
 ## How each class turns work in
 

@@ -20,7 +20,7 @@ Anything that **changes** Schoology (submit, take a quiz, post in a discussion, 
 |---|---|---|
 | Filled blue circle ✓ | You marked it done | Student |
 | Filled green circle ✓ | Schoology shows a submission (dropbox work only) | Schoology, read by the app |
-| Outline green circle ✓ | You marked it turned in (paper, lab site, elsewhere) | Student (local / neo-plan only) |
+| Filled green circle ✓ (same look; the status line says "not on Schoology") | You marked it turned in (paper, lab site, elsewhere) | Student (local / neo-plan only) |
 | Rounded square | A test: Studied / not studied | Student |
 | Dashed outline | Not in neo-plan yet | — |
 
@@ -46,7 +46,7 @@ Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red bad
 
 ### 1a To Do (tab 1) — build first · `design/Main.dc.html`
 - **Shows:** everything due, grouped by class in Course Dashboard order (`courses()` order). Header: date, "To Do", gear (→ 4b). Three count buttons: Overdue (red), Due today (accent), This week; tapping one filters the list.
-- **Row:** check mark (see table above), title, type tag (HW / TEST / TASK / CW), due time in mono (red with "N d late" when overdue), a status line ("Done · not submitted yet", "Submitted on Schoology · 9:40 pm", "Not studied", "Marked turned in · not on Schoology"), and on dropbox work a **Submit ↗** pill.
+- **Row:** check mark (see table above), title, type tag (HW / TEST / TASK / CW), due time in mono (red with "N d late" when overdue), a status line ("Done · not submitted yet", "Submitted on Schoology · 9:40 pm", "Not studied", "Turned in · not on Schoology"), and on dropbox work a **Submit ↗** pill.
 - **Data:** `todo()` (upcoming + overdue + events) merged with the app's own saved list (paper work that Schoology dropped from overdue stays until ticked). Per-row `status({id})` only for rows that might have a dropbox. Type: TEST if the gradebook category says Test/Quiz/Exam/Summative or the title says Exam/Quiz/Interro, else HW; neo-plan's type wins when connected. Overdue > 60 days → collapsed "Older" group.
 - **Taps:** circle = Done toggle (square = Studied toggle). Submit ↗ only on dropbox work → 1c. Swipe left → "Mark turned in" + the class's real turn-in place ("Turn in on lab site ↗" for AP CS, "Submit ↗" for dropbox, nothing extra for paper). Row → 1b. Pull → refresh.
 

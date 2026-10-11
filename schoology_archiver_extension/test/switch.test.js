@@ -44,3 +44,13 @@ test('courseIdFromPath: anywhere else, null', () => {
   assert.equal(courseIdFromPath(''), null);
   assert.equal(courseIdFromPath(undefined), null);
 });
+
+// start() draws at once, and a page loading with the overlay already off
+// closes the popover in that first draw: popOpen must exist by then, or the
+// switch throws and never shows (no way back on but Alt+S).
+test('start: popOpen is declared before the first draw', async () => {
+  const { readFileSync } = await import('node:fs');
+  const src = readFileSync(new URL('../overlays/switch.js', import.meta.url), 'utf8');
+  const decl = src.indexOf('let popOpen');
+  assert.ok(decl > 0 && decl < src.indexOf('draw(isOverlayOn())'));
+});

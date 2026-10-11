@@ -1,6 +1,10 @@
 import { sleep, throwIfStopped } from '../util.js';
 import { acquireSlot, reportRateLimited, isRateLimited, RateLimitError } from './ratelimit.js';
 import * as bridge from '../outputs/archive/chrome-bridge.js';
+import { isQuizTakingUrl } from './guard.js';
+
+// Re-exported: it lived here first, and ops.js, sync.js and the tests import it from here.
+export { isQuizTakingUrl };
 
 export class LoginError extends Error {
   constructor() { super('Not logged in to Schoology in this browser'); }
@@ -125,16 +129,4 @@ export class SchoologyClient {
     }
     throw lastErr || new Error('request failed');
   }
-}
-
-// VIEW ONLY safety net: pages that take/start/resume a quiz are never requested.
-// /assignment/ID/assessment is the Test/Quiz "take" tab (/assessment_view is the read-only history).
-export function isQuizTakingUrl(url) {
-  const p = new URL(url).pathname;
-  return /\/assessment\/?$/.test(p) || /\/assessment\/(start|take|resume|attempt|submit)/.test(p)
-    || /\/(start|take|resume)[_-]?(attempt|assessment|quiz)/i.test(p)
-    // /assessment/5/start, /course/1/assessments/2/take, …/assessments/2/resume/
-    || /\/assessments?\/(\d+\/)*(start|take|resume|submit|begin)(\/|$)/i.test(p)
-    // the dropbox submit form: opening it submits nothing, but nothing here needs it
-    || /\/dropbox\/submit(\/|$)/i.test(p);
 }

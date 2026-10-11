@@ -43,7 +43,9 @@
         "https://*.schoology.com/*"
       ],
       "exclude_matches": [
-        "https://*.schoology.com/*assessment*",
+        "https://*.schoology.com/assignment/*/assessment",
+        "https://*.schoology.com/assignment/*/assessment?*",
+        "https://*.schoology.com/assignment/*/assessment/*",
         "https://*.schoology.com/assignment/*/dropbox*"
       ],
       "js": [
@@ -56,7 +58,9 @@
         "https://*.schoology.com/*"
       ],
       "exclude_matches": [
-        "https://*.schoology.com/*assessment*",
+        "https://*.schoology.com/assignment/*/assessment",
+        "https://*.schoology.com/assignment/*/assessment?*",
+        "https://*.schoology.com/assignment/*/assessment/*",
         "https://*.schoology.com/assignment/*/dropbox*"
       ],
       "js": [
@@ -82,9 +86,11 @@
         "overlays/marks.js",
         "overlays/materials.js",
         "overlays/matstate.js",
+        "overlays/quizpage.js",
         "overlays/switch.js",
         "overlays/theme.js",
         "overlays/todo.js",
+        "overlays/todologic.js",
         "overlays/todorows.js",
         "overlays/ui.js",
         "overlays/fonts/*.woff2",
@@ -94,6 +100,7 @@
         "reader/parse/grades.js",
         "reader/parse/rubric.js",
         "reader/parse/materials.js",
+        "reader/parse/quiz.js",
         "reader/parse/sync.js",
         "util.js",
         "panel/today-format.js",

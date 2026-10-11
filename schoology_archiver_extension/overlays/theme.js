@@ -188,8 +188,9 @@ setThemeProvider(hostThemeCss);
 // ── Early apply (theme-early.js calls this at document_start) ─────────────
 
 let styleEl = null;
+let halted = false; // stop(): this page is a quiz attempt now; never theme it again
 function applyPageStyle(key, overlayOn) {
-  const show = overlayOn && key !== 'schoology' && THEMES[key];
+  const show = !halted && overlayOn && key !== 'schoology' && THEMES[key];
   if (!show) {
     if (styleEl) { styleEl.remove(); styleEl = null; }
     return;
@@ -213,4 +214,10 @@ export function start() {
   const update = () => { if (overlayOn === null || theme === null) return; applyPageStyle(theme, overlayOn); };
   onOverlay((on) => { overlayOn = on; update(); });
   onSettings((s) => { theme = s.theme; update(); });
+}
+
+/** Take the page theme off for good (overlays/quizpage.js, when an attempt starts). */
+export function stop() {
+  halted = true;
+  applyPageStyle(null, false);
 }

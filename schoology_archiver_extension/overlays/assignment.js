@@ -92,6 +92,7 @@ b.num { font-weight: 500; color: var(--ink); }
 
 /** Schoology's due date line (the one with text), the title if there's none. */
 function chipAnchor(doc, page) {
+  if (page.quiz) return page.anchor?.isConnected ? page.anchor : null; // overlays/quizpage.js placed it
   const details = doc.querySelector('.assignment-details');
   if (details && cleanText(details)) return details;
   const due = [...doc.querySelectorAll('p.due-date')].find((p) => cleanText(p));
@@ -111,10 +112,14 @@ function pagePoints(doc) {
 export function start({
   doc = document, loc = location, send = (m) => chrome.runtime.sendMessage(m), call = np,
   getDoc = fetchDoc, store = chromeStore(), now = () => Date.now(),
+  // A newer quiz's start page (overlays/quizpage.js): { id, page, submitted }
+  // from the quiz's own data. Its "submitted" is a finished attempt; it isn't
+  // reported to the worker, which never reads quiz pages.
+  quiz = null,
 } = {}) {
-  const id = assignmentIdOf(loc.href);
+  const id = quiz ? quiz.id : assignmentIdOf(loc.href);
   if (!id) return null;
-  const page = parseAssignmentPage(doc, loc.href);
+  const page = quiz ? quiz.page : parseAssignmentPage(doc, loc.href);
   const section = page.section_id;
 
   const chipHost = createHost('np-chip', CHIP_CSS);
@@ -339,6 +344,10 @@ export function start({
   let reported = false;
   let checked = false; // the first look: a submission seen later was made in this view
   async function checkSubmitted() {
+    if (quiz) {
+      if (quiz.submitted && !state.submitted) { state.submitted = true; draw(); }
+      return;
+    }
     const st = parseSubmissionStatus(doc, loc.href);
     const first = !checked;
     checked = true;

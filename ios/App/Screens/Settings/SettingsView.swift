@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// 4b · Account, neo-plan, reminders, per-class turn-in, look, login
+/// 4b · Account, neo-plan, reminders, look, login
 /// compatibility, this build's expiry, and the Developer screen.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
@@ -11,6 +11,7 @@ struct SettingsView: View {
     @AppStorage(Reminders.enabledKey) private var reminders = false
     @AppStorage(Reminders.hourKey) private var hour = 19
     @AppStorage(Reminders.gradesKey) private var gradeAlerts = true
+    @AppStorage(Reminders.signedOutKey) private var signedOutAlert = true
     @AppStorage(Theme.accentKey) private var accent = Theme.accentOptions[0]
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
     @AppStorage(WebConfig.compatKey) private var compat = false
@@ -66,18 +67,13 @@ struct SettingsView: View {
                             ForEach(15..<23) { h in Text(Fmt.time.string(from: Calendar.current.date(bySettingHour: h, minute: 0, second: 0, of: Date())!)).tag(h) }
                         }
                         .onChange(of: hour) { _, _ in Reminders.shared.schedule(items: model.todoItems(), courses: model.courses) }
-                        Toggle("New grades", isOn: $gradeAlerts)
                     }
-                } header: { Text("Reminders") } footer: {
-                    Text("New-grade alerts only come when the app refreshes in the background, so they can be late.")
-                }
-
-                Section {
-                    ForEach(model.classes) { c in
-                        ClassTurnInRow(course: c, state: model.courseState(c.sectionId))
-                    }
-                } header: { Text("How each class turns work in") } footer: {
-                    Text("Auto learns from grades: a graded item with an empty dropbox means the class takes paper.")
+                    Toggle("New grades", isOn: $gradeAlerts)
+                        .onChange(of: gradeAlerts) { _, on in askIfOn(on) }
+                    Toggle("Signed out of Schoology", isOn: $signedOutAlert)
+                        .onChange(of: signedOutAlert) { _, on in askIfOn(on) }
+                } header: { Text("Notifications") } footer: {
+                    Text("New-grade and signed-out alerts come when the app refreshes in the background, so they can be late. Schoology signs you out about once a day.")
                 }
 
                 Section("Look") {
@@ -126,26 +122,9 @@ struct SettingsView: View {
             }
         }
     }
-}
 
-struct ClassTurnInRow: View {
-    @Environment(AppModel.self) private var model
-    let course: Course
-    @Bindable var state: CourseState
-
-    var body: some View {
-        Picker(selection: $state.turnIn) {
-            Text(state.paperEvidence > 0 ? "Auto (paper)" : "Auto").tag("auto")
-            Text("Dropbox").tag("dropbox")
-            Text("Paper").tag("paper")
-            Text("Lab site").tag("lab")
-        } label: {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(course.shortTitle).lineLimit(1)
-                Text(course.periodLabel).font(.caption).foregroundStyle(Theme.tertiary)
-            }
-        }
-        .onChange(of: state.turnIn) { _, _ in model.save() }
+    private func askIfOn(_ on: Bool) {
+        if on { Task { _ = await Reminders.shared.requestPermission() } }
     }
 }
 

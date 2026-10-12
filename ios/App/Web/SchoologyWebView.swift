@@ -43,6 +43,20 @@ final class WebController: NSObject {
         webView.load(URLRequest(url: url))
     }
 
+    /// Loads the page's biggest frame (e.g. a Google Assignment) as the page itself,
+    /// so its site is first-party and WebKit lets it use its own cookies.
+    func openMainFrame() async -> Bool {
+        let js = """
+        (() => { const f = [...document.querySelectorAll('iframe')]
+          .filter(f => /^https?:/.test(f.src) && f.offsetWidth * f.offsetHeight > 0)
+          .sort((a, b) => b.offsetWidth * b.offsetHeight - a.offsetWidth * a.offsetHeight)[0];
+          return f ? f.src : null })()
+        """
+        guard let src = try? await webView.evaluateJavaScript(js) as? String, let u = URL(string: src) else { return false }
+        load(u)
+        return true
+    }
+
     func reload() {
         if webView.url == nil, let url { load(url) } else { webView.reload() }
     }

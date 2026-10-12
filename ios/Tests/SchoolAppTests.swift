@@ -20,6 +20,20 @@ final class DecodingTests: XCTestCase {
         XCTAssertTrue(t.upcoming[0].isQuiz)
     }
 
+    func testGradeAlertBody() {
+        func item(_ t: String, _ g: String) -> CourseGrade.Item {
+            CourseGrade.Item(id: t, category: "Labs", title: t, due: nil, grade: g, comment: "", rubric: nil,
+                             earned: 1, possible: 1, pct: nil, impact: nil)
+        }
+        let one = [item("Lab 4", "18 / 20")]
+        XCTAssertEqual(Reminders.gradeAlertBody(items: one, from: 92.1, to: 92.6), "Lab 4: 18 / 20 · 92.1% → 92.6%")
+        XCTAssertEqual(Reminders.gradeAlertBody(items: one, from: 92.6, to: 92.62), "Lab 4: 18 / 20 · still 92.6%")
+        XCTAssertEqual(Reminders.gradeAlertBody(items: one, from: nil, to: nil), "Lab 4: 18 / 20")
+        let five = ["A", "B", "C", "D", "E"].map { item($0, "1 / 1") }
+        XCTAssertEqual(Reminders.gradeAlertBody(items: five, from: 80, to: 81),
+                       "A: 1 / 1\nB: 1 / 1\nC: 1 / 1\n+2 more\nClass: 80.0% → 81.0%")
+    }
+
     func testCourseGrade() throws {
         let json = #"""
         {"period":"S1","pct":94.2,"letter":"A","mode":"weighted",

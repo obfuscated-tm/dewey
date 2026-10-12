@@ -10,10 +10,16 @@ struct SchoolApp: App {
         BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.refreshTask, using: nil) { task in
             Task { @MainActor in
                 Self.scheduleRefresh()
+                // Signed out: nothing to fetch until the student signs in again.
+                guard !Reminders.shared.sessionEnded else { task.setTaskCompleted(success: true); return }
                 // The model lives in the scene; a background launch refreshes from a fresh one.
                 let m = AppModel()
                 await m.boot()
-                if m.session == .signedIn { await m.refreshTodo() }
+                if m.session == .signedIn {
+                    await m.refreshTodo()
+                    await m.refreshSomeGrades()
+                }
+                await WidgetBridge.publishNow(m)
                 task.setTaskCompleted(success: true)
             }
         }

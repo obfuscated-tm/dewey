@@ -10,10 +10,15 @@ final class Reminders {
     static let enabledKey = "remindersOn"
     static let hourKey = "reminderHour"
     static let gradesKey = "gradeAlertsOn"
+    static let signedOutKey = "signedOutAlertOn"
+    /// Set when Schoology ends the session; background refreshes stop until sign-in.
+    static let sessionEndedKey = "sessionEnded"
 
     var enabled: Bool { UserDefaults.standard.bool(forKey: Self.enabledKey) }
     var hour: Int { UserDefaults.standard.object(forKey: Self.hourKey) as? Int ?? 19 }
     var gradeAlerts: Bool { UserDefaults.standard.object(forKey: Self.gradesKey) as? Bool ?? true }
+    var signedOutAlert: Bool { UserDefaults.standard.object(forKey: Self.signedOutKey) as? Bool ?? true }
+    var sessionEnded: Bool { UserDefaults.standard.bool(forKey: Self.sessionEndedKey) }
 
     func requestPermission() async -> Bool {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
@@ -43,11 +48,41 @@ final class Reminders {
         }
     }
 
-    func newGrades(course: String, items: [CourseGrade.Item]) {
-        guard gradeAlerts, enabled else { return }
+    func newGrades(course: String, items: [CourseGrade.Item], from: Double?, to: Double?) {
+        guard gradeAlerts else { return }
         let c = UNMutableNotificationContent()
         c.title = "New grade in \(course)"
-        c.body = items.prefix(3).map { "\($0.title): \($0.grade)" }.joined(separator: "\n")
+        c.body = Self.gradeAlertBody(items: items, from: from, to: to)
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "grade-\(UUID())", content: c, trigger: nil))
+    }
+
+    /// "Lab 4: 18 / 20 · 92.1% → 92.6%"; with more items, the class change goes on its own line.
+    nonisolated static func gradeAlertBody(items: [CourseGrade.Item], from: Double?, to: Double?) -> String {
+        var change = ""
+        if let to {
+            change = from.map { abs($0 - to) >= 0.05 ? "\(Fmt.pct($0)) → \(Fmt.pct(to))" : "still \(Fmt.pct(to))" } ?? Fmt.pct(to)
+        }
+        var lines = items.prefix(3).map { "\($0.title): \($0.grade)" }
+        if items.count > 3 { lines.append("+\(items.count - 3) more") }
+        if change.isEmpty { return lines.joined(separator: "\n") }
+        if lines.count == 1 { return "\(lines[0]) · \(change)" }
+        return (lines + ["Class: \(change)"]).joined(separator: "\n")
+    }
+
+    /// Schoology ended the session (about a day of normal use). One alert per sign-out;
+    /// `notify: false` when the student signed out on purpose.
+    func sessionDidEnd(notify: Bool) {
+        guard !sessionEnded else { return }
+        UserDefaults.standard.set(true, forKey: Self.sessionEndedKey)
+        guard notify, signedOutAlert else { return }
+        let c = UNMutableNotificationContent()
+        c.title = "Signed out of Schoology"
+        c.body = "Open Classwork to sign in. Until then your list and widgets won't update."
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "signed-out", content: c, trigger: nil))
+    }
+
+    func sessionDidStart() {
+        UserDefaults.standard.set(false, forKey: Self.sessionEndedKey)
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: ["signed-out"])
     }
 }

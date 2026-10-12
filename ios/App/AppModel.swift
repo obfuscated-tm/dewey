@@ -9,7 +9,10 @@ import SwiftUI
 final class AppModel {
     enum Session: Equatable { case checking, signedOut, signedIn }
 
-    var session: Session = .checking
+    var session: Session = .checking {
+        // The Lock Screen widgets say "Open Classwork to sign in" while signed out.
+        didSet { if session != oldValue, session != .checking { WidgetBridge.publish(self) } }
+    }
     let engine = Engine()
     let container: ModelContainer
     var context: ModelContext { container.mainContext }
@@ -44,6 +47,7 @@ final class AppModel {
         engine.onSignedOut = { [weak self] in
             guard let self, self.session != .signedOut else { return }
             self.session = .signedOut
+            Reminders.shared.sessionDidEnd(notify: true)
         }
     }
 
@@ -55,9 +59,11 @@ final class AppModel {
         do {
             try await loadCourses()
             session = .signedIn
+            Reminders.shared.sessionDidStart()
             await WebConfig.keepSession()
         } catch EngineError.login {
             session = .signedOut
+            Reminders.shared.sessionDidEnd(notify: true)
         } catch {
             session = courses.isEmpty && todoAsOf == nil ? .signedOut : .signedIn
         }
@@ -68,6 +74,8 @@ final class AppModel {
         await WebConfig.keepSession()
         engine.reload()
         session = .signedIn
+        Reminders.shared.sessionDidStart()
+        if Reminders.shared.signedOutAlert || Reminders.shared.gradeAlerts { _ = await Reminders.shared.requestPermission() }
         try? await loadCourses()
         await refreshTodo()
     }
@@ -79,6 +87,7 @@ final class AppModel {
         gradesAsOf = [:]
         courses = []
         session = .signedOut
+        Reminders.shared.sessionDidEnd(notify: false)
         engine.reload()
     }
 
@@ -373,18 +382,13 @@ final class AppModel {
         return try? await engine.call("planTest", ["rows": rows, "category": category, "possible": possible, "target": target])
     }
 
-    /// Graded items: off the To Do list; a graded item whose dropbox was
-    /// not_submitted teaches that this class grades paper; the category gives the type.
+    /// The gradebook category gives an item its type.
     private func learnFromGrades(sectionId: String, _ g: CourseGrade) {
-        let cs = courseState(sectionId)
-        var evidence = 0
         var changed = false
         for gi in g.items {
             guard let it = item(gi.id) else { continue }
             if it.categoryHint != gi.category { it.categoryHint = gi.category; changed = true }
-            if gi.earned != nil, it.statusState == "not_submitted" { evidence += 1 }
         }
-        if evidence > cs.paperEvidence { cs.paperEvidence = evidence; changed = true }
         if changed { save() }
     }
 
@@ -396,8 +400,21 @@ final class AppModel {
         let fresh = new.items.filter { $0.earned != nil && before[$0.id] != $0.earned }
         newGradeIds.formUnion(fresh.map(\.id))
         if !fresh.isEmpty, let c = course(sectionId) {
-            Reminders.shared.newGrades(course: c.shortTitle, items: fresh)
+            Reminders.shared.newGrades(course: c.shortTitle, items: fresh, from: old.pct, to: new.pct)
         }
+    }
+
+    /// Background refresh: a few gradebooks per run, in turn, so new-grade
+    /// alerts come without opening the app (a run only gets ~30 s).
+    func refreshSomeGrades(count: Int = 3) async {
+        let list = classes.map(\.sectionId)
+        guard !list.isEmpty else { return }
+        let key = "gradeRotation"
+        let start = UserDefaults.standard.integer(forKey: key) % list.count
+        for i in 0..<min(count, list.count) {
+            await loadGrades(list[(start + i) % list.count])
+        }
+        UserDefaults.standard.set(start + min(count, list.count), forKey: key)
     }
 
     func showToast(_ s: String) {

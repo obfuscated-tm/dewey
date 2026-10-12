@@ -108,16 +108,15 @@ struct AssignmentView: View {
 
     // ── Submission card: exactly one of five ─────────────────────────────
 
-    enum Kind { case dropbox(Bool), paper, outside(URL?), quiz, google, unknown }
+    enum Kind { case dropbox(Bool), outside(URL?), quiz, google, unknown }
 
     private func kind(_ a: Assignment) -> Kind {
         if a.type == "quiz" || (it?.isQuiz ?? false) { return .quiz }
         if a.type == "external_tool" { return .google }
         let state = status?.state ?? a.submission?.state
-        let paper = it?.sectionId.map { model.courseState($0).gradesPaper } ?? false
         switch state {
         case "submitted": return .dropbox(true)
-        case "not_submitted": return paper ? .paper : .dropbox(false)
+        case "not_submitted": return .dropbox(false)
         case "no_dropbox": return .outside(labLink(a))
         default: return .unknown
         }
@@ -136,10 +135,6 @@ struct AssignmentView: View {
                     .foregroundStyle(done ? Theme.good : Theme.late)
                 if done, status?.late == true { Text("Late").font(Theme.font(13)).foregroundStyle(Theme.late) }
                 if let checkedAt { Text("Checked \(Fmt.ago(checkedAt))").font(Theme.font(13)).foregroundStyle(Theme.secondary) }
-            case .paper:
-                Label("Not used by this class", systemImage: "tray").font(Theme.font(17, .semibold)).foregroundStyle(Theme.secondary)
-                Text("This class grades paper, so its Schoology dropbox stays empty. Mark it turned in when you hand it in.")
-                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
             case .outside(let url):
                 Label("Handed in outside Schoology", systemImage: "arrow.up.right.square").font(Theme.font(17, .semibold))
                 Text(url != nil ? "This class takes it on its own site (\(url!.host ?? "")). Schoology can't see it." : "No Schoology dropbox. Hand it in the way your teacher asked, then mark it turned in.")
@@ -167,7 +162,7 @@ struct AssignmentView: View {
         case .dropbox: return ("Submit on Schoology ↗", { sheet = SheetTarget(url: pageURL, assignmentId: id) })
         case .outside(let url?): return ("Turn in on \(url.host ?? "lab site") ↗", { sheet = SheetTarget(url: url) })
         case .quiz: return ("Take on Schoology ↗", { sheet = SheetTarget(url: URL(string: Engine.origin.absoluteString + (it?.url ?? "/assignment/\(id)"))!, assignmentId: id) })
-        case .google: return ("Open in Schoology ↗", { sheet = SheetTarget(url: pageURL, assignmentId: id) })
+        case .google: return ("Open in Schoology ↗", { sheet = SheetTarget(url: pageURL, assignmentId: id, google: true) })
         default: return nil
         }
     }

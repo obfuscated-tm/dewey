@@ -4,6 +4,7 @@ import SwiftUI
 /// materials, and recently opened materials.
 struct ClassesView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var query = ""
     @State private var index = MaterialIndex.shared
 
@@ -32,7 +33,8 @@ struct ClassesView: View {
     }
 
     private var tiles: some View {
-        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
+        // Two columns; one at the accessibility text sizes so class names fit.
+        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 12) {
             ForEach(Array(model.classes.enumerated()), id: \.element.sectionId) { i, c in
                 NavigationLink(value: c) { ClassTile(course: c, colorIndex: i) }
                     .buttonStyle(.plain)
@@ -92,8 +94,8 @@ struct ClassTile: View {
         VStack(alignment: .leading, spacing: 8) {
             RoundedRectangle(cornerRadius: 3).fill(Color(hex: Self.colors[colorIndex % Self.colors.count])).frame(width: 28, height: 5)
             Text(course.shortTitle).font(Theme.font(15, .semibold)).foregroundStyle(Theme.text)
-                .lineLimit(2).multilineTextAlignment(.leading).frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
-            Text(course.periodLabel).font(Theme.font(12)).foregroundStyle(Theme.tertiary).lineLimit(1)
+                .multilineTextAlignment(.leading).frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
+            Text(course.periodLabel).font(Theme.font(12)).foregroundStyle(Theme.tertiary).oneLine()
             HStack {
                 if let l = g?.letter { Text(l).font(Theme.font(15, .bold)) }
                 if let p = g?.pct { Text(Fmt.pct(p)).font(Theme.mono(12)).foregroundStyle(Theme.secondary) }
@@ -184,8 +186,8 @@ struct MaterialLink: View {
             Image(systemName: icon).frame(width: 24).foregroundStyle(row.kind == "folder" ? Theme.secondary : Theme.accent)
                 .accessibilityLabel(row.kind == "folder" ? "Folder" : row.kind == "quiz" ? "Quiz" : "")
             VStack(alignment: .leading, spacing: 2) {
-                Text(row.title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).lineLimit(2).multilineTextAlignment(.leading)
-                if let subtitle, !subtitle.isEmpty { Text(subtitle).font(Theme.font(12.5)).foregroundStyle(Theme.secondary).lineLimit(1) }
+                Text(row.title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).maxLines(2).multilineTextAlignment(.leading)
+                if let subtitle, !subtitle.isEmpty { Text(subtitle).font(Theme.font(12.5)).foregroundStyle(Theme.secondary).oneLine() }
             }
             Spacer()
             Text(trailing).font(Theme.font(12.5)).foregroundStyle(Theme.tertiary)

@@ -126,14 +126,14 @@ struct ThreadRow: View {
             Circle().fill(isNew ? Theme.accent : .clear).frame(width: 8, height: 8).padding(.top, 6)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(thread.from ?? "Schoology").font(Theme.font(15, isNew ? .bold : .semibold)).lineLimit(1)
+                    Text(thread.from ?? "Schoology").font(Theme.font(15, isNew ? .bold : .semibold)).oneLine()
                     Spacer()
                     if let d = thread.when { Text(Fmt.ago(d)).font(Theme.font(12.5)).foregroundStyle(Theme.tertiary) }
                 }
-                Text(thread.subject).font(Theme.font(14, isNew ? .semibold : .regular)).lineLimit(1)
-                if let g = thread.group { Text(Course.short(g)).font(Theme.font(12.5)).foregroundStyle(Theme.secondary).lineLimit(1) }
+                Text(thread.subject).font(Theme.font(14, isNew ? .semibold : .regular)).oneLine()
+                if let g = thread.group { Text(Course.short(g)).font(Theme.font(12.5)).foregroundStyle(Theme.secondary).oneLine() }
                 if let p = thread.preview, !p.isEmpty {
-                    Text(p).font(Theme.font(13)).foregroundStyle(Theme.secondary).lineLimit(2)
+                    Text(p).font(Theme.font(13)).foregroundStyle(Theme.secondary).maxLines(2)
                 }
             }
         }
@@ -158,7 +158,7 @@ struct NoticeRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(notice.course.map(Course.short) ?? (notice.type == "grade" ? "New grade" : "Schoology"))
-                        .font(Theme.font(14, .semibold)).lineLimit(1)
+                        .font(Theme.font(14, .semibold)).oneLine()
                     Spacer()
                     if let d = notice.when { Text(Fmt.ago(d)).font(Theme.font(12.5)).foregroundStyle(Theme.tertiary) }
                 }
@@ -175,7 +175,7 @@ struct NoticeRow: View {
 
     @ViewBuilder
     private func itemLink(_ item: Notice.Item) -> some View {
-        let label = Text(item.title).font(Theme.font(14)).foregroundStyle(Theme.accent).lineLimit(2)
+        let label = Text(item.title).font(Theme.font(14)).foregroundStyle(Theme.accent).maxLines(2)
             .multilineTextAlignment(.leading)
         if case .assignment(let id)? = WebConfig.nativeRoute(for: URL(string: item.url)) {
             NavigationLink(value: AssignmentLink(id: id)) { label }.buttonStyle(.plain)

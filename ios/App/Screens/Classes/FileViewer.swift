@@ -51,7 +51,7 @@ struct AttachmentRow: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: l.icon).frame(width: 24).foregroundStyle(Theme.accent)
-                Text(title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).lineLimit(2).multilineTextAlignment(.leading)
+                Text(title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).maxLines(2).multilineTextAlignment(.leading)
                 Spacer()
                 Text(l.where).font(Theme.font(12.5)).foregroundStyle(Theme.secondary)
             }

@@ -53,7 +53,7 @@ struct GradesView: View {
                         HStack(alignment: .top) {
                             VStack(alignment: .leading, spacing: 3) {
                                 HStack(spacing: 6) {
-                                    Text(r.1.title).font(Theme.font(15, .semibold)).lineLimit(1)
+                                    Text(r.1.title).font(Theme.font(15, .semibold)).oneLine()
                                     if model.newGradeIds.contains(r.1.id) {
                                         Text("NEW").font(Theme.mono(10, .bold)).foregroundStyle(Theme.onAccent)
                                             .padding(.horizontal, 5).padding(.vertical, 1).background(Theme.accent, in: Capsule())
@@ -94,15 +94,17 @@ struct GradeCard: View {
         let g = model.grades[course.sectionId]
         let cutoff = model.courseState(course.sectionId).aCutoff ?? 93
         VStack(alignment: .leading, spacing: 10) {
-            HStack(alignment: .firstTextBaseline) {
+            AdaptiveStack {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(course.shortTitle).font(Theme.font(16, .semibold)).lineLimit(1)
-                    Text(course.periodLabel).font(Theme.font(12.5)).foregroundStyle(Theme.tertiary).lineLimit(1)
+                    Text(course.shortTitle).font(Theme.font(16, .semibold)).oneLine()
+                    Text(course.periodLabel).font(Theme.font(12.5)).foregroundStyle(Theme.tertiary).oneLine()
                 }
-                Spacer()
+                Spacer(minLength: 0)
                 if let g, g.pct != nil {
-                    Text(g.letter ?? "").font(Theme.font(26, .bold))
-                    Text(Fmt.pct(g.pct)).font(Theme.mono(15, .medium)).foregroundStyle(Theme.secondary)
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text(g.letter ?? "").font(Theme.font(26, .bold))
+                        Text(Fmt.pct(g.pct)).font(Theme.mono(15, .medium)).foregroundStyle(Theme.secondary)
+                    }
                 } else if model.gradeErrors[course.sectionId] != nil && g == nil {
                     Text("Couldn't load").font(Theme.font(13)).foregroundStyle(Theme.secondary)
                 } else if g != nil {
@@ -124,13 +126,14 @@ struct GradeCard: View {
                     .frame(height: 38)
                     .accessibilityHidden(true)
                 }
-                HStack {
+                AdaptiveStack {
                     let d = pct - cutoff
                     Text(d >= 0 ? "\(String(format: "%.1f", d)) above the A line" : "\(String(format: "%.1f", -d)) below the A line")
                         .font(Theme.font(13)).foregroundStyle(d >= 0 ? Theme.good : Theme.late)
-                    Spacer()
+                    Spacer(minLength: 0)
                     if let last = g.items.filter({ $0.earned != nil }).max(by: { ($0.due ?? "") < ($1.due ?? "") }) {
-                        Text("\(last.title.prefix(18)) \(scoreText(last))").font(Theme.font(12.5)).foregroundStyle(Theme.secondary).lineLimit(1)
+                        Text("\(last.title) \(scoreText(last))").font(Theme.font(12.5)).foregroundStyle(Theme.secondary).oneLine()
+                            .truncationMode(.middle).fixedSize(horizontal: false, vertical: true)
                         if let i = last.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.mono(12)).foregroundStyle(i < 0 ? Theme.late : Theme.good) }
                     }
                 }
@@ -146,7 +149,7 @@ struct GradeCard: View {
     private func a11y(_ g: CourseGrade?, _ cutoff: Double) -> String {
         var parts = [course.shortTitle]
         if let g, let p = g.pct {
-            parts.append("\(g.letter ?? ""), \(Fmt.pct(p)) percent")
+            parts.append("\(g.letter ?? ""), \(String(format: "%.1f", p)) percent")
             let d = p - cutoff
             parts.append(String(format: d >= 0 ? "%.1f points above the A line" : "%.1f points below the A line", abs(d)))
         } else if model.gradeErrors[course.sectionId] != nil {

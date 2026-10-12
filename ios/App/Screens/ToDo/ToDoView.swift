@@ -4,6 +4,7 @@ import SwiftUI
 struct ToDoView: View {
     @Environment(AppModel.self) private var model
     @State private var filter: TodoLogic.Bucket?
+    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showOlder = false
     @State private var sheet: SheetTarget?
     @State private var showSettings = false
@@ -55,7 +56,8 @@ struct ToDoView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Settings")
             }
-            HStack(spacing: 8) {
+            // Three across; stacked at the accessibility text sizes so the words fit.
+            (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))) {
                 countButton(overdue, "Overdue", .overdue, Theme.late)
                 countButton(today, "Due today", .today, Theme.accent)
                 countButton(week, "This week", .week, Theme.text)
@@ -73,8 +75,8 @@ struct ToDoView: View {
             filter = on ? nil : b
         } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(n)").font(Theme.mono(20, .semibold)).foregroundStyle(on ? .white : color)
-                Text(label).font(Theme.font(12.5, .medium)).foregroundStyle(on ? .white : Theme.secondary)
+                Text("\(n)").font(Theme.mono(20, .semibold)).foregroundStyle(on ? Theme.onAccent : color)
+                Text(label).font(Theme.font(12.5, .medium)).foregroundStyle(on ? Theme.onAccent : Theme.secondary)
             }
             .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
             .padding(.horizontal, 12)
@@ -82,6 +84,9 @@ struct ToDoView: View {
             .overlay(RoundedRectangle(cornerRadius: 12).stroke(on ? Color.clear : Theme.border))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("\(n) \(label.lowercased())")
+        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityHint(on ? "Shows the whole list again" : "Shows only these")
     }
 
     // ── The groups ───────────────────────────────────────────────────────
@@ -252,9 +257,12 @@ struct ProgressChips: View {
     let current: AppModel.Progress
     var isExam = false
     let onPick: (AppModel.Progress) -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     var body: some View {
-        HStack(spacing: 6) {
+        // Side by side; stacked at the accessibility text sizes, where three don't fit.
+        let layout = typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 6)) : AnyLayout(HStackLayout(spacing: 6))
+        layout {
             ForEach(AppModel.Progress.allCases, id: \.self) { p in
                 let on = p == current
                 let color = p == .turnedIn ? Theme.good : p == .done ? Theme.accent : Theme.secondary
@@ -323,9 +331,9 @@ struct TodoRow: View {
             VStack(alignment: .leading, spacing: 4) {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(item.title)
-                        .font(.system(size: 16, weight: item.type == .exam ? .bold : .semibold))
+                        .font(Theme.font(16, item.type == .exam ? .bold : .semibold))
                         .foregroundStyle(Theme.text)
-                        .lineLimit(2)
+                        .maxLines(2)
                     HStack(spacing: 6) {
                         TypeTag(type: item.type)
                         dueText
@@ -378,7 +386,7 @@ struct TodoRow: View {
         }
         .font(Theme.mono(12.5))
         .foregroundStyle(late != nil ? Theme.late : Theme.secondary)
-        .lineLimit(1)
+        .oneLine()
     }
 
     @ViewBuilder

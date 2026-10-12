@@ -95,6 +95,8 @@ struct CourseGradesView: View {
                     Text(shown?.letter ?? "—").font(Theme.font(40, .bold))
                     Text(Fmt.pct(shown?.pct, digits: 2)).font(Theme.mono(20, .medium))
                 }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(shown?.pct.map { "Grade \(shown?.letter ?? ""), \(String(format: "%.2f", $0)) percent" } ?? "No grade yet")
                 if whatIfOn, let p = preview?.pct, let r = real?.pct {
                     Text("\(Fmt.signed(p - r)) from your real \(Fmt.pct(r)) (\(real?.letter ?? ""))")
                         .font(Theme.font(14, .semibold)).foregroundStyle(p < r ? Theme.late : Theme.good)
@@ -173,7 +175,7 @@ struct CourseGradesView: View {
     private func itemRow(_ it: CourseGrade.Item) -> some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(it.title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).lineLimit(2)
+                Text(it.title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).maxLines(2)
                 HStack(spacing: 6) {
                     if let d = Fmt.wallDate(it.due) { Text(Fmt.short.string(from: d)).font(Theme.mono(12)).foregroundStyle(Theme.tertiary) }
                     if !it.comment.isEmpty { Label("Comment", systemImage: "text.bubble").font(Theme.font(11.5)).foregroundStyle(Theme.accent) }
@@ -199,7 +201,7 @@ struct CourseGradesView: View {
         let changed = !(whatIf[it.id] ?? "").isEmpty
         return HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(it.title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).lineLimit(2)
+                Text(it.title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).maxLines(2)
                 Text(it.earned != nil ? "Real: \(scoreText(it))" : "Not graded yet")
                     .font(Theme.font(12.5)).foregroundStyle(Theme.secondary)
             }

@@ -171,7 +171,7 @@ struct TodoWidgetView: View {
 
     private var s: WidgetSnapshot { entry.snapshot }
     private var now: Date { entry.date }
-    private var accent: Color { Color(hex: s.accentHex) }
+    private var accent: Color { Accent.color(hex: s.accentHex) }
 
     var body: some View {
         switch family {
@@ -306,7 +306,7 @@ struct TestsWidgetView: View {
 
     private var s: WidgetSnapshot { entry.snapshot }
     private var now: Date { entry.date }
-    private var accent: Color { Color(hex: s.accentHex) }
+    private var accent: Color { Accent.color(hex: s.accentHex) }
     private var tests: [WidgetItem] { s.tests(at: now) }
 
     var body: some View {
@@ -420,7 +420,7 @@ struct DueActivityWidget: Widget {
                 .activityBackgroundTint(nil)
                 .widgetURL(AppLink.assignment(ctx.attributes.id))
         } dynamicIsland: { ctx in
-            let accent = Color(hex: ctx.attributes.accentHex)
+            let accent = Accent.color(hex: ctx.attributes.accentHex)
             return DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
                     Image(systemName: ctx.attributes.isTest ? "pencil.and.list.clipboard" : "checklist")
@@ -475,7 +475,7 @@ struct DueLockScreenView: View {
     let ctx: ActivityViewContext<DueActivityAttributes>
 
     var body: some View {
-        let a = ctx.attributes, accent = Color(hex: a.accentHex)
+        let a = ctx.attributes, accent = Accent.color(hex: a.accentHex)
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .firstTextBaseline) {
                 Label(a.course, systemImage: a.isTest ? "pencil.and.list.clipboard" : "checklist")

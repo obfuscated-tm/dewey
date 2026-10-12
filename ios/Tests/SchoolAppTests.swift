@@ -1,4 +1,5 @@
 import XCTest
+import SwiftUI
 @testable import SchoolApp
 
 /// Decoding engine JSON (snake_case) and the pure To Do rules.
@@ -235,5 +236,43 @@ final class SiriTests: XCTestCase {
             .hasPrefix("This week: 3 things. 1 for Math, 1 for Chemistry, 1 for other classes. Test: Unit 3 on "))
         XCTAssertEqual(WhatsDueIntent.summary([], day: .today, now: now, asOf: now.addingTimeInterval(-86400), signedIn: true),
                        "Nothing open is due today. As of \(Fmt.ago(now.addingTimeInterval(-86400), now: now)).")
+    }
+}
+
+final class ThemeTests: XCTestCase {
+    /// WCAG relative luminance.
+    func lum(_ c: UIColor) -> Double {
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        c.getRed(&r, green: &g, blue: &b, alpha: &a)
+        func f(_ v: CGFloat) -> Double { let v = Double(v); return v <= 0.03928 ? v / 12.92 : pow((v + 0.055) / 1.055, 2.4) }
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b)
+    }
+    func ratio(_ a: UIColor, _ b: UIColor) -> Double {
+        let (x, y) = (lum(a), lum(b))
+        return (max(x, y) + 0.05) / (min(x, y) + 0.05)
+    }
+    func ui(_ hex: String) -> UIColor { UIColor(Color(hex: hex)) }
+
+    /// Every text colour is readable (≥ 4.5:1) on every surface, in light and dark, and every accent on a card.
+    func testContrast() {
+        for fg in ["text", "secondary", "tertiary", "late", "good"] {
+            for bg in ["card", "background", "tagSoft"] {
+                let (f, b) = (Theme.hex[fg]!, Theme.hex[bg]!)
+                XCTAssertGreaterThanOrEqual(ratio(ui(f.light), ui(b.light)), 4.5, "light \(fg) on \(bg)")
+                XCTAssertGreaterThanOrEqual(ratio(ui(f.dark), ui(b.dark)), 4.5, "dark \(fg) on \(bg)")
+            }
+        }
+        for a in Theme.accentOptions {
+            XCTAssertGreaterThanOrEqual(ratio(ui(a), ui(Theme.hex["card"]!.light)), 4.5, "accent \(a)")
+            XCTAssertGreaterThanOrEqual(ratio(Accent.dark(ui(a)), ui(Theme.hex["card"]!.dark)), 4.5, "dark accent \(a)")
+            // White text on a filled accent button (light mode).
+            XCTAssertGreaterThanOrEqual(ratio(ui(a), .white), 4.5, "on-accent \(a)")
+        }
+    }
+
+    func testTextStyleForSize() {
+        XCTAssertEqual(Theme.textStyle(34), .largeTitle)
+        XCTAssertEqual(Theme.textStyle(16), .subheadline)
+        XCTAssertEqual(Theme.textStyle(10.5), .caption2)
     }
 }

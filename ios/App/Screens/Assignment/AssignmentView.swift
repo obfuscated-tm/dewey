@@ -220,7 +220,7 @@ struct AssignmentView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text("GRADED").font(Theme.font(12, .semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
                         Text(g.grade).font(Theme.mono(17, .semibold)).foregroundStyle(Theme.text)
-                        if !g.comment.isEmpty { Text(g.comment).font(Theme.font(13)).foregroundStyle(Theme.secondary).lineLimit(2) }
+                        if !g.comment.isEmpty { Text(g.comment).font(Theme.font(13)).foregroundStyle(Theme.secondary).maxLines(2) }
                     }
                     Spacer()
                     if let i = g.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.mono(13)).foregroundStyle(i < 0 ? Theme.late : Theme.good) }

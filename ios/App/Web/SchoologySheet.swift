@@ -36,7 +36,7 @@ struct SchoologySheet: View {
                     ToolbarItem(placement: .principal) {
                         VStack(spacing: 0) {
                             Text(web.url?.host == Engine.host ? "Schoology" : (web.title.isEmpty ? "Page" : web.title))
-                                .font(Theme.font(15, .semibold)).lineLimit(1)
+                                .font(Theme.font(15, .semibold)).oneLine()
                             HStack(spacing: 3) {
                                 Image(systemName: web.url?.scheme == "https" ? "lock.fill" : "lock.open")
                                 Text(web.url?.host ?? target.url.host ?? "")

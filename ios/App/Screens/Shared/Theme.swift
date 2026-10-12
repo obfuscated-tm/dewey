@@ -13,41 +13,65 @@ enum Theme {
 
     static var accentHex: String { UserDefaults.standard.string(forKey: accentKey) ?? accentOptions[0] }
     /// The chosen accent, lightened in dark mode so it stays readable.
-    static var accent: Color {
-        let base = UIColor(Color(hex: accentHex))
-        return Color(UIColor { t in
-            guard t.userInterfaceStyle == .dark else { return base }
-            var h: CGFloat = 0, sat: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
-            base.getHue(&h, saturation: &sat, brightness: &b, alpha: &a)
-            return UIColor(hue: h, saturation: sat * 0.6, brightness: 1, alpha: a)
-        })
-    }
+    static var accent: Color { Accent.color(hex: accentHex) }
     static var accentSoft: Color { accent.opacity(0.11) }
 
-    // Every colour has a light and a dark value (WCAG AA: text ≥ 4.5:1 on its card).
-    static let background = Color(light: "#F2F3F5", dark: "#000000")
-    static let card = Color(light: "#FFFFFF", dark: "#1C1C1E")
-    static let border = Color(light: "#D9DDE2", dark: "#38383A")
-    static let divider = Color(light: "#E4E7EB", dark: "#2C2C2E")
-    static let text = Color(light: "#15191D", dark: "#F2F2F7")
-    static let secondary = Color(light: "#4F5761", dark: "#C1C5CC")
-    static let tertiary = Color(light: "#5F6771", dark: "#A3A8B0")
-    static let late = Color(light: "#A63A0B", dark: "#FF8A5C")
-    static let lateSoft = Color(light: "#FBEDE5", dark: "#3A1E12")
-    static let good = Color(light: "#1C6B3F", dark: "#5FD08D")
-    static let goodSoft = Color(light: "#E5F2EA", dark: "#14301F")
-    static let tagSoft = Color(light: "#E9ECF0", dark: "#2C2C2E")
+    // Every colour has a light and a dark value (WCAG AA: text ≥ 4.5:1 on its card;
+    // ThemeTests checks every text colour against every surface).
+    static let hex: [String: (light: String, dark: String)] = [
+        "background": ("#F2F3F5", "#000000"),
+        "card": ("#FFFFFF", "#1C1C1E"),
+        "border": ("#D9DDE2", "#38383A"),
+        "divider": ("#E4E7EB", "#2C2C2E"),
+        "text": ("#15191D", "#F2F2F7"),
+        "secondary": ("#4F5761", "#C1C5CC"),
+        "tertiary": ("#5F6771", "#A3A8B0"),
+        "late": ("#A63A0B", "#FF8A5C"),
+        "lateSoft": ("#FBEDE5", "#3A1E12"),
+        "good": ("#1C6B3F", "#5FD08D"),
+        "goodSoft": ("#E5F2EA", "#14301F"),
+        "tagSoft": ("#E9ECF0", "#2C2C2E"),
+    ]
+    private static func pair(_ name: String) -> Color { Color(light: hex[name]!.light, dark: hex[name]!.dark) }
+    static let background = pair("background")
+    static let card = pair("card")
+    static let border = pair("border")
+    static let divider = pair("divider")
+    static let text = pair("text")
+    static let secondary = pair("secondary")
+    static let tertiary = pair("tertiary")
+    static let late = pair("late")
+    static let lateSoft = pair("lateSoft")
+    static let good = pair("good")
+    static let goodSoft = pair("goodSoft")
+    static let tagSoft = pair("tagSoft")
 
-    /// Scales with Dynamic Type (text size in Settings).
+    /// SF Pro at `size`, scaling live with Dynamic Type (Settings → Text Size). A
+    /// custom font name that isn't installed falls back to the system font, and
+    /// `relativeTo:` is what makes it follow the text size as it changes.
     static func font(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: UIFontMetrics.default.scaledValue(for: size), weight: weight)
+        .custom("SF Pro", size: size, relativeTo: textStyle(size)).weight(weight)
+    }
+
+    /// The text style whose scaling curve fits `size` (big titles grow less than body text).
+    static func textStyle(_ size: CGFloat) -> Font.TextStyle {
+        switch size {
+        case 30...: .largeTitle
+        case 24..<30: .title
+        case 20..<24: .title3
+        case 17..<20: .body
+        case 15..<17: .subheadline
+        case 13..<15: .footnote
+        case 12..<13: .caption
+        default: .caption2
+        }
     }
 
     /// Text on a filled accent button: white in light mode, near-black in dark (accent is light there).
     static let onAccent = Color(light: "#FFFFFF", dark: "#101418")
 
     static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .system(size: UIFontMetrics.default.scaledValue(for: size), weight: weight, design: .monospaced)
+        font(size, weight).monospaced()
     }
 }
 
@@ -76,6 +100,31 @@ struct CardStyle: ViewModifier {
 
 extension View {
     func card() -> some View { modifier(CardStyle()) }
+    /// At most `n` lines, but no limit at the accessibility text sizes so nothing gets cut off.
+    func maxLines(_ n: Int) -> some View { modifier(MaxLines(n: n)) }
+    func oneLine() -> some View { maxLines(1) }
+}
+
+struct MaxLines: ViewModifier {
+    let n: Int
+    @Environment(\.dynamicTypeSize) private var size
+    func body(content: Content) -> some View {
+        content.lineLimit(size.isAccessibilitySize ? nil : n)
+    }
+}
+
+/// An HStack that becomes a leading VStack at the accessibility text sizes.
+struct AdaptiveStack<Content: View>: View {
+    var spacing: CGFloat = 8
+    @ViewBuilder let content: () -> Content
+    @Environment(\.dynamicTypeSize) private var size
+
+    var body: some View {
+        let layout = size.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: spacing))
+            : AnyLayout(HStackLayout(alignment: .firstTextBaseline, spacing: spacing))
+        layout { content() }
+    }
 }
 
 /// HW / TEST / TASK / CW.

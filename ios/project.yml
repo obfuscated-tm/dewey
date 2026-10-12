@@ -108,7 +108,28 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         BUNDLE_LOADER: $(TEST_HOST)
         TEST_HOST: $(BUILT_PRODUCTS_DIR)/SchoolApp.app/SchoolApp
+  SchoolAppUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: SchoolApp
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: SchoolApp
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: ZQXMDTS7ZC
 schemes:
+  A11yAudit:
+    build:
+      targets:
+        SchoolApp: all
+        SchoolAppUITests: [test]
+    test:
+      targets:
+        - SchoolAppUITests
   SchoolApp:
     build:
       targets:

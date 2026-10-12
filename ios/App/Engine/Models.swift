@@ -11,8 +11,11 @@ struct Course: Codable, Hashable, Identifiable {
     var id: String { sectionId }
 
     /// "AP Physics 1 - 12345: P3" → "AP Physics 1" (the course code goes).
-    var shortTitle: String {
-        let t = title.replacingOccurrences(of: #"\s*-\s*\d{3,6}\s*$"#, with: "", options: .regularExpression)
+    var shortTitle: String { Self.short(title) }
+
+    /// The same for any Schoology course name, e.g. a notification's "French 2 - 4120: AggounI p4 T1" → "French 2".
+    static func short(_ title: String) -> String {
+        let t = title.replacingOccurrences(of: #"\s*-\s*\d{3,6}\b.*$"#, with: "", options: .regularExpression)
         return t.isEmpty ? title : t
     }
 
@@ -185,7 +188,74 @@ struct Material: Codable {
 }
 
 struct FeedPost: Codable, Hashable {
+    var id: String?
     var author: String?
     var date: String?
+    var time: String?
     var bodyMd: String?
+}
+
+// ── Inbox (reader/parse/inbox.js) ────────────────────────────────────────
+
+/// messages({ page }).
+struct MessageList: Codable {
+    var threads: [MessageThread]
+    var unreadCount: Int?
+    var hasMore: Bool?
+}
+
+/// A row of the messages list.
+/// `group` is the "[Course: section]" prefix Schoology adds, nil for a direct message.
+struct MessageThread: Codable, Hashable, Identifiable {
+    var id: String
+    var subject: String
+    var group: String?
+    var preview: String?
+    var from: String?
+    var fromId: String?
+    var date: String?
+    var unread: Bool?
+
+    var when: Date? { Fmt.date(date) }
+}
+
+/// message({ id }): the whole thread. Fetching it marks it read on Schoology.
+struct MessageDetail: Codable {
+    struct Message: Codable, Hashable {
+        var author: String?
+        var authorId: String?
+        var date: String?
+        var bodyMd: String?
+        var attachments: [Attachment]
+    }
+    var id: String
+    var subject: String
+    var group: String?
+    var participants: [String]
+    var messages: [Message]
+}
+
+/// notifications({ page }).
+struct NoticeList: Codable {
+    var items: [Notice]
+    var hasMore: Bool?
+}
+
+/// A /home/notifications row: posted materials (`material`) or new grades (`grade`).
+struct Notice: Codable, Hashable, Identifiable {
+    struct Item: Codable, Hashable {
+        var title: String
+        var url: String
+        var kind: String          // assignment | assessment | page | discussion | event | material | other
+    }
+    var key: String
+    var type: String
+    var course: String?
+    var sectionId: String?
+    var text: String
+    var date: String?
+    var items: [Item]
+    var id: String { key }
+
+    var when: Date? { Fmt.date(date) }
 }

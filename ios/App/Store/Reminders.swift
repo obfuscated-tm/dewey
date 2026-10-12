@@ -11,6 +11,8 @@ final class Reminders {
     static let hourKey = "reminderHour"
     static let gradesKey = "gradeAlertsOn"
     static let signedOutKey = "signedOutAlertOn"
+    static let messagesKey = "messageAlertsOn"
+    static let materialsKey = "materialAlertsOn"
     /// Set when Schoology ends the session; background refreshes stop until sign-in.
     static let sessionEndedKey = "sessionEnded"
 
@@ -19,6 +21,8 @@ final class Reminders {
     var gradeAlerts: Bool { UserDefaults.standard.object(forKey: Self.gradesKey) as? Bool ?? true }
     var signedOutAlert: Bool { UserDefaults.standard.object(forKey: Self.signedOutKey) as? Bool ?? true }
     var sessionEnded: Bool { UserDefaults.standard.bool(forKey: Self.sessionEndedKey) }
+    var messageAlerts: Bool { UserDefaults.standard.object(forKey: Self.messagesKey) as? Bool ?? true }
+    var materialAlerts: Bool { UserDefaults.standard.object(forKey: Self.materialsKey) as? Bool ?? true }
 
     func requestPermission() async -> Bool {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
@@ -67,6 +71,31 @@ final class Reminders {
         if change.isEmpty { return lines.joined(separator: "\n") }
         if lines.count == 1 { return "\(lines[0]) · \(change)" }
         return (lines + ["Class: \(change)"]).joined(separator: "\n")
+    }
+
+    /// One alert per new message from a teacher: sender, subject, preview.
+    func newMessages(_ threads: [MessageThread]) {
+        guard messageAlerts else { return }
+        for t in threads.prefix(3) {
+            let c = UNMutableNotificationContent()
+            c.title = t.from.map { "Message from \($0)" } ?? "New message"
+            c.body = [t.subject, t.preview].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: "\n")
+            c.sound = .default
+            c.userInfo = ["messageId": t.id]
+            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "message-\(t.id)", content: c, trigger: nil))
+        }
+    }
+
+    /// New materials posted in a class: one alert per Schoology notification ("French 2 posted …").
+    func newMaterials(_ notices: [Notice]) {
+        guard materialAlerts else { return }
+        for n in notices.prefix(3) {
+            let c = UNMutableNotificationContent()
+            c.title = n.course.map { "New in \(Course.short($0))" } ?? "New in your classes"
+            c.body = n.items.prefix(3).map(\.title).joined(separator: "\n") + (n.items.count > 3 ? "\n+\(n.items.count - 3) more" : "")
+            if c.body.isEmpty { c.body = n.text }
+            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "notice-\(n.key.hashValue)", content: c, trigger: nil))
+        }
     }
 
     /// Schoology ended the session (about a day of normal use). One alert per sign-out;

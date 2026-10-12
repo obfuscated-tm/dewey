@@ -18,6 +18,7 @@ struct SchoolApp: App {
                 if m.session == .signedIn {
                     await m.refreshTodo()
                     await m.refreshSomeGrades()
+                    await m.inbox.refresh(m, notify: true)
                 }
                 await WidgetBridge.publishNow(m)
                 task.setTaskCompleted(success: true)
@@ -99,12 +100,16 @@ struct MainTabs: View {
             GradesView()
                 .tabItem { Label("Grades", systemImage: "chart.bar") }
                 .tag(1)
+            InboxView()
+                .tabItem { Label("Inbox", systemImage: "tray") }
+                .badge(model.inbox.newCount(model.classes))
+                .tag(2)
             ClassesView()
                 .tabItem { Label("Classes", systemImage: "square.grid.2x2") }
-                .tag(2)
+                .tag(3)
             SchoologyTabView()
                 .tabItem { Label("Schoology", systemImage: "globe") }
-                .tag(3)
+                .tag(4)
         }
         .onOpenURL { url in
             tab = 0

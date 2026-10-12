@@ -61,7 +61,8 @@ const pathOf = (a) => {
 
 /**
  * /messages?page=N → { threads: [{ id, subject, group, preview, from, fromId,
- * date, unread }], unreadCount, hasMore }. Unread rows: Schoology marks the
+ * date, unread }], unreadCount, hasMore }. The subject comes from the row's
+ * checkbox label: the link text is cut short. Unread rows: Schoology marks the
  * row (class `unread`/`privatemsg-unread`, or a `.new` marker); not yet seen
  * on a live unread row.
  */
@@ -69,7 +70,9 @@ export function parseMessageList(doc) {
   const rows = [...doc.querySelectorAll('table.privatemsg-list tbody tr')].filter((tr) => tr.querySelector('.subject-link'));
   const threads = rows.map((tr) => {
     const link = tr.querySelector('.subject-link');
-    const { group, title } = splitSubject(cleanText(link));
+    // The link text is cut short ("Lesson ..."); the row's checkbox label has the whole subject.
+    const label = cleanText(tr.querySelector('.form-checkbox-title')).replace(/^Inbox message with subject:\s*/i, '');
+    const { group, title } = splitSubject(label || cleanText(link));
     const who = tr.querySelector('.names-date a[href*="/user/"]');
     const date = cleanText(tr.querySelector('.names-date .small.gray, .names-date .gray'));
     return {

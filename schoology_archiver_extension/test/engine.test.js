@@ -223,3 +223,39 @@ test('planTest: needFor on the current period', () => {
   assert.ok(['any', 'need', 'out'].includes(r.status));
   assert.equal(planTest({ rows: ROWS, category: 'Tests', possible: 0 }).status, 'none');
 });
+
+test('inbox ops: notifications, messages and one message, with page numbers', async () => {
+  const kinds = [];
+  const { eng, calls } = fakeEngine(new Map([
+    ['/home/notifications', res('<html>')],
+    ['/home/notifications?page=2', res('<html>')],
+    ['/messages?page=1', res('<html>')],
+    ['/messages/view/42', res('<html>')],
+  ]), { parseMcpKind: (kind) => { kinds.push(kind); return { data: kind === 'messageFull' ? { subject: 'Hi' } : { items: [] } }; } });
+  assert.equal((await eng.notifications()).ok, true);
+  assert.equal((await eng.notifications({ page: 2 })).ok, true);
+  assert.equal((await eng.messages({ page: 1 })).ok, true);
+  assert.deepEqual((await eng.message({ id: '42' })).data, { id: '42', subject: 'Hi' });
+  assert.deepEqual(kinds, ['notificationsFull', 'notificationsFull', 'messagesList', 'messageFull']);
+  assert.ok(calls.every((c) => c.init.method === 'GET'));
+  assert.equal((await eng.message({ id: '../1' })).error, 'bad_args');
+});
+
+test('feed: a cut-off post gets its full body from show_more; other paths are never followed', async () => {
+  const more = '/update_post/9/show_more/ab12';
+  const { eng, calls } = fakeEngine(new Map([
+    ['/course/1/feed?page=0', res('{}')],
+    [more, res('{"update":"<p>all</p>"}')],
+  ]), {
+    parseMcpKind: (kind) => (kind === 'postBody' ? { data: { body_md: 'all of it' } } : {
+      data: [
+        { id: '9', author: 'T', date: 'd', time: null, more, body_md: 'cut...' },
+        { id: '8', author: 'T', date: 'd', time: null, more: '/user/1', body_md: 'short' },
+      ],
+    }),
+  });
+  const r = await eng.feed({ sectionId: 1 });
+  assert.deepEqual(r.data.map((p) => p.body_md), ['all of it', 'short']);
+  assert.ok(r.data.every((p) => !('more' in p)));
+  assert.deepEqual(calls.map((c) => c.key), ['/course/1/feed?page=0', more]);
+});

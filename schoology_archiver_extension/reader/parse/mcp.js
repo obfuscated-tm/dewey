@@ -1,6 +1,6 @@
 // The MCP bridge's page parsers (docs/MCP-BRIDGE.md): the full gradebook, an
-// assignment, its dropbox, a course's updates and a Materials folder, as plain
-// JSON. Loaded only by the offscreen parser (offscreen/parse.js), never by an
+// assignment, its dropbox, a course's updates and a Materials folder, plus the
+// iOS app's Inbox pages (inbox.js), as plain JSON. Loaded only by the offscreen parser (offscreen/parse.js), never by an
 // overlay: its imports (assignment.js, feed.js, …) aren't web-accessible, so
 // pulling this into reader/parse/sync.js would break every overlay's import.
 // Needs a global DOMParser.
@@ -11,10 +11,12 @@ import { parseGrades } from './grades.js';
 import { parseAssignment, parseDropbox } from './assignment.js';
 import { parseFolderRows, contentRoot, findSourceAttachments, findLinkViewTarget } from './materials.js';
 import { parseFeedPage } from './feed.js';
+import { parseMessageList, parseMessage, parseNotifications } from './inbox.js';
 import { folderIdOf, parseSubmissionStatus, parseDueText, isLoginPage } from './sync.js';
 import { classifyLink } from '../../outputs/archive/google.js';
 
-export const MCP_KINDS = new Set(['gradesFull', 'assignmentFull', 'dropboxFull', 'materialsFull', 'updatesFeed', 'materialFull']);
+export const MCP_KINDS = new Set(['gradesFull', 'assignmentFull', 'dropboxFull', 'materialsFull', 'updatesFeed', 'materialFull',
+  'postBody', 'messagesList', 'messageFull', 'notificationsFull']);
 
 const ASSIGNMENT_RE = /\/assignment\/(\d+)(?:[/?#]|$)/;
 const squash = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
@@ -120,13 +122,28 @@ export function parseMcpKind(kind, text, url = '') {
     if (LOGIN_RE.test(String(text))) return { login: true };
     const { origin } = urlStub(url);
     const posts = parseFeedPage(text).map((p) => ({
-      author: p.author, date: p.date, body_md: p.bodyEl ? htmlToMd(p.bodyEl, origin) : '',
+      id: p.id, author: p.author, date: p.date, time: p.time, more: p.more,
+      body_md: p.bodyEl ? htmlToMd(p.bodyEl, origin) : '',
     }));
     return { data: posts };
   }
-  const doc = new DOMParser().parseFromString(String(text ?? ''), 'text/html');
+  // A cut-off post's full body: /update_post/{id}/show_more/{hash} → JSON { update: html }.
+  if (kind === 'postBody') {
+    if (LOGIN_RE.test(String(text))) return { login: true };
+    let html = '';
+    try { html = JSON.parse(text).update || ''; } catch { throw new Error('postBody: not JSON'); }
+    const body = new DOMParser().parseFromString(`<div>${html}</div>`, 'text/html').body.firstElementChild;
+    return { data: { body_md: htmlToMd(body, urlStub(url).origin) } };
+  }
+  // Notifications page 2+ is JSON { output: html } (the "More" link's ajax).
+  let html = String(text ?? '');
+  if (kind === 'notificationsFull') { try { html = JSON.parse(html).output ?? html; } catch { /* page 1 is HTML */ } }
+  const doc = new DOMParser().parseFromString(html, 'text/html');
   if (isLoginPage(doc)) return { login: true };
   if (kind === 'gradesFull') return { data: parseGrades(doc) };
+  if (kind === 'messagesList') return { data: parseMessageList(doc) };
+  if (kind === 'messageFull') return { data: parseMessage(doc, urlStub(url).origin) };
+  if (kind === 'notificationsFull') return { data: parseNotifications(doc, urlStub(url).origin) };
   if (kind === 'materialsFull') return { data: materialsRows(doc, url) };
   if (kind === 'materialFull') return { data: materialFull(doc, url) };
   if (kind === 'dropboxFull') {

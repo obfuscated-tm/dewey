@@ -17,6 +17,7 @@ final class AppModel {
     let container: ModelContainer
     var context: ModelContext { container.mainContext }
     let neoPlan = NeoPlanClient()
+    let inbox = Inbox()
 
     var courses: [Course] = []
     var coursesAsOf: Date?
@@ -83,6 +84,7 @@ final class AppModel {
     func signOut() async {
         await WebConfig.signOut()
         Cache.clear()
+        inbox.clear()
         grades = [:]
         gradesAsOf = [:]
         courses = []

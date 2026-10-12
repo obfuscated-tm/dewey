@@ -104,12 +104,13 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 - New-grade alerts show the class change (`Lab 4: 18 / 20 · 92.1% → 92.6%`); each background refresh also checks 3 gradebooks, in turn.
 - **Done when:** on the phone, after Schoology signs you out, one notification arrives and the Lock Screen widget says to sign in; after signing in, both clear.
 
-### R2 · Inbox tab (messages + notifications)
+### R2 · Inbox tab (messages + notifications) (built 2026-10-11)
 - Extension first: parsers for `/home/notifications`, the `/messages` list and one message, with Node tests; engine ops for each. Fix the feed parser (cut-off text, date shown as a URL, no post id).
 - Tabs: To Do · Grades · Inbox · Classes · Schoology. Sections: From teachers (unread dot, tab badge), New in your classes, School (collapsed, not counted).
 - Setting "Mark messages read when opened" (on by default; off = show the preview only, never open the message page). Reply / new message happen in the Schoology sheet.
 - Notifications for new teacher messages and new materials, each with its own switch.
 - **Done when:** the Inbox matches Schoology's messages and notifications pages, and a new teacher message gives one notification after a background refresh.
+- Still to check: how Schoology marks an unread row on the messages list (none were unread on 2026-10-11), and the notification on the phone.
 
 ### R3 · Smarter due notifications
 - Due in 2 h for dropbox work not yet submitted; an optional morning summary; the night before a test not marked Studied; "Test in N days" on test rows.

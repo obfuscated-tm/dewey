@@ -16,6 +16,7 @@
 
 import { parseKind, parseEventsJson, nextEventsUrl, isAssessmentUrl, asJson } from '../reader/parse/sync.js';
 import { parseMcpKind } from '../reader/parse/mcp.js';
+import { SHOW_MORE_RE } from '../reader/parse/feed.js';
 import { rubricPaths, parseRubric } from '../reader/parse/rubric.js';
 import { isQuizTakingUrl } from '../reader/guard.js';
 import { isRateLimited } from '../reader/ratelimit.js';
@@ -62,6 +63,8 @@ export const MATERIAL_SHAPES = [
   { kind: 'assignment', re: /^\/assignment\/\d{1,20}$/ },
 ];
 
+/** A list page number: an integer 0–999, else 0. */
+const pageNo = (page) => (Number.isInteger(page) && page >= 0 && page < 1000 ? page : 0);
 /** A dropbox page of one assignment: /assignment/{id}/dropbox/view/{n} (query dropped). */
 const DROPBOX_RE = /^\/assignment\/\d{1,20}\/dropbox\/view\/\d{1,20}$/;
 
@@ -310,11 +313,45 @@ export function createEngine(deps = {}) {
       return getParsed(pathname, M('materialFull'));
     }),
 
-    /** A course's updates: [{ author, date, body_md }]. */
+    /**
+     * A course's updates: [{ id, author, date, time, body_md }]. A post cut off
+     * at "Show More" gets its full body (one more GET each).
+     */
     feed: ({ sectionId, page = 0 } = {}) => wrap(async () => {
       const sid = validId(sectionId);
-      const p = Number.isInteger(page) && page >= 0 ? page : 0;
-      return getParsed(`/course/${sid}/feed?page=${p}`, M('updatesFeed'));
+      const p = pageNo(page);
+      const r = await getParsed(`/course/${sid}/feed?page=${p}`, M('updatesFeed'));
+      const posts = [];
+      for (const { more, ...post } of r.data) {
+        if (more && SHOW_MORE_RE.test(more)) {
+          try { post.body_md = (await getParsed(more, M('postBody'))).data.body_md || post.body_md; } catch (e) { if (e?.code === 'login') throw e; }
+        }
+        posts.push(post);
+      }
+      return { data: posts, url: r.url };
+    }),
+
+    /** /home/notifications: { items: [{ key, type, course, sectionId, text, date, items }], hasMore }. */
+    notifications: ({ page = 0 } = {}) => wrap(() => {
+      const p = pageNo(page);
+      return getParsed(`/home/notifications${p ? `?page=${p}` : ''}`, M('notificationsFull'));
+    }),
+
+    /** The messages list: { threads: [{ id, subject, group, preview, from, fromId, date, unread }], unreadCount, hasMore }. */
+    messages: ({ page = 0 } = {}) => wrap(() => {
+      const p = pageNo(page);
+      return getParsed(`/messages${p ? `?page=${p}` : ''}`, M('messagesList'));
+    }),
+
+    /**
+     * One thread: { id, subject, group, participants, messages }. Opening it
+     * marks it read on Schoology, so the app calls this only when the student
+     * opens a message with "Mark messages read when opened" on.
+     */
+    message: ({ id } = {}) => wrap(async () => {
+      const mid = validId(id);
+      const r = await getParsed(`/messages/view/${mid}`, M('messageFull'));
+      return { data: { id: mid, ...r.data }, url: r.url };
     }),
   };
 
@@ -396,7 +433,8 @@ export function planTest({ rows = [], category, possible, target = grademath.A_C
 
 let instance = null;
 const engine = () => (instance ||= createEngine());
-const OP_NAMES = ['courses', 'todo', 'status', 'assignment', 'gradebook', 'dropbox', 'rubric', 'materials', 'material', 'feed', 'courseGrade', 'planTest', 'annotate'];
+const OP_NAMES = ['courses', 'todo', 'status', 'assignment', 'gradebook', 'dropbox', 'rubric', 'materials', 'material', 'feed',
+  'notifications', 'messages', 'message', 'courseGrade', 'planTest', 'annotate'];
 
 /** Runs one op by name; always resolves. */
 export async function call(op, args) {
@@ -419,6 +457,9 @@ export const rubric = (a) => call('rubric', a);
 export const materials = (a) => call('materials', a);
 export const material = (a) => call('material', a);
 export const feed = (a) => call('feed', a);
+export const notifications = (a) => call('notifications', a);
+export const messages = (a) => call('messages', a);
+export const message = (a) => call('message', a);
 
 /** The pure modules, for anything the screens need that has no op yet. */
 export const math = { ...grademath, ...asgstate, ...matstate, ...todologic };

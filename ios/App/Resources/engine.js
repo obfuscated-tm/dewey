@@ -36,6 +36,9 @@ var SchoologyEngine = (() => {
     material: () => material,
     materials: () => materials,
     math: () => math,
+    message: () => message,
+    messages: () => messages,
+    notifications: () => notifications,
     planTest: () => planTest,
     refused: () => refused,
     rubric: () => rubric,
@@ -778,6 +781,7 @@ ${t.trim()}
   }
 
   // ../schoology_archiver_extension/reader/parse/feed.js
+  var SHOW_MORE_RE = /^\/update_post\/(\d{1,20})\/show_more\/[0-9a-f]{1,64}$/;
   function parseFeedPage(text) {
     let html = text;
     try {
@@ -785,11 +789,159 @@ ${t.trim()}
     } catch {
     }
     const doc = new DOMParser().parseFromString(html, "text/html");
-    return [...doc.querySelectorAll("li")].filter((li) => li.querySelector(".update-body, .update-sentence-inner")).map((li) => ({
-      author: cleanText(li.querySelector(".update-sentence-inner a, .edge-sentence a")),
-      date: cleanText(li.querySelector(".small.gray, .edge-footer .created")),
-      bodyEl: li.querySelector(".update-body")
-    }));
+    return [...doc.querySelectorAll("li")].filter((li) => li.querySelector(".update-body, .update-sentence-inner")).map((li) => {
+      const moreA = li.querySelector("a.show-more-link[href]");
+      let more = null;
+      try {
+        more = moreA ? new URL(moreA.getAttribute("href"), "https://x.schoology.com").pathname : null;
+      } catch {
+      }
+      if (more && !SHOW_MORE_RE.test(more)) more = null;
+      const idEl = li.querySelector('[id^="comments-post-"], [id*="-immersive-reader-nid-"]');
+      const id = more && more.match(SHOW_MORE_RE)[1] || (idEl?.id.match(/(?:post-|nid-)(\d{1,20})/) || [])[1] || null;
+      const ts = Number(li.getAttribute("timestamp"));
+      const dateEl = li.querySelector(".edge-footer .created") || [...li.querySelectorAll(".small.gray")].find((e) => !e.closest(".update-body"));
+      return {
+        id,
+        author: cleanText(li.querySelector(".update-sentence-inner a, .edge-sentence a")),
+        date: cleanText(dateEl),
+        time: ts > 0 ? new Date(ts * 1e3).toISOString() : null,
+        more,
+        bodyEl: li.querySelector(".update-body")
+      };
+    });
+  }
+
+  // ../schoology_archiver_extension/reader/parse/inbox.js
+  var squash2 = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
+  var MONTHS2 = ["january", "february", "march", "april", "may", "june", "july", "august", "september", "october", "november", "december"];
+  function splitSubject(subject) {
+    const s = squash2(subject);
+    const m = s.match(/^\[([^\]]+)\]\s*(.*)$/);
+    return m ? { group: m[1].trim(), title: m[2] || m[1].trim() } : { group: null, title: s };
+  }
+  function parseDayHeader(text) {
+    const m = squash2(text).toLowerCase().match(/([a-z]+)\s+(\d{1,2}),?\s+(\d{4})/);
+    if (!m || !MONTHS2.includes(m[1])) return null;
+    return { y: Number(m[3]), m: MONTHS2.indexOf(m[1]), d: Number(m[2]) };
+  }
+  function atTimeOfDay(day, text) {
+    if (!day) return null;
+    const t = squash2(text).match(/(\d{1,2}):(\d{2})\s*([ap])\.?m\.?/i);
+    let h = 0;
+    let min = 0;
+    if (t) {
+      h = Number(t[1]) % 12 + (t[3].toLowerCase() === "p" ? 12 : 0);
+      min = Number(t[2]);
+    }
+    return new Date(day.y, day.m, day.d, h, min).toISOString();
+  }
+  function edgeType(className) {
+    const m = String(className || "").match(/s-edge-type-([a-z0-9-]+)/);
+    if (!m) return "other";
+    if (m[1] === "course-materials-add") return "material";
+    if (m[1] === "grade-add") return "grade";
+    return m[1];
+  }
+  function idAfter(href, prefix) {
+    const m = String(href || "").match(new RegExp(`${prefix}(\\d{1,20})(?:[/?#]|$)`));
+    return m ? m[1] : null;
+  }
+  var pathOf = (a) => {
+    const href = a?.getAttribute("href") || "";
+    try {
+      return new URL(href, "https://x.schoology.com").pathname;
+    } catch {
+      return href;
+    }
+  };
+  function parseMessageList(doc) {
+    const rows = [...doc.querySelectorAll("table.privatemsg-list tbody tr")].filter((tr) => tr.querySelector(".subject-link"));
+    const threads = rows.map((tr) => {
+      const link = tr.querySelector(".subject-link");
+      const label = cleanText(tr.querySelector(".form-checkbox-title")).replace(/^Inbox message with subject:\s*/i, "");
+      const { group, title } = splitSubject(label || cleanText(link));
+      const who = tr.querySelector('.names-date a[href*="/user/"]');
+      const date = cleanText(tr.querySelector(".names-date .small.gray, .names-date .gray"));
+      return {
+        id: idAfter(link.getAttribute("href"), "/messages/view/"),
+        subject: title,
+        group,
+        preview: cleanText(tr.querySelector(".privatemsg-list-body")),
+        from: cleanText(who),
+        fromId: idAfter(who?.getAttribute("href"), "/user/"),
+        date: parseDueText(date) || null,
+        unread: /(^|\s)(privatemsg-)?unread(\s|$)/.test(tr.className) || !!tr.querySelector(".new, .marker-new, .privatemsg-unread")
+      };
+    }).filter((t) => t.id);
+    const count = Number(squash2(doc.querySelector(".unread-count")?.textContent));
+    return { threads, unreadCount: Number.isFinite(count) ? count : null, hasMore: !!doc.querySelector(".pager-next a") };
+  }
+  function parseMessage(doc, origin = "") {
+    const { group, title } = splitSubject(cleanText(doc.querySelector(".message-title h2")));
+    const participants = [...doc.querySelectorAll(".message-participants a")].filter((a) => /\/user\/\d/.test(a.getAttribute("href") || "") && cleanText(a) !== "You").map((a) => cleanText(a));
+    const messages2 = [...doc.querySelectorAll(".s_message_box")].map((box) => {
+      const body = box.querySelector(".message-body");
+      const who = body?.querySelector(".name a");
+      const date = cleanText(body?.querySelector(".name .small.gray"));
+      const attachments = [...body?.querySelectorAll(".s-message-attachments a[href]") || []].map((a) => ({ title: cleanText(a), url: resolveUrl(a.getAttribute("href"), origin) })).filter((f) => f.title && f.url);
+      let body_md = "";
+      if (body) {
+        const c = body.cloneNode(true);
+        c.querySelectorAll(".name, .s-message-attachments-container, .s-message-attachments, script").forEach((n) => n.remove());
+        body_md = htmlToMd(c, origin);
+      }
+      return { author: cleanText(who), authorId: idAfter(who?.getAttribute("href"), "/user/"), date: parseDueText(date) || null, body_md, attachments };
+    });
+    return { subject: title, group, participants, messages: messages2 };
+  }
+  var ITEM_KINDS = [
+    ["assignment", /^\/assignment\/\d/],
+    ["assessment", /\/assessments?\//],
+    ["page", /^\/page\/\d/],
+    ["discussion", /^\/discussion\/\d/],
+    ["event", /^\/event\/\d/],
+    ["material", /\/materials\//]
+  ];
+  var itemKind = (path) => (ITEM_KINDS.find(([, re]) => re.test(path)) || ["other"])[0];
+  function parseNotifications(doc, origin = "") {
+    const list = doc.querySelector("ul.s-notifications-mini");
+    const items = [];
+    let day = null;
+    for (const li of list ? [...list.children] : []) {
+      if (li.classList.contains("notif-date-header")) {
+        day = parseDayHeader(li.textContent);
+        continue;
+      }
+      const edge = li.querySelector('[class*="s-edge-type-"]');
+      const sentence = li.querySelector(".edge-sentence");
+      if (!edge || !sentence) continue;
+      const type = edgeType(edge.className);
+      const courseA = sentence.querySelector('a[href*="/course/"]');
+      const seen = /* @__PURE__ */ new Set();
+      const linked = [];
+      for (const a of [...sentence.querySelectorAll("a[href]"), ...li.querySelectorAll(".other-items-list .added-item a[href]")]) {
+        const path = pathOf(a);
+        if (a === courseA || /^\/user\//.test(path) || seen.has(path)) continue;
+        seen.add(path);
+        linked.push({ title: cleanText(a), url: resolveUrl(a.getAttribute("href"), origin), kind: itemKind(path) });
+      }
+      const timeEl = sentence.querySelector(".edge-time");
+      const s = sentence.cloneNode(true);
+      s.querySelectorAll(".edge-time, .visually-hidden").forEach((n) => n.remove());
+      const date = atTimeOfDay(day, timeEl?.textContent || "");
+      items.push({
+        key: [type, date || "", linked.map((i) => i.url).join(",")].join("|"),
+        type,
+        course: cleanText(courseA) || null,
+        sectionId: idAfter(pathOf(courseA), "/course/"),
+        text: cleanText(s),
+        date,
+        items: linked
+      });
+    }
+    const more = [...doc.querySelectorAll("a[href]")].some((a) => /\/home\/notifications\?(.*&)?page=\d/.test(a.getAttribute("href") || ""));
+    return { items, hasMore: more };
   }
 
   // ../schoology_archiver_extension/outputs/archive/google.js
@@ -867,10 +1019,21 @@ ${t.trim()}
   }
 
   // ../schoology_archiver_extension/reader/parse/mcp.js
-  var MCP_KINDS = /* @__PURE__ */ new Set(["gradesFull", "assignmentFull", "dropboxFull", "materialsFull", "updatesFeed", "materialFull"]);
+  var MCP_KINDS = /* @__PURE__ */ new Set([
+    "gradesFull",
+    "assignmentFull",
+    "dropboxFull",
+    "materialsFull",
+    "updatesFeed",
+    "materialFull",
+    "postBody",
+    "messagesList",
+    "messageFull",
+    "notificationsFull"
+  ]);
   var ASSIGNMENT_RE2 = /\/assignment\/(\d+)(?:[/?#]|$)/;
-  var squash2 = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
-  var pageTitle = (anchor, doc) => (cleanText(anchor) || squash2((doc.querySelector("title")?.textContent || "").split(" | ")[0])).replace(/\s*\d+\s+lesson plans?$/i, "") || null;
+  var squash3 = (s) => String(s ?? "").replace(/\s+/g, " ").trim();
+  var pageTitle = (anchor, doc) => (cleanText(anchor) || squash3((doc.querySelector("title")?.textContent || "").split(" | ")[0])).replace(/\s*\d+\s+lesson plans?$/i, "") || null;
   var LOGIN_RE = /s-user-login-form|login-container/;
   function urlStub(url) {
     let origin = "";
@@ -954,15 +1117,39 @@ ${t.trim()}
       if (LOGIN_RE.test(String(text))) return { login: true };
       const { origin } = urlStub(url);
       const posts = parseFeedPage(text).map((p) => ({
+        id: p.id,
         author: p.author,
         date: p.date,
+        time: p.time,
+        more: p.more,
         body_md: p.bodyEl ? htmlToMd(p.bodyEl, origin) : ""
       }));
       return { data: posts };
     }
-    const doc = new DOMParser().parseFromString(String(text ?? ""), "text/html");
+    if (kind === "postBody") {
+      if (LOGIN_RE.test(String(text))) return { login: true };
+      let html2 = "";
+      try {
+        html2 = JSON.parse(text).update || "";
+      } catch {
+        throw new Error("postBody: not JSON");
+      }
+      const body = new DOMParser().parseFromString(`<div>${html2}</div>`, "text/html").body.firstElementChild;
+      return { data: { body_md: htmlToMd(body, urlStub(url).origin) } };
+    }
+    let html = String(text ?? "");
+    if (kind === "notificationsFull") {
+      try {
+        html = JSON.parse(html).output ?? html;
+      } catch {
+      }
+    }
+    const doc = new DOMParser().parseFromString(html, "text/html");
     if (isLoginPage(doc)) return { login: true };
     if (kind === "gradesFull") return { data: parseGrades(doc) };
+    if (kind === "messagesList") return { data: parseMessageList(doc) };
+    if (kind === "messageFull") return { data: parseMessage(doc, urlStub(url).origin) };
+    if (kind === "notificationsFull") return { data: parseNotifications(doc, urlStub(url).origin) };
     if (kind === "materialsFull") return { data: materialsRows(doc, url) };
     if (kind === "materialFull") return { data: materialFull(doc, url) };
     if (kind === "dropboxFull") {
@@ -1212,12 +1399,12 @@ ${t.trim()}
     return `${h}:${String(m).padStart(2, "0")} ${ap}`;
   }
   var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  var MONTHS2 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var MONTHS3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function formatDue(due, now = /* @__PURE__ */ new Date()) {
     if (!due) return "No due date";
     const d = new Date(due);
     if (Number.isNaN(d.getTime())) return "";
-    return `${WEEKDAYS[d.getDay()]} ${MONTHS2[d.getMonth()]} ${d.getDate()}, ${formatTime(d)}`;
+    return `${WEEKDAYS[d.getDay()]} ${MONTHS3[d.getMonth()]} ${d.getDate()}, ${formatTime(d)}`;
   }
   function annotateItems({ overdue = [], upcoming = [], now = /* @__PURE__ */ new Date() } = {}) {
     const out = [];
@@ -1284,6 +1471,7 @@ ${t.trim()}
     { kind: "discussion", re: /^\/discussion\/\d{1,20}$/ },
     { kind: "assignment", re: /^\/assignment\/\d{1,20}$/ }
   ];
+  var pageNo = (page) => Number.isInteger(page) && page >= 0 && page < 1e3 ? page : 0;
   var DROPBOX_RE = /^\/assignment\/\d{1,20}\/dropbox\/view\/\d{1,20}$/;
   function samePath(raw, origin) {
     const s = String(raw ?? "");
@@ -1516,11 +1704,46 @@ ${t.trim()}
         }
         return getParsed(pathname, M("materialFull"));
       }),
-      /** A course's updates: [{ author, date, body_md }]. */
+      /**
+       * A course's updates: [{ id, author, date, time, body_md }]. A post cut off
+       * at "Show More" gets its full body (one more GET each).
+       */
       feed: ({ sectionId, page = 0 } = {}) => wrap(async () => {
         const sid = validId(sectionId);
-        const p = Number.isInteger(page) && page >= 0 ? page : 0;
-        return getParsed(`/course/${sid}/feed?page=${p}`, M("updatesFeed"));
+        const p = pageNo(page);
+        const r = await getParsed(`/course/${sid}/feed?page=${p}`, M("updatesFeed"));
+        const posts = [];
+        for (const { more, ...post } of r.data) {
+          if (more && SHOW_MORE_RE.test(more)) {
+            try {
+              post.body_md = (await getParsed(more, M("postBody"))).data.body_md || post.body_md;
+            } catch (e) {
+              if (e?.code === "login") throw e;
+            }
+          }
+          posts.push(post);
+        }
+        return { data: posts, url: r.url };
+      }),
+      /** /home/notifications: { items: [{ key, type, course, sectionId, text, date, items }], hasMore }. */
+      notifications: ({ page = 0 } = {}) => wrap(() => {
+        const p = pageNo(page);
+        return getParsed(`/home/notifications${p ? `?page=${p}` : ""}`, M("notificationsFull"));
+      }),
+      /** The messages list: { threads: [{ id, subject, group, preview, from, fromId, date, unread }], unreadCount, hasMore }. */
+      messages: ({ page = 0 } = {}) => wrap(() => {
+        const p = pageNo(page);
+        return getParsed(`/messages${p ? `?page=${p}` : ""}`, M("messagesList"));
+      }),
+      /**
+       * One thread: { id, subject, group, participants, messages }. Opening it
+       * marks it read on Schoology, so the app calls this only when the student
+       * opens a message with "Mark messages read when opened" on.
+       */
+      message: ({ id } = {}) => wrap(async () => {
+        const mid = validId(id);
+        const r = await getParsed(`/messages/view/${mid}`, M("messageFull"));
+        return { data: { id: mid, ...r.data }, url: r.url };
       })
     };
     const pure = (fn) => (args = {}) => wrap(async () => ({ data: fn(args), url: null }));
@@ -1586,7 +1809,24 @@ ${t.trim()}
   }
   var instance = null;
   var engine = () => instance ||= createEngine();
-  var OP_NAMES = ["courses", "todo", "status", "assignment", "gradebook", "dropbox", "rubric", "materials", "material", "feed", "courseGrade", "planTest", "annotate"];
+  var OP_NAMES = [
+    "courses",
+    "todo",
+    "status",
+    "assignment",
+    "gradebook",
+    "dropbox",
+    "rubric",
+    "materials",
+    "material",
+    "feed",
+    "notifications",
+    "messages",
+    "message",
+    "courseGrade",
+    "planTest",
+    "annotate"
+  ];
   async function call(op, args) {
     if (!OP_NAMES.includes(op)) return { ok: false, error: "op" };
     return engine()[op](args || {});
@@ -1604,6 +1844,9 @@ ${t.trim()}
   var materials = (a) => call("materials", a);
   var material = (a) => call("material", a);
   var feed = (a) => call("feed", a);
+  var notifications = (a) => call("notifications", a);
+  var messages = (a) => call("messages", a);
+  var message = (a) => call("message", a);
   var math = { ...grademath_exports, ...asgstate_exports, ...matstate_exports, ...todologic_exports };
   return __toCommonJS(engine_exports);
 })();

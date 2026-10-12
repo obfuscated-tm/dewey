@@ -142,3 +142,25 @@ final class WidgetDataTests: XCTestCase {
         XCTAssertNil(s.grades)
     }
 }
+
+final class InboxTests: XCTestCase {
+    func testKind() {
+        let classes = [Course(sectionId: "1", title: "AP Comp Sci A - 2350", sectionTitle: "McLeodT p2 T1")]
+        XCTAssertEqual(Inbox.kind(group: "AP Comp Sci A - 2350: McLeodT p2 T1", classes: classes), .teacher)
+        XCTAssertEqual(Inbox.kind(group: nil, classes: classes), .teacher, "a direct message")
+        XCTAssertEqual(Inbox.kind(group: "CHS Hub: Gr10", classes: classes), .school)
+        XCTAssertEqual(Course.short("French 2 - 4120: AggounI p4 T1"), "French 2")
+        XCTAssertEqual(Course.short("Pre-Calculus H - 2420"), "Pre-Calculus H")
+    }
+
+    func testDecode() throws {
+        let json = #"{"threads":[{"id":"9","subject":"Lab","group":null,"preview":"Hi","from":"Ms. K","fromId":"5","date":"2026-10-05T16:20:00.000Z","unread":false}],"unreadCount":0,"hasMore":true}"#
+        let l = try JSONDecoder.engine.decode(MessageList.self, from: Data(json.utf8))
+        XCTAssertEqual(l.threads.first?.from, "Ms. K")
+        XCTAssertNotNil(l.threads.first?.when)
+        let n = #"{"items":[{"key":"material|x|y","type":"material","course":"French 2 - 4120: AggounI p4 T1","sectionId":"7","text":"posted","date":null,"items":[{"title":"Quiz","url":"https://fuhsd.schoology.com/assignment/1","kind":"assignment"}]}],"hasMore":false}"#
+        XCTAssertEqual(try JSONDecoder.engine.decode(NoticeList.self, from: Data(n.utf8)).items.first?.items.first?.kind, "assignment")
+        let m = #"{"id":"9","subject":"Lab","group":null,"participants":["Ms. K"],"messages":[{"author":"Ms. K","author_id":"5","date":null,"body_md":"Hello","attachments":[]}]}"#
+        XCTAssertEqual(try JSONDecoder.engine.decode(MessageDetail.self, from: Data(m.utf8)).messages.first?.bodyMd, "Hello")
+    }
+}

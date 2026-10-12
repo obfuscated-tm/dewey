@@ -31,9 +31,9 @@ What page the hidden view loads: something small on the Schoology origin. Try `h
 | Module | What the app uses from it |
 |---|---|
 | `reader/parse/sync.js` | `parseKind` (`courses`, `homeList`, `events`, `gradebook`, `status`), `parseCourses`, `parseEventsJson`, `isAssessmentUrl`, `parseDueText` |
-| `reader/parse/mcp.js` | `parseMcpKind` (`gradesFull`, `assignmentFull`, `dropboxFull`, `materialsFull`, `materialFull`, `updatesFeed`) |
+| `reader/parse/mcp.js` | `parseMcpKind` (`gradesFull`, `assignmentFull`, `dropboxFull`, `materialsFull`, `materialFull`, `updatesFeed`, `postBody`, `messagesList`, `messageFull`, `notificationsFull`) |
 | `reader/parse/rubric.js` | `rubricPaths`, `parseRubric` |
-| `reader/parse/grades.js`, `assignment.js`, `materials.js`, `feed.js` | through `parseMcpKind` |
+| `reader/parse/grades.js`, `assignment.js`, `materials.js`, `feed.js`, `inbox.js` | through `parseMcpKind` |
 | `overlays/grademath.js` | `periodsFromRows`, `currentPeriod`, `grade`, `impact`, `history`, `categoryFloor`, `needFor`, `letter`, `parseScore`, `A_CUTOFF` |
 | `overlays/asgstate.js` | `chipState`, `zeroCost`, `whatIfGrade`, `rankIn`, `lateDays` |
 | `overlays/matstate.js` | `rowState`, `folderTotals`, `summaryParts` |
@@ -66,7 +66,10 @@ Every op is `async`, takes one plain object, and returns one of:
 | `rubric({ rubricId, enrollmentId, itemId })` | the two GETs from `rubricPaths()` | `parseRubric` | `{ title, total, earned, criteria: [{ title, max, earned, level, comment }] }` |
 | `materials({ sectionId, folderId? })` | `GET /course/{id}/materials[?f={folderId}]` | `parseMcpKind('materialsFull')` | folder rows (see `reader/parse/mcp.js` `materialsRows`) |
 | `material({ path })` | `GET {path}` (only the shapes `outputs/mcp/ops.js` allows: `/course/{c}/materials/gp/{id}`, `/course/{c}/materials/link/view/{id}`, `/page/{id}`, `/discussion/{id}`, `/assignment/{id}`) | `parseMcpKind('materialFull')` | `{ url, kind, title, body_md, target, files, links }` |
-| `feed({ sectionId, page })` | `GET /course/{id}/feed?page={n}` | `parseMcpKind('updatesFeed')` | `[{ author, date, body_md }]` |
+| `feed({ sectionId, page })` | `GET /course/{id}/feed?page={n}`, plus `GET /update_post/{id}/show_more/{hash}` per cut-off post | `parseMcpKind('updatesFeed')`, `('postBody')` | `[{ id, author, date, time, body_md }]` |
+| `notifications({ page })` | `GET /home/notifications[?page={n}]` | `parseMcpKind('notificationsFull')` | `{ items: [{ key, type: material\|grade\|…, course, sectionId, text, date, items: [{ title, url, kind }] }], hasMore }` |
+| `messages({ page })` | `GET /messages[?page={n}]` | `parseMcpKind('messagesList')` | `{ threads: [{ id, subject, group, preview, from, fromId, date, unread }], unreadCount, hasMore }` |
+| `message({ id })` | `GET /messages/view/{id}` (**marks it read on Schoology**) | `parseMcpKind('messageFull')` | `{ id, subject, group, participants, messages: [{ author, authorId, date, body_md, attachments }] }` |
 | `math.*` | none | grademath / asgstate / matstate / todologic | pass-through to the pure functions, e.g. `math.grade({ course, opts })`, `math.impact({ course, id, opts })` |
 | `courseGrade({ rows, opts, target })` | none | grademath | `{ period, pct, letter, mode, categories: [{ title, weight, earned, possible, pct, floor, floor_status }], items: [{ id, category, title, due, grade, comment, rubric, earned, possible, pct, impact }], history, periods }`. `opts.whatIf: { [id]: { earned, possible } }`. Swift keeps the raw gradebook rows and passes them back. |
 | `planTest({ rows, category, possible, target, opts })` | none | grademath `needFor` | `{ status: 'any'\|'out'\|'need'\|'none', need? }` |

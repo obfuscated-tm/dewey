@@ -12,6 +12,9 @@ struct SettingsView: View {
     @AppStorage(Reminders.hourKey) private var hour = 19
     @AppStorage(Reminders.gradesKey) private var gradeAlerts = true
     @AppStorage(Reminders.signedOutKey) private var signedOutAlert = true
+    @AppStorage(Reminders.messagesKey) private var messageAlerts = true
+    @AppStorage(Reminders.materialsKey) private var materialAlerts = true
+    @AppStorage(Inbox.markReadKey) private var markRead = true
     @AppStorage(Theme.accentKey) private var accent = Theme.accentOptions[0]
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
     @AppStorage(WebConfig.compatKey) private var compat = false
@@ -70,10 +73,21 @@ struct SettingsView: View {
                     }
                     Toggle("New grades", isOn: $gradeAlerts)
                         .onChange(of: gradeAlerts) { _, on in askIfOn(on) }
+                    Toggle("Messages from teachers", isOn: $messageAlerts)
+                        .onChange(of: messageAlerts) { _, on in askIfOn(on) }
+                    Toggle("New materials in your classes", isOn: $materialAlerts)
+                        .onChange(of: materialAlerts) { _, on in askIfOn(on) }
                     Toggle("Signed out of Schoology", isOn: $signedOutAlert)
                         .onChange(of: signedOutAlert) { _, on in askIfOn(on) }
                 } header: { Text("Notifications") } footer: {
-                    Text("New-grade and signed-out alerts come when the app refreshes in the background, so they can be late. Schoology signs you out about once a day.")
+                    Text("Grade, message, material and signed-out alerts come when the app refreshes in the background, so they can be late. Schoology signs you out about once a day.")
+                }
+
+                Section {
+                    Toggle("Mark messages read when opened", isOn: $markRead)
+                } header: { Text("Inbox") } footer: {
+                    Text(markRead ? "Opening a message in the app marks it read on Schoology, like opening it there."
+                                  : "Messages show their preview only, so they stay unread on Schoology until you open them there.")
                 }
 
                 Section("Look") {
@@ -166,6 +180,8 @@ struct DeveloperView: View {
         "materials": #"{"sectionId":""}"#,
         "material": #"{"path":"/page/ID"}"#,
         "feed": #"{"sectionId":"","page":0}"#,
+        "notifications": #"{"page":0}"#,
+        "messages": #"{"page":0}"#,
     ]
 
     var body: some View {

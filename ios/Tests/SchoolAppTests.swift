@@ -118,4 +118,27 @@ final class WidgetDataTests: XCTestCase {
         // An hour after "Tonight" is due it moves to overdue.
         XCTAssertEqual(s.overdue(at: now.addingTimeInterval(7 * 3600)).map(\.id), ["a", "b"])
     }
+
+    func testSnapshotTests() {
+        let cal = Calendar(identifier: .gregorian)
+        let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 10, hour: 12))!
+        let s = WidgetSnapshot(items: [
+            WidgetItem(id: "old", title: "Last week", course: "X", due: now.addingTimeInterval(-3 * 86400), isTest: true),
+            WidgetItem(id: "am", title: "This morning", course: "X", due: now.addingTimeInterval(-3 * 3600), isTest: true),
+            WidgetItem(id: "hw", title: "HW", course: "X", due: now.addingTimeInterval(3600), isTest: false),
+            WidgetItem(id: "mon", title: "Monday", course: "X", due: now.addingTimeInterval(2 * 86400), isTest: true, marked: true),
+        ], updatedAt: now, signedIn: true, accentHex: "#1D5EA8")
+        // Tests from the start of today: a test earlier today still counts, an older one doesn't.
+        XCTAssertEqual(s.tests(at: now, calendar: cal).map(\.id), ["am", "mon"])
+        XCTAssertTrue(s.items[3].isMarked)
+        XCTAssertFalse(s.items[0].isMarked)
+    }
+
+    /// A snapshot saved before `marked` and `grades` existed still loads.
+    func testOldSnapshotDecodes() throws {
+        let json = ##"{"items":[{"id":"1","title":"HW","course":"X","isTest":false}],"updatedAt":0,"signedIn":true,"accentHex":"#1D5EA8"}"##
+        let s = try JSONDecoder().decode(WidgetSnapshot.self, from: Data(json.utf8))
+        XCTAssertEqual(s.items.first?.isMarked, false)
+        XCTAssertNil(s.grades)
+    }
 }

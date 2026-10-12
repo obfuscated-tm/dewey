@@ -41,6 +41,7 @@ struct SchoolApp: App {
                 .tint(Theme.accent)
         }
         .onChange(of: phase) { _, p in
+            if p == .active { WidgetBridge.publish(model) }
             if p == .background {
                 Self.scheduleRefresh()
                 Task { await WebConfig.keepSession() }

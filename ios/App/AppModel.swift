@@ -258,6 +258,14 @@ final class AppModel {
         it.turnedIn ? .turnedIn : (it.type == .exam ? it.studied : it.done) ? .done : .todo
     }
 
+    /// Done / Studied taps from the Home Screen widget, made while the app wasn't looking.
+    func applyWidgetMarks() {
+        for (id, on) in SharedStore.takeWidgetMarks() {
+            guard let it = item(id), !it.turnedIn else { continue }
+            setProgress(it, on ? .done : .todo)
+        }
+    }
+
     /// One switch for the student's own state: to do → done (worked on) → turned in (handed in).
     func setProgress(_ it: ItemState, _ p: Progress) {
         let was = progress(it)

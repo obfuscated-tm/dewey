@@ -15,6 +15,7 @@ enum WidgetBridge {
         pending = Task {
             try? await Task.sleep(for: .milliseconds(400))
             guard !Task.isCancelled else { return }
+            m.applyWidgetMarks()
             write(m)
             await syncActivities(m)
         }
@@ -23,6 +24,7 @@ enum WidgetBridge {
     /// Writes now: a background refresh may be suspended before a debounced write runs.
     static func publishNow(_ m: AppModel) async {
         pending?.cancel()
+        m.applyWidgetMarks()
         write(m)
         await syncActivities(m)
     }
@@ -32,12 +34,17 @@ enum WidgetBridge {
         let open = m.todoItems()
             .filter { !m.isFinished($0) && !TodoLogic.isOlder(due: $0.due, now: now) }
             .sorted { ($0.due ?? .distantFuture) < ($1.due ?? .distantFuture) }
-            .prefix(12)
+        // The list's first 20, plus the next 3 tests even if they're further out.
+        var rows = Array(open.prefix(20))
+        let today = Calendar.current.startOfDay(for: now)
+        for t in open.dropFirst(20).filter({ $0.type == .exam && ($0.due ?? .distantFuture) >= today }).prefix(3) { rows.append(t) }
         let snap = WidgetSnapshot(
-            items: open.map { WidgetItem(id: $0.schoologyId, title: $0.title, course: course(m, $0), due: $0.due, isTest: $0.type == .exam) },
+            items: rows.map { WidgetItem(id: $0.schoologyId, title: $0.title, course: course(m, $0), due: $0.due,
+                                         isTest: $0.type == .exam, marked: $0.type == .exam ? $0.studied : $0.done) },
             updatedAt: m.todoAsOf ?? now,
             signedIn: m.session == .signedIn,
-            accentHex: Theme.accentHex)
+            accentHex: Theme.accentHex,
+            grades: latestGrades(m, keeping: SharedStore.load().grades ?? []))
         // Compare without the timestamp so a no-change refresh doesn't spend the reload budget.
         var key = snap
         key.updatedAt = .distantPast
@@ -46,6 +53,22 @@ enum WidgetBridge {
         lastData = data
         SharedStore.save(snap)
         WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    /// The 3 most recently graded items across classes. Classes whose gradebook
+    /// isn't loaded this run keep what the last snapshot had.
+    static func latestGrades(_ m: AppModel, keeping old: [WidgetGrade]) -> [WidgetGrade] {
+        var all = old.filter { m.grades[$0.sectionId] == nil }
+        for (sid, g) in m.grades {
+            var day: [String: String] = [:]
+            for p in g.history { if let d = p.day { for id in p.items { day[id] = d } } }
+            let name = m.course(sid)?.shortTitle ?? ""
+            all += g.items.filter { $0.earned != nil }.map {
+                WidgetGrade(id: $0.id, sectionId: sid, title: $0.title, course: name, grade: $0.grade,
+                            day: day[$0.id] ?? $0.due.map { String($0.prefix(10)) })
+            }
+        }
+        return Array(all.sorted { ($0.day ?? "") > ($1.day ?? "") }.prefix(3))
     }
 
     static func course(_ m: AppModel, _ it: ItemState) -> String {

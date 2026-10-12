@@ -5,6 +5,8 @@ import WebKit
 struct SheetTarget: Identifiable, Equatable {
     let url: URL
     var assignmentId: String?
+    /// A Google Assignment: offer to open its frame full screen.
+    var google = false
     var id: String { url.absoluteString }
 }
 
@@ -16,6 +18,7 @@ struct SchoologySheet: View {
     @Environment(\.dismiss) private var dismiss
     let target: SheetTarget
     @State private var web: WebController
+    @State private var frameMissing = false
 
     init(target: SheetTarget) {
         self.target = target
@@ -48,6 +51,17 @@ struct SchoologySheet: View {
                     }
                 }
                 .navigationBarTitleDisplayMode(.inline)
+                .safeAreaInset(edge: .bottom) {
+                    if target.google, web.url?.host == Engine.host {
+                        Button {
+                            Task { frameMissing = !(await web.openMainFrame()) }
+                        } label: {
+                            Label(frameMissing ? "No Google frame on this page yet" : "Open Google full screen", systemImage: "arrow.up.left.and.arrow.down.right")
+                                .font(Theme.font(15, .semibold)).frame(maxWidth: .infinity).padding(.vertical, 12)
+                        }
+                        .buttonStyle(.borderedProminent).padding(.horizontal, 16).padding(.bottom, 8)
+                    }
+                }
         }
         .onDisappear {
             guard let id = target.assignmentId else { return }

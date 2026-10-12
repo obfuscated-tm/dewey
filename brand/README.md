@@ -28,6 +28,10 @@ Keep from the current direction unless the sketches say otherwise: the name, the
 
 Every file has a `-dark` version for dark backgrounds (except the small glyph). Text is outlined, so the files look the same everywhere without the font installed.
 
+## Dewey the drop (mascot, placeholder)
+
+`mascot/dewey-{hello,caught-up,archiving,uh-oh}.svg`, each with a `-dark` version (light outline). He shows up rarely: the iOS empty To Do (`caught-up`) today; onboarding (`hello`), an archive run (`archiving`) and overdue work (`uh-oh`) are ready if wanted. The rest of the app stays plain. Redraw him with the logo (to-do above); the glasses are the part to keep.
+
 ## Icons
 
 - `icons/ios/app-icon-1024.png`: App Store / Xcode icon (square, no transparency; iOS rounds the corners). `-dark` and `-tinted` are for iOS 18 icon modes.

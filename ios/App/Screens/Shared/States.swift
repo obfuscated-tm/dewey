@@ -88,9 +88,15 @@ struct EmptyState: View {
     let icon: String
     let title: String
     var detail: String?
+    /// An asset-catalog picture (Dewey) shown instead of the SF Symbol.
+    var art: String?
     var body: some View {
         VStack(spacing: 8) {
-            Image(systemName: icon).font(Theme.font(30)).foregroundStyle(Theme.good)
+            if let art {
+                Image(art).resizable().scaledToFit().frame(height: 72).accessibilityHidden(true)
+            } else {
+                Image(systemName: icon).font(Theme.font(30)).foregroundStyle(Theme.good)
+            }
             Text(title).font(Theme.font(17, .semibold))
             if let detail { Text(detail).font(Theme.font(14)).foregroundStyle(Theme.secondary).multilineTextAlignment(.center) }
         }

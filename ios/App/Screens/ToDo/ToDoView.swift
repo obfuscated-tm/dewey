@@ -118,7 +118,8 @@ struct ToDoView: View {
             if groups.isEmpty && older.isEmpty {
                 Section {
                     EmptyState(icon: "checkmark.circle", title: filter == nil ? "Nothing due" : "Nothing here",
-                               detail: filter == nil ? "Schoology lists nothing for you right now." : "Tap the count again to see everything.")
+                               detail: filter == nil ? "Schoology lists nothing for you right now." : "Tap the count again to see everything.",
+                               art: filter == nil ? "DeweyCaughtUp" : nil)
                 }
                 .listRowBackground(Color.clear).listRowInsets(EdgeInsets())
             }

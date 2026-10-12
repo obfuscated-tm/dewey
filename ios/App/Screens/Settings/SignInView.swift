@@ -11,9 +11,10 @@ struct SignInView: View {
             Theme.background.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 18) {
                 Spacer()
-                Image(systemName: "checklist")
-                    .font(Theme.font(44, .semibold))
-                    .foregroundStyle(Theme.accent)
+                Image("DeweyMark")
+                    .resizable().scaledToFit()
+                    .frame(width: 60, height: 60)
+                    .accessibilityHidden(true)
                 Text("Dewey")
                     .font(Theme.font(34, .bold))
                 Text("Your Schoology To Do, grades and materials, made for your phone. Sign in with your school Google account, the same way you do on Schoology.")

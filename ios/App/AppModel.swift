@@ -18,6 +18,8 @@ final class AppModel {
     var context: ModelContext { container.mainContext }
     let neoPlan = NeoPlanClient()
     let inbox = Inbox()
+    /// The scene's model, for Siri intents that run while the app is open (nil in a background launch).
+    static weak var live: AppModel?
 
     var courses: [Course] = []
     var coursesAsOf: Date?

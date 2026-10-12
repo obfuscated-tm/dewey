@@ -72,13 +72,21 @@ enum SharedStore {
 
     /// The widget's circle: flip the row in the snapshot and queue the mark for the app.
     static func toggleFromWidget(_ id: String) {
+        guard let it = load().items.first(where: { $0.id == id }) else { return }
+        mark(id, on: !it.isMarked)
+    }
+
+    /// Siri / Shortcuts: set a row's mark and queue it for the app. False when it was already set (or isn't listed).
+    @discardableResult
+    static func mark(_ id: String, on: Bool) -> Bool {
         var s = load()
-        guard let i = s.items.firstIndex(where: { $0.id == id }) else { return }
-        s.items[i].marked = !s.items[i].isMarked
+        guard let i = s.items.firstIndex(where: { $0.id == id }), s.items[i].isMarked != on else { return false }
+        s.items[i].marked = on
         save(s)
         var marks = defaults?.dictionary(forKey: marksKey) as? [String: Bool] ?? [:]
-        marks[id] = s.items[i].isMarked
+        marks[id] = on
         defaults?.set(marks, forKey: marksKey)
+        return true
     }
 
     /// The queued marks, emptied.

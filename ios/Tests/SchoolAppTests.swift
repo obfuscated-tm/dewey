@@ -212,3 +212,28 @@ final class DueReminderTests: XCTestCase {
         XCTAssertNil(Reminders.testCountdown(due: at(12, 7), now: now, calendar: cal))
     }
 }
+
+final class SiriTests: XCTestCase {
+    func testWhatsDue() {
+        var cal = Calendar(identifier: .gregorian)
+        cal.timeZone = TimeZone(identifier: "America/Los_Angeles")!
+        func at(_ d: Int, _ h: Int) -> Date { cal.date(from: DateComponents(year: 2026, month: 10, day: d, hour: h))! }
+        let now = at(12, 8)
+        let items = [
+            WidgetItem(id: "lab", title: "Lab 4", course: "Chemistry", due: at(13, 23), isTest: false),
+            WidgetItem(id: "t", title: "Unit 3", course: "Math", due: at(13, 9), isTest: true),
+            WidgetItem(id: "x", title: "Done one", course: "Math", due: at(13, 10), isTest: false, marked: true),
+            WidgetItem(id: "w", title: "Essay", course: "", due: at(16, 23), isTest: false),
+        ]
+        let tomorrow = WhatsDueIntent.due(items, day: .tomorrow, now: now, calendar: cal)
+        XCTAssertEqual(tomorrow.map(\.id), ["t", "lab"])
+        XCTAssertEqual(WhatsDueIntent.summary(tomorrow, day: .tomorrow, now: now, asOf: now, signedIn: true),
+                       "Tomorrow: 2 things. The test Unit 3 for Math, and Lab 4 for Chemistry.")
+        XCTAssertEqual(WhatsDueIntent.due(items, day: .week, now: now, calendar: cal).map(\.id), ["t", "lab", "w"])
+        let week = WhatsDueIntent.due(items, day: .week, now: now, calendar: cal)
+        XCTAssertTrue(WhatsDueIntent.summary(week, day: .week, now: now, asOf: now, signedIn: true)
+            .hasPrefix("This week: 3 things. 1 for Math, 1 for Chemistry, 1 for other classes. Test: Unit 3 on "))
+        XCTAssertEqual(WhatsDueIntent.summary([], day: .today, now: now, asOf: now.addingTimeInterval(-86400), signedIn: true),
+                       "Nothing open is due today. As of \(Fmt.ago(now.addingTimeInterval(-86400), now: now)).")
+    }
+}

@@ -116,7 +116,7 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 - Due in 2 h for dropbox work not yet submitted; an optional morning summary; the night before a test not marked Studied; "Test in N days" on test rows.
 - **Done when:** each fires once at the right time in the simulator with a test item, and none fire for finished work.
 
-### R4 · Siri and Shortcuts
+### R4 · Siri and Shortcuts (built 2026-10-11)
 - App Intents in the app target: "What's due tomorrow", "Mark … done", "Open Classwork To Do".
 - **Done when:** each phrase works from Siri and the Shortcuts app.
 

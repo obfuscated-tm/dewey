@@ -40,6 +40,7 @@ struct SchoolApp: App {
                 .environment(model)
                 .modelContainer(model.container)
                 .tint(Theme.accent)
+                .onAppear { AppModel.live = model }
         }
         .onChange(of: phase) { _, p in
             if p == .active { WidgetBridge.publish(model) }
@@ -111,6 +112,7 @@ struct MainTabs: View {
                 .tabItem { Label("Schoology", systemImage: "globe") }
                 .tag(4)
         }
+        .onReceive(NotificationCenter.default.publisher(for: .openTodo)) { _ in tab = 0 }
         .onOpenURL { url in
             tab = 0
             if let id = AppLink.assignmentId(url) { model.deepLinkAssignment = id }

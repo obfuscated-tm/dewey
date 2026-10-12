@@ -73,19 +73,13 @@ final class ItemState {
     func touch() { updatedAt = Date() }
 }
 
-/// Per class: how it turns work in (learned, or set in Settings).
+/// Per class settings.
 @Model
 final class CourseState {
     @Attribute(.unique) var sectionId: String
-    /// auto | dropbox | paper | lab
-    var turnIn: String = "auto"
-    /// Learned: graded items whose dropbox said not_submitted.
-    var paperEvidence: Int = 0
     var aCutoff: Double?
 
     init(sectionId: String) { self.sectionId = sectionId }
-
-    var gradesPaper: Bool { turnIn == "paper" || (turnIn == "auto" && paperEvidence >= 1) }
 }
 
 /// Pure To Do rules, separate from SwiftData so tests can run them.

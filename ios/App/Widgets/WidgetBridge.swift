@@ -20,6 +20,13 @@ enum WidgetBridge {
         }
     }
 
+    /// Writes now: a background refresh may be suspended before a debounced write runs.
+    static func publishNow(_ m: AppModel) async {
+        pending?.cancel()
+        write(m)
+        await syncActivities(m)
+    }
+
     private static func write(_ m: AppModel) {
         let now = Date()
         let open = m.todoItems()

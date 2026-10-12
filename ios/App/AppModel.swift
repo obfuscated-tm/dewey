@@ -10,7 +10,7 @@ final class AppModel {
     enum Session: Equatable { case checking, signedOut, signedIn }
 
     var session: Session = .checking {
-        // The Lock Screen widgets say "Open Classwork to sign in" while signed out.
+        // The Lock Screen widgets say "Open Dewey to sign in" while signed out.
         didSet { if session != oldValue, session != .checking { WidgetBridge.publish(self) } }
     }
     let engine = Engine()

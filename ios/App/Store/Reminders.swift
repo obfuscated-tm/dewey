@@ -226,7 +226,7 @@ final class Reminders {
         guard notify, signedOutAlert else { return }
         let c = UNMutableNotificationContent()
         c.title = "Signed out of Schoology"
-        c.body = "Open Classwork to sign in. Until then your list and widgets won't update."
+        c.body = "Open Dewey to sign in. Until then your list and widgets won't update."
         UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "signed-out", content: c, trigger: nil))
     }
 

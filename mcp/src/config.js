@@ -1,4 +1,4 @@
-// Configuration: env vars with defaults, per docs/MCP-BRIDGE.md and the task spec.
+// Configuration: env vars with defaults, per docs/mcp/MCP-BRIDGE.md and the task spec.
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";

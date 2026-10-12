@@ -868,7 +868,7 @@ export async function openMaterialTool(ctx, { course, url, id, fetch_files = tru
 }
 
 /**
- * Fetch a public course-website page (see docs/MCP-BRIDGE.md "Course
+ * Fetch a public course-website page (see docs/mcp/MCP-BRIDGE.md "Course
  * websites"): GET only, no cookies, address-guarded, 1h cache. HTML pages
  * come back as readable text + a link list; .md/.txt as is; PDF as text.
  */

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Local, read-only MCP server exposing the user's Schoology coursework to Claude
 // Desktop. Stdio transport — stdout is the MCP channel, so all logging goes
-// to stderr (see src/log.js). See docs/MCP-BRIDGE.md for the extension
+// to stderr (see src/log.js). See docs/mcp/MCP-BRIDGE.md for the extension
 // contract and README.md for setup.
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
@@ -57,7 +57,7 @@ async function main() {
   const ctx = { bridge, cache, sites };
 
   const server = new McpServer(
-    { name: "schoology-mcp", version: "1.1.0" },
+    { name: "dewey-mcp", version: "1.1.0" },
     { instructions: INSTRUCTIONS },
   );
 

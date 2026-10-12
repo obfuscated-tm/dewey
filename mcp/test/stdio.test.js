@@ -70,7 +70,7 @@ test("real stdio server: initialize, tools/list, tools/call status + list_course
       clientInfo: { name: "smoke-test", version: "0.0.1" },
     });
     assert.ok(initResult.serverInfo);
-    assert.equal(initResult.serverInfo.name, "schoology-mcp");
+    assert.equal(initResult.serverInfo.name, "dewey-mcp");
     assert.ok(typeof initResult.instructions === "string" && initResult.instructions.length > 0);
     assert.match(initResult.instructions, /live/i);
     assert.match(initResult.instructions, /archive/i);

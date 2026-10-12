@@ -4,7 +4,7 @@ import { Bridge } from "../src/bridge.js";
 import { FakeExtension } from "./fixtures/fake-extension.js";
 
 // Use a high, unlikely-to-collide port range for tests so we never fight a
-// real schoology-mcp instance bound to 47815-47819.
+// real dewey-mcp instance bound to 47815-47819.
 function testPortRange() {
   const base = 48000 + Math.floor(Math.random() * 1000);
   return [base, base + 1, base + 2];

@@ -1,16 +1,16 @@
 # iOS app: the engine (JS ↔ Swift contract)
 
-The app does not re-implement Schoology parsing in Swift. It runs the extension's own parsers inside a hidden `WKWebView` (they need `DOMParser`, so JavaScriptCore alone won't do) and gets plain JSON back. This file is the contract between that JS and the Swift side. Build plan: [../IOS-APP.md](../IOS-APP.md).
+The app does not re-implement Schoology parsing in Swift. It runs the extension's own parsers inside a hidden `WKWebView` (they need `DOMParser`, so JavaScriptCore alone won't do) and gets plain JSON back. This file is the contract between that JS and the Swift side. Build plan: [IOS-APP.md](IOS-APP.md).
 
 ## Why this shape
 
-- The parsers in `schoology_archiver_extension/reader/parse/` are already pure: `(document | text) → plain data`, no `chrome.*`. The extension's offscreen page (`offscreen/parse.js`) already uses them this way: it receives `(kind, text, url)` and returns `{ data } | { login: true }`. **The app engine is that same idea, plus fetching.**
+- The parsers in `extension/reader/parse/` are already pure: `(document | text) → plain data`, no `chrome.*`. The extension's offscreen page (`offscreen/parse.js`) already uses them this way: it receives `(kind, text, url)` and returns `{ data } | { login: true }`. **The app engine is that same idea, plus fetching.**
 - One copy of the parsing logic: a fix to a selector fixes the extension, the MCP and the app together. Never copy a selector into Swift.
 
 ## Pieces
 
 ```
-schoology_archiver_extension/engine/engine.js   entry point (new, milestone 1). Imports the pure modules below.
+extension/engine/engine.js   entry point (new, milestone 1). Imports the pure modules below.
             │  bundled to one classic script (esbuild --bundle --format=iife --global-name=SchoologyEngine)
             ▼
 ios/App/Resources/engine.js                    GENERATED, never hand-edited, rebuilt by ios/scripts/build-engine.sh
@@ -123,4 +123,4 @@ Same server, token and ops as the extension (`outputs/neoplan/api.js`). Base `ht
 
 ## Keeping the extension working
 
-The engine entry must not change any extension behaviour. Milestone 1 is done when `node --test test/*.test.js` (from `schoology_archiver_extension/`) passes, `war.test.js` still passes (every module an overlay imports is listed in `manifest.json` `web_accessible_resources`), and the bundle builds.
+The engine entry must not change any extension behaviour. Milestone 1 is done when `node --test test/*.test.js` (from `extension/`) passes, `war.test.js` still passes (every module an overlay imports is listed in `manifest.json` `web_accessible_resources`), and the bundle builds.

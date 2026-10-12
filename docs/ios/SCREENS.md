@@ -1,6 +1,6 @@
 # iOS app: screens
 
-What every screen shows, where its data comes from, and what each tap does. Build plan: [../IOS-APP.md](../IOS-APP.md). Data calls are the engine ops in [ENGINE.md](ENGINE.md).
+What every screen shows, where its data comes from, and what each tap does. Build plan: [IOS-APP.md](IOS-APP.md). Data calls are the engine ops in [ENGINE.md](ENGINE.md).
 
 ## Mockups
 
@@ -126,4 +126,4 @@ First load (skeleton rows) · Offline: last saved copy + "as of N min ago" · Si
 
 ## Not designed (decide before building them)
 
-Inbox tab (messages + notifications, roadmap R2), dark mode and Dynamic Type passes (R5), VoiceOver actions for the swipe buttons, iPad. App name (Classwork) and icon are done. Dropped: calendar, a class Updates feed. Saving a whole class offline is out of v1.
+Inbox tab (messages + notifications, roadmap R2), dark mode and Dynamic Type passes (R5), VoiceOver actions for the swipe buttons, iPad. App name (Dewey) and icon are done. Dropped: calendar, a class Updates feed. Saving a whole class offline is out of v1.

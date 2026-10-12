@@ -233,7 +233,7 @@
     },
     "n4a": {
       "maxH": 460,
-      "text": "4a FIRST LAUNCH\n\n1 Sign in (required): fuhsd.schoology.com in a web view → Google SSO. Switches to the Safari user agent by itself if Google refuses (docs/IOS-APP.md).\n2 neo-plan (optional): paste the token or scan a QR code from the extension. Kept in Keychain.\n3 Reminders (optional): asks for notification permission.\n\nAPP NAME: not decided (can't be 'Schoology').",
+      "text": "4a FIRST LAUNCH\n\n1 Sign in (required): fuhsd.schoology.com in a web view → Google SSO. Switches to the Safari user agent by itself if Google refuses (docs/ios/IOS-APP.md).\n2 neo-plan (optional): paste the token or scan a QR code from the extension. Kept in Keychain.\n3 Reminders (optional): asks for notification permission.\n\nAPP NAME: not decided (can't be 'Schoology').",
       "w": 390,
       "x": 0,
       "y": 6044

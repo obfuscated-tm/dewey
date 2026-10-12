@@ -1,10 +1,10 @@
-# 📚 Schoology Toolkit
+<h1><img src="brand/logo/dewey-horizontal.svg" alt="Dewey" height="64"></h1>
 
 **Save your Schoology classes before they disappear, see what's due and where your grade stands at a glance, and study with Claude.**
 
 A free Chrome extension (plus an optional Claude add-on) for students on any school's Schoology.
 
-![Extension 1.10.0](https://img.shields.io/badge/extension-1.10.0-2563eb) ![Claude add-on 1.1.0](https://img.shields.io/badge/Claude%20add--on-1.1.0-d97706) ![License: MIT](https://img.shields.io/badge/license-MIT-16a34a)
+![Extension 1.10.0](https://img.shields.io/badge/extension-1.10.0-1D9E75) ![Claude add-on 1.1.0](https://img.shields.io/badge/Claude%20add--on-1.1.0-d97706) ![License: MIT](https://img.shields.io/badge/license-MIT-16a34a)
 
 ![The Archive card: pick a course and click Archive this course](docs/images/archive.png)
 
@@ -84,8 +84,8 @@ On this page, click the green **Code** button → **Download ZIP**, then double-
 1. Type `chrome://extensions` into Chrome's address bar and press Enter.
 2. Turn on **Developer mode** (the switch in the top right).
 3. Click **Load unpacked**.
-4. Open the folder you downloaded and pick the **`schoology_archiver_extension`** folder inside it.
-5. Click the 🧩 puzzle piece in Chrome's toolbar and **pin** "Schoology Course Archiver".
+4. Open the folder you downloaded and pick the **`extension`** folder inside it.
+5. Click the 🧩 puzzle piece in Chrome's toolbar and **pin** "Dewey for Schoology".
 
 > 💡 Chrome may show a "developer mode extensions" notice now and then. That's normal for extensions you install from a folder. Just close it.
 
@@ -254,7 +254,7 @@ flowchart LR
 
 | Part | Folder | Version |
 |---|---|---|
-| Chrome extension (Manifest V3, plain ES modules, no build step) | [`schoology_archiver_extension/`](schoology_archiver_extension/) | 1.11.0 |
+| Chrome extension (Manifest V3, plain ES modules, no build step) | [`extension/`](extension/) | 1.11.0 |
 | MCP server (Node, stdio) | [`mcp/`](mcp/) | 1.1.0 |
 
 - The **extension** is the only part that talks to Schoology. It reads normal pages with your login, because many districts turn off Schoology's API for students.
@@ -337,7 +337,7 @@ Some classes keep lessons on a public website outside Schoology. List them in [`
 <details>
 <summary><b id="change-the-grading-scale">Change the grading scale</b></summary>
 
-The Grades page assumes A = 93%, A− = 90%, B+ = 87%, B = 83%, and so on down to D = 60%. If your school's scale is different, edit `SCALE` and `A_CUTOFF` at the top of [`schoology_archiver_extension/overlays/grademath.js`](schoology_archiver_extension/overlays/grademath.js), then click ↻ on the extension in `chrome://extensions`.
+The Grades page assumes A = 93%, A− = 90%, B+ = 87%, B = 83%, and so on down to D = 60%. If your school's scale is different, edit `SCALE` and `A_CUTOFF` at the top of [`extension/overlays/grademath.js`](extension/overlays/grademath.js), then click ↻ on the extension in `chrome://extensions`.
 
 If a category shows no weight, type it next to the category name on the Grades page. It's saved per course.
 
@@ -371,10 +371,11 @@ Without a token, the neo-plan parts of the overlays (type tags, **+ Add to neo-p
 <summary><b>Project layout</b></summary>
 
 ```text
-schoology_downloader/
-├── schoology_archiver_extension/
+.
+├── extension/               the Chrome extension (Dewey for Schoology)
 │   ├── manifest.json        version lives here
 │   ├── background.js        run lock, kill switch, sync schedule, message routing
+│   ├── engine/              the iOS app's engine: the extension's own parsers, bundled
 │   ├── reader/              everything that reads Schoology (client.js + parse/)
 │   ├── outputs/archive/     the archive run, saving, change tracking, Google exports
 │   ├── outputs/neoplan/     every call to neo-plan
@@ -384,15 +385,23 @@ schoology_downloader/
 │   ├── overlays/            what's drawn on Schoology pages
 │   ├── panel/               Settings page
 │   └── test/                tests + stand-in pages
-├── mcp/
+├── ios/                     the iPhone app (SwiftUI; XcodeGen spec in project.yml)
+├── mcp/                     the Claude add-on (local MCP server)
 │   ├── server.js
 │   ├── sites.json           course websites
 │   ├── src/                 tools, bridge, cache, archive reader, PDF text, network guard
 │   └── test/
-└── docs/                    design docs and README images
+├── brand/                   logo, icons, colours (placeholders for now)
+├── docs/
+│   ├── extension/           overlay design and grade math
+│   ├── ios/                 the iOS plan, engine contract, findings, screens, mockups
+│   ├── mcp/                 the extension-to-MCP bridge contract
+│   ├── history/             finished plans
+│   └── images/              README screenshots
+└── package.json             `npm test` runs the extension and MCP tests
 ```
 
-The extension's own [README](schoology_archiver_extension/README.md) has a file-by-file map.
+The extension's own [README](extension/README.md) has a file-by-file map.
 
 </details>
 
@@ -400,19 +409,15 @@ The extension's own [README](schoology_archiver_extension/README.md) has a file-
 <summary><b>Tests and previews</b></summary>
 
 ```bash
-cd schoology_archiver_extension && node --test
+npm test
 ```
 
-```bash
-cd mcp && npm test
-```
-
-At extension 1.10.0 / MCP 1.1.0 there are 170 + 59 tests, all passing.
+That runs both suites (`npm run test:extension`, `npm run test:mcp`). At extension 1.11.0 / MCP 1.1.0 there are 209 + 59 tests, all passing.
 
 The `test/*.html` pages are stand-ins for Schoology pages, so you can look at the overlays without logging in:
 
 ```bash
-python3 -m http.server 8765 --directory schoology_archiver_extension
+python3 -m http.server 8765 --directory extension
 ```
 
 Then open <http://localhost:8765/test/grades-page.html> (or `materials-page`, `home-page`, `assignment-page`, `archive-card`). The README screenshots come from these pages.
@@ -432,10 +437,10 @@ The extension and the MCP server each have their own [semantic version](https://
 
 | Component | Version lives in | Tag |
 |---|---|---|
-| Extension | `schoology_archiver_extension/manifest.json` | `ext-v1.11.0` |
+| Extension | `extension/manifest.json` | `ext-v1.11.0` |
 | MCP server | `mcp/package.json` | `mcp-v1.1.0` |
 
-If a change touches the bridge contract ([`docs/MCP-BRIDGE.md`](docs/MCP-BRIDGE.md)), bump both.
+If a change touches the bridge contract ([`docs/mcp/MCP-BRIDGE.md`](docs/mcp/MCP-BRIDGE.md)), bump both.
 
 **To release:** bump the version, add a [`CHANGELOG.md`](CHANGELOG.md) entry, run both test suites, commit, then tag and push:
 
@@ -454,11 +459,11 @@ git push origin main --tags
 
 | File | What's in it |
 |---|---|
-| [`schoology_archiver_extension/README.md`](schoology_archiver_extension/README.md) | Full extension reference and code map |
+| [`extension/README.md`](extension/README.md) | Full extension reference and code map |
 | [`mcp/README.md`](mcp/README.md) | Full MCP server reference |
-| [`docs/MCP-BRIDGE.md`](docs/MCP-BRIDGE.md) | The extension↔MCP WebSocket contract |
-| [`docs/OVERLAY-UI.md`](docs/OVERLAY-UI.md) | Overlay design and grade math |
-| [`EXTENSION-STEPS.md`](EXTENSION-STEPS.md) | The original build plan (history) |
+| [`docs/mcp/MCP-BRIDGE.md`](docs/mcp/MCP-BRIDGE.md) | The extension↔MCP WebSocket contract |
+| [`docs/extension/OVERLAY-UI.md`](docs/extension/OVERLAY-UI.md) | Overlay design and grade math |
+| [`docs/history/EXTENSION-STEPS.md`](docs/history/EXTENSION-STEPS.md) | The original build plan (history) |
 | [`CHANGELOG.md`](CHANGELOG.md) | What changed in each version |
 
 </details>

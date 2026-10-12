@@ -14,7 +14,7 @@ struct SignInView: View {
                 Image(systemName: "checklist")
                     .font(Theme.font(44, .semibold))
                     .foregroundStyle(Theme.accent)
-                Text("Classwork")
+                Text("Dewey")
                     .font(Theme.font(34, .bold))
                 Text("Your Schoology To Do, grades and materials, made for your phone. Sign in with your school Google account, the same way you do on Schoology.")
                     .font(Theme.font(16))

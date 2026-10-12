@@ -1,0 +1,10 @@
+{
+  "name": "dewey",
+  "private": true,
+  "description": "Dewey: Chrome extension, iOS app and Claude add-on for students on Schoology. Run all tests with `npm test`.",
+  "scripts": {
+    "test": "npm run test:extension && npm run test:mcp",
+    "test:extension": "cd extension && node --test test/*.test.js",
+    "test:mcp": "npm --prefix mcp test"
+  }
+}

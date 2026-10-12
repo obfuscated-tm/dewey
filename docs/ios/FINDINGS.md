@@ -2,7 +2,7 @@
 
 What was tested on the real FUHSD Schoology, and what it means for the app. Everything here was checked live (2026-10-07 unless noted). Treat it as fact until a test says otherwise; when you find something that contradicts it, fix this file in the same change.
 
-Start at [../IOS-APP.md](../IOS-APP.md) for the build plan.
+Start at [IOS-APP.md](IOS-APP.md) for the build plan.
 
 ## Constraints
 
@@ -19,7 +19,7 @@ One `WKWebView` with the persistent `WKWebsiteDataStore.default()` loaded `https
 
 - **Google sign-in completed in a plain `WKWebView` with the default user agent**, with cookies fully cleared first. No `disallowed_useragent` block. It also works with a Mobile Safari user agent.
 - After login, `fetch('/home', {credentials: 'include'})` run inside the page returned the signed-in home page. Same-origin fetches from a web view on the Schoology origin carry the session.
-- The session lives in `WKWebsiteDataStore.default()`, **but Schoology's login cookies are session-only** (no expiry; checked 2026-10-10: after a quit and relaunch the app's `Library/Cookies` was empty and the engine got the login page). WebKit drops session cookies when the process ends. The app gives the `*.schoology.com` session cookies a 30-day expiry after sign-in, on each launch and on going to the background (`WebConfig.keepSession`), so they are written to the app's own cookie file. Schoology still decides when the session really ends: in normal use (browser or app) it signs you out about once a day (Owen, 2026-10-11), and the longer cookie expiry doesn't change that. So the app sends one "Signed out of Schoology" notification (Settings switch), the widgets show "Open Classwork to sign in", and background refreshes stop until the next sign-in.
+- The session lives in `WKWebsiteDataStore.default()`, **but Schoology's login cookies are session-only** (no expiry; checked 2026-10-10: after a quit and relaunch the app's `Library/Cookies` was empty and the engine got the login page). WebKit drops session cookies when the process ends. The app gives the `*.schoology.com` session cookies a 30-day expiry after sign-in, on each launch and on going to the background (`WebConfig.keepSession`), so they are written to the app's own cookie file. Schoology still decides when the session really ends: in normal use (browser or app) it signs you out about once a day (Owen, 2026-10-11), and the longer cookie expiry doesn't change that. So the app sends one "Signed out of Schoology" notification (Settings switch), the widgets show "Open Dewey to sign in", and background refreshes stop until the next sign-in.
 - Google SSO may call `window.open`: handle `WKUIDelegate.webView(_:createWebViewWith:for:windowFeatures:)` by loading the request in the same view and returning nil.
 
 Login design (decided):
@@ -59,7 +59,7 @@ Rules that follow:
 - `parseAssignment` flags these as `isExternalTool`; the MCP returns `type: 'external_tool'`. Verified on the live pages: Quick Write and Haitian packet → true; Annotations, Physics HW 10/2, AP CS Lab 8.2, Pre-Calc HW #18 → false.
 - **Schoology never says whether you turned one in.** That lives inside Google's cross-site frame (it even drew at height 0 in desktop Chrome). The app shows "Open in Schoology ↗" + manual mark and never infers "submitted".
 - In the app's sheet (2026-10-11, Haitian Revolution Document Packet) the Google frame shows Google's "Allow Google access to your necessary cookies". Tapping **Allow cookies** worked once (Owen). Later opens showed "Can't access your Google Account … allowing cookie access to proceed" with no prompt, so WebKit doesn't keep the storage-access grant.
-- Fixes in the app (work on Owen's phone, 2026-10-11): (1) `NSCrossWebsiteTrackingUsageDescription` in Info.plist, which adds an **Allow Cross-Website Tracking** switch under iOS Settings → Classwork. Turning it on lifts WebKit's third-party cookie block for the app's web views. (2) An **Open Google full screen** button in the sheet for Google Assignments. It loads the page's biggest frame as the page itself, so Google is first-party and uses its own cookies. Checked in the simulator 2026-10-11: it loads `assignments.google.com` full screen with Owen's file, Add files / Create and Google's Submit (nothing pressed).
+- Fixes in the app (work on Owen's phone, 2026-10-11): (1) `NSCrossWebsiteTrackingUsageDescription` in Info.plist, which adds an **Allow Cross-Website Tracking** switch under iOS Settings → Dewey. Turning it on lifts WebKit's third-party cookie block for the app's web views. (2) An **Open Google full screen** button in the sheet for Google Assignments. It loads the page's biggest frame as the page itself, so Google is first-party and uses its own cookies. Checked in the simulator 2026-10-11: it loads `assignments.google.com` full screen with Owen's file, Add files / Create and Google's Submit (nothing pressed).
 
 ## Grades
 

@@ -1,4 +1,4 @@
-SchoolApp.xcodeproj/
+*.xcodeproj/
 node_modules/
 build/
 DerivedData/

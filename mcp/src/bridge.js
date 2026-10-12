@@ -1,4 +1,4 @@
-// The WebSocket bridge to the Chrome extension. See docs/MCP-BRIDGE.md.
+// The WebSocket bridge to the Chrome extension. See docs/mcp/MCP-BRIDGE.md.
 import { WebSocketServer } from "ws";
 import { randomUUID } from "node:crypto";
 import { BRIDGE_PORT_RANGE, EXT_ID, REQUEST_TIMEOUT_MS } from "./config.js";

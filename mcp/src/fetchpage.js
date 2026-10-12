@@ -1,5 +1,5 @@
 // fetch_page: public http(s) GET of course-website pages the extension has
-// no reach into (see "Course websites" in docs/MCP-BRIDGE.md). No cookies,
+// no reach into (see "Course websites" in docs/mcp/MCP-BRIDGE.md). No cookies,
 // a 15s timeout, a 15MB cap, at most 5 redirects (each re-checked against
 // the address guard), and a 1-hour disk cache shared with the `file` op's
 // cache dir.
@@ -22,7 +22,7 @@ async function fetchWithTimeout(fetchImpl, url) {
       method: "GET",
       redirect: "manual",
       signal: controller.signal,
-      headers: { "user-agent": "schoology-mcp/1.0 (+local, read-only)" },
+      headers: { "user-agent": "dewey-mcp/1.0 (+local, read-only)" },
     });
   } finally {
     clearTimeout(timer);

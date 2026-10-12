@@ -9,7 +9,7 @@
         "http.server",
         "8765",
         "--directory",
-        "schoology_archiver_extension"
+        "extension"
       ],
       "port": 8765
     }

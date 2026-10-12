@@ -1,0 +1,134 @@
+{
+  "manifest_version": 3,
+  "name": "Dewey for Schoology",
+  "version": "1.12.0",
+  "minimum_chrome_version": "116",
+  "description": "See what's due, know where your grade stands, and save your Schoology classes before they disappear.",
+  "action": {
+    "default_title": "Dewey",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "downloads",
+    "downloads.ui",
+    "storage",
+    "scripting",
+    "alarms",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "https://*.schoology.com/*",
+    "https://docs.google.com/*",
+    "https://drive.google.com/*",
+    "https://*.googleusercontent.com/*",
+    "https://neo-plan.vercel.app/*",
+    "http://localhost:3000/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.schoology.com/*"
+      ],
+      "exclude_matches": [
+        "https://*.schoology.com/assignment/*/assessment",
+        "https://*.schoology.com/assignment/*/assessment?*",
+        "https://*.schoology.com/assignment/*/assessment/*",
+        "https://*.schoology.com/assignment/*/dropbox*"
+      ],
+      "js": [
+        "overlays/theme-early.js"
+      ],
+      "run_at": "document_start"
+    },
+    {
+      "matches": [
+        "https://*.schoology.com/*"
+      ],
+      "exclude_matches": [
+        "https://*.schoology.com/assignment/*/assessment",
+        "https://*.schoology.com/assignment/*/assessment?*",
+        "https://*.schoology.com/assignment/*/assessment/*",
+        "https://*.schoology.com/assignment/*/dropbox*"
+      ],
+      "js": [
+        "overlays/boot.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "overlays/archive.js",
+        "overlays/asgstate.js",
+        "overlays/assignment.js",
+        "overlays/course.js",
+        "overlays/coursedata.js",
+        "overlays/coursetodo.js",
+        "overlays/grademath.js",
+        "overlays/grades.js",
+        "overlays/home.js",
+        "overlays/launcher.js",
+        "overlays/marker.js",
+        "overlays/marks.js",
+        "overlays/materials.js",
+        "overlays/matstate.js",
+        "overlays/quizpage.js",
+        "overlays/switch.js",
+        "overlays/theme.js",
+        "overlays/todo.js",
+        "overlays/todologic.js",
+        "overlays/todorows.js",
+        "overlays/ui.js",
+        "overlays/fonts/*.woff2",
+        "outputs/archive/state.js",
+        "reader/md.js",
+        "reader/ratelimit.js",
+        "reader/parse/grades.js",
+        "reader/parse/rubric.js",
+        "reader/parse/materials.js",
+        "reader/parse/quiz.js",
+        "reader/parse/sync.js",
+        "util.js",
+        "panel/today-format.js",
+        "panel/settings.html",
+        "panel/settings.js",
+        "panel/settings.css",
+        "panel/sync-settings.js",
+        "panel/np.js",
+        "panel/fonts/*.woff2"
+      ],
+      "matches": [
+        "https://*.schoology.com/*"
+      ]
+    }
+  ],
+  "commands": {
+    "kill-archiver": {
+      "suggested_key": {
+        "default": "Alt+Shift+K",
+        "mac": "Alt+Shift+K"
+      },
+      "description": "Stop archiving immediately"
+    }
+  },
+  "options_ui": {
+    "page": "panel/settings.html",
+    "open_in_tab": true
+  }
+}

@@ -1,4 +1,4 @@
-# schoology-mcp
+# Dewey for Claude (`dewey-mcp`)
 
 A local, read-only [MCP](https://modelcontextprotocol.io) server that lets
 Claude Desktop read your Schoology coursework. It runs entirely on your
@@ -8,7 +8,7 @@ itself does with it.
 It answers from three sources, best first, and every tool result says which
 one it used and how old the data is:
 
-1. **live** — the `schoology_archiver_extension` Chrome extension fetches
+1. **live** — the Dewey Chrome extension (`extension/`) fetches
    Schoology right now, through your logged-in Chrome, over a local
    WebSocket bridge. Needs Chrome open and the extension connected.
 2. **snapshot** — the last thing the extension pushed (its background sync),
@@ -16,7 +16,7 @@ one it used and how old the data is:
 3. **archive** — the `Schoology Archive/` folder the Archiver writes to disk.
 
 The full extension↔MCP contract (message types, ops, snapshot shape) is
-documented in `../docs/MCP-BRIDGE.md`.
+documented in `../docs/mcp/MCP-BRIDGE.md`.
 
 ## Install
 
@@ -35,8 +35,8 @@ It logs to stderr only (stdout is the MCP channel) and will print which port
 it bound for the extension bridge, e.g.:
 
 ```
-[schoology-mcp] bridge: listening on ws://127.0.0.1:47815
-[schoology-mcp] MCP server connected over stdio
+[dewey-mcp] bridge: listening on ws://127.0.0.1:47815
+[dewey-mcp] MCP server connected over stdio
 ```
 
 If none of ports 47815–47819 are free, it logs that and runs in

@@ -1,7 +1,7 @@
-# XcodeGen spec. Run `xcodegen generate` here; SchoolApp.xcodeproj is generated
+# XcodeGen spec. Run `xcodegen generate` here; Dewey.xcodeproj is generated
 # and gitignored. The bundle ID is fixed forever (free Apple account: 10 new
-# IDs a week, docs/IOS-APP.md rule 5): never change PRODUCT_BUNDLE_IDENTIFIER.
-name: SchoolApp
+# IDs a week, docs/ios/IOS-APP.md rule 5): never change PRODUCT_BUNDLE_IDENTIFIER.
+name: Dewey
 options:
   bundleIdPrefix: com.owenleung
   deploymentTarget:
@@ -13,7 +13,7 @@ settings:
     MARKETING_VERSION: "0.1"
     CURRENT_PROJECT_VERSION: "1"
 targets:
-  SchoolApp:
+  Dewey:
     type: application
     platform: iOS
     sources:
@@ -29,9 +29,9 @@ targets:
         optional: true
       - path: Shared
     dependencies:
-      - target: ClassworkWidgets
+      - target: DeweyWidgets
     entitlements:
-      path: App/SchoolApp.entitlements
+      path: App/Dewey.entitlements
       properties:
         com.apple.security.application-groups:
           - group.com.owenleung.classwork
@@ -49,8 +49,8 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.owenleung.classwork
-        PRODUCT_NAME: SchoolApp
-        INFOPLIST_KEY_CFBundleDisplayName: Classwork
+        PRODUCT_NAME: Dewey
+        INFOPLIST_KEY_CFBundleDisplayName: Dewey
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
@@ -67,7 +67,7 @@ targets:
         DEVELOPMENT_TEAM: ZQXMDTS7ZC
   # Widgets + Live Activity. Second bundle ID (an extension's must sit under
   # the app's); like the app's, never change it.
-  ClassworkWidgets:
+  DeweyWidgets:
     type: app-extension
     platform: iOS
     sources:
@@ -78,63 +78,63 @@ targets:
     info:
       path: Widgets/Info.plist
       properties:
-        CFBundleDisplayName: Classwork
+        CFBundleDisplayName: Dewey
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     entitlements:
-      path: Widgets/ClassworkWidgets.entitlements
+      path: Widgets/DeweyWidgets.entitlements
       properties:
         com.apple.security.application-groups:
           - group.com.owenleung.classwork
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.owenleung.classwork.widgets
-        PRODUCT_NAME: ClassworkWidgets
+        PRODUCT_NAME: DeweyWidgets
         TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ZQXMDTS7ZC
         SKIP_INSTALL: YES
-  SchoolAppTests:
+  DeweyTests:
     type: bundle.unit-test
     platform: iOS
     sources:
       - path: Tests
     dependencies:
-      - target: SchoolApp
+      - target: Dewey
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
         BUNDLE_LOADER: $(TEST_HOST)
-        TEST_HOST: $(BUILT_PRODUCTS_DIR)/SchoolApp.app/SchoolApp
-  SchoolAppUITests:
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Dewey.app/Dewey
+  DeweyUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
       - path: UITests
     dependencies:
-      - target: SchoolApp
+      - target: Dewey
     settings:
       base:
         GENERATE_INFOPLIST_FILE: YES
-        TEST_TARGET_NAME: SchoolApp
+        TEST_TARGET_NAME: Dewey
         CODE_SIGN_STYLE: Automatic
         DEVELOPMENT_TEAM: ZQXMDTS7ZC
 schemes:
   A11yAudit:
     build:
       targets:
-        SchoolApp: all
-        SchoolAppUITests: [test]
+        Dewey: all
+        DeweyUITests: [test]
     test:
       targets:
-        - SchoolAppUITests
-  SchoolApp:
+        - DeweyUITests
+  Dewey:
     build:
       targets:
-        SchoolApp: all
-        SchoolAppTests: [test]
+        Dewey: all
+        DeweyTests: [test]
     test:
       targets:
-        - SchoolAppTests
+        - DeweyTests

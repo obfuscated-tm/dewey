@@ -92,7 +92,7 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 ## Roadmap after M8 (agreed with Owen 2026-10-11; in order)
 
 ### R0 · Device checks (Owen, on the phone)
-- Sign in; add the Lock Screen and Home Screen widgets; let a background refresh run (S5); try a Docs link (S3).
+- Sign in; add the Lock Screen and Home Screen widgets; let a background refresh run (S5). Docs links (S3) and Google Assignments: work (2026-10-11).
 - Google Assignment: try **Open Google full screen** with iOS Settings → Classwork → Allow Cross-Website Tracking off, then on.
 - **Done when:** each result is written in FINDINGS.md.
 
@@ -135,6 +135,6 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 | Parser gaps found in research | done | rubric ids + `rubric.js`, Google Assignment detection (verified on live pages 2026-10-10) |
 | M1 Engine bundle | done | engine.js + guard.js + todologic.js, `test/engine.test.js`; extension tests 200/200; bundle 68 KB, no `chrome.` refs. Live check 2026-10-11 on the Developer screen: `courses()` returned the class list; todo/assignment/gradebook/rubric run live behind their screens. |
 | M2 Xcode project + login | done | `ios/` builds for the simulator (Xcode 27, iOS 27 sim); bundle ID `com.owenleung.classwork`; launches to Sign in. Checked 2026-10-11: still signed in after a relaunch; an expired session goes to Sign in. Build with default DerivedData: a build folder under ~/Documents fails codesign ("resource fork … detritus"). |
-| M3 Spikes S1, S3 | S1 done, S3 needs the phone | S1 (2026-10-11): upload dialog opens with Photos / Camera / Files; Google frame needs cookies (see R1). S2 rubric source and S4 Google Assignment markup are done |
+| M3 Spikes S1, S3 | done | S1 (2026-10-11): upload dialog opens with Photos / Camera / Files; Google Assignments work on the phone with the R1 fixes. S3 (2026-10-11): Docs links work on the phone. S2 rubric source and S4 Google Assignment markup are done |
 | M4–M8 | built, tested live in the simulator | Checked live 2026-10-10: To Do, Assignment, PDF attachment viewer, Submit sheet (opened, never pressed). Fixed: session cookie lost on relaunch, Submit pill truncating due dates. Earlier:  To Do, Assignment + sheet, Grades (2a–2c, what-if, plan a test), Classes/Materials/file viewer/Schoology tab, Settings (neo-plan, reminders, Developer; per-class turn-in removed in R1). 10 XCTest cases pass (decoding, TodoLogic, routes, widget data). Owen's calls: one-tap status like the extension (circle = Done, pill = Turn in / Submit ↗ / Undo; long-press for all three), grade categories start collapsed (Expand all; remembered per class), Appearance setting (System / Light / Dark), Schoology always in its desktop layout. |
 | Widgets + Live Activity | built, needs a look on the phone | `ClassworkWidgets` extension: Up next (small/medium/large, Lock Screen rectangular/inline), Due count (Lock Screen circle), and a due-time countdown Live Activity with a Dynamic Island, started from the Assignment screen (work due within 12 h). Data: `Shared/WidgetData.swift` through the App Group; `App/Widgets/WidgetBridge.swift` writes it after each refresh or mark. Links: `classwork://assignment/{id}`. |

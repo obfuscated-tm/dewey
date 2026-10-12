@@ -59,7 +59,7 @@ Rules that follow:
 - `parseAssignment` flags these as `isExternalTool`; the MCP returns `type: 'external_tool'`. Verified on the live pages: Quick Write and Haitian packet → true; Annotations, Physics HW 10/2, AP CS Lab 8.2, Pre-Calc HW #18 → false.
 - **Schoology never says whether you turned one in.** That lives inside Google's cross-site frame (it even drew at height 0 in desktop Chrome). The app shows "Open in Schoology ↗" + manual mark and never infers "submitted".
 - In the app's sheet (2026-10-11, Haitian Revolution Document Packet) the Google frame shows Google's "Allow Google access to your necessary cookies". Tapping **Allow cookies** worked once (Owen). Later opens showed "Can't access your Google Account … allowing cookie access to proceed" with no prompt, so WebKit doesn't keep the storage-access grant.
-- Fixes in the app (untested on a device yet): (1) `NSCrossWebsiteTrackingUsageDescription` in Info.plist, which adds an **Allow Cross-Website Tracking** switch under iOS Settings → Classwork. Turning it on lifts WebKit's third-party cookie block for the app's web views. (2) An **Open Google full screen** button in the sheet for Google Assignments. It loads the page's biggest frame as the page itself, so Google is first-party and uses its own cookies. Checked in the simulator 2026-10-11: it loads `assignments.google.com` full screen with Owen's file, Add files / Create and Google's Submit (nothing pressed).
+- Fixes in the app (work on Owen's phone, 2026-10-11): (1) `NSCrossWebsiteTrackingUsageDescription` in Info.plist, which adds an **Allow Cross-Website Tracking** switch under iOS Settings → Classwork. Turning it on lifts WebKit's third-party cookie block for the app's web views. (2) An **Open Google full screen** button in the sheet for Google Assignments. It loads the page's biggest frame as the page itself, so Google is first-party and uses its own cookies. Checked in the simulator 2026-10-11: it loads `assignments.google.com` full screen with Owen's file, Add files / Create and Google's Submit (nothing pressed).
 
 ## Grades
 
@@ -85,7 +85,7 @@ Checked on Pre-Calc HW #20's real dialog in the app's Schoology sheet, without a
 
 Testing rule: never press Submit, Resubmit or Unsubmit, never pick a file in the dialog (Schoology may upload on pick), and close with the sheet's **Done**, not the dialog's Cancel (it sits next to Submit).
 
-## Google Docs (spike S3, not done)
+## Google Docs (spike S3, done on the phone 2026-10-11: works)
 
 Plan: `UIApplication.shared.open(url, options: [.universalLinksOnly: true])` so the Docs app takes a docs.google.com link if installed; if it returns false, open the in-app web view, which is already signed in to Google from the school login. Confirm the Docs app opens it with the school account.
 

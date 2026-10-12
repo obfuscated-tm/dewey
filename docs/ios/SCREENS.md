@@ -55,7 +55,6 @@ Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red bad
 - **Data:** `assignment({id})` + `status({id})` + gradebook row (category, score, comment).
 - **Submission card, exactly one of:**
   - Dropbox the class uses → "Submitted on Schoology" (green) / "Not submitted on Schoology" (red) + "Checked N min ago". Main action: **Submit on Schoology ↗**.
-  - Dropbox, but the class grades paper → grey "Not used by this class".
   - No dropbox → "Turned in outside Schoology"; if the instructions link an outside submit page (AP CS lab site), that link is the main action ↗.
   - Quiz (`type: 'quiz'` or `/assessments/`) → "Take on Schoology ↗", opened only on the student's tap.
   - Google Assignment (`type: 'external_tool'`) → "Open in Schoology ↗"; never shows submitted.
@@ -127,4 +126,4 @@ First load (skeleton rows) · Offline: last saved copy + "as of N min ago" · Si
 
 ## Not designed (decide before building them)
 
-Updates feed screen, messages, calendar, dark mode, Dynamic Type sizes, VoiceOver actions for the swipe buttons, iPad, app name and icon (it can't be called "Schoology"). Saving a whole class offline is out of v1.
+Inbox tab (messages + notifications, roadmap R2), dark mode and Dynamic Type passes (R5), VoiceOver actions for the swipe buttons, iPad. App name (Classwork) and icon are done. Dropped: calendar, a class Updates feed. Saving a whole class offline is out of v1.

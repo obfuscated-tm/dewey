@@ -19,7 +19,7 @@ One `WKWebView` with the persistent `WKWebsiteDataStore.default()` loaded `https
 
 - **Google sign-in completed in a plain `WKWebView` with the default user agent**, with cookies fully cleared first. No `disallowed_useragent` block. It also works with a Mobile Safari user agent.
 - After login, `fetch('/home', {credentials: 'include'})` run inside the page returned the signed-in home page. Same-origin fetches from a web view on the Schoology origin carry the session.
-- The session lives in `WKWebsiteDataStore.default()`, **but Schoology's login cookies are session-only** (no expiry; checked 2026-10-10: after a quit and relaunch the app's `Library/Cookies` was empty and the engine got the login page). WebKit drops session cookies when the process ends. The app gives the `*.schoology.com` session cookies a 30-day expiry after sign-in, on each launch and on going to the background (`WebConfig.keepSession`), so they are written to the app's own cookie file. Schoology still decides when the session really ends.
+- The session lives in `WKWebsiteDataStore.default()`, **but Schoology's login cookies are session-only** (no expiry; checked 2026-10-10: after a quit and relaunch the app's `Library/Cookies` was empty and the engine got the login page). WebKit drops session cookies when the process ends. The app gives the `*.schoology.com` session cookies a 30-day expiry after sign-in, on each launch and on going to the background (`WebConfig.keepSession`), so they are written to the app's own cookie file. Schoology still decides when the session really ends: in normal use (browser or app) it signs you out about once a day (Owen, 2026-10-11), and the longer cookie expiry doesn't change that. So the app sends one "Signed out of Schoology" notification (Settings switch), the widgets show "Open Classwork to sign in", and background refreshes stop until the next sign-in.
 - Google SSO may call `window.open`: handle `WKUIDelegate.webView(_:createWebViewWith:for:windowFeatures:)` by loading the request in the same view and returning nil.
 
 Login design (decided):
@@ -41,7 +41,7 @@ Schoology has no phone layout: no viewport meta tag, a fixed 1200 px page (`#sid
 
 | Class | How work is turned in | What the app shows |
 |---|---|---|
-| AP Physics 1 | "Scan PDF" homework through the Schoology **dropbox** (`submission.state: submitted`) | Submit ↗ and real Submitted status |
+| AP Physics 1 | "Scan PDF" homework through the Schoology **dropbox** (`submission.state: submitted`), but not always: "HW 10/9 APCR FRQ" (2026-10) has no dropbox ("Do work on paper and bring to class") | Submit ↗ and real Submitted status when there is a dropbox; otherwise Mark as turned in |
 | AP CS A | **No dropboxes.** Labs go to apcs.tinocs.com (linked from the instructions) | "Turn in on lab site ↗" + Mark as turned in |
 | Pre-Calc H | Has dropboxes but **grades paper** (HW #13 graded 5/5 with the dropbox `not_submitted`) | Grey "Not used by this class" card + Mark as turned in |
 | World History | **Google Assignments** (Quick Writes, Haitian Revolution Document Packet) and **Schoology rubrics** | "Open in Schoology ↗" + Mark as turned in; rubric criteria on Graded work |
@@ -58,7 +58,8 @@ Rules that follow:
 - The served page has `lti-app-grading` on `<body>` and `<iframe id="external-tool-iframe" src="/external_tool/{id}/launch/iframe">`, with a `.s-lti-gradable-launch-wrapper`. The final URL is `/assignment/{id}/info`. Some have instructions text (Haitian packet), some don't (Quick Write).
 - `parseAssignment` flags these as `isExternalTool`; the MCP returns `type: 'external_tool'`. Verified on the live pages: Quick Write and Haitian packet → true; Annotations, Physics HW 10/2, AP CS Lab 8.2, Pre-Calc HW #18 → false.
 - **Schoology never says whether you turned one in.** That lives inside Google's cross-site frame (it even drew at height 0 in desktop Chrome). The app shows "Open in Schoology ↗" + manual mark and never infers "submitted".
-- Risk: the cross-site Google frame may not load inside `WKWebView` (iOS third-party cookie rules). Test during spike S1.
+- In the app's sheet (2026-10-11, Haitian Revolution Document Packet) the Google frame shows Google's "Allow Google access to your necessary cookies". Tapping **Allow cookies** worked once (Owen). Later opens showed "Can't access your Google Account … allowing cookie access to proceed" with no prompt, so WebKit doesn't keep the storage-access grant.
+- Fixes in the app (untested on a device yet): (1) `NSCrossWebsiteTrackingUsageDescription` in Info.plist, which adds an **Allow Cross-Website Tracking** switch under iOS Settings → Classwork. Turning it on lifts WebKit's third-party cookie block for the app's web views. (2) An **Open Google full screen** button in the sheet for Google Assignments. It loads the page's biggest frame as the page itself, so Google is first-party and uses its own cookies. Checked in the simulator 2026-10-11: it loads `assignments.google.com` full screen with Owen's file, Add files / Create and Google's Submit (nothing pressed).
 
 ## Grades
 
@@ -78,9 +79,11 @@ Rules that follow:
 - `parseGrades` returns `rubric: { rubricId, enrollmentId }` on those rows; `reader/parse/rubric.js` turns the two responses into criteria (tests in `test/rubric.test.js`). Verified live: Enlightenment Diagnostic Rubric 10/10 (Claim 3/3, Evidence Selection 3/3, Analysis 4/4, every level matched); Annotation Skills Check 4.6/5.
 - Many "rubrics" are just attached Google Docs or PDFs (French "UTILISEZ la RUBRIC", "French Revolution Essay AS + Rubric"). List those from the assignment's attachments.
 
-## Uploading (spike S1, not done)
+## Uploading (spike S1, done in the simulator 2026-10-11)
 
-An iOS `WKWebView` shows the Photos / Camera / Files menu for `<input type=file>` with no extra code. Info.plist needs `NSCameraUsageDescription` or "Take Photo" crashes. Not yet tried on Schoology's real Submit dialog.
+Checked on Pre-Calc HW #20's real dialog in the app's Schoology sheet, without attaching a file or pressing Submit: **Submit Assignment** opens Schoology's Upload popup (Upload / Create / Resources tabs, a file field, a comment box, **Submit** and **Cancel** side by side). Tapping the file icon brings up the iOS menu **Photo Library / Take Photo or Video / Choose Files** with no extra code. `NSCameraUsageDescription` is set. Not checked: the camera itself (the simulator has none) and an actual attach + Submit, which only Owen does, on real homework.
+
+Testing rule: never press Submit, Resubmit or Unsubmit, never pick a file in the dialog (Schoology may upload on pick), and close with the sheet's **Done**, not the dialog's Cancel (it sits next to Submit).
 
 ## Google Docs (spike S3, not done)
 

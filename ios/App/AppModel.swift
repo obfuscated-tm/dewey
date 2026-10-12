@@ -180,6 +180,7 @@ final class AppModel {
         }
         revision += 1
         WidgetBridge.publish(self)
+        Reminders.shared.schedule(items: todoItems(), courses: courses)
     }
 
     func merge(_ lists: TodoLists, now: Date = Date()) {
@@ -295,6 +296,7 @@ final class AppModel {
         try? context.save()
         revision += 1
         WidgetBridge.publish(self)
+        Reminders.shared.schedule(items: todoItems(), courses: courses)
     }
 
     // ── neo-plan ─────────────────────────────────────────────────────────

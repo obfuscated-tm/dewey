@@ -1,8 +1,9 @@
 import Foundation
 @preconcurrency import UserNotifications
 
-/// Local notifications only (free account: no push). Evening-before reminders
-/// for open work; "new grade" alerts when a refresh finds one (best effort).
+/// Local notifications only (free account: no push). Due reminders (R3: 2 h
+/// before an unsubmitted dropbox, the night before a test, mornings, evenings);
+/// grade, message, material and signed-out alerts when a refresh finds one.
 @MainActor
 final class Reminders {
     static let shared = Reminders()
@@ -28,27 +29,146 @@ final class Reminders {
         (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
 
-    /// Replaces every due reminder: one per open item, at `hour` the evening before it's due.
+    /// Every due reminder, worked out from the To Do list and replaced as a set
+    /// (fixed ids, so a reschedule never doubles one). Debounced: saves call it often.
     func schedule(items: [ItemState], courses: [Course]) {
-        let center = UNUserNotificationCenter.current()
-        center.getPendingNotificationRequests { reqs in
-            center.removePendingNotificationRequests(withIdentifiers: reqs.map(\.identifier).filter { $0.hasPrefix("due-") })
+        let inputs = items.map { it in
+            DueInput(id: it.schoologyId, title: it.title,
+                     course: courses.first { $0.sectionId == it.sectionId }?.shortTitle ?? it.courseName ?? "",
+                     due: it.due, isTest: it.type == .exam, hasDropbox: it.hasDropbox,
+                     done: it.done, studied: it.studied, turnedIn: it.turnedIn, submitted: it.submitted)
         }
-        guard enabled else { return }
-        let cal = Calendar.current
-        let now = Date()
-        for it in items where !(it.done || it.turnedIn || it.submitted || it.studied) {
-            guard let due = it.due, due > now,
-                  let dayBefore = cal.date(byAdding: .day, value: -1, to: cal.startOfDay(for: due)),
-                  let fire = cal.date(bySettingHour: hour, minute: 0, second: 0, of: dayBefore), fire > now else { continue }
-            let c = UNMutableNotificationContent()
-            c.title = it.title
-            let course = courses.first { $0.sectionId == it.sectionId }?.shortTitle ?? it.courseName ?? ""
-            c.body = "\(course.isEmpty ? "" : course + " · ")Due \(Fmt.due(due, now: fire))"
-            c.sound = .default
-            c.userInfo = ["schoologyId": it.schoologyId]
-            let trig = UNCalendarNotificationTrigger(dateMatching: cal.dateComponents([.year, .month, .day, .hour, .minute], from: fire), repeats: false)
-            center.add(UNNotificationRequest(identifier: "due-\(it.schoologyId)", content: c, trigger: trig))
+        let plan = Self.plan(inputs, settings: settings, now: Date())
+        pending?.cancel()
+        pending = Task {
+            try? await Task.sleep(for: .milliseconds(300))
+            guard !Task.isCancelled else { return }
+            let center = UNUserNotificationCenter.current()
+            let keep = Set(plan.map(\.id))
+            let stale = await center.pendingNotificationRequests().map(\.identifier)
+                .filter { id in Self.duePrefixes.contains { id.hasPrefix($0) } && !keep.contains(id) }
+            center.removePendingNotificationRequests(withIdentifiers: stale)
+            let cal = Calendar.current
+            for p in plan {
+                let c = UNMutableNotificationContent()
+                c.title = p.title
+                c.body = p.body
+                c.sound = .default
+                if let sid = p.schoologyId { c.userInfo = ["schoologyId": sid] }
+                let trig = UNCalendarNotificationTrigger(dateMatching: cal.dateComponents([.year, .month, .day, .hour, .minute], from: p.fire), repeats: false)
+                try? await center.add(UNNotificationRequest(identifier: p.id, content: c, trigger: trig))
+            }
+        }
+    }
+    private var pending: Task<Void, Never>?
+
+    static let soonKey = "dueSoonOn"
+    static let testNightKey = "testNightOn"
+    static let morningKey = "morningSummaryOn"
+    static let morningHourKey = "morningHour"
+    nonisolated static let duePrefixes = ["due-", "soon-", "test-", "morning-"]
+
+    var settings: Settings {
+        let d = UserDefaults.standard
+        return Settings(evening: enabled, hour: hour,
+                        soon: d.object(forKey: Self.soonKey) as? Bool ?? true,
+                        testNight: d.object(forKey: Self.testNightKey) as? Bool ?? true,
+                        morning: d.bool(forKey: Self.morningKey),
+                        morningHour: d.object(forKey: Self.morningHourKey) as? Int ?? 7)
+    }
+
+    /// What the due reminders need from an item (a plain copy, so the plan is testable).
+    struct DueInput {
+        let id: String
+        let title: String
+        let course: String
+        let due: Date?
+        let isTest: Bool
+        let hasDropbox: Bool
+        var done = false
+        var studied = false
+        var turnedIn = false
+        var submitted = false
+
+        /// Nothing left to remind about: handed in, or done / studied.
+        var finished: Bool { turnedIn || submitted || (isTest ? studied : done) }
+    }
+
+    struct Settings {
+        var evening = false
+        var hour = 19
+        var soon = true
+        var testNight = true
+        var morning = false
+        var morningHour = 7
+    }
+
+    struct Planned: Equatable {
+        let id: String
+        let fire: Date
+        let title: String
+        let body: String
+        var schoologyId: String?
+    }
+
+    /// The reminders to have pending at `now`, soonest first (iOS keeps 64; this keeps 60):
+    /// - evening before, at `hour`: homework not done (`evening`, off by default);
+    /// - night before a test, at `hour`: not marked Studied (`testNight`);
+    /// - 2 h before: dropbox work not submitted on Schoology, even if marked done (`soon`);
+    /// - mornings, next 7 days at `morningHour`: what's due that day, skipped when nothing is (`morning`).
+    nonisolated static func plan(_ items: [DueInput], settings s: Settings, now: Date, calendar cal: Calendar = .current) -> [Planned] {
+        var out: [Planned] = []
+        func nightBefore(_ due: Date) -> Date? {
+            cal.date(byAdding: .day, value: -1, to: cal.startOfDay(for: due))
+                .flatMap { cal.date(bySettingHour: s.hour, minute: 0, second: 0, of: $0) }
+        }
+        func with(_ course: String, _ rest: String) -> String { course.isEmpty ? rest : "\(course) · \(rest)" }
+        for it in items {
+            guard let due = it.due, due > now else { continue }
+            if !it.isTest, s.evening, !it.finished, let fire = nightBefore(due), fire > now {
+                out.append(Planned(id: "due-\(it.id)", fire: fire, title: it.title,
+                                   body: with(it.course, "Due \(Fmt.due(due, now: fire))"), schoologyId: it.id))
+            }
+            if it.isTest, s.testNight, !it.finished, let fire = nightBefore(due), fire > now {
+                out.append(Planned(id: "test-\(it.id)", fire: fire, title: "Test tomorrow: \(it.title)",
+                                   body: with(it.course, "Not marked Studied yet"), schoologyId: it.id))
+            }
+            let soon = due.addingTimeInterval(-2 * 3600)
+            if s.soon, it.hasDropbox, !it.submitted, !it.turnedIn, soon > now {
+                out.append(Planned(id: "soon-\(it.id)", fire: soon, title: "Due in 2 hours: \(it.title)",
+                                   body: with(it.course, "Not submitted on Schoology yet"), schoologyId: it.id))
+            }
+        }
+        if s.morning {
+            let today = cal.startOfDay(for: now)
+            for d in 0..<7 {
+                guard let day = cal.date(byAdding: .day, value: d, to: today),
+                      let fire = cal.date(bySettingHour: s.morningHour, minute: 0, second: 0, of: day), fire > now else { continue }
+                let open = items.filter { !$0.finished && $0.due.map { cal.isDate($0, inSameDayAs: day) && $0 > fire } ?? false }
+                    .sorted { $0.due! < $1.due! }
+                guard !open.isEmpty else { continue }
+                let tests = open.filter(\.isTest)
+                let hw = open.filter { !$0.isTest }
+                var title = hw.isEmpty ? "" : "\(hw.count) due today"
+                if !tests.isEmpty { title += (title.isEmpty ? "" : " · ") + (tests.count == 1 ? "test today" : "\(tests.count) tests today") }
+                var lines = open.prefix(4).map { ($0.isTest ? "Test: " : "") + $0.title }
+                if open.count > 4 { lines.append("+\(open.count - 4) more") }
+                let key = cal.dateComponents([.year, .month, .day], from: day)
+                out.append(Planned(id: "morning-\(key.year!)-\(key.month!)-\(key.day!)", fire: fire,
+                                   title: title.prefix(1).uppercased() + title.dropFirst(), body: lines.joined(separator: "\n")))
+            }
+        }
+        return Array(out.sorted { $0.fire < $1.fire }.prefix(60))
+    }
+
+    /// "Test today", "Test tomorrow", "Test in 3 days"; nil when it's past.
+    nonisolated static func testCountdown(due: Date?, now: Date, calendar cal: Calendar = .current) -> String? {
+        guard let due, due > now else { return nil }
+        let days = cal.dateComponents([.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: due)).day ?? 0
+        switch days {
+        case 0: return "Test today"
+        case 1: return "Test tomorrow"
+        default: return "Test in \(days) days"
         }
     }
 

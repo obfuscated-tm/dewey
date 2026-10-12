@@ -386,7 +386,11 @@ struct TodoRow: View {
         let (text, color): (String, Color) = {
             if item.submitted { return ("Submitted on Schoology\(item.statusLate == true ? " · late" : "")", Theme.good) }
             if item.turnedIn { return ("Turned in · not on Schoology", Theme.good) }
-            if item.type == .exam { return (item.studied ? "Studied" : "Not studied", item.studied ? Theme.accent : Theme.text) }
+            if item.type == .exam {
+                let mark = item.studied ? "Studied" : "Not studied"
+                let text = Reminders.testCountdown(due: item.due, now: now).map { "\($0) · \(mark.lowercased())" } ?? mark
+                return (text, item.studied ? Theme.accent : Theme.text)
+            }
             if item.external { return (item.done ? "Done · check it in Schoology" : "Google Assignment · turn in on Schoology", item.done ? Theme.accent : Theme.secondary) }
             if item.done { return (item.hasDropbox ? "Done · not submitted yet" : "Done", Theme.accent) }
             if !item.inSchoology { return ("Schoology dropped this · still yours to tick", Theme.secondary) }

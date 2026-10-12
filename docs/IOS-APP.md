@@ -112,7 +112,7 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 - **Done when:** the Inbox matches Schoology's messages and notifications pages, and a new teacher message gives one notification after a background refresh.
 - Still to check: how Schoology marks an unread row on the messages list (none were unread on 2026-10-11), and the notification on the phone.
 
-### R3 · Smarter due notifications
+### R3 · Smarter due notifications (built 2026-10-11)
 - Due in 2 h for dropbox work not yet submitted; an optional morning summary; the night before a test not marked Studied; "Test in N days" on test rows.
 - **Done when:** each fires once at the right time in the simulator with a test item, and none fire for finished work.
 

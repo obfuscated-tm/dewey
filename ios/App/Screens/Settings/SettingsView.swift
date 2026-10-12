@@ -1,4 +1,5 @@
 import SwiftUI
+import UserNotifications
 
 /// 4b · Account, neo-plan, reminders, look, login
 /// compatibility, this build's expiry, and the Developer screen.
@@ -10,6 +11,10 @@ struct SettingsView: View {
     @State private var connected = NeoPlanClient().connected
     @AppStorage(Reminders.enabledKey) private var reminders = false
     @AppStorage(Reminders.hourKey) private var hour = 19
+    @AppStorage(Reminders.soonKey) private var dueSoon = true
+    @AppStorage(Reminders.testNightKey) private var testNight = true
+    @AppStorage(Reminders.morningKey) private var morning = false
+    @AppStorage(Reminders.morningHourKey) private var morningHour = 7
     @AppStorage(Reminders.gradesKey) private var gradeAlerts = true
     @AppStorage(Reminders.signedOutKey) private var signedOutAlert = true
     @AppStorage(Reminders.messagesKey) private var messageAlerts = true
@@ -58,19 +63,31 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    Toggle("Evening-before reminders", isOn: $reminders)
-                        .onChange(of: reminders) { _, on in
-                            Task {
-                                if on, !(await Reminders.shared.requestPermission()) { reminders = false }
-                                Reminders.shared.schedule(items: model.todoItems(), courses: model.courses)
-                            }
+                    Toggle("2 hours before, if not submitted", isOn: $dueSoon)
+                        .onChange(of: dueSoon) { _, on in dueChanged(on) }
+                    Toggle("Night before a test", isOn: $testNight)
+                        .onChange(of: testNight) { _, on in dueChanged(on) }
+                    Toggle("Homework the evening before", isOn: $reminders)
+                        .onChange(of: reminders) { _, on in dueChanged(on) }
+                    if reminders || testNight {
+                        Picker("Evening time", selection: $hour) {
+                            ForEach(15..<23) { h in Text(hourText(h)).tag(h) }
                         }
-                    if reminders {
-                        Picker("Time", selection: $hour) {
-                            ForEach(15..<23) { h in Text(Fmt.time.string(from: Calendar.current.date(bySettingHour: h, minute: 0, second: 0, of: Date())!)).tag(h) }
-                        }
-                        .onChange(of: hour) { _, _ in Reminders.shared.schedule(items: model.todoItems(), courses: model.courses) }
+                        .onChange(of: hour) { _, _ in dueChanged(false) }
                     }
+                    Toggle("Morning summary", isOn: $morning)
+                        .onChange(of: morning) { _, on in dueChanged(on) }
+                    if morning {
+                        Picker("Morning time", selection: $morningHour) {
+                            ForEach(5..<11) { h in Text(hourText(h)).tag(h) }
+                        }
+                        .onChange(of: morningHour) { _, _ in dueChanged(false) }
+                    }
+                } header: { Text("Due reminders") } footer: {
+                    Text("A test reminder stops once you mark it Studied; the others stop once it's submitted, turned in or done. The 2-hour one is for Schoology dropboxes only and still comes if you marked it done but haven't submitted.")
+                }
+
+                Section {
                     Toggle("New grades", isOn: $gradeAlerts)
                         .onChange(of: gradeAlerts) { _, on in askIfOn(on) }
                     Toggle("Messages from teachers", isOn: $messageAlerts)
@@ -137,6 +154,18 @@ struct SettingsView: View {
         }
     }
 
+    private func hourText(_ h: Int) -> String {
+        Fmt.time.string(from: Calendar.current.date(bySettingHour: h, minute: 0, second: 0, of: Date())!)
+    }
+
+    /// A due-reminder switch or time changed: ask for permission when turning one on, then reschedule.
+    private func dueChanged(_ on: Bool) {
+        Task {
+            if on { _ = await Reminders.shared.requestPermission() }
+            Reminders.shared.schedule(items: model.todoItems(), courses: model.courses)
+        }
+    }
+
     private func askIfOn(_ on: Bool) {
         if on { Task { _ = await Reminders.shared.requestPermission() } }
     }
@@ -168,6 +197,7 @@ struct DeveloperView: View {
     @State private var args = "{}"
     @State private var output = ""
     @State private var running = false
+    @State private var scheduled: [UNNotificationRequest] = []
 
     static let examples: [String: String] = [
         "courses": "{}",
@@ -186,6 +216,21 @@ struct DeveloperView: View {
 
     var body: some View {
         Form {
+            Section("Scheduled reminders (\(scheduled.count))") {
+                ForEach(scheduled, id: \.identifier) { r in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(r.content.title).font(Theme.font(14, .semibold))
+                        if let d = (r.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() {
+                            Text(Fmt.dayTime.string(from: d)).font(Theme.mono(12)).foregroundStyle(Theme.secondary)
+                        }
+                    }
+                }
+            }
+            .task {
+                scheduled = await UNUserNotificationCenter.current().pendingNotificationRequests()
+                    .sorted { ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() ?? .distantFuture
+                        < ($1.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() ?? .distantFuture }
+            }
             Section {
                 Picker("Op", selection: $op) {
                     ForEach(Self.examples.keys.sorted(), id: \.self) { Text($0).tag($0) }

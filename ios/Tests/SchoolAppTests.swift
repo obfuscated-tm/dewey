@@ -164,3 +164,51 @@ final class InboxTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder.engine.decode(MessageDetail.self, from: Data(m.utf8)).messages.first?.bodyMd, "Hello")
     }
 }
+
+final class DueReminderTests: XCTestCase {
+    let cal: Calendar = { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "America/Los_Angeles")!; return c }()
+    func at(_ d: Int, _ h: Int, _ m: Int = 0) -> Date { cal.date(from: DateComponents(year: 2026, month: 10, day: d, hour: h, minute: m))! }
+
+    func testPlan() {
+        let now = at(12, 8)   // Mon 8 am
+        let items = [
+            Reminders.DueInput(id: "lab", title: "Lab 4", course: "Chem", due: at(12, 23, 59), isTest: false, hasDropbox: true, done: true),
+            Reminders.DueInput(id: "sub", title: "Essay", course: "Eng", due: at(12, 22), isTest: false, hasDropbox: true, submitted: true),
+            Reminders.DueInput(id: "test", title: "Unit 3 Test", course: "Math", due: at(14, 9), isTest: true, hasDropbox: false),
+            Reminders.DueInput(id: "done-test", title: "Quiz", course: "Fr", due: at(14, 10), isTest: true, hasDropbox: false, studied: true),
+            Reminders.DueInput(id: "hw", title: "Reading", course: "", due: at(13, 23, 59), isTest: false, hasDropbox: false),
+            Reminders.DueInput(id: "soon", title: "Exit ticket", course: "Bio", due: at(12, 9), isTest: false, hasDropbox: true),
+        ]
+        var s = Reminders.Settings()
+        var p = Reminders.plan(items, settings: s, now: now, calendar: cal)
+        // Defaults: 2 h before the unsubmitted lab (marked done still counts), night before the unstudied test.
+        // The exit ticket is due in 1 h: too late for a 2 h alert. The essay is submitted.
+        XCTAssertEqual(p.map(\.id), ["soon-lab", "test-test"])
+        XCTAssertEqual(p[0].fire, at(12, 21, 59))
+        XCTAssertEqual(p[1].fire, at(13, 19))
+        XCTAssertEqual(p[1].title, "Test tomorrow: Unit 3 Test")
+
+        s.evening = true
+        s.morning = true
+        p = Reminders.plan(items, settings: s, now: now, calendar: cal)
+        XCTAssertTrue(p.contains { $0.id == "due-hw" && $0.fire == at(12, 19) })
+        XCTAssertFalse(p.contains { $0.id == "due-lab" }, "marked done")
+        // No morning today (7 am is past); tomorrow's lists the reading; Wednesday's the test, not the studied quiz.
+        let mornings = p.filter { $0.id.hasPrefix("morning-") }
+        XCTAssertEqual(mornings.map(\.id), ["morning-2026-10-13", "morning-2026-10-14"])
+        XCTAssertEqual(mornings[0].title, "1 due today")
+        XCTAssertEqual(mornings[1].title, "Test today")
+        XCTAssertEqual(mornings[1].body, "Test: Unit 3 Test")
+        // Sorted by time, and once each.
+        XCTAssertEqual(p.map(\.fire), p.map(\.fire).sorted())
+        XCTAssertEqual(Set(p.map(\.id)).count, p.count)
+    }
+
+    func testCountdown() {
+        let now = at(12, 8)
+        XCTAssertEqual(Reminders.testCountdown(due: at(12, 10), now: now, calendar: cal), "Test today")
+        XCTAssertEqual(Reminders.testCountdown(due: at(13, 8), now: now, calendar: cal), "Test tomorrow")
+        XCTAssertEqual(Reminders.testCountdown(due: at(15, 8), now: now, calendar: cal), "Test in 3 days")
+        XCTAssertNil(Reminders.testCountdown(due: at(12, 7), now: now, calendar: cal))
+    }
+}

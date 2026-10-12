@@ -16,7 +16,7 @@ After editing any file here, click the ↻ reload button on the extension's card
 ## Use
 
 1. Open a course in Schoology and click the **Archive** button next to the overlay switch (bottom left). This opens a card over the page, already pointed at that course.
-2. Click **Archive this course**. By default files go straight to `Downloads/Schoology Archive` — no picker, no Save dialogs. If you'd rather pick a folder (so Cowork can point straight at it, say), do that once from the extension's Settings tab (toolbar icon → **Save archives to** → **Choose folder…**; if Chrome asks, choose **Allow on every visit**).
+2. Click **Archive this course**. By default files go straight to `Downloads/Schoology Archive` — no picker, no Save dialogs. If you'd rather pick a folder (so Cowork can point straight at it, say), do that once from the gear's Settings (**Archives save to** → **Choose folder…**, which opens a small Dewey window for Chrome's picker; if Chrome asks, choose **Allow on every visit**). The Welcome card offers the same choice the first time.
 
 Closing the card, or leaving the page, does **not** stop the run — it keeps going in the background. Reopen the card on any Schoology page to see its progress, or to start another course (only one archive runs at a time). Run it again whenever you like (weekly, and definitely before the term ends): only new or changed things are saved. Previously archived courses are listed at the bottom of the card.
 
@@ -42,12 +42,12 @@ Closing the card, or leaving the page, does **not** stop the run — it keeps go
 
 ## neo-plan settings
 
-Settings (server, token, the Schoology/Courses rows below, and where archives are saved) live in `panel/settings.html`, shown two ways: framed inside the gear popover on any Schoology page, or as its own tab (click the extension's toolbar icon). The **Save archives to** row (Downloads, or a chosen folder) only shows in its own tab — the folder picker is refused inside the gear's iframe.
+Settings live only in the overlay: the gear beside the Overlay switch (or the toolbar icon on a Schoology tab) opens the Settings card, with a page each for Appearance, Archive and neo-plan. The neo-plan page (token, the Schoology line, Courses, and Advanced: server and Claude) is `panel/neoplan.html`, framed in the card. The first time the overlay shows, a Welcome card offers the archive folder and the neo-plan token, both optional.
 
 1. In neo-plan, open Settings and make a new extension token (it starts with `np_`).
-2. Open Settings (the gear, or the toolbar icon), paste it into **Token**, **Save**. **Server** is `neo-plan.vercel.app` (or `localhost:3000` while developing neo-plan).
+2. Open Settings (the gear, or the toolbar icon), paste it on the **neo-plan** page, **Connect**. **Advanced → Server** is `neo-plan.vercel.app` (or `localhost:3000` while developing neo-plan).
 
-The token is kept in the extension and only the background worker sends it to neo-plan; a Schoology page never sees it, even with the gear's Settings framed right on it.
+The token is kept in the extension and only the background worker sends it to neo-plan; a Schoology page never sees it, even with Settings framed right on it.
 
 ## neo-plan and Schoology
 
@@ -113,7 +113,8 @@ Point Cowork at your archive folder's `<Course>/` subfolder and start with somet
 - `overlays/`: content scripts on Schoology pages. `boot.js` loads `assignment.js`, `home.js`, `course.js` (Materials, and every course page's own To Do panel) or `grades.js` (a course's Grades page) as a module, and `launcher.js` (the neo-plan button) everywhere but assignments and tests; `todorows.js` is the To Do panel's shared look and pure logic (the row grid, the rotated type tag, due-date formatting, the overdue/upcoming sort) that `todo.js` (home page, grouped by class) and `coursetodo.js` (one course's own panel, flat) both build on; `marks.js` is the row marker `home.js` and `course.js` share; `materials.js` is the Materials strip, folder totals and row markers, and `matstate.js` what they say (pure); `archive.js` is the Archive card (dimmed page, inset card; `switch.js`'s Archive button and `materials.js`'s Sync now both open it); `test/materials-page.html` is its stand-in page; `test/home-page.html` and `test/course-page.html` are the To Do panels' stand-ins; `test/archive-card.html` fakes `chrome.runtime` to look at the Archive card idle and running; `ui.js` is their shadow-DOM styling. `grademath.js` is the grades overlay's math (pure; tests in `test/`, run `node --test` from this folder). `test/grades-page.html` is a stand-in gradebook to look at `grades.js` outside Schoology (serve this folder with `python3 -m http.server` and open it).
 - `outputs/neoplan/api.js`: every call to neo-plan (token, server, fetch). Only the background worker imports it; content scripts ask it by message (content scripts may only read items, add, turn in, put back, remove and restore one, and open the neo-plan window).
 - `panel/sync-settings.js`: the Schoology line and Courses in Settings.
-- `panel/`: `settings.html`/`settings.js`/`settings.css` are neo-plan Settings plus the "Save archives to" row, shown as a tab (toolbar icon) or framed with `?embed=1` inside the gear popover (the folder row hides itself when embedded); `sync-settings.js` is the Schoology line and Courses within it, `np.js` is the message helper both use, and `today-format.js` (+ `fonts/`, Public Sans and IBM Plex Mono, bundled) is dates shared with the overlays' To Do panels.
+- `overlays/settings.js`, `overlays/intro.js`, `overlays/dialog.js`: the Settings card, the Welcome card, and the card shell, neo-plan frame and archive-folder helpers they share.
+- `panel/`: `neoplan.html`/`neoplan.js`/`neoplan.css` are the neo-plan section framed in the Settings card (`?view=settings`) and the Welcome card (`?view=connect`); `sync-settings.js` is the Schoology line and Courses within it, `np.js` is its message helper, `folder.html`/`folder.js` is the small window that runs Chrome's folder picker, and `today-format.js` is dates shared with the overlays' To Do panels.
 
 ## Known limits
 

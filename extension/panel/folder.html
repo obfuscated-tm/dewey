@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Dewey · Archive folder</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="neoplan.css">
+  <style>
+    html, body { background: #FFFFFF; }
+    .np { padding: 20px; gap: 14px; }
+    h1 { margin: 0; font-size: 16px; line-height: 22px; font-weight: 600; }
+    p { margin: 0; }
+    .now { padding: 10px 12px; background: var(--sunk); border: 1px solid var(--line); border-radius: var(--radius); }
+    .now b { font-weight: 600; }
+    .np .primary { padding: 8px 14px; font-weight: 600; color: #FFFFFF; background: #1D5EA8; border-radius: var(--radius); }
+    .actions { display: flex; align-items: center; gap: 14px; }
+  </style>
+</head>
+<body>
+  <main class="np">
+    <h1>Where should Dewey save archives?</h1>
+    <p class="now">Now: <b id="current">Downloads › Schoology Archive</b></p>
+    <div class="actions">
+      <button id="choose" class="primary">Choose folder…</button>
+      <button id="cancel" class="link">Cancel</button>
+    </div>
+    <p class="hint" id="hint">If Chrome asks, choose “Allow on every visit” so it doesn’t ask again.</p>
+  </main>
+  <script type="module" src="folder.js"></script>
+</body>
+</html>

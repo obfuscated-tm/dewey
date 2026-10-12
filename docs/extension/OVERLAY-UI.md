@@ -78,42 +78,65 @@ document's own URL.
 
 Files default to the Downloads folder, as before (no picker). A custom folder
 (File System Access handle, kept in IndexedDB — `outputs/archive/folder.js`) can be
-chosen from Settings, in its own tab only (the picker is refused in a
-cross-origin iframe): a "Save archives to" row there shows Downloads or the chosen
-folder's name, with Choose/Change and Clear. The offscreen document reads the same
-IndexedDB handle (same extension origin) and uses it only if
-`queryPermission({ mode: 'readwrite' })` is already `'granted'` — there is no user
-gesture in an offscreen document to call `requestPermission`, so a folder that has
-lost permission just falls back to Downloads with one log line, not a prompt.
+chosen from Settings, the Welcome card or the Archive card's "Change". Chrome
+refuses the folder picker on a Schoology page and in a frame on one, so each of
+those sends `archiveFolderPick` and `background.js` opens `panel/folder.html` in a
+small popup window (one at a time): the only Dewey page outside the overlay. It
+picks the folder, or re-allows one that lost permission (that needs a click too),
+writes `archiveFolderAt` to `chrome.storage.local`, and closes; every open card
+listens for that key and redraws. "Use Downloads" is `archiveFolderClear`. The
+offscreen document reads the same IndexedDB handle (same extension origin) and
+uses it only if `queryPermission({ mode: 'readwrite' })` is already `'granted'` —
+there is no user gesture in an offscreen document to call `requestPermission`, so
+a folder that has lost permission just falls back to Downloads with one log line,
+not a prompt.
 
-The gear opens a small popover, three groups:
+### Settings
 
-1. **Theme** — a grid of themes (below).
-2. **Grades** — the "Percent beside scores" checkbox.
-3. **neo-plan** — everything that used to live in the extension's side panel (now
-   removed): server, token, the Schoology last-read line with a Check now button,
-   and the Courses mapping, plus a "Save archives to" row (below). This group is an `<iframe>` of the
-   extension's own `panel/settings.html?embed=1`, not inline controls — a Schoology
-   page must never see the neo-plan token, so it stays behind the frame boundary (the
-   same precedent as `overlays/launcher.js`'s card, which frames neo-plan itself).
-   The frame is created lazily on first open and then kept, so reopening the popover
-   is instant. It posts `{ type: 'np-settings-height', height }` to the parent
-   window whenever its content's size changes; `switch.js` accepts that only from
-   `e.source === frame.contentWindow` and the extension's own origin, and resizes
-   the frame (clamped to 40–600px). The frame is *not* re-inverted under a dark
-   theme (`.npframe { filter: none }` outranks the host's plain `iframe`
-   re-invert rule): it's our own page, so it goes dark along with the popover.
-   For that it paints no surface of its own — embedded, `settings.css` makes the
-   body transparent and drops its padding and its "Settings" heading, so the
-   popover's surface and labels show through and line up. Below 420px wide
-   (always, in the popover) each course's column picker takes its own line.
-   `test/settings-page.html` (and `?embed=1`) draws the page with a fake `chrome`.
+There is no settings tab: settings live only in the overlay. The gear opens the
+Settings card (`overlays/settings.js`), and so does the toolbar icon on a
+Schoology tab (`background.js` messages the tab `openSettings`; on any other tab
+it opens Schoology). The card shares its shell with the Welcome card
+(`overlays/dialog.js`: dimmed page, ×/Esc/click-outside, Tab trap, the same look
+as the Archive card). A sidebar picks one page at a time (Appearance, Archive,
+neo-plan; arrow keys move between them; tabs along the top below 600px wide),
+with **Welcome tour** at its foot. Each page is a title, one line on what it's
+for, then grouped rows: title and description on the left, the control on the
+right. Only the page scrolls: the card has a fixed height and the neo-plan frame
+always grows to fit (`scrolling="no"`, height clamped to 40–4000px).
+
+1. **Appearance** — the theme grid (below) and a "Percent beside scores" switch.
+2. **Archive** — one row: Downloads or the chosen folder, a line on what that
+   means, and Choose/Change/Allow again plus Use Downloads (above).
+3. **neo-plan** — an `<iframe>` of the extension's own `panel/neoplan.html`, not
+   inline controls: a Schoology page must never see the neo-plan token. Rows in
+   the same style: **Account** (Connect / Connected + Disconnect, and the
+   Schoology last-read line with Check now), **Courses** (each section and the
+   neo-plan column it files into) and a collapsed **Advanced** (the server, and
+   whether Claude's MCP server is connected). The frame is created the first
+   time the page shows and then kept. It posts `{ type: 'np-frame-height',
+   height }` to the parent whenever its size changes; `dialog.js` accepts that
+   only from `e.source === frame.contentWindow` and the extension's own origin.
+   The frame is *not* re-inverted under a dark theme (`.npframe { filter: none }`
+   outranks the host's plain `iframe` re-invert rule): it wears the overlay's
+   tokens and fonts and paints no surface of its own, so it goes dark along with
+   the card. `test/neoplan-frame.html` draws it with a fake `chrome`.
+
+`test/settings-card.html` shows both cards outside the extension.
+
+### Welcome
+
+The first time the overlay shows on a Schoology page, `switch.js` opens the
+Welcome card (`overlays/intro.js`) once, unless `introSeen` is set in
+`chrome.storage.local`. Three steps with dots and Back/Next: what Dewey adds and
+where its three buttons are; where archives go (optional, same controls as
+Settings); connect neo-plan (optional, the frame with `?view=connect`: the token
+only). **Skip setup**, ×, Esc and **Done** all close it and set `introSeen`;
+Settings → **Welcome tour** opens it again.
 
 Theme and Grades are one setting object in `chrome.storage.local`
 (`ui.js`: `SETTINGS_KEY`, `getSettings`/`onSettings`/`setSetting`), applied on every
-open Schoology tab like the Overlay switch itself. The popover scrolls
-(`max-height: calc(100vh - 72px)`) rather than overflow the viewport once the
-neo-plan frame is in it.
+open Schoology tab like the Overlay switch itself.
 
 `overlays/theme.js` owns the theme list (`THEMES`, an ordered object of key →
 `{ name, dark, header, headerText?, page, accent, accentSoft }`). Every colour is

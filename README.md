@@ -92,8 +92,8 @@ On this page, click the green **Code** button → **Download ZIP**, then double-
 ### Step 3: Choose where your courses are saved
 
 1. Inside the downloaded folder, make a new folder called **`Schoology Archive`**.
-2. Click the extension's icon in Chrome's toolbar.
-3. Next to **Save archives to**, click **Choose folder…** and pick that `Schoology Archive` folder.
+2. Open Schoology. The first time, Dewey's **Welcome** card pops up; its second step is **Where should archives go?** (Later, it's under the gear at the bottom left → **Archive**.)
+3. Click **Choose folder…**. A small Dewey window opens; click **Choose folder…** there and pick that `Schoology Archive` folder.
 4. If Chrome asks, choose **Allow on every visit**.
 
 <sub>Skip this and courses go to `Downloads/Schoology Archive` instead. That works fine, but Claude won't find them without an extra setting.</sub>
@@ -349,7 +349,7 @@ If a category shows no weight, type it next to the category name on the Grades p
 [neo-plan](https://neo-plan.vercel.app) is a separate planner app built alongside this extension. Skip this unless you have an account.
 
 1. In neo-plan, go to **Settings** and make an extension token (starts with `np_`).
-2. In the extension's Settings, paste it into **Token** and click **Save**.
+2. On any Schoology page, open Settings (the gear, bottom left) → **neo-plan**, paste it and click **Connect**. (The Welcome card asks for it the first time, too.)
 
 The extension then reads Schoology (GET only) every 15 minutes, when a Schoology page loads (at most every 5 minutes), and on **Check now**. neo-plan files work into columns, clears what you've submitted, and flags what's Missing. This background read is also the MCP server's **snapshot** source.
 
@@ -383,7 +383,7 @@ Without a token, the neo-plan parts of the overlays (type tags, **+ Add to neo-p
 │   ├── sync/                background sync, scheduling, quiz quiet mode
 │   ├── offscreen/           DOM parsing and the archive job
 │   ├── overlays/            what's drawn on Schoology pages
-│   ├── panel/               Settings page
+│   ├── panel/               neo-plan frame and folder picker for the Settings card
 │   └── test/                tests + stand-in pages
 ├── ios/                     the iPhone app (SwiftUI; XcodeGen spec in project.yml)
 ├── mcp/                     the Claude add-on (local MCP server)

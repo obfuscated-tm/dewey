@@ -1,15 +1,15 @@
 // node --test test/   (from extension/)
 //
-// overlays/switch.js's pure logic: the frame-height clamp for the neo-plan
-// settings iframe (docs/extension/OVERLAY-UI.md, "Themes and settings") and the course
-// id parsed out of the page's path for the Archive group. The popover itself
-// (DOM, the settings menu, the frame, the outside-click closer) needs a
-// browser — covered by opening test/theme-page.html or test/course-page.html
-// by hand, not by node --test.
+// overlays/switch.js's pure logic (the course id parsed out of the page's
+// path for the Archive button) and overlays/dialog.js's (the frame-height
+// clamp for the neo-plan frame, the archive folder line). The cards
+// themselves need a browser — covered by opening test/theme-page.html or
+// test/course-page.html by hand, not by node --test.
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { clampFrameHeight, courseIdFromPath } from '../overlays/switch.js';
+import { courseIdFromPath } from '../overlays/switch.js';
+import { clampFrameHeight, folderText, DOWNLOADS_TEXT } from '../overlays/dialog.js';
 
 test('clampFrameHeight: passes an ordinary height through', () => {
   assert.equal(clampFrameHeight(180), 180);
@@ -20,7 +20,7 @@ test('clampFrameHeight: clamps to the sane range', () => {
   assert.equal(clampFrameHeight(1), 40);
   assert.equal(clampFrameHeight(0), 40);
   assert.equal(clampFrameHeight(-50), 40);
-  assert.equal(clampFrameHeight(5000), 600);
+  assert.equal(clampFrameHeight(5000), 4000);
 });
 
 test('clampFrameHeight: rounds, and falls back to 120 for garbage', () => {
@@ -45,12 +45,9 @@ test('courseIdFromPath: anywhere else, null', () => {
   assert.equal(courseIdFromPath(undefined), null);
 });
 
-// start() draws at once, and a page loading with the overlay already off
-// closes the popover in that first draw: popOpen must exist by then, or the
-// switch throws and never shows (no way back on but Alt+S).
-test('start: popOpen is declared before the first draw', async () => {
-  const { readFileSync } = await import('node:fs');
-  const src = readFileSync(new URL('../overlays/switch.js', import.meta.url), 'utf8');
-  const decl = src.indexOf('let popOpen');
-  assert.ok(decl > 0 && decl < src.indexOf('draw(isOverlayOn())'));
+test('folderText: Downloads, a chosen folder, or one to allow again', () => {
+  assert.equal(folderText({ custom: false }), DOWNLOADS_TEXT);
+  assert.equal(folderText({ custom: true, name: 'School', granted: true }), 'School');
+  assert.equal(folderText({ custom: true, name: 'School', granted: false }), 'School (needs allowing again)');
+  assert.equal(folderText(null), 'Unknown (reload the extension)');
 });

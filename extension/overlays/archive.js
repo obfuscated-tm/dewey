@@ -10,6 +10,7 @@
 // if the current page is a different course or no course at all).
 
 import { createHost, el, onClick } from './ui.js';
+import { onFolderChange } from './dialog.js';
 import { OPTION_KEYS, DEFAULT_OPTIONS } from '../outputs/archive/state.js';
 
 const OPTIONS_KEY = 'archiverOptions';
@@ -378,6 +379,7 @@ export function start({
     folderValue.textContent = r.custom
       ? r.name + (r.granted ? '' : ' (permission lost — using Downloads)')
       : 'Downloads › Schoology Archive';
+    changeFolder.textContent = r.custom && !r.granted ? 'Allow again' : 'Change';
   }
 
   async function refreshHistory() {
@@ -455,9 +457,12 @@ export function start({
     try { await send({ type: 'archiveStop' }); } catch { /* worker gone */ }
   });
   onClick(closeFootBtn, shut);
+  // Chooses in a small Dewey window (the picker is refused on this page);
+  // it stamps FOLDER_STAMP when done, and the row redraws.
   onClick(changeFolder, async () => {
-    try { await send({ type: 'openSettings' }); } catch { /* worker gone */ }
+    try { await send({ type: 'archiveFolderPick' }); } catch { /* worker gone */ }
   });
+  onFolderChange(() => { if (isOpen) refreshFolder(); });
   onClick(close, shut);
   onClick(shade, shut);
   shade.addEventListener('wheel', (e) => e.preventDefault(), { passive: false });

@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- The overlay's Settings and Welcome cards outside the extension, with a
+     fake `chrome`: the switch bottom left, the gear opens Settings, and the
+     Welcome card opens by itself (?seen=1 to skip it). The neo-plan frame is
+     test/neoplan-frame.html. Serve extension/ (python3 -m http.server) and
+     open /test/settings-card.html. -->
+<html><head><meta charset="utf-8"><title>Settings card stand-in</title>
+<style>body { font: 13px Arial, sans-serif; margin: 0; padding: 24px; background: #F1F4F4; }</style>
+</head>
+<body>
+<h2>A Schoology page</h2>
+<p>Some ordinary content behind the cards.</p>
+<script type="module">
+  const q = new URLSearchParams(location.search);
+  const store = { introSeen: q.has('seen') };
+  let folder = { ok: true, custom: false };
+  const changed = new Set();
+  const fire = (key, value) => changed.forEach((fn) => fn({ [key]: { newValue: value } }, 'local'));
+  globalThis.chrome = {
+    runtime: {
+      id: 'test-extension',
+      getURL: (p) => `${location.origin}/${p.replace(/^panel\/neoplan\.html/, 'test/neoplan-frame.html')}`,
+      sendMessage: async (m) => {
+        if (m.type === 'archiveFolderInfo') return folder;
+        if (m.type === 'archiveFolderPick') {
+          setTimeout(() => { folder = { ok: true, custom: true, name: 'School 2026', granted: true }; fire('archiveFolderAt', Date.now()); }, 500);
+          return { ok: true };
+        }
+        if (m.type === 'archiveFolderClear') { folder = { ok: true, custom: false }; return { ok: true }; }
+        return { ok: false };
+      },
+      onMessage: { addListener() {} },
+    },
+    storage: {
+      onChanged: { addListener: (fn) => changed.add(fn) },
+      local: {
+        get: async (k) => (typeof k === 'string' ? { [k]: store[k] } : { ...store }),
+        set: async (o) => { Object.assign(store, o); },
+      },
+    },
+  };
+  await import('../overlays/theme.js').then((t) => t.start());
+  await import('../overlays/switch.js');
+</script>
+</body></html>

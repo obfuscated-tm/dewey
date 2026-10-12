@@ -98,7 +98,7 @@
         if (m.type === 'archiveFolderInfo') return { ok: true, custom: true, name: 'Schoology Archive', granted: true };
         if (m.type === 'archiveStart') return { ok: true, jobId: 'x' };
         if (m.type === 'archiveStop') return { ok: true };
-        if (m.type === 'openSettings') return { ok: true };
+        if (m.type === 'archiveFolderPick') return { ok: true };
         return { ok: false };
       },
       connect: () => ({

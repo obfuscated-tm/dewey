@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>neo-plan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="neoplan.css">
+</head>
+<body>
+  <main class="np">
+    <section>
+      <h4 class="settings-only">Account</h4>
+      <div class="group">
+        <div class="row" id="npTokenNew" hidden>
+          <div class="text">
+            <div class="field">
+              <input id="npTokenInput" type="password" autocomplete="off" spellcheck="false" placeholder="np_…" aria-label="neo-plan token">
+              <button id="npTokenSave" class="btn">Connect</button>
+            </div>
+            <p class="desc" id="npTokenHint" role="status">In neo-plan, open Settings and make an extension token.</p>
+          </div>
+        </div>
+        <div class="row" id="npTokenSet" hidden>
+          <div class="text">
+            <div class="title ok">Connected</div>
+            <div class="desc mono" id="npTokenMasked"></div>
+          </div>
+          <button id="npTokenRemove" class="link">Disconnect</button>
+        </div>
+        <div class="row" id="npSyncRow" hidden>
+          <div class="text">
+            <div class="title">Schoology</div>
+            <div class="desc">Last read <span id="npSyncTime" class="mono"></span></div>
+            <p class="desc" id="npSyncHint" role="status" hidden></p>
+          </div>
+          <button id="npSyncNow" class="link">Check now</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="npCourses" hidden>
+      <h4>Courses</h4>
+      <p class="lede">The neo-plan column each class files into. <span class="mono">auto</span> means neo-plan matched it by name.</p>
+      <div class="group">
+        <ul id="npCourseList" class="courses"></ul>
+      </div>
+      <p class="desc" id="npCoursesHint" role="status" hidden></p>
+    </section>
+
+    <section class="settings-only">
+      <details id="npAdvanced">
+        <summary>Advanced</summary>
+        <div class="row">
+          <div class="text"><div class="title">Server</div></div>
+          <select id="npServer" aria-label="Server"></select>
+        </div>
+        <div class="row">
+          <div class="text"><div class="title">Claude</div><div class="desc">The local MCP server for Claude Desktop</div></div>
+          <span id="npMcpStatus" class="mono dim"></span>
+        </div>
+      </details>
+    </section>
+  </main>
+  <script type="module" src="neoplan.js"></script>
+</body>
+</html>

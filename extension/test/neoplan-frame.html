@@ -1,11 +1,10 @@
 <!doctype html>
-<!-- The settings page (panel/settings.html) outside the extension, with a fake
+<!-- The neo-plan frame (panel/neoplan.html) outside the extension, with a fake
      `chrome` so it draws a signed-in state: a token, two servers, the
-     Schoology line and two Courses. Serve extension/
-     (python3 -m http.server) and open /test/settings-page.html (the settings
-     tab) or /test/settings-page.html?embed=1 (as framed in the gear popover;
-     it's drawn 320px wide, like the popover). ?token=0 shows the no-token state. -->
-<html lang="en"><head><meta charset="utf-8"><title>Settings stand-in</title>
+     Schoology line and two Courses. test/settings-card.html frames it the way
+     the overlay's cards do; opened on its own it's drawn 410px wide on grey.
+     ?view=connect is the Welcome card's step; ?token=0 the no-token state. -->
+<html lang="en"><head><meta charset="utf-8"><title>neo-plan frame stand-in</title>
 <base href="../panel/">
 </head>
 <body>
@@ -30,7 +29,8 @@
           } };
         }
         if (m.type === 'sync') return { running: false, snapshot: { at: new Date(Date.now() - 6e5).toISOString() } };
-        if (m.type === 'archiveFolderInfo') return { ok: true, custom: false };
+        if (m.type === 'neoplan' && m.op === 'setToken') return { ok: true, status: 200, data: { servers: ['https://neo-plan.vercel.app'], server: 'https://neo-plan.vercel.app', hasToken: true, masked: 'np_••••••••3f9a' } };
+        if (m.type === 'mcpStatus') return { ok: true, connected: false };
         return { ok: false };
       },
     },
@@ -40,17 +40,17 @@
   // otherwise shows yesterday's styles).
   const css = document.createElement('link');
   css.rel = 'stylesheet';
-  css.href = `settings.css?v=${Date.now()}`;
+  css.href = `neoplan.css?v=${Date.now()}`;
   document.head.append(css);
-  // Opened on its own: drawn popover-sized on grey. Framed (the gear): as is.
-  if (q.has('embed') && window.top === window) {
-    document.documentElement.style.cssText = 'background:#888';
-    document.body.style.cssText = 'width:320px;margin:16px';
+  // Opened on its own: drawn card-sized on grey. Framed: as is.
+  if (window.top === window) {
+    document.documentElement.style.cssText = 'background:#ddd';
+    document.body.style.cssText = 'width:410px;margin:16px';
   }
-  const markup = await (await fetch('settings.html')).text();
+  const markup = await (await fetch('neoplan.html')).text();
   const body = new DOMParser().parseFromString(markup, 'text/html').body;
   body.querySelectorAll('script').forEach((s) => s.remove());
   document.body.append(...body.childNodes);
-  await import(`../panel/settings.js?v=${Date.now()}`);
+  await import(`../panel/neoplan.js?v=${Date.now()}`);
 </script>
 </body></html>

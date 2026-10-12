@@ -80,15 +80,18 @@
         "overlays/course.js",
         "overlays/coursedata.js",
         "overlays/coursetodo.js",
+        "overlays/dialog.js",
         "overlays/grademath.js",
         "overlays/grades.js",
         "overlays/home.js",
+        "overlays/intro.js",
         "overlays/launcher.js",
         "overlays/marker.js",
         "overlays/marks.js",
         "overlays/materials.js",
         "overlays/matstate.js",
         "overlays/quizpage.js",
+        "overlays/settings.js",
         "overlays/switch.js",
         "overlays/theme.js",
         "overlays/todo.js",
@@ -106,12 +109,11 @@
         "reader/parse/sync.js",
         "util.js",
         "panel/today-format.js",
-        "panel/settings.html",
-        "panel/settings.js",
-        "panel/settings.css",
+        "panel/neoplan.html",
+        "panel/neoplan.js",
+        "panel/neoplan.css",
         "panel/sync-settings.js",
-        "panel/np.js",
-        "panel/fonts/*.woff2"
+        "panel/np.js"
       ],
       "matches": [
         "https://*.schoology.com/*"
@@ -126,9 +128,5 @@
       },
       "description": "Stop archiving immediately"
     }
-  },
-  "options_ui": {
-    "page": "panel/settings.html",
-    "open_in_tab": true
   }
 }

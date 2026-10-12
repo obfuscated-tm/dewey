@@ -1,11 +1,11 @@
 import { handleNeoplan, getConfig, isWorkValue } from './outputs/neoplan/api.js';
-import { requestSync, stopSync, syncRunning, reportSubmitted, sectionForRealm, SYNC_LOCK_ID, KEY_HOST } from './sync/runner.js';
+import { requestSync, stopSync, syncRunning, reportSubmitted, sectionForRealm, SYNC_LOCK_ID, KEY_HOST, DEFAULT_HOST } from './sync/runner.js';
 import { KEY_SNAPSHOT } from './sync/sync.js';
 import { limiter, restorePausedUntil, persistPausedUntil } from './sync/limiter.js';
 import { ensureOffscreen, OFFSCREEN_URL } from './offscreen/ensure.js';
 import { PROXY_OPS } from './outputs/archive/chrome-bridge.js';
 import { isValidCourseId, sanitizeOptions, reduceProgress } from './outputs/archive/state.js';
-import { getSavedFolder } from './outputs/archive/folder.js';
+import { getSavedFolder, clearFolder } from './outputs/archive/folder.js';
 import { connectBridge, pushSnapshot, closeBridge, bridgeConnected, setBridgePaused } from './outputs/mcp/bridge.js';
 import { isQuizPageUrl, quizTabOpen, noteQuizPage } from './sync/quiet.js';
 
@@ -53,25 +53,29 @@ function isOffscreenSender(sender) {
   return sender.id === chrome.runtime.id && sender.url === offscreenUrl;
 }
 
-// The settings page is a normal tab, one apiece: find an already-open one and
-// focus it instead of piling up duplicates.
-async function focusOrOpen(path, { openerTabId } = {}) {
-  const url = chrome.runtime.getURL(path);
-  // getContexts sees our own pages without the "tabs" permission. Top frames
-  // only: settings.html framed in the gear popover is not a settings tab.
-  const ctx = (await chrome.runtime.getContexts({ contextTypes: ['TAB'] }))
-    .find((c) => c.frameId === 0 && c.tabId >= 0 && c.documentUrl?.startsWith(url));
-  if (ctx) {
-    const tab = await chrome.tabs.update(ctx.tabId, { active: true });
-    if (tab?.windowId != null) await chrome.windows.update(tab.windowId, { focused: true }).catch(() => {});
-    return { tab, opened: false };
+// Settings live only in the overlay (overlays/settings.js). The toolbar icon
+// opens them on a Schoology tab, or opens Schoology when the tab isn't one.
+const SCHOOLOGY_URL = /^https:\/\/[a-z0-9-]+\.schoology\.com\//i;
+chrome.action.onClicked.addListener(async (tab) => {
+  if (tab?.id != null && SCHOOLOGY_URL.test(tab.url || '')) {
+    try { await chrome.tabs.sendMessage(tab.id, { type: 'openSettings' }); return; } catch { /* no overlay on this page */ }
   }
-  const tab = await chrome.tabs.create({ url, openerTabId });
-  return { tab, opened: true };
-}
+  const { [KEY_HOST]: host } = await chrome.storage.local.get(KEY_HOST).catch(() => ({}));
+  chrome.tabs.create({ url: `https://${host || DEFAULT_HOST}/home` }).catch(() => {});
+});
 
-// The toolbar icon opens the settings page as a tab (options_ui also points here).
-chrome.action.onClicked.addListener(() => { focusOrOpen('panel/settings.html').catch(() => {}); });
+// The folder picker can't run on a Schoology page or in a frame on one, so
+// "Choose folder…" opens a small window of our own (panel/folder.html). One
+// at a time: a second click focuses the open one.
+let folderWindowId = null;
+async function openFolderWindow() {
+  if (folderWindowId != null) {
+    try { await chrome.windows.update(folderWindowId, { focused: true }); return; } catch { folderWindowId = null; }
+  }
+  const w = await chrome.windows.create({ url: chrome.runtime.getURL('panel/folder.html'), type: 'popup', width: 420, height: 260, focused: true });
+  folderWindowId = w?.id ?? null;
+}
+chrome.windows.onRemoved.addListener((id) => { if (id === folderWindowId) folderWindowId = null; });
 
 chrome.runtime.onConnect.addListener((port) => {
   if (port.name !== 'archive-card') return;
@@ -170,10 +174,16 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     getConfig().then(({ server }) => reply({ ok: true, server }), () => reply({ ok: false }));
     return true;
   }
-  if (msg?.type === 'openSettings') {
-    // The card's "Change in Settings" link, or the gear's neo-plan group.
+  if (msg?.type === 'archiveFolderPick') {
+    // Settings or Welcome's "Choose folder…", or the Archive card's "Change".
     if (from !== 'content' && from !== 'page') return false;
-    focusOrOpen('panel/settings.html', { openerTabId: sender.tab?.id }).then(() => reply({ ok: true }), () => reply({ ok: false }));
+    openFolderWindow().then(() => reply({ ok: true }), () => reply({ ok: false }));
+    return true;
+  }
+  if (msg?.type === 'archiveFolderClear') {
+    // "Use Downloads": forget the chosen folder.
+    if (from !== 'content' && from !== 'page') return false;
+    clearFolder().then(() => chrome.storage.local.set({ archiveFolderAt: Date.now() })).then(() => reply({ ok: true }), () => reply({ ok: false }));
     return true;
   }
   if (msg?.type === 'archiveFolderInfo') {
@@ -247,7 +257,7 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     return true;
   }
   if (msg?.type === 'mcpStatus') {
-    // The Settings page's read-only "Claude" row: is any MCP server connected right now.
+    // Settings › neo-plan › Advanced › Claude: is any MCP server connected right now.
     if (from !== 'page') return false;
     reply({ ok: true, connected: bridgeConnected() });
     return true;

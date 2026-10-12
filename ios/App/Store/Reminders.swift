@@ -94,7 +94,7 @@ final class Reminders {
             c.title = n.course.map { "New in \(Course.short($0))" } ?? "New in your classes"
             c.body = n.items.prefix(3).map(\.title).joined(separator: "\n") + (n.items.count > 3 ? "\n+\(n.items.count - 3) more" : "")
             if c.body.isEmpty { c.body = n.text }
-            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "notice-\(n.key.hashValue)", content: c, trigger: nil))
+            UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: "notice-\(n.key)", content: c, trigger: nil))
         }
     }
 

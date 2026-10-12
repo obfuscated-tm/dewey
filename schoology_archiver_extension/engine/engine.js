@@ -63,8 +63,9 @@ export const MATERIAL_SHAPES = [
   { kind: 'assignment', re: /^\/assignment\/\d{1,20}$/ },
 ];
 
-/** A dropbox page of one assignment: /assignment/{id}/dropbox/view/{n} (query dropped). */
+/** A list page number: an integer 0–999, else 0. */
 const pageNo = (page) => (Number.isInteger(page) && page >= 0 && page < 1000 ? page : 0);
+/** A dropbox page of one assignment: /assignment/{id}/dropbox/view/{n} (query dropped). */
 const DROPBOX_RE = /^\/assignment\/\d{1,20}\/dropbox\/view\/\d{1,20}$/;
 
 /** `path` or a same-origin absolute URL → a pathname + search on `origin`, else `bad_args`. */

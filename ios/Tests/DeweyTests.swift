@@ -276,3 +276,48 @@ final class ThemeTests: XCTestCase {
         XCTAssertEqual(Theme.textStyle(10.5), .caption2)
     }
 }
+
+final class NewGradeTests: XCTestCase {
+    private func item(_ id: String, _ earned: Double?) -> CourseGrade.Item {
+        CourseGrade.Item(id: id, category: "Labs", title: id, due: nil, grade: "", comment: "", rubric: nil,
+                         earned: earned, possible: 10, pct: nil, impact: nil)
+    }
+
+    func testFirstGradebookIsAlreadySeen() {
+        var log: [String: AppModel.GradeLogEntry] = [:]
+        let fresh = AppModel.logGrades(&log, old: nil, new: [item("a", 9), item("b", nil)])
+        XCTAssertTrue(fresh.isEmpty)
+        XCTAssertEqual(log["a"]?.seen, true)
+        XCTAssertNil(log["a"]?.at)
+        XCTAssertNil(log["b"], "ungraded work isn't logged")
+    }
+
+    func testChangedScoresAreNewUntilSeenOrAWeekOld() {
+        let now = Date()
+        var log: [String: AppModel.GradeLogEntry] = [:]
+        _ = AppModel.logGrades(&log, old: nil, new: [item("a", 9), item("b", nil)], now: now)
+        let fresh = AppModel.logGrades(&log, old: [item("a", 9), item("b", nil)],
+                                       new: [item("a", 9), item("b", 7), item("c", 10)], now: now)
+        XCTAssertEqual(fresh.map(\.id), ["b", "c"])
+        XCTAssertTrue(AppModel.isNew(log["b"]!, now: now))
+        XCTAssertFalse(AppModel.isNew(log["a"]!, now: now))
+        XCTAssertFalse(AppModel.isNew(log["b"]!, now: now.addingTimeInterval(8 * 86400)))
+        log["b"]?.seen = true
+        XCTAssertFalse(AppModel.isNew(log["b"]!, now: now))
+    }
+
+    func testAppUpdateWithSavedGradebookDoesNotFlagEverything() {
+        // An existing install has a saved gradebook but no log yet.
+        var log: [String: AppModel.GradeLogEntry] = [:]
+        let fresh = AppModel.logGrades(&log, old: [item("a", 9)], new: [item("a", 9)])
+        XCTAssertTrue(fresh.isEmpty)
+        XCTAssertEqual(log["a"]?.seen, true)
+    }
+
+    func testRegradeIsNewAgain() {
+        var log: [String: AppModel.GradeLogEntry] = ["a": .init(earned: 7, at: nil, seen: true)]
+        let fresh = AppModel.logGrades(&log, old: [item("a", 7)], new: [item("a", 9)])
+        XCTAssertEqual(fresh.map(\.id), ["a"])
+        XCTAssertEqual(log["a"]?.seen, false)
+    }
+}

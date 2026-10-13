@@ -70,7 +70,8 @@ Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red bad
 
 ### 2a Grades (tab 2) · `design/Grades.dc.html`
 - **Card per class:** letter + %, small history graph (`history`), distance to the A line, latest score and its +/- effect (`impact`). Tap → 2b.
-- **Recently graded:** newest scores across all classes; "new" = not in the last saved gradebook.
+- **New grades** (top, only when there are some): scores that changed since the last saved gradebook, newest first, with "Mark all seen". Seen = opened, its class opened, or a week old. Class cards show "N new"; the tab shows the count.
+- **Recently graded:** newest scores across all classes, ordered by when the score appeared, then due date; unseen ones keep a NEW tag.
 - **Data:** `gradebook({sectionId})` per class (cached ≤ 30 min) → `periodsFromRows` → `currentPeriod` → `grade`.
 - Not designed yet: a class with no grades, pass/fail classes, other terms. Show the class with "No grades yet".
 

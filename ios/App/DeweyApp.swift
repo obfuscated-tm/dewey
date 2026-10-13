@@ -100,6 +100,7 @@ struct MainTabs: View {
                 .tag(0)
             GradesView()
                 .tabItem { Label("Grades", systemImage: "chart.bar") }
+                .badge(model.newGradeCount())
                 .tag(1)
             InboxView()
                 .tabItem { Label("Inbox", systemImage: "tray") }

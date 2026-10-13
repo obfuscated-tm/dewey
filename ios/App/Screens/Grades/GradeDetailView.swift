@@ -65,6 +65,7 @@ struct GradeDetailView: View {
 
     private func load() async {
         if item == nil { await model.loadGrades(sectionId) }
+        model.markGradesSeen([itemId])
         guard let it = item else { return }
         if let r = it.rubric, let rid = r.rubricId, let eid = r.enrollmentId {
             do {

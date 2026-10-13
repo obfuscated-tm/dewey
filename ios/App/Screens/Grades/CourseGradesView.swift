@@ -13,6 +13,8 @@ struct CourseGradesView: View {
     @State private var planPoints = "100"
     @State private var plan: PlanResult?
     @State private var sheet: SheetTarget?
+    /// Scores that were new when the screen opened; they keep their tag until it closes.
+    @State private var newIds: Set<String> = []
     /// Categories opened (by title). Everything starts collapsed, like the extension; remembered per class.
     @AppStorage private var expandedRaw: String
 
@@ -76,7 +78,13 @@ struct CourseGradesView: View {
             }
         }
         .refreshable { await model.loadGrades(course.sectionId, force: true) }
-        .task { await model.loadGrades(course.sectionId) }
+        .task {
+            await model.loadGrades(course.sectionId)
+            // Opening the class counts as seeing its new scores.
+            let fresh = (real?.items ?? []).map(\.id).filter(model.isNewGrade)
+            newIds.formUnion(fresh)
+            model.markGradesSeen(fresh)
+        }
         .sheet(item: $sheet) { SchoologySheet(target: $0) }
         .onDisappear { whatIf = [:]; preview = nil }
     }
@@ -130,7 +138,14 @@ struct CourseGradesView: View {
                         .font(Theme.font(13, .semibold)).foregroundStyle(Theme.secondary)
                         .rotationEffect(.degrees(open ? 90 : 0))
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(cat.title).font(Theme.font(16, .semibold)).foregroundStyle(Theme.text)
+                        HStack(spacing: 6) {
+                            Text(cat.title).font(Theme.font(16, .semibold)).foregroundStyle(Theme.text)
+                            let n = items.filter { newIds.contains($0.id) }.count
+                            if n > 0 && !open {
+                                Text("\(n) new").font(Theme.font(11.5, .bold)).foregroundStyle(Theme.onAccent)
+                                    .padding(.horizontal, 6).padding(.vertical, 1).background(Theme.accent, in: Capsule())
+                            }
+                        }
                         Text(open ? floorText(cat) : "\(items.count) item\(items.count == 1 ? "" : "s")\(floorText(cat).isEmpty ? "" : " · " + floorText(cat))")
                             .font(Theme.font(12.5)).foregroundStyle(cat.floorStatus == "out" ? Theme.late : Theme.secondary)
                             .multilineTextAlignment(.leading)
@@ -175,7 +190,10 @@ struct CourseGradesView: View {
     private func itemRow(_ it: CourseGrade.Item) -> some View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
-                Text(it.title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).maxLines(2)
+                HStack(spacing: 6) {
+                    Text(it.title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).maxLines(2)
+                    if newIds.contains(it.id) { NewTag() }
+                }
                 HStack(spacing: 6) {
                     if let d = Fmt.wallDate(it.due) { Text(Fmt.short.string(from: d)).font(Theme.mono(12)).foregroundStyle(Theme.tertiary) }
                     if !it.comment.isEmpty { Label("Comment", systemImage: "text.bubble").font(Theme.font(11.5)).foregroundStyle(Theme.accent) }

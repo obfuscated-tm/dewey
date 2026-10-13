@@ -89,6 +89,7 @@ final class AppModel {
         inbox.clear()
         grades = [:]
         gradesAsOf = [:]
+        gradeLog = [:]
         courses = []
         session = .signedOut
         Reminders.shared.sessionDidEnd(notify: false)
@@ -406,16 +407,75 @@ final class AppModel {
         if changed { save() }
     }
 
-    /// Scores new since the last saved gradebook (for "new" marks and alerts).
-    var newGradeIds: Set<String> = []
+    /// When each score first appeared (nil = already there before the app was
+    /// watching) and whether the student has looked at it. Saved, so "new"
+    /// survives a relaunch and covers scores found by background refresh.
+    struct GradeLogEntry: Codable {
+        var earned: Double?
+        var at: Date?
+        var seen: Bool
+    }
+    var gradeLog: [String: GradeLogEntry] = Cache.load("gradeLog", as: [String: GradeLogEntry].self)?.value ?? [:]
+    /// "New" wears off after a week even if never opened.
+    static let newGradeDays: Double = 7
+
+    func isNewGrade(_ id: String) -> Bool { gradeLog[id].map { Self.isNew($0) } ?? false }
+
+    nonisolated static func isNew(_ e: GradeLogEntry, now: Date = Date()) -> Bool {
+        guard !e.seen, let at = e.at else { return false }
+        return now.timeIntervalSince(at) < newGradeDays * 86400
+    }
+
+    /// Unseen new scores, newest first.
+    func newGrades() -> [(Course, CourseGrade.Item)] {
+        classes.flatMap { c in (grades[c.sectionId]?.items ?? []).filter { isNewGrade($0.id) }.map { (c, $0) } }
+            .sorted { gradedFirst($0.1, $1.1) }
+    }
+
+    /// Unseen new scores in one class, or everywhere (from the saved log, so the
+    /// tab badge is right before any gradebook has loaded this launch).
+    func newGradeCount(_ sectionId: String? = nil) -> Int {
+        guard let sectionId else { return gradeLog.keys.filter(isNewGrade).count }
+        return (grades[sectionId]?.items ?? []).filter { isNewGrade($0.id) }.count
+    }
+
+    /// Order: when the score appeared, then due date (both newest first).
+    func gradedFirst(_ a: CourseGrade.Item, _ b: CourseGrade.Item) -> Bool {
+        let x = gradeLog[a.id]?.at, y = gradeLog[b.id]?.at
+        if x != y { return (x ?? .distantPast) > (y ?? .distantPast) }
+        return (a.due ?? "") > (b.due ?? "")
+    }
+
+    func markGradesSeen(_ ids: some Sequence<String>) {
+        var changed = false
+        for id in ids where gradeLog[id]?.seen == false { gradeLog[id]?.seen = true; changed = true }
+        if changed { Cache.save("gradeLog", gradeLog) }
+    }
+
+    func markAllGradesSeen() { markGradesSeen(gradeLog.keys) }
+
+    /// Logs scores that changed since the last saved gradebook; the first
+    /// gradebook for a class only records what is there, as already seen.
     private func noteNewGrades(sectionId: String, old: CourseGrade?, new: CourseGrade) {
-        guard let old else { return }
-        let before = Dictionary(old.items.map { ($0.id, $0.earned) }, uniquingKeysWith: { a, _ in a })
-        let fresh = new.items.filter { $0.earned != nil && before[$0.id] != $0.earned }
-        newGradeIds.formUnion(fresh.map(\.id))
+        let fresh = Self.logGrades(&gradeLog, old: old?.items, new: new.items)
+        Cache.save("gradeLog", gradeLog)
         if !fresh.isEmpty, let c = course(sectionId) {
-            Reminders.shared.newGrades(course: c.shortTitle, items: fresh, from: old.pct, to: new.pct)
+            Reminders.shared.newGrades(course: c.shortTitle, items: fresh, from: old?.pct, to: new.pct)
         }
+    }
+
+    /// Returns the scores that are new (changed since `old`) and logs them unseen.
+    nonisolated static func logGrades(_ log: inout [String: GradeLogEntry], old: [CourseGrade.Item]?,
+                                      new: [CourseGrade.Item], now: Date = Date()) -> [CourseGrade.Item] {
+        let before = Dictionary((old ?? []).map { ($0.id, $0.earned) }, uniquingKeysWith: { a, _ in a })
+        var fresh: [CourseGrade.Item] = []
+        for it in new where it.earned != nil {
+            if let e = log[it.id], e.earned == it.earned { continue }
+            let changed = old != nil && before[it.id] != it.earned
+            log[it.id] = GradeLogEntry(earned: it.earned, at: changed ? now : log[it.id]?.at, seen: !changed)
+            if changed { fresh.append(it) }
+        }
+        return fresh
     }
 
     /// Background refresh: a few gradebooks per run, in turn, so new-grade

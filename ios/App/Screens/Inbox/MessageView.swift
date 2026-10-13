@@ -18,12 +18,12 @@ struct MessageView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(detail?.subject ?? thread.subject).font(Theme.font(22, .bold))
+                    Text(detail?.subject ?? thread.subject).font(Theme.title)
                     if let g = detail?.group ?? thread.group {
-                        Text(Course.short(g)).font(Theme.font(14)).foregroundStyle(Theme.secondary)
+                        Text(Course.short(g)).font(Theme.subhead).foregroundStyle(Theme.secondary)
                     }
                     if let p = detail?.participants, !p.isEmpty {
-                        Text("With \(p.joined(separator: ", "))").font(Theme.font(13)).foregroundStyle(Theme.tertiary)
+                        Text("With \(p.joined(separator: ", "))").font(Theme.footnote).foregroundStyle(Theme.tertiary)
                     }
                 }
                 if !markRead {
@@ -64,13 +64,13 @@ struct MessageView: View {
     private var previewOnly: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(thread.from ?? "").font(Theme.font(15, .semibold))
+                Text(thread.from ?? "").font(Theme.subhead.weight(.semibold))
                 Spacer()
-                if let d = thread.when { Text(Fmt.dayTime.string(from: d)).font(Theme.font(12.5)).foregroundStyle(Theme.tertiary) }
+                if let d = thread.when { Text(Fmt.dayTime.string(from: d)).font(Theme.footnote).foregroundStyle(Theme.tertiary) }
             }
-            Text(thread.preview ?? "").font(Theme.font(15))
+            Text(thread.preview ?? "").font(Theme.subhead)
             Text("Only the preview shows, so the message stays unread on Schoology. Turn on \"Mark messages read when opened\" in Settings to read it here.")
-                .font(Theme.font(12.5)).foregroundStyle(Theme.tertiary)
+                .font(Theme.footnote).foregroundStyle(Theme.tertiary)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -80,9 +80,9 @@ struct MessageView: View {
     private func bubble(_ m: MessageDetail.Message) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text(m.author ?? "").font(Theme.font(15, .semibold))
+                Text(m.author ?? "").font(Theme.subhead.weight(.semibold))
                 Spacer()
-                if let d = Fmt.date(m.date) { Text(Fmt.dayTime.string(from: d)).font(Theme.font(12.5)).foregroundStyle(Theme.tertiary) }
+                if let d = Fmt.date(m.date) { Text(Fmt.dayTime.string(from: d)).font(Theme.footnote).foregroundStyle(Theme.tertiary) }
             }
             if let md = m.bodyMd, !md.isEmpty {
                 MarkdownText(md: md) { u in LinkOpener.open(u) { sheet = $0 } }
@@ -91,7 +91,7 @@ struct MessageView: View {
                 Button {
                     if let u = URL(string: a.url) { LinkOpener.open(u) { sheet = $0 } }
                 } label: {
-                    Label(a.title, systemImage: "paperclip").font(Theme.font(14)).foregroundStyle(Theme.accent)
+                    Label(a.title, systemImage: "paperclip").font(Theme.subhead).foregroundStyle(Theme.accent)
                 }
                 .buttonStyle(.plain)
             }

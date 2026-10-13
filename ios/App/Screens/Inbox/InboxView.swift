@@ -17,7 +17,7 @@ struct InboxView: View {
                 VStack(alignment: .leading, spacing: 14) {
                     ScreenHeader(title: "Inbox") {
                         Button { sheet = SheetTarget(url: Engine.origin.appendingPathComponent("messages/new")) } label: {
-                            Image(systemName: "square.and.pencil").font(Theme.font(20)).foregroundStyle(Theme.secondary)
+                            Image(systemName: "square.and.pencil").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
                                 .frame(width: 44, height: 44)
                         }
                         .buttonStyle(.plain)
@@ -67,12 +67,12 @@ struct InboxView: View {
 
     @ViewBuilder
     private func section<C: View>(_ title: String, @ViewBuilder _ content: () -> C) -> some View {
-        Text(title).font(Theme.font(20, .bold)).padding(.top, 6)
+        Text(title).font(Theme.title).padding(.top, 6)
         VStack(spacing: 0) { content() }.card()
     }
 
     private func emptyRow(_ s: String) -> some View {
-        Text(s).font(Theme.font(14)).foregroundStyle(Theme.secondary)
+        Text(s).font(Theme.subhead).foregroundStyle(Theme.secondary)
             .frame(maxWidth: .infinity, alignment: .leading).padding(14)
     }
 
@@ -91,8 +91,8 @@ struct InboxView: View {
         if !msgs.isEmpty || !other.isEmpty {
             Button { withAnimation { showSchool.toggle() } } label: {
                 HStack {
-                    Text("School").font(Theme.font(20, .bold))
-                    Text("\(msgs.count + other.count)").font(Theme.mono(13)).foregroundStyle(Theme.tertiary)
+                    Text("School").font(Theme.title)
+                    Text("\(msgs.count + other.count)").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.tertiary)
                     Spacer()
                     Image(systemName: "chevron.down").rotationEffect(.degrees(showSchool ? 0 : -90)).foregroundStyle(Theme.tertiary)
                 }
@@ -126,14 +126,14 @@ struct ThreadRow: View {
             Circle().fill(isNew ? Theme.accent : .clear).frame(width: 8, height: 8).padding(.top, 6)
             VStack(alignment: .leading, spacing: 3) {
                 HStack(alignment: .firstTextBaseline) {
-                    Text(thread.from ?? "Schoology").font(Theme.font(15, isNew ? .bold : .semibold)).oneLine()
+                    Text(thread.from ?? "Schoology").font(Theme.subhead.weight(isNew ? .bold : .semibold)).oneLine()
                     Spacer()
-                    if let d = thread.when { Text(Fmt.ago(d)).font(Theme.font(12.5)).foregroundStyle(Theme.tertiary) }
+                    if let d = thread.when { Text(Fmt.ago(d)).font(Theme.footnote).foregroundStyle(Theme.tertiary) }
                 }
-                Text(thread.subject).font(Theme.font(14, isNew ? .semibold : .regular)).oneLine()
-                if let g = thread.group { Text(Course.short(g)).font(Theme.font(12.5)).foregroundStyle(Theme.secondary).oneLine() }
+                Text(thread.subject).font(Theme.subhead.weight(isNew ? .semibold : .regular)).oneLine()
+                if let g = thread.group { Text(Course.short(g)).font(Theme.footnote).foregroundStyle(Theme.secondary).oneLine() }
                 if let p = thread.preview, !p.isEmpty {
-                    Text(p).font(Theme.font(13)).foregroundStyle(Theme.secondary).maxLines(2)
+                    Text(p).font(Theme.footnote).foregroundStyle(Theme.secondary).maxLines(2)
                 }
             }
         }
@@ -153,20 +153,20 @@ struct NoticeRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: notice.type == "grade" ? "checkmark.seal" : "doc.badge.plus")
-                .font(Theme.font(15)).foregroundStyle(notice.type == "grade" ? Theme.good : Theme.accent)
+                .font(Theme.subhead).foregroundStyle(notice.type == "grade" ? Theme.good : Theme.accent)
                 .frame(width: 22).padding(.top, 1)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
                     Text(notice.course.map(Course.short) ?? (notice.type == "grade" ? "New grade" : "Schoology"))
-                        .font(Theme.font(14, .semibold)).oneLine()
+                        .font(Theme.subhead.weight(.semibold)).oneLine()
                     Spacer()
-                    if let d = notice.when { Text(Fmt.ago(d)).font(Theme.font(12.5)).foregroundStyle(Theme.tertiary) }
+                    if let d = notice.when { Text(Fmt.ago(d)).font(Theme.footnote).foregroundStyle(Theme.tertiary) }
                 }
                 ForEach(notice.items.prefix(4), id: \.url) { item in itemLink(item) }
                 if notice.items.count > 4 {
-                    Text("+\(notice.items.count - 4) more").font(Theme.font(12.5)).foregroundStyle(Theme.tertiary)
+                    Text("+\(notice.items.count - 4) more").font(Theme.footnote).foregroundStyle(Theme.tertiary)
                 }
-                if notice.items.isEmpty { Text(notice.text).font(Theme.font(13)).foregroundStyle(Theme.secondary) }
+                if notice.items.isEmpty { Text(notice.text).font(Theme.footnote).foregroundStyle(Theme.secondary) }
             }
         }
         .padding(14)
@@ -175,7 +175,7 @@ struct NoticeRow: View {
 
     @ViewBuilder
     private func itemLink(_ item: Notice.Item) -> some View {
-        let label = Text(item.title).font(Theme.font(14)).foregroundStyle(Theme.accent).maxLines(2)
+        let label = Text(item.title).font(Theme.subhead).foregroundStyle(Theme.accent).maxLines(2)
             .multilineTextAlignment(.leading)
         if case .assignment(let id)? = WebConfig.nativeRoute(for: URL(string: item.url)) {
             NavigationLink(value: AssignmentLink(id: id)) { label }.buttonStyle(.plain)

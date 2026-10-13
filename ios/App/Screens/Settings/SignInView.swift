@@ -16,9 +16,9 @@ struct SignInView: View {
                     .frame(width: 60, height: 60)
                     .accessibilityHidden(true)
                 Text("Dewey")
-                    .font(Theme.font(34, .bold))
+                    .font(Theme.largeTitle)
                 Text("Your Schoology To Do, grades and materials, made for your phone. Sign in with your school Google account, the same way you do on Schoology.")
-                    .font(Theme.font(16))
+                    .font(Theme.body)
                     .foregroundStyle(Theme.secondary)
                 VStack(alignment: .leading, spacing: 10) {
                     step("1", "Sign in to fuhsd.schoology.com", "Required")
@@ -39,7 +39,7 @@ struct SignInView: View {
                     web = w
                 }
                 Text("Nothing is sent anywhere but Schoology. The app only reads; submitting happens on Schoology's own page.")
-                    .font(Theme.font(12))
+                    .font(Theme.caption)
                     .foregroundStyle(Theme.tertiary)
             }
             .padding(24)
@@ -65,13 +65,13 @@ struct SignInView: View {
 
     private func step(_ n: String, _ title: String, _ sub: String) -> some View {
         HStack(spacing: 12) {
-            Text(n).font(Theme.mono(13, .semibold))
+            Text(n).font(Theme.footnote.weight(.semibold).monospacedDigit())
                 .frame(width: 26, height: 26)
                 .background(Theme.accentSoft, in: Circle())
                 .foregroundStyle(Theme.accent)
             VStack(alignment: .leading, spacing: 1) {
-                Text(title).font(Theme.font(15, .semibold))
-                Text(sub).font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                Text(title).font(Theme.subhead.weight(.semibold))
+                Text(sub).font(Theme.footnote).foregroundStyle(Theme.secondary)
             }
         }
     }

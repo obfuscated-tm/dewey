@@ -37,8 +37,8 @@ Arrows: `›` opens a native screen; `↗` opens Schoology or a website (sheet o
 | overdue / late | `#B8430F` on `#FBEDE5` |
 | submitted / turned in | `#23794A` |
 | HW tag | `#5E6670` on `#EEF0F3`; TEST tag white on `#1F2429` |
-| fonts | Instrument Sans (UI), JetBrains Mono with tabular numbers for dates, scores, counts. Bundle both (OFL) or fall back to SF Pro / SF Mono. |
-| shapes | Cards 14 pt radius; buttons 44 pt min height (touch target), pill buttons 22 pt radius; large title 34 pt bold |
+| fonts | SF Pro only, seven styles in `Theme` (all Dynamic Type): largeTitle 34 bold · title 22 bold · headline 17 semibold · body 17 · subhead 15 · footnote 13 · caption 12. Numbers add `.monospacedDigit()`; no code font in the UI. ThemeTests fails on a raw point size. |
+| shapes | `Theme.Radius`: 6 for tags and type bars, 14 (continuous) for every card; buttons are capsules, checkboxes circles. Spacing 4 / 8 / 12 / 16 / 24 (`Theme.Space`). Touch targets 44 pt; pill buttons 30 pt tall inside a 44 pt row. |
 
 Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red badge with the overdue count.
 

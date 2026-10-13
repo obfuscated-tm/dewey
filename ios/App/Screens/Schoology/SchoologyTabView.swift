@@ -18,7 +18,7 @@ struct SchoologyTabView: View {
                         if let route {
                             Button { open(route) } label: {
                                 Label("Open in app", systemImage: "arrow.up.forward.app")
-                                    .font(Theme.font(14, .semibold))
+                                    .font(Theme.subhead.weight(.semibold))
                                     .padding(.horizontal, 16).padding(.vertical, 10)
                                     .foregroundStyle(Theme.onAccent)
                                     .background(Theme.accent, in: Capsule())
@@ -73,7 +73,7 @@ struct SchoologyTabView: View {
                 Image(systemName: "square.and.arrow.up").foregroundStyle(Theme.tertiary)
             }
         }
-        .font(Theme.font(19))
+        .font(Theme.body)
         .padding(.horizontal, 28)
         .padding(.vertical, 10)
         .background(.bar)

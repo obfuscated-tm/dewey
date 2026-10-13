@@ -26,7 +26,7 @@ struct ClassesView: View {
             .navigationTitle("Classes")
             .searchable(text: $query, prompt: "Search every class's materials")
             .onChange(of: query) { _, q in if !q.isEmpty { index.build(model) } }
-            .navigationDestination(for: Course.self) { MaterialsView(sectionId: $0.sectionId, folderId: nil, title: $0.shortTitle) }
+            .navigationDestination(for: Course.self) { MaterialsView(sectionId: $0.sectionId, folderId: nil, title: $0.shortTitle, trail: []) }
             .navigationDestination(for: AssignmentRoute.self) { AssignmentView(id: $0.id) }
             .refreshable { try? await model.loadCourses() }
         }
@@ -46,7 +46,7 @@ struct ClassesView: View {
     private var recent: some View {
         let r = RecentMaterials.list()
         if !r.isEmpty {
-            Text("Recently opened").font(Theme.font(20, .bold)).padding(.top, 8)
+            Text("Recently opened").font(Theme.title).padding(.top, 8)
             VStack(spacing: 0) {
                 ForEach(Array(r.prefix(6).enumerated()), id: \.offset) { i, e in
                     MaterialLink(sectionId: e.sectionId, row: e.row, subtitle: model.course(e.sectionId)?.shortTitle)
@@ -63,7 +63,7 @@ struct ClassesView: View {
         if index.building {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Reading materials… \(index.foldersRead) folders").font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                Text("Reading materials… \(index.foldersRead) folders").font(Theme.footnote).foregroundStyle(Theme.secondary)
             }
         }
         if hits.isEmpty && !index.building {
@@ -87,25 +87,34 @@ struct ClassTile: View {
     let course: Course
     let colorIndex: Int
     static let colors = ["#1D5EA8", "#23794A", "#6A4BA8", "#A8324A", "#B86E0F", "#16707A", "#5E6670", "#8A4B1D"]
+    static func color(_ i: Int) -> Color { Color(hex: colors[i % colors.count]) }
 
     var body: some View {
         let open = model.todoItems().filter { $0.sectionId == course.sectionId && !model.isFinished($0) }.count
         let g = model.grades[course.sectionId]
-        VStack(alignment: .leading, spacing: 8) {
-            RoundedRectangle(cornerRadius: 3).fill(Color(hex: Self.colors[colorIndex % Self.colors.count])).frame(width: 28, height: 5)
-            Text(course.shortTitle).font(Theme.font(15, .semibold)).foregroundStyle(Theme.text)
-                .multilineTextAlignment(.leading).frame(maxWidth: .infinity, minHeight: 40, alignment: .topLeading)
-            Text(course.periodLabel).font(Theme.font(12)).foregroundStyle(Theme.tertiary).oneLine()
+        // Every tile the same height: the name reserves two lines, the grade row sits at the bottom.
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
-                if let l = g?.letter { Text(l).font(Theme.font(15, .bold)) }
-                if let p = g?.pct { Text(Fmt.pct(p)).font(Theme.mono(12)).foregroundStyle(Theme.secondary) }
-                Spacer()
+                Capsule().fill(Self.color(colorIndex)).frame(width: 24, height: 4)
+                Spacer(minLength: Theme.Space.s)
+                Text(course.periodLabel).font(Theme.footnote).foregroundStyle(Theme.tertiary).oneLine()
+            }
+            Text(course.shortTitle).font(Theme.headline).foregroundStyle(Theme.text)
+                .multilineTextAlignment(.leading)
+                .lineLimit(2, reservesSpace: true)
+                .padding(.top, Theme.Space.s)
+            Spacer(minLength: Theme.Space.s)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(g?.letter ?? "–").font(Theme.body.weight(.bold))
+                Text(g?.pct.map { Fmt.pct($0) } ?? "No grade").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
+                Spacer(minLength: 0)
                 if open > 0 {
-                    Text("\(open) open").font(Theme.font(12, .medium)).foregroundStyle(Theme.accent)
+                    Text("\(open) open").font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.accent)
                 }
             }
         }
-        .padding(14)
+        .padding(Theme.Space.m)
+        .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
         .card()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel([course.shortTitle, course.periodLabel, g?.letter.map { "grade \($0)" }, open > 0 ? "\(open) open" : nil]
@@ -119,6 +128,8 @@ struct MaterialLink: View {
     let sectionId: String
     let row: MaterialRow
     var subtitle: String?
+    /// Class name, then each folder above this row: the path shown at the top of a folder.
+    var trail: [String] = []
     @State private var sheet: SheetTarget?
     @State private var file: FileTarget?
 
@@ -133,7 +144,7 @@ struct MaterialLink: View {
     private var content: some View {
         switch row.kind {
         case "folder":
-            NavigationLink { MaterialsView(sectionId: sectionId, folderId: row.id, title: row.title) } label: { label("folder", "›") }
+            NavigationLink { MaterialsView(sectionId: sectionId, folderId: row.id, title: row.title, trail: trail) } label: { label("folder", "›") }
         case "assignment":
             if let id = row.id {
                 NavigationLink(value: AssignmentRoute(id: id)) { label("doc.text", "›") }
@@ -177,24 +188,28 @@ struct MaterialLink: View {
             LinkOpener.open(url) { sheet = $0 }
         } label: {
             label(row.kind == "quiz" ? "checklist" : row.kind == "discussion" ? "bubble.left.and.bubble.right" : "safari",
-                  absURL?.host == Engine.host ? "Schoology ↗" : "\(absURL?.host ?? "") ↗")
+                  absURL?.host == Engine.host ? "Schoology ↗\u{FE0E}" : "\(absURL?.host ?? "") ↗\u{FE0E}")
         }
     }
 
     private func label(_ icon: String, _ trailing: String) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: Theme.Space.m) {
             Image(systemName: icon).frame(width: 24).foregroundStyle(row.kind == "folder" ? Theme.secondary : Theme.accent)
                 .accessibilityLabel(row.kind == "folder" ? "Folder" : row.kind == "quiz" ? "Quiz" : "")
             VStack(alignment: .leading, spacing: 2) {
-                Text(row.title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).maxLines(2).multilineTextAlignment(.leading)
-                if let subtitle, !subtitle.isEmpty { Text(subtitle).font(Theme.font(12.5)).foregroundStyle(Theme.secondary).oneLine() }
+                Text(row.title).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text).maxLines(2).multilineTextAlignment(.leading)
+                if let subtitle, !subtitle.isEmpty { Text(subtitle).font(Theme.footnote).foregroundStyle(Theme.secondary).oneLine() }
             }
-            Spacer()
-            Text(trailing).font(Theme.font(12.5)).foregroundStyle(Theme.tertiary)
-                .accessibilityHidden(trailing == "›")
+            Spacer(minLength: Theme.Space.s)
+            if trailing == "›" {
+                Image(systemName: "chevron.right").font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.tertiary)
+                    .accessibilityHidden(true)
+            } else {
+                Text(trailing).font(Theme.footnote).foregroundStyle(Theme.tertiary)
+            }
         }
         .accessibilityElement(children: .combine)
-        .padding(.horizontal, 14).frame(minHeight: 50)
+        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m).frame(minHeight: 50)
         .contentShape(Rectangle())
     }
 }

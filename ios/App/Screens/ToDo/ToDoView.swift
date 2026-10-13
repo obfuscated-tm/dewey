@@ -17,7 +17,7 @@ struct ToDoView: View {
             List {
                 Section {
                     header(items: items, now: now)
-                        .listRowInsets(EdgeInsets(top: 8, leading: 20, bottom: 12, trailing: 20))
+                        .listRowInsets(EdgeInsets(top: Theme.Space.s, leading: 0, bottom: Theme.Space.m, trailing: 0))
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                 }
@@ -47,17 +47,17 @@ struct ToDoView: View {
         let overdue = open.filter { TodoLogic.bucket(due: $0.due, now: now) == .overdue && !TodoLogic.isOlder(due: $0.due, now: now) }.count
         let today = open.filter { TodoLogic.bucket(due: $0.due, now: now) == .today }.count
         let week = open.filter { [.today, .week].contains(TodoLogic.bucket(due: $0.due, now: now)) }.count
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: Theme.Space.l) {
             ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do") {
                 Button { showSettings = true } label: {
-                    Image(systemName: "gearshape").font(Theme.font(20)).foregroundStyle(Theme.secondary)
+                    Image(systemName: "gearshape").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
                         .frame(width: 44, height: 44)
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Settings")
             }
             // Three across; stacked at the accessibility text sizes so the words fit.
-            (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: 8)) : AnyLayout(HStackLayout(spacing: 8))) {
+            (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Theme.Space.m)) : AnyLayout(HStackLayout(spacing: Theme.Space.m))) {
                 countButton(overdue, "Overdue", .overdue, Theme.late)
                 countButton(today, "Due today", .today, Theme.accent)
                 countButton(week, "This week", .week, Theme.text)
@@ -75,13 +75,13 @@ struct ToDoView: View {
             filter = on ? nil : b
         } label: {
             VStack(alignment: .leading, spacing: 2) {
-                Text("\(n)").font(Theme.mono(20, .semibold)).foregroundStyle(on ? Theme.onAccent : color)
-                Text(label).font(Theme.font(12.5, .medium)).foregroundStyle(on ? Theme.onAccent : Theme.secondary)
+                Text("\(n)").font(Theme.title.monospacedDigit()).foregroundStyle(on ? Theme.onAccent : color)
+                Text(label).font(Theme.footnote).foregroundStyle(on ? Theme.onAccent : Theme.secondary)
             }
-            .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
-            .padding(.horizontal, 12)
-            .background(on ? color : Theme.card, in: RoundedRectangle(cornerRadius: 12))
-            .overlay(RoundedRectangle(cornerRadius: 12).stroke(on ? Color.clear : Theme.border))
+            .padding(Theme.Space.m)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(on ? color : Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(on ? Color.clear : Theme.border))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(n) \(label.lowercased())")
@@ -138,8 +138,8 @@ struct ToDoView: View {
                 } header: {
                     Button { withAnimation { showOlder.toggle() } } label: {
                         HStack {
-                            Text("Older · \(older.count)").font(Theme.font(15, .semibold)).foregroundStyle(Theme.text)
-                            Text("over \(TodoLogic.olderDays) days late").font(Theme.font(13)).foregroundStyle(Theme.tertiary)
+                            Text("Older · \(older.count)").font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.text)
+                            Text("over \(TodoLogic.olderDays) days late").font(Theme.footnote).foregroundStyle(Theme.tertiary)
                             Spacer()
                             Image(systemName: showOlder ? "chevron.up" : "chevron.down").foregroundStyle(Theme.secondary)
                         }
@@ -180,13 +180,13 @@ struct ToDoView: View {
         let open = items.filter { !model.isFinished($0) }
         let dueToday = open.contains { TodoLogic.bucket(due: $0.due, now: now) == .today }
         return HStack(spacing: 8) {
-            Text(title).font(Theme.font(15, .semibold)).foregroundStyle(Theme.text)
+            Text(title).font(Theme.headline).foregroundStyle(Theme.text)
             if dueToday {
-                Text("Due today").font(Theme.font(11.5, .semibold)).foregroundStyle(Theme.accent)
+                Text("Due today").font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.accent)
                     .padding(.horizontal, 7).padding(.vertical, 2).background(Theme.accentSoft, in: Capsule())
             }
             Spacer()
-            Text("\(open.count)").font(Theme.mono(13, .medium)).foregroundStyle(Theme.secondary)
+            Text("\(open.count)").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
         }
         .textCase(nil)
     }
@@ -198,6 +198,8 @@ struct ToDoView: View {
                 onSet: { model.setProgress(it, $0) },
                 onSubmit: { sheet = SheetTarget(url: submitURL(it), assignmentId: it.schoologyId) },
                 onOpen: { path.append(AssignmentRoute(id: it.schoologyId)) })
+            // Every separator starts under the checkbox, whatever the row holds.
+            .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if it.turnedIn {
                     Button { model.setTurnedIn(it, false) } label: { Label("Not turned in", systemImage: "arrow.uturn.backward") }
@@ -207,11 +209,11 @@ struct ToDoView: View {
                         .tint(Theme.good)
                 }
                 if let lab = it.labURL.flatMap(URL.init(string:)) {
-                    Button { sheet = SheetTarget(url: lab) } label: { Label("Lab site ↗", systemImage: "arrow.up.right.square") }
+                    Button { sheet = SheetTarget(url: lab) } label: { Label("Lab site", systemImage: "arrow.up.right.square") }
                         .tint(Theme.accent)
                 } else if it.hasDropbox && !it.submitted {
                     Button { sheet = SheetTarget(url: submitURL(it), assignmentId: it.schoologyId) } label: {
-                        Label("Submit ↗", systemImage: "arrow.up.right.square")
+                        Label("Submit", systemImage: "arrow.up.right.square")
                     }
                     .tint(Theme.accent)
                 }
@@ -272,11 +274,11 @@ struct ProgressChips: View {
                         Image(systemName: icon(p, on: on))
                         Text(title(p)).lineLimit(1).minimumScaleFactor(0.8)
                     }
-                    .font(Theme.font(13.5, on ? .bold : .semibold))
+                    .font(Theme.footnote.weight(on ? .bold : .semibold))
                     .frame(maxWidth: .infinity, minHeight: 40)
                     .foregroundStyle(on ? Theme.onAccent : color)
-                    .background(on ? color : color.opacity(0.1), in: RoundedRectangle(cornerRadius: 10))
-                    .overlay(RoundedRectangle(cornerRadius: 10).stroke(color.opacity(on ? 0 : 0.35)))
+                    .background(on ? color : color.opacity(0.1), in: Capsule())
+                    .overlay(Capsule().stroke(color.opacity(on ? 0 : 0.35)))
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -317,45 +319,53 @@ struct TodoRow: View {
     }
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            // One tap: to do ↔ done (a turned-in row goes back to done), like the extension.
-            Button {
-                onSet(progress == .todo ? .done : progress == .done ? .todo : .done)
-            } label: {
-                CheckMark(item: item).frame(width: 44, height: 44).contentShape(Rectangle())
+        HStack(alignment: .top, spacing: Theme.Space.m) {
+            // Left column: the checkbox, and the type bar under it (fills the row's height).
+            VStack(spacing: 6) {
+                // One tap: to do ↔ done (a turned-in row goes back to done), like the extension.
+                Button {
+                    onSet(progress == .todo ? .done : progress == .done ? .todo : .done)
+                } label: {
+                    CheckMark(item: item).frame(width: 44, height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .padding(-10)
+                .sensoryFeedback(.success, trigger: progress)
+                .accessibilityLabel("Status: \(item.submitted ? "Submitted on Schoology" : label(progress))")
+                .accessibilityHint(progress == .todo ? (item.type == .exam ? "Marks it studied" : "Marks it done") : "Marks it to do")
+                TypeBar(type: item.type)
             }
-            .buttonStyle(.plain)
-            .padding(.leading, -10).padding(.top, -10)
-            .sensoryFeedback(.success, trigger: progress)
-            .accessibilityLabel("Status: \(item.submitted ? "Submitted on Schoology" : label(progress))")
-            .accessibilityHint(progress == .todo ? (item.type == .exam ? "Marks it studied" : "Marks it done") : "Marks it to do")
-            VStack(alignment: .leading, spacing: 4) {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(item.title)
-                        .font(Theme.font(16, item.type == .exam ? .bold : .semibold))
-                        .foregroundStyle(Theme.text)
-                        .maxLines(2)
-                    HStack(spacing: 6) {
-                        TypeTag(type: item.type)
+            .frame(width: 24)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.title)
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.text)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onOpen)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("Opens the assignment")
+                    .accessibilityAction { onOpen() }
+                // Due line with the one-tap action (Submit / Turn in / Undo) beside it;
+                // the action drops under it rather than cutting the text short.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: Theme.Space.s) {
+                        dueText.fixedSize(horizontal: true, vertical: false)
+                        Spacer(minLength: Theme.Space.xs)
+                        action
+                    }
+                    VStack(alignment: .leading, spacing: 6) {
                         dueText
+                        action
                     }
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .contentShape(Rectangle())
-                .onTapGesture(perform: onOpen)
-                .accessibilityElement(children: .combine)
-                .accessibilityAddTraits(.isButton)
-                .accessibilityHint("Opens the assignment")
-                .accessibilityAction { onOpen() }
-                // Status words on the left, one-tap action on the right (extension: Done / Turn in / Undo).
-                HStack(alignment: .center, spacing: 8) {
-                    statusLine
-                    Spacer(minLength: 4)
-                    action
+                if let (text, color, strong) = statusNote {
+                    Text(text).font(Theme.footnote.weight(strong ? .bold : .medium)).foregroundStyle(color)
                 }
             }
         }
-        .padding(.vertical, 4)
+        .fixedSize(horizontal: false, vertical: true)
+        .padding(.vertical, Theme.Space.xs)
     }
 
     @ViewBuilder
@@ -366,7 +376,7 @@ struct TodoRow: View {
             PillButton(title: "Undo", color: Theme.secondary) { onSet(.done) }
                 .accessibilityLabel("Undo turned in for \(item.title)")
         } else if item.hasDropbox {
-            PillButton(title: "Submit ↗", action: onSubmit)
+            PillButton(title: "Submit", external: true, action: onSubmit)
                 .accessibilityLabel("Submit \(item.title) on Schoology")
         } else if item.type != .exam {
             PillButton(title: "Turn in", color: Theme.good) { onSet(.turnedIn) }
@@ -379,54 +389,45 @@ struct TodoRow: View {
         item.type == .exam && p != .turnedIn ? (p == .done ? "Studied" : "Not studied") : p.label
     }
 
-    private var dueText: some View {
+    /// "Mon Oct 5, 11:59 pm · 7 days late"; a test adds its countdown and studied mark.
+    private var dueText: Text {
         let late = item.submitted || item.turnedIn ? nil : TodoLogic.daysLate(due: item.due, now: now)
-        return HStack(spacing: 0) {
-            Text(Fmt.due(item.due, now: now))
-            if let late, late > 0 { Text(" · \(late) d late") } else if late == 0 { Text(" · late") }
+        var t = Text(Fmt.due(item.due, now: now))
+        if let late, late > 0 { t = t + Text(" · \(late) day\(late == 1 ? "" : "s") late") } else if late == 0 { t = t + Text(" · late") }
+        t = t.foregroundStyle(late != nil ? Theme.late : Theme.secondary)
+        if item.type == .exam && !item.submitted && !item.turnedIn {
+            let countdown = Reminders.testCountdown(due: item.due, now: now).map { " · " + $0.replacingOccurrences(of: "Test ", with: "") } ?? ""
+            t = t + Text("\(countdown) · \(item.studied ? "studied" : "not studied")")
+                .foregroundStyle(item.studied ? Theme.accent : Theme.secondary)
         }
-        .font(Theme.mono(12.5))
-        .foregroundStyle(late != nil ? Theme.late : Theme.secondary)
-        .oneLine()
+        return t.font(Theme.footnote.weight(late != nil ? .semibold : .regular).monospacedDigit())
     }
 
-    @ViewBuilder
-    private var statusLine: some View {
-        let (text, color): (String, Color) = {
-            if item.submitted { return ("Submitted on Schoology\(item.statusLate == true ? " · late" : "")", Theme.good) }
-            if item.turnedIn { return ("Turned in · not on Schoology", Theme.good) }
-            if item.type == .exam {
-                let mark = item.studied ? "Studied" : "Not studied"
-                let text = Reminders.testCountdown(due: item.due, now: now).map { "\($0) · \(mark.lowercased())" } ?? mark
-                return (text, item.studied ? Theme.accent : Theme.text)
-            }
-            if item.external { return (item.done ? "Done · check it in Schoology" : "Google Assignment · turn in on Schoology", item.done ? Theme.accent : Theme.secondary) }
-            if item.done { return (item.hasDropbox ? "Done · not submitted yet" : "Done", Theme.accent) }
-            if !item.inSchoology { return ("Schoology dropped this · still yours to tick", Theme.secondary) }
-            return ("To do", Theme.secondary)
-        }()
-        Text(text).font(Theme.font(13, item.submitted || item.turnedIn ? .bold : .medium)).foregroundStyle(color)
+    /// The status, when it says more than "to do": its own line, never cut short.
+    private var statusNote: (String, Color, Bool)? {
+        if item.submitted { return ("Submitted on Schoology\(item.statusLate == true ? " · late" : "")", Theme.good, true) }
+        if item.turnedIn { return ("Turned in · not on Schoology", Theme.good, true) }
+        if item.type == .exam { return nil }
+        if item.external { return (item.done ? "Done · check it in Schoology" : "Google Assignment · turn in on Schoology", item.done ? Theme.accent : Theme.secondary, false) }
+        if item.done { return (item.hasDropbox ? "Done · not submitted yet" : "Done", Theme.accent, false) }
+        if !item.inSchoology { return ("Schoology dropped this · still yours to tick", Theme.secondary, false) }
+        return nil
     }
 }
 
-/// Blue filled = done (student) · green filled, heavy check = turned in
-/// (submitted on Schoology, or marked) · square = a test (studied / not).
+/// Blue filled = done or studied (student) · green filled, heavy check = turned
+/// in (submitted on Schoology, or marked). Always a circle: the type bar says it's a test.
 /// The words beside it say which kind of turned in it is.
 struct CheckMark: View {
     let item: ItemState
-    var size: CGFloat = 22
+    var size: CGFloat = 24
 
     var body: some View {
         ZStack {
-            if item.type == .exam && !item.submitted && !item.turnedIn {
-                RoundedRectangle(cornerRadius: 5)
-                    .fill(item.studied ? Theme.accent : Color.clear)
-                    .overlay(RoundedRectangle(cornerRadius: 5).stroke(item.studied ? Theme.accent : Theme.text, lineWidth: 1.6))
-                if item.studied { check(Theme.onAccent) }
-            } else if item.submitted || item.turnedIn {
+            if item.submitted || item.turnedIn {
                 Circle().fill(Theme.good)
                 check(Theme.onAccent, weight: .black)
-            } else if item.done {
+            } else if item.type == .exam ? item.studied : item.done {
                 Circle().fill(Theme.accent)
                 check(Theme.onAccent)
             } else {

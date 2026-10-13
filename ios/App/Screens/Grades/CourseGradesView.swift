@@ -43,14 +43,14 @@ struct CourseGradesView: View {
                     if g.categories.count > 1 && !whatIfOn {
                         let allShut = g.categories.allSatisfy { !expanded.contains($0.title) }
                         HStack {
-                            Text("Categories").font(Theme.font(13, .semibold)).foregroundStyle(Theme.secondary)
+                            Text("Categories").font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary)
                             Spacer()
                             Button(allShut ? "Expand all" : "Collapse all") {
                                 withAnimation(.snappy(duration: 0.25)) {
                                     expandedRaw = allShut ? g.categories.map(\.title).joined(separator: "\n") : ""
                                 }
                             }
-                            .font(Theme.font(13, .semibold))
+                            .font(Theme.footnote.weight(.semibold))
                         }
                         .padding(.horizontal, 4)
                     }
@@ -96,30 +96,30 @@ struct CourseGradesView: View {
     private var summary: some View {
         HStack(alignment: .firstTextBaseline) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(course.shortTitle).font(Theme.font(20, .bold)).foregroundStyle(Theme.text)
+                Text(course.shortTitle).font(Theme.title).foregroundStyle(Theme.text)
                 Text([course.periodLabel, shown?.period ?? "Current period"].filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(Theme.font(13, .semibold)).foregroundStyle(Theme.secondary)
+                    .font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(shown?.letter ?? "—").font(Theme.font(40, .bold))
-                    Text(Fmt.pct(shown?.pct, digits: 2)).font(Theme.mono(20, .medium))
+                    Text(shown?.letter ?? "—").font(Theme.largeTitle)
+                    Text(Fmt.pct(shown?.pct, digits: 2)).font(Theme.title.weight(.medium).monospacedDigit())
                 }
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(shown?.pct.map { "Grade \(shown?.letter ?? ""), \(String(format: "%.2f", $0)) percent" } ?? "No grade yet")
                 if whatIfOn, let p = preview?.pct, let r = real?.pct {
                     Text("\(Fmt.signed(p - r)) from your real \(Fmt.pct(r)) (\(real?.letter ?? ""))")
-                        .font(Theme.font(14, .semibold)).foregroundStyle(p < r ? Theme.late : Theme.good)
-                    Button("Reset what-if") { whatIf = [:]; preview = nil }.font(Theme.font(14, .medium))
+                        .font(Theme.subhead.weight(.semibold)).foregroundStyle(p < r ? Theme.late : Theme.good)
+                    Button("Reset what-if") { whatIf = [:]; preview = nil }.font(Theme.subhead.weight(.medium))
                 } else if whatIfOn {
                     Text("Type a score in any box below to see your grade change. Nothing changes on Schoology.")
-                        .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                        .font(Theme.footnote).foregroundStyle(Theme.secondary)
                 }
                 if !whatIfOn, let g = shown {
-                    Text(g.mode == "weighted" ? "Weighted by category" : "Total points").font(Theme.font(13)).foregroundStyle(Theme.tertiary)
+                    Text(g.mode == "weighted" ? "Weighted by category" : "Total points").font(Theme.footnote).foregroundStyle(Theme.tertiary)
                 }
             }
             Spacer()
             if let at = model.gradesAsOf[course.sectionId] {
-                Text(Fmt.ago(at)).font(Theme.font(12)).foregroundStyle(Theme.tertiary)
+                Text(Fmt.ago(at)).font(Theme.caption).foregroundStyle(Theme.tertiary)
             }
         }
         .padding(16)
@@ -135,25 +135,25 @@ struct CourseGradesView: View {
             Button { toggle(cat.title) } label: {
                 HStack(alignment: .firstTextBaseline) {
                     Image(systemName: "chevron.right")
-                        .font(Theme.font(13, .semibold)).foregroundStyle(Theme.secondary)
+                        .font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary)
                         .rotationEffect(.degrees(open ? 90 : 0))
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 6) {
-                            Text(cat.title).font(Theme.font(16, .semibold)).foregroundStyle(Theme.text)
+                            Text(cat.title).font(Theme.headline).foregroundStyle(Theme.text)
                             let n = items.filter { newIds.contains($0.id) }.count
                             if n > 0 && !open {
-                                Text("\(n) new").font(Theme.font(11.5, .bold)).foregroundStyle(Theme.onAccent)
+                                Text("\(n) new").font(Theme.caption.weight(.bold)).foregroundStyle(Theme.onAccent)
                                     .padding(.horizontal, 6).padding(.vertical, 1).background(Theme.accent, in: Capsule())
                             }
                         }
                         Text(open ? floorText(cat) : "\(items.count) item\(items.count == 1 ? "" : "s")\(floorText(cat).isEmpty ? "" : " · " + floorText(cat))")
-                            .font(Theme.font(12.5)).foregroundStyle(cat.floorStatus == "out" ? Theme.late : Theme.secondary)
+                            .font(Theme.footnote).foregroundStyle(cat.floorStatus == "out" ? Theme.late : Theme.secondary)
                             .multilineTextAlignment(.leading)
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(Fmt.pct(cat.pct)).font(Theme.mono(15, .semibold)).foregroundStyle(Theme.text)
-                        if let w = cat.weight { Text("\(Fmt.num(w))% of grade").font(Theme.font(12)).foregroundStyle(Theme.tertiary) }
+                        Text(Fmt.pct(cat.pct)).font(Theme.subhead.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.text)
+                        if let w = cat.weight { Text("\(Fmt.num(w))% of grade").font(Theme.caption).foregroundStyle(Theme.tertiary) }
                     }
                 }
                 .padding(14)
@@ -191,21 +191,21 @@ struct CourseGradesView: View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(it.title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).maxLines(2)
+                    Text(it.title).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text).maxLines(2)
                     if newIds.contains(it.id) { NewTag() }
                 }
                 HStack(spacing: 6) {
-                    if let d = Fmt.wallDate(it.due) { Text(Fmt.short.string(from: d)).font(Theme.mono(12)).foregroundStyle(Theme.tertiary) }
-                    if !it.comment.isEmpty { Label("Comment", systemImage: "text.bubble").font(Theme.font(11.5)).foregroundStyle(Theme.accent) }
-                    if it.rubric != nil { Label("Rubric", systemImage: "tablecells").font(Theme.font(11.5)).foregroundStyle(Theme.accent) }
+                    if let d = Fmt.wallDate(it.due) { Text(Fmt.short.string(from: d)).font(Theme.caption.monospacedDigit()).foregroundStyle(Theme.tertiary) }
+                    if !it.comment.isEmpty { Label("Comment", systemImage: "text.bubble").font(Theme.caption).foregroundStyle(Theme.accent) }
+                    if it.rubric != nil { Label("Rubric", systemImage: "tablecells").font(Theme.caption).foregroundStyle(Theme.accent) }
                 }
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
-                Text(scoreText(it)).font(Theme.mono(14, .semibold)).foregroundStyle(it.earned == nil ? Theme.tertiary : Theme.text)
+                Text(scoreText(it)).font(Theme.subhead.weight(.semibold).monospacedDigit()).foregroundStyle(it.earned == nil ? Theme.tertiary : Theme.text)
                 HStack(spacing: 6) {
-                    if let p = it.pct { Text(Fmt.pct(p, digits: 0)).font(Theme.mono(12)).foregroundStyle(Theme.secondary) }
-                    if let i = it.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.mono(12)).foregroundStyle(i < 0 ? Theme.late : Theme.good) }
+                    if let p = it.pct { Text(Fmt.pct(p, digits: 0)).font(Theme.caption.monospacedDigit()).foregroundStyle(Theme.secondary) }
+                    if let i = it.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.caption.monospacedDigit()).foregroundStyle(i < 0 ? Theme.late : Theme.good) }
                 }
             }
         }
@@ -219,21 +219,21 @@ struct CourseGradesView: View {
         let changed = !(whatIf[it.id] ?? "").isEmpty
         return HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(it.title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).maxLines(2)
+                Text(it.title).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text).maxLines(2)
                 Text(it.earned != nil ? "Real: \(scoreText(it))" : "Not graded yet")
-                    .font(Theme.font(12.5)).foregroundStyle(Theme.secondary)
+                    .font(Theme.footnote).foregroundStyle(Theme.secondary)
             }
             Spacer()
             TextField(it.earned.map { Fmt.num($0) } ?? "—", text: Binding(get: { whatIf[it.id] ?? "" }, set: { whatIf[it.id] = $0; recompute() }))
                 .keyboardType(.decimalPad)
                 .multilineTextAlignment(.trailing)
-                .font(Theme.mono(15, .semibold))
+                .font(Theme.subhead.weight(.semibold).monospacedDigit())
                 .frame(width: 64)
                 .padding(8)
-                .background(changed ? Theme.accentSoft : Theme.tagSoft, in: RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).stroke(changed ? Theme.accent : Theme.border))
+                .background(changed ? Theme.accentSoft : Theme.tagSoft, in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous).stroke(changed ? Theme.accent : Theme.border))
                 .accessibilityLabel("What-if score for \(it.title), out of \(Fmt.num(it.possible))")
-            Text("/ \(Fmt.num(it.possible))").font(Theme.mono(14)).foregroundStyle(Theme.secondary)
+            Text("/ \(Fmt.num(it.possible))").font(Theme.subhead.monospacedDigit()).foregroundStyle(Theme.secondary)
         }
         .padding(14)
     }
@@ -252,15 +252,15 @@ struct CourseGradesView: View {
 
     private var planner: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Plan an upcoming test").font(Theme.font(16, .semibold))
+            Text("Plan an upcoming test").font(Theme.headline)
             Picker("Category", selection: $planCategory) {
                 ForEach(real?.categories.map(\.title) ?? [], id: \.self) { Text($0).tag($0) }
             }
             .pickerStyle(.menu)
             HStack {
                 Text("Worth")
-                TextField("100", text: $planPoints).keyboardType(.decimalPad).font(Theme.mono(15)).frame(width: 70)
-                    .padding(6).background(Theme.accentSoft, in: RoundedRectangle(cornerRadius: 8))
+                TextField("100", text: $planPoints).keyboardType(.decimalPad).font(Theme.subhead.monospacedDigit()).frame(width: 70)
+                    .padding(6).background(Theme.accentSoft, in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
                 Text("points")
                 Spacer()
                 PillButton(title: "Work it out", filled: true) {
@@ -271,7 +271,7 @@ struct CourseGradesView: View {
                 }
             }
             if let plan {
-                Text(planText(plan)).font(Theme.font(14, .medium))
+                Text(planText(plan)).font(Theme.subhead.weight(.medium))
                     .foregroundStyle(plan.status == "out" ? Theme.late : Theme.good)
             }
         }

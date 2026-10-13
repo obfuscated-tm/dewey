@@ -44,7 +44,7 @@ struct SettingsView: View {
                     } else {
                         SecureField("np_…", text: $tokenField)
                             .textInputAutocapitalization(.never).autocorrectionDisabled()
-                            .font(Theme.mono(14))
+                            .font(Theme.subhead.monospacedDigit())
                         if let tokenError { Text(tokenError).font(.footnote).foregroundStyle(Theme.late) }
                         Button("Connect") {
                             let t = tokenField.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -219,9 +219,9 @@ struct DeveloperView: View {
             Section("Scheduled reminders (\(scheduled.count))") {
                 ForEach(scheduled, id: \.identifier) { r in
                     VStack(alignment: .leading, spacing: 2) {
-                        Text(r.content.title).font(Theme.font(14, .semibold))
+                        Text(r.content.title).font(Theme.subhead.weight(.semibold))
                         if let d = (r.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() {
-                            Text(Fmt.dayTime.string(from: d)).font(Theme.mono(12)).foregroundStyle(Theme.secondary)
+                            Text(Fmt.dayTime.string(from: d)).font(Theme.caption.monospacedDigit()).foregroundStyle(Theme.secondary)
                         }
                     }
                 }
@@ -237,7 +237,7 @@ struct DeveloperView: View {
                 }
                 .onChange(of: op) { _, o in args = fill(Self.examples[o] ?? "{}") }
                 TextField("args (JSON)", text: $args, axis: .vertical)
-                    .font(Theme.mono(13)).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .font(Theme.code).textInputAutocapitalization(.never).autocorrectionDisabled()
                 Button(running ? "Running…" : "Run") { Task { await run() } }.disabled(running)
                 Button("Reload engine") { model.engine.reload() }
             } footer: {
@@ -245,7 +245,7 @@ struct DeveloperView: View {
             }
             if !output.isEmpty {
                 Section("Result") {
-                    Text(output).font(Theme.mono(11)).textSelection(.enabled)
+                    Text(output).font(Theme.code).textSelection(.enabled)
                     Button("Copy") { UIPasteboard.general.string = output }
                 }
             }

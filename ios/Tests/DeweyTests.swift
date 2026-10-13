@@ -270,10 +270,20 @@ final class ThemeTests: XCTestCase {
         }
     }
 
-    func testTextStyleForSize() {
-        XCTAssertEqual(Theme.textStyle(34), .largeTitle)
-        XCTAssertEqual(Theme.textStyle(16), .subheadline)
-        XCTAssertEqual(Theme.textStyle(10.5), .caption2)
+    /// Screens use the seven text styles in Theme, never a point size or a code
+    /// font: one stray `.system(size: 12.5)` is how the type scale drifts again.
+    func testScreensUseTheTypeScale() throws {
+        let app = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("App")
+        let banned = [/\.system\(size: *[0-9]/, /\.monospaced\(\)/, /Font\.custom\(/, /RoundedRectangle\(cornerRadius: *[0-9]/]
+        var hits: [String] = []
+        let files = FileManager.default.enumerator(at: app, includingPropertiesForKeys: nil)!
+        for case let url as URL in files where url.pathExtension == "swift" && url.lastPathComponent != "Theme.swift" {
+            for (n, line) in try String(contentsOf: url, encoding: .utf8).components(separatedBy: "\n").enumerated() {
+                if banned.contains(where: { line.contains($0) }) { hits.append("\(url.lastPathComponent):\(n + 1)") }
+            }
+        }
+        XCTAssertEqual(hits, [], "use Theme.largeTitle…caption and Theme.Radius instead")
     }
 }
 

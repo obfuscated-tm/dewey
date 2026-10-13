@@ -11,8 +11,8 @@ struct SkeletonRows: View {
                 HStack(spacing: 12) {
                     Circle().fill(Theme.divider).frame(width: 22, height: 22)
                     VStack(alignment: .leading, spacing: 8) {
-                        RoundedRectangle(cornerRadius: 4).fill(Theme.divider).frame(width: CGFloat(160 + (i * 37) % 110), height: 13)
-                        RoundedRectangle(cornerRadius: 4).fill(Theme.divider.opacity(0.7)).frame(width: 110, height: 10)
+                        RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous).fill(Theme.divider).frame(width: CGFloat(160 + (i * 37) % 110), height: 13)
+                        RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous).fill(Theme.divider.opacity(0.7)).frame(width: 110, height: 10)
                     }
                     Spacer()
                 }
@@ -35,7 +35,7 @@ struct AsOfBanner: View {
                 Image(systemName: error == .rateLimit ? "tortoise" : "wifi.slash")
                 Text("\(error == .rateLimit ? "Slowed down" : "Offline") · as of \(Fmt.ago(date))")
             }
-            .font(Theme.font(12.5, .medium))
+            .font(Theme.footnote.weight(.medium))
             .foregroundStyle(Theme.secondary)
             .padding(.horizontal, 10).padding(.vertical, 6)
             .background(Theme.tagSoft, in: Capsule())
@@ -52,11 +52,11 @@ struct ErrorState: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            Image(systemName: icon).font(Theme.font(30)).foregroundStyle(Theme.tertiary)
-            Text(title).font(Theme.font(17, .semibold))
-            Text(error.message).font(Theme.font(14)).foregroundStyle(Theme.secondary).multilineTextAlignment(.center)
+            Image(systemName: icon).font(Theme.largeTitle.weight(.regular)).foregroundStyle(Theme.tertiary)
+            Text(title).font(Theme.headline)
+            Text(error.message).font(Theme.subhead).foregroundStyle(Theme.secondary).multilineTextAlignment(.center)
             if case .parse = error, let schoologyURL, let open {
-                PillButton(title: "Open this page in Schoology ↗") { open(schoologyURL) }
+                PillButton(title: "Open this page in Schoology", external: true) { open(schoologyURL) }
             } else if let retry {
                 PillButton(title: "Try again", action: retry)
             }
@@ -95,10 +95,10 @@ struct EmptyState: View {
             if let art {
                 Image(art).resizable().scaledToFit().frame(height: 72).accessibilityHidden(true)
             } else {
-                Image(systemName: icon).font(Theme.font(30)).foregroundStyle(Theme.good)
+                Image(systemName: icon).font(Theme.largeTitle.weight(.regular)).foregroundStyle(Theme.good)
             }
-            Text(title).font(Theme.font(17, .semibold))
-            if let detail { Text(detail).font(Theme.font(14)).foregroundStyle(Theme.secondary).multilineTextAlignment(.center) }
+            Text(title).font(Theme.headline)
+            if let detail { Text(detail).font(Theme.subhead).foregroundStyle(Theme.secondary).multilineTextAlignment(.center) }
         }
         .padding(28)
         .frame(maxWidth: .infinity)
@@ -115,12 +115,14 @@ struct ScreenHeader<Trailing: View>: View {
         HStack(alignment: .bottom) {
             VStack(alignment: .leading, spacing: 2) {
                 if let kicker {
-                    Text(kicker.uppercased()).font(Theme.font(13, .semibold)).tracking(0.5).foregroundStyle(Theme.secondary)
+                    Text(kicker.uppercased()).font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.secondary)
                 }
-                Text(title).font(Theme.font(34, .bold))
+                Text(title).font(Theme.largeTitle)
             }
             Spacer()
             trailing
         }
+        // A hair in from the cards' edge (a list row clips the kicker's first letter at 0).
+        .padding(.horizontal, Theme.Space.xs)
     }
 }

@@ -88,15 +88,15 @@ struct AssignmentView: View {
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 6) {
             if let c = model.course(it?.sectionId) {
-                Text(c.shortTitle).font(Theme.font(13, .semibold)).foregroundStyle(Theme.accent)
+                Text(c.shortTitle).font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.accent)
             }
-            Text(a?.title ?? it?.title ?? "Assignment").font(Theme.font(26, .bold))
+            Text(a?.title ?? it?.title ?? "Assignment").font(Theme.title)
             HStack(spacing: 8) {
                 if let it { TypeTag(type: it.type) }
                 let due = Fmt.date(a?.due) ?? it?.due
-                Text(due.map { "Due " + Fmt.dayTime.string(from: $0) } ?? "No due date").font(Theme.mono(13))
+                Text(due.map { "Due " + Fmt.dayTime.string(from: $0) } ?? "No due date").font(Theme.footnote.monospacedDigit())
                     .foregroundStyle(Theme.secondary)
-                if let g = gradeItem, let p = g.possible { Text("· \(Fmt.num(p)) pts").font(Theme.mono(13)).foregroundStyle(Theme.secondary) }
+                if let g = gradeItem, let p = g.possible { Text("· \(Fmt.num(p)) pts").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary) }
             }
         }
     }
@@ -126,28 +126,28 @@ struct AssignmentView: View {
     private func submissionCard(_ a: Assignment) -> some View {
         let k = kind(a)
         VStack(alignment: .leading, spacing: 6) {
-            Text("SUBMISSION").font(Theme.font(12, .semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+            Text("SUBMISSION").font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
             switch k {
             case .dropbox(let done):
                 Label(done ? "Submitted on Schoology" : "Not submitted on Schoology",
                       systemImage: done ? "checkmark.circle.fill" : "xmark.circle")
-                    .font(Theme.font(17, .semibold))
+                    .font(Theme.body.weight(.semibold))
                     .foregroundStyle(done ? Theme.good : Theme.late)
-                if done, status?.late == true { Text("Late").font(Theme.font(13)).foregroundStyle(Theme.late) }
-                if let checkedAt { Text("Checked \(Fmt.ago(checkedAt))").font(Theme.font(13)).foregroundStyle(Theme.secondary) }
+                if done, status?.late == true { Text("Late").font(Theme.footnote).foregroundStyle(Theme.late) }
+                if let checkedAt { Text("Checked \(Fmt.ago(checkedAt))").font(Theme.footnote).foregroundStyle(Theme.secondary) }
             case .outside(let url):
-                Label("Handed in outside Schoology", systemImage: "arrow.up.right.square").font(Theme.font(17, .semibold))
+                Label("Handed in outside Schoology", systemImage: "arrow.up.right.square").font(Theme.body.weight(.semibold))
                 Text(url != nil ? "This class takes it on its own site (\(url!.host ?? "")). Schoology can't see it." : "No Schoology dropbox. Hand it in the way your teacher asked, then mark it turned in.")
-                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                    .font(Theme.footnote).foregroundStyle(Theme.secondary)
             case .quiz:
-                Label("Test / quiz on Schoology", systemImage: "list.bullet.clipboard").font(Theme.font(17, .semibold))
-                Text("It only opens when you tap Take on Schoology.").font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                Label("Test / quiz on Schoology", systemImage: "list.bullet.clipboard").font(Theme.body.weight(.semibold))
+                Text("It only opens when you tap Take on Schoology.").font(Theme.footnote).foregroundStyle(Theme.secondary)
             case .google:
-                Label("Google Assignment", systemImage: "doc.richtext").font(Theme.font(17, .semibold))
+                Label("Google Assignment", systemImage: "doc.richtext").font(Theme.body.weight(.semibold))
                 Text("Turned in inside Schoology's Google frame. Schoology never tells the app whether you did, so check it there.")
-                    .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                    .font(Theme.footnote).foregroundStyle(Theme.secondary)
             case .unknown:
-                Label("Checking Schoology…", systemImage: "hourglass").font(Theme.font(17, .semibold)).foregroundStyle(Theme.secondary)
+                Label("Checking Schoology…", systemImage: "hourglass").font(Theme.body.weight(.semibold)).foregroundStyle(Theme.secondary)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -159,10 +159,10 @@ struct AssignmentView: View {
     private var mainAction: (String, () -> Void)? {
         guard let a else { return nil }
         switch kind(a) {
-        case .dropbox: return ("Submit on Schoology ↗", { sheet = SheetTarget(url: pageURL, assignmentId: id) })
-        case .outside(let url?): return ("Turn in on \(url.host ?? "lab site") ↗", { sheet = SheetTarget(url: url) })
-        case .quiz: return ("Take on Schoology ↗", { sheet = SheetTarget(url: URL(string: Engine.origin.absoluteString + (it?.url ?? "/assignment/\(id)"))!, assignmentId: id) })
-        case .google: return ("Open in Schoology ↗", { sheet = SheetTarget(url: pageURL, assignmentId: id, google: true) })
+        case .dropbox: return ("Submit on Schoology", { sheet = SheetTarget(url: pageURL, assignmentId: id) })
+        case .outside(let url?): return ("Turn in on \(url.host ?? "lab site")", { sheet = SheetTarget(url: url) })
+        case .quiz: return ("Take on Schoology", { sheet = SheetTarget(url: URL(string: Engine.origin.absoluteString + (it?.url ?? "/assignment/\(id)"))!, assignmentId: id) })
+        case .google: return ("Open in Schoology", { sheet = SheetTarget(url: pageURL, assignmentId: id, google: true) })
         default: return nil
         }
     }
@@ -182,12 +182,12 @@ struct AssignmentView: View {
 
     private func progressCard(_ it: ItemState) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("YOUR STATUS").font(Theme.font(12, .semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+            Text("YOUR STATUS").font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
             ProgressChips(current: model.progress(it), isExam: it.type == .exam) { p in
                 withAnimation(.snappy(duration: 0.2)) { model.setProgress(it, p) }
             }
             Text(it.submitted ? "Schoology also shows it submitted." : "Only you see this. Turned in means you handed it in, on paper or another site.")
-                .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                .font(Theme.footnote).foregroundStyle(Theme.secondary)
             if counting || (WidgetBridge.canCountDown(it) && !model.isFinished(it) && WidgetBridge.activitiesAllowed) {
                 Theme.divider.frame(height: 1).padding(.vertical, 4)
                 Toggle(isOn: Binding(get: { counting }, set: { on in
@@ -195,9 +195,9 @@ struct AssignmentView: View {
                     if on { try? WidgetBridge.startCountdown(model, it) } else { Task { await WidgetBridge.stopCountdown(it.schoologyId) } }
                 })) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Countdown on Lock Screen").font(Theme.font(15, .medium)).foregroundStyle(Theme.text)
+                        Text("Countdown on Lock Screen").font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text)
                         Text("Shows the time left in the Dynamic Island. Ends when you mark it done.")
-                            .font(Theme.font(12.5)).foregroundStyle(Theme.secondary)
+                            .font(Theme.footnote).foregroundStyle(Theme.secondary)
                     }
                 }
                 .tint(Theme.accent)
@@ -218,12 +218,12 @@ struct AssignmentView: View {
             } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("GRADED").font(Theme.font(12, .semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
-                        Text(g.grade).font(Theme.mono(17, .semibold)).foregroundStyle(Theme.text)
-                        if !g.comment.isEmpty { Text(g.comment).font(Theme.font(13)).foregroundStyle(Theme.secondary).maxLines(2) }
+                        Text("GRADED").font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+                        Text(g.grade).font(Theme.body.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.text)
+                        if !g.comment.isEmpty { Text(g.comment).font(Theme.footnote).foregroundStyle(Theme.secondary).maxLines(2) }
                     }
                     Spacer()
-                    if let i = g.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.mono(13)).foregroundStyle(i < 0 ? Theme.late : Theme.good) }
+                    if let i = g.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.footnote.monospacedDigit()).foregroundStyle(i < 0 ? Theme.late : Theme.good) }
                     Image(systemName: "chevron.right").foregroundStyle(Theme.tertiary)
                 }
                 .padding(16)
@@ -238,7 +238,7 @@ struct AssignmentView: View {
         let md = (a.instructionsMd ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         if !md.isEmpty || !a.attachments.isEmpty {
             VStack(alignment: .leading, spacing: 10) {
-                Text("INSTRUCTIONS").font(Theme.font(12, .semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+                Text("INSTRUCTIONS").font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
                 if !md.isEmpty {
                     MarkdownText(md: md) { url in LinkOpener.open(url) { sheet = $0 } }
                 }
@@ -261,7 +261,7 @@ struct AssignmentView: View {
     private var typeSwitch: some View {
         if let it {
             VStack(alignment: .leading, spacing: 8) {
-                Text(model.neoPlan.connected ? "IN NEO-PLAN AS" : "TYPE").font(Theme.font(12, .semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+                Text(model.neoPlan.connected ? "IN NEO-PLAN AS" : "TYPE").font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
                 Picker("Type", selection: Binding(get: { it.type }, set: { model.setType(it, $0) })) {
                     ForEach(ItemType.allCases, id: \.self) { Text($0.name).tag($0) }
                 }
@@ -277,9 +277,9 @@ struct AssignmentView: View {
         if let g = gradeItem, g.earned == nil, let p = g.possible {
             Button { whatIf = true } label: {
                 Text("What if I get __ / \(Fmt.num(p))?")
-                    .font(Theme.font(15, .semibold))
+                    .font(Theme.subhead.weight(.semibold))
                     .frame(maxWidth: .infinity, minHeight: 48)
-                    .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.accent, style: StrokeStyle(lineWidth: 1.2, dash: [5, 4])))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(Theme.accent, style: StrokeStyle(lineWidth: 1.2, dash: [5, 4])))
             }
             .buttonStyle(.plain)
             .foregroundStyle(Theme.accent)
@@ -291,7 +291,7 @@ struct AssignmentView: View {
     @ViewBuilder
     private var bottomBar: some View {
         if let (title, action) = mainAction {
-            WideButton(title: title, action: action)
+            WideButton(title: title, external: true, action: action)
                 .padding(.horizontal, 16).padding(.vertical, 8)
                 .background(.bar)
         }
@@ -305,7 +305,7 @@ struct MarkdownText: View {
     var body: some View {
         let attr = (try? AttributedString(markdown: md, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(md)
         Text(attr)
-            .font(Theme.font(15))
+            .font(Theme.subhead)
             .foregroundStyle(Theme.text)
             .textSelection(.enabled)
             .environment(\.openURL, OpenURLAction { url in onLink(url); return .handled })

@@ -35,7 +35,7 @@ enum FileKinds {
         guard let t = target(title: title, url: url) else { return ("link", "") }
         switch t {
         case .file: return (ext(url) == "pdf" || ext(title) == "pdf" ? "doc.richtext" : "doc", "Opens here ›")
-        case .web(let u): return (LinkOpener.isGoogle(u) ? "doc.text" : "safari", LinkOpener.isGoogle(u) ? "Google ↗" : "\(u.host ?? "") ↗")
+        case .web(let u): return (LinkOpener.isGoogle(u) ? "doc.text" : "safari", LinkOpener.isGoogle(u) ? "Google ↗\u{FE0E}" : "\(u.host ?? "") ↗\u{FE0E}")
         }
     }
 }
@@ -51,9 +51,9 @@ struct AttachmentRow: View {
         } label: {
             HStack(spacing: 10) {
                 Image(systemName: l.icon).frame(width: 24).foregroundStyle(Theme.accent)
-                Text(title).font(Theme.font(15, .medium)).foregroundStyle(Theme.text).maxLines(2).multilineTextAlignment(.leading)
+                Text(title).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text).maxLines(2).multilineTextAlignment(.leading)
                 Spacer()
-                Text(l.where).font(Theme.font(12.5)).foregroundStyle(Theme.secondary)
+                Text(l.where).font(Theme.footnote).foregroundStyle(Theme.secondary)
             }
             .frame(minHeight: 44)
         }

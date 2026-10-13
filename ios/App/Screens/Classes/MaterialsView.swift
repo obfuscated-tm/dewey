@@ -8,6 +8,8 @@ struct MaterialsView: View {
     let sectionId: String
     let folderId: String?
     let title: String
+    /// The class name and the folders above this one (empty at the class's root).
+    var trail: [String] = []
     @State private var rows: [MaterialRow]?
     @State private var error: EngineError?
     @State private var asOf: Date?
@@ -21,12 +23,13 @@ struct MaterialsView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: Theme.Space.m) {
+                heading
                 if folderId == nil, let c = model.course(sectionId) { classSwitch(c) }
                 HStack {
                     AsOfBanner(date: asOf, error: error)
                     Spacer()
-                    Toggle("Only open work", isOn: $onlyOpen).toggleStyle(.button).font(Theme.font(13, .medium))
+                    Toggle("Only open work", isOn: $onlyOpen).toggleStyle(.button).font(Theme.footnote.weight(.medium))
                 }
                 if let rows {
                     let shown = onlyOpen ? rows.filter(isOpen) : rows
@@ -35,7 +38,7 @@ struct MaterialsView: View {
                     } else {
                         VStack(spacing: 0) {
                             ForEach(Array(shown.enumerated()), id: \.element.key) { i, r in
-                                MaterialLink(sectionId: sectionId, row: r, subtitle: subtitle(r))
+                                MaterialLink(sectionId: sectionId, row: r, subtitle: subtitle(r), trail: trail + [title])
                                     .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
                             }
                         }
@@ -47,12 +50,14 @@ struct MaterialsView: View {
                     SkeletonRows()
                 }
             }
-            .padding(16)
+            .padding(Theme.Space.l)
         }
         .background(Theme.background)
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            // The title is in the page (it wraps instead of being cut off); the bar stays clear.
+            ToolbarItem(placement: .principal) { Text("").accessibilityHidden(true) }
             ToolbarItem(placement: .primaryAction) {
                 Button { sheet = SheetTarget(url: pageURL) } label: { Label("Open in Schoology", systemImage: "globe").labelStyle(.iconOnly) }
             }
@@ -63,6 +68,31 @@ struct MaterialsView: View {
             if rows == nil, let c = Cache.load(cacheKey, as: [MaterialRow].self) { rows = c.value; asOf = c.savedAt }
             await load()
         }
+    }
+
+    /// Where you are: the class dot and the path above this folder, then the folder's
+    /// name in full. Deep in nested folders this is what keeps you oriented.
+    private var heading: some View {
+        VStack(alignment: .leading, spacing: Theme.Space.xs) {
+            if !trail.isEmpty {
+                HStack(spacing: 6) {
+                    Circle().fill(classColor).frame(width: 8, height: 8)
+                    Text(trail.joined(separator: " › ")).font(Theme.footnote).foregroundStyle(Theme.secondary)
+                        .lineLimit(1).truncationMode(.head)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("In " + trail.joined(separator: ", "))
+            }
+            HStack(spacing: Theme.Space.s) {
+                if trail.isEmpty { Circle().fill(classColor).frame(width: 10, height: 10) }
+                Text(title).font(Theme.title).foregroundStyle(Theme.text)
+                    .accessibilityAddTraits(.isHeader)
+            }
+        }
+    }
+
+    private var classColor: Color {
+        ClassTile.color(model.classes.firstIndex { $0.sectionId == sectionId } ?? 0)
     }
 
     private func load() async {
@@ -104,15 +134,15 @@ struct MaterialsView: View {
 
     private func classSwitch(_ c: Course) -> some View {
         HStack(spacing: 8) {
-            Text("Materials").font(Theme.font(13, .semibold))
+            Text("Materials").font(Theme.footnote.weight(.semibold))
                 .padding(.horizontal, 12).frame(minHeight: 30)
                 .foregroundStyle(Theme.onAccent).background(Theme.accent, in: Capsule())
             NavigationLink { CourseGradesView(course: c) } label: {
-                Text("Grades").font(Theme.font(13, .semibold))
+                Text("Grades").font(Theme.footnote.weight(.semibold))
                     .padding(.horizontal, 12).frame(minHeight: 30)
                     .foregroundStyle(Theme.accent).background(Theme.accentSoft, in: Capsule())
             }
-            PillButton(title: "Updates ↗") { sheet = SheetTarget(url: URL(string: "\(Engine.origin.absoluteString)/course/\(sectionId)/updates")!) }
+            PillButton(title: "Updates", external: true) { sheet = SheetTarget(url: URL(string: "\(Engine.origin.absoluteString)/course/\(sectionId)/updates")!) }
             Spacer()
         }
     }
@@ -133,9 +163,9 @@ struct MaterialView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 if let m {
-                    Text(m.title ?? row.title).font(Theme.font(24, .bold))
+                    Text(m.title ?? row.title).font(Theme.title)
                     if let t = m.target, let u = URL(string: t) {
-                        WideButton(title: "Open \(u.host ?? "link") ↗", systemImage: "safari") { LinkOpener.open(u) { sheet = $0 } }
+                        WideButton(title: "Open \(u.host ?? "link")", systemImage: "safari", external: true) { LinkOpener.open(u) { sheet = $0 } }
                     }
                     if let md = m.bodyMd, !md.isEmpty {
                         MarkdownText(md: md) { u in LinkOpener.open(u) { sheet = $0 } }.padding(16).frame(maxWidth: .infinity, alignment: .leading).card()
@@ -159,7 +189,7 @@ struct MaterialView: View {
                     SkeletonRows(count: 3)
                 }
             }
-            .padding(16)
+            .padding(Theme.Space.l)
         }
         .background(Theme.background)
         .navigationTitle(row.title)

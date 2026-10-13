@@ -46,33 +46,41 @@ enum Theme {
     static let goodSoft = pair("goodSoft")
     static let tagSoft = pair("tagSoft")
 
-    /// SF Pro at `size`, scaling live with Dynamic Type (Settings → Text Size). A
-    /// custom font name that isn't installed falls back to the system font, and
-    /// `relativeTo:` is what makes it follow the text size as it changes.
-    static func font(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        .custom("SF Pro", size: size, relativeTo: textStyle(size)).weight(weight)
-    }
+    // ── Type scale (SCREENS.md "Look") ──────────────────────────────────
+    // Seven styles, all SF Pro on Apple's text styles, so they follow Dynamic
+    // Type. Screens pick one of these and never a point size (ThemeTests checks).
+    // Numbers add `.monospacedDigit()` so digits line up without a code font.
 
-    /// The text style whose scaling curve fits `size` (big titles grow less than body text).
-    static func textStyle(_ size: CGFloat) -> Font.TextStyle {
-        switch size {
-        case 30...: .largeTitle
-        case 24..<30: .title
-        case 20..<24: .title3
-        case 17..<20: .body
-        case 15..<17: .subheadline
-        case 13..<15: .footnote
-        case 12..<13: .caption
-        default: .caption2
-        }
+    /// 34 bold · screen titles.
+    static let largeTitle = Font.system(.largeTitle, weight: .bold)
+    /// 22 bold · sections inside a screen, big numbers.
+    static let title = Font.system(.title2, weight: .bold)
+    /// 17 semibold · class headers, card titles.
+    static let headline = Font.system(.headline)
+    /// 17 · row titles, reading text.
+    static let body = Font.system(.body)
+    /// 15 · dates, scores, buttons.
+    static let subhead = Font.system(.subheadline)
+    /// 13 · status, counts, hints.
+    static let footnote = Font.system(.footnote)
+    /// 12 · tags and kickers only.
+    static let caption = Font.system(.caption)
+    /// Settings → Developer only: raw engine JSON. Never in the student-facing UI.
+    static let code = Font.system(.caption, design: .monospaced)
+
+    // ── Shapes and spacing ───────────────────────────────────────────────
+    enum Radius {
+        /// Tags, type bars, thumbnails.
+        static let tag: CGFloat = 6
+        /// Every card, sheet and field. Buttons are capsules, checkboxes circles.
+        static let card: CGFloat = 14
+    }
+    enum Space {
+        static let xs: CGFloat = 4, s: CGFloat = 8, m: CGFloat = 12, l: CGFloat = 16, xl: CGFloat = 24
     }
 
     /// Text on a filled accent button: white in light mode, near-black in dark (accent is light there).
     static let onAccent = Color(light: "#FFFFFF", dark: "#101418")
-
-    static func mono(_ size: CGFloat, _ weight: Font.Weight = .regular) -> Font {
-        font(size, weight).monospaced()
-    }
 }
 
 extension Color {
@@ -93,8 +101,8 @@ extension Color {
 struct CardStyle: ViewModifier {
     func body(content: Content) -> some View {
         content
-            .background(Theme.card, in: RoundedRectangle(cornerRadius: 14))
-            .overlay(RoundedRectangle(cornerRadius: 14).stroke(Theme.border))
+            .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(Theme.border))
     }
 }
 
@@ -127,55 +135,82 @@ struct AdaptiveStack<Content: View>: View {
     }
 }
 
-/// HW / TEST / TASK / CW.
+/// HW / TEST / TASK / CW, as a vertical bar under the To Do checkbox.
+/// A test is the one that stands out: black instead of grey.
+struct TypeBar: View {
+    let type: ItemType
+    var body: some View {
+        Text(type.label)
+            .font(Theme.caption.weight(.bold))
+            .tracking(1)
+            .fixedSize()
+            .rotationEffect(.degrees(-90))
+            .frame(width: 18, height: 40)
+            .frame(maxHeight: .infinity)
+            .foregroundStyle(type == .exam ? Theme.card : Theme.secondary)
+            .background(type == .exam ? Theme.text : Theme.tagSoft,
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+            .accessibilityLabel(type.label)
+    }
+}
+
+/// HW / TEST / TASK / CW, inline.
 struct TypeTag: View {
     let type: ItemType
     var body: some View {
         Text(type.label)
-            .font(Theme.mono(10.5, .semibold))
+            .font(Theme.caption.weight(.semibold))
             .tracking(0.4)
             .padding(.horizontal, 6).padding(.vertical, 2)
             .foregroundStyle(type == .exam ? Theme.card : Theme.secondary)
-            .background(type == .exam ? Theme.text : Theme.tagSoft, in: RoundedRectangle(cornerRadius: 4))
+            .background(type == .exam ? Theme.text : Theme.tagSoft,
+                        in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
     }
 }
 
-/// A pill button ("Submit ↗").
+/// A pill button. `external` adds the ↗ arrow for anything that leaves the app
+/// (an SF Symbol: the ↗ character turns into an emoji on iOS).
 struct PillButton: View {
     let title: String
     var color: Color = Theme.accent
     var filled = false
+    var external = false
     let action: () -> Void
     var body: some View {
         Button(action: action) {
-            Text(title)
-                .font(Theme.font(13, .semibold))
-                .padding(.horizontal, 12).frame(minHeight: 30)
-                .foregroundStyle(filled ? Theme.onAccent : color)
-                .background(filled ? color : color.opacity(0.1), in: Capsule())
+            HStack(spacing: 3) {
+                Text(title)
+                if external { Image(systemName: "arrow.up.right").imageScale(.small).fontWeight(.bold) }
+            }
+            .font(Theme.footnote.weight(.semibold))
+            .padding(.horizontal, Theme.Space.m).frame(minHeight: 30)
+            .foregroundStyle(filled ? Theme.onAccent : color)
+            .background(filled ? color : color.opacity(0.1), in: Capsule())
         }
         .buttonStyle(.plain)
     }
 }
 
-/// A full-width 44 pt button.
+/// A full-width capsule button, 48 pt tall.
 struct WideButton: View {
     let title: String
     var systemImage: String?
     var filled = true
     var color: Color = Theme.accent
+    var external = false
     let action: () -> Void
     var body: some View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if let systemImage { Image(systemName: systemImage) }
                 Text(title)
+                if external { Image(systemName: "arrow.up.right").imageScale(.small) }
             }
-            .font(Theme.font(16, .semibold))
+            .font(Theme.headline)
             .frame(maxWidth: .infinity, minHeight: 48)
             .foregroundStyle(filled ? Theme.onAccent : color)
-            .background(filled ? color : Theme.card, in: RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22).stroke(filled ? Color.clear : Theme.border))
+            .background(filled ? color : Theme.card, in: Capsule())
+            .overlay(Capsule().stroke(filled ? Color.clear : Theme.border))
         }
         .buttonStyle(.plain)
     }

@@ -10,9 +10,9 @@ struct GradesView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
+                VStack(alignment: .leading, spacing: Theme.Space.m) {
                     ScreenHeader(title: "Grades") { EmptyView() }
-                        .padding(.top, 8)
+                        .padding(.top, Theme.Space.s)
                     newCard
                     if model.classes.isEmpty {
                         SkeletonRows(count: 4)
@@ -44,13 +44,13 @@ struct GradesView: View {
         let rows = model.newGrades()
         if !rows.isEmpty {
             HStack(alignment: .firstTextBaseline) {
-                Text("New grades").font(Theme.font(20, .bold))
-                Text("\(rows.count)").font(Theme.mono(13, .bold)).foregroundStyle(Theme.onAccent)
+                Text("New grades").font(Theme.title)
+                Text("\(rows.count)").font(Theme.footnote.weight(.bold).monospacedDigit()).foregroundStyle(Theme.onAccent)
                     .padding(.horizontal, 7).padding(.vertical, 1).background(Theme.accent, in: Capsule())
                     .accessibilityHidden(true)
                 Spacer()
                 Button("Mark all seen") { withAnimation(.snappy(duration: 0.25)) { model.markAllGradesSeen() } }
-                    .font(Theme.font(14, .semibold)).foregroundStyle(Theme.accent)
+                    .font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.accent)
             }
             .accessibilityElement(children: .contain)
             gradeList(rows, showNew: false)
@@ -65,7 +65,7 @@ struct GradesView: View {
         }
         .sorted { model.gradedFirst($0.1, $1.1) }
         if !rows.isEmpty {
-            Text("Recently graded").font(Theme.font(20, .bold)).padding(.top, 10)
+            Text("Recently graded").font(Theme.title).padding(.top, 10)
             gradeList(Array(rows.prefix(8)), showNew: true)
         }
     }
@@ -80,15 +80,15 @@ struct GradesView: View {
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 3) {
                             HStack(spacing: 6) {
-                                Text(r.1.title).font(Theme.font(15, .semibold)).oneLine()
+                                Text(r.1.title).font(Theme.subhead.weight(.semibold)).oneLine()
                                 if isNew { NewTag() }
                             }
-                            Text(r.0.shortTitle).font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                            Text(r.0.shortTitle).font(Theme.footnote).foregroundStyle(Theme.secondary)
                         }
                         Spacer()
                         VStack(alignment: .trailing, spacing: 3) {
-                            Text(scoreText(r.1)).font(Theme.mono(14, .semibold))
-                            if let i = r.1.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.mono(12)).foregroundStyle(i < 0 ? Theme.late : Theme.good) }
+                            Text(scoreText(r.1)).font(Theme.subhead.weight(.semibold).monospacedDigit())
+                            if let i = r.1.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.caption.monospacedDigit()).foregroundStyle(i < 0 ? Theme.late : Theme.good) }
                         }
                     }
                     .padding(14)
@@ -105,7 +105,7 @@ struct GradesView: View {
 /// The small "NEW" capsule on a score the student hasn't looked at.
 struct NewTag: View {
     var body: some View {
-        Text("NEW").font(Theme.mono(10, .bold)).foregroundStyle(Theme.onAccent)
+        Text("NEW").font(Theme.caption.weight(.bold).monospacedDigit()).foregroundStyle(Theme.onAccent)
             .padding(.horizontal, 5).padding(.vertical, 1).background(Theme.accent, in: Capsule())
     }
 }
@@ -125,57 +125,69 @@ struct GradeCard: View {
         let g = model.grades[course.sectionId]
         let cutoff = model.courseState(course.sectionId).aCutoff ?? 93
         let newCount = model.newGradeCount(course.sectionId)
-        VStack(alignment: .leading, spacing: 10) {
-            AdaptiveStack {
+        let d = g?.pct.map { $0 - cutoff }
+        VStack(alignment: .leading, spacing: Theme.Space.s) {
+            // Name and distance to the A line · trend · letter and %.
+            HStack(alignment: .center, spacing: Theme.Space.m) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(course.shortTitle).font(Theme.font(16, .semibold)).oneLine()
-                    Text(course.periodLabel).font(Theme.font(12.5)).foregroundStyle(Theme.tertiary).oneLine()
-                }
-                Spacer(minLength: 0)
-                if let g, g.pct != nil {
-                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Text(course.shortTitle).font(Theme.headline).oneLine()
                         if newCount > 0 {
-                            Text("\(newCount) new").font(Theme.font(12, .bold)).foregroundStyle(Theme.onAccent)
-                                .padding(.horizontal, 7).padding(.vertical, 2).background(Theme.accent, in: Capsule())
+                            Text("\(newCount) new").font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.onAccent)
+                                .padding(.horizontal, 6).padding(.vertical, 1).background(Theme.accent, in: Capsule())
                         }
-                        Text(g.letter ?? "").font(Theme.font(26, .bold))
-                        Text(Fmt.pct(g.pct)).font(Theme.mono(15, .medium)).foregroundStyle(Theme.secondary)
                     }
+                    if let d {
+                        (Text(String(format: d >= 0 ? "+%.1f over A" : "%.1f under A", d)).fontWeight(.semibold)
+                            .foregroundStyle(d >= 0 ? Theme.good : Theme.late)
+                         + Text(" · \(course.periodLabel)").foregroundStyle(Theme.tertiary))
+                            .font(Theme.footnote.monospacedDigit()).oneLine()
+                    } else {
+                        Text(course.periodLabel).font(Theme.footnote).foregroundStyle(Theme.tertiary).oneLine()
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                if let g, g.pct != nil {
+                    let vals = g.history.compactMap(\.pct)
+                    if vals.count > 1 {
+                        Chart(Array(vals.enumerated()), id: \.offset) { i, v in
+                            LineMark(x: .value("n", i), y: .value("%", v)).foregroundStyle(Theme.accent).interpolationMethod(.monotone)
+                            RuleMark(y: .value("A", cutoff)).foregroundStyle(Theme.good.opacity(0.5)).lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+                        }
+                        .chartXAxis(.hidden)
+                        .chartYAxis(.hidden)
+                        .chartYScale(domain: max(0, min(vals.min() ?? 80, cutoff) - 3)...max(100, vals.max() ?? 100))
+                        .frame(width: 96, height: 28)
+                        .accessibilityHidden(true)
+                    }
+                    VStack(alignment: .trailing, spacing: 0) {
+                        Text(g.letter ?? "").font(Theme.title)
+                        Text(Fmt.pct(g.pct)).font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
+                    }
+                    // Same width on every card, so the trend lines line up down the screen.
+                    .frame(minWidth: 56, alignment: .trailing)
                 } else if model.gradeErrors[course.sectionId] != nil && g == nil {
-                    Text("Couldn't load").font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                    Text("Couldn't load").font(Theme.footnote).foregroundStyle(Theme.secondary)
                 } else if g != nil {
-                    Text("No grades yet").font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                    Text("No grades yet").font(Theme.footnote).foregroundStyle(Theme.secondary)
                 } else {
                     ProgressView().controlSize(.small)
                 }
             }
-            if let g, let pct = g.pct {
-                let vals = g.history.compactMap(\.pct)
-                if vals.count > 1 {
-                    Chart(Array(vals.enumerated()), id: \.offset) { i, v in
-                        LineMark(x: .value("n", i), y: .value("%", v)).foregroundStyle(Theme.accent).interpolationMethod(.monotone)
-                        RuleMark(y: .value("A", cutoff)).foregroundStyle(Theme.good.opacity(0.4)).lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                    }
-                    .chartXAxis(.hidden)
-                    .chartYAxis(.hidden)
-                    .chartYScale(domain: max(0, min(vals.min() ?? 80, cutoff) - 3)...max(100, vals.max() ?? 100))
-                    .frame(height: 38)
-                    .accessibilityHidden(true)
-                }
-                AdaptiveStack {
-                    let d = pct - cutoff
-                    Text(d >= 0 ? "\(String(format: "%.1f", d)) above the A line" : "\(String(format: "%.1f", -d)) below the A line")
-                        .font(Theme.font(13)).foregroundStyle(d >= 0 ? Theme.good : Theme.late)
-                    Spacer(minLength: 0)
-                    if let last = g.items.filter({ $0.earned != nil }).min(by: model.gradedFirst) {
-                        Text("\(last.title) \(scoreText(last))").font(Theme.font(12.5)).foregroundStyle(Theme.secondary).oneLine()
-                            .truncationMode(.middle).fixedSize(horizontal: false, vertical: true)
-                        if let i = last.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.mono(12)).foregroundStyle(i < 0 ? Theme.late : Theme.good) }
+            // The latest score and what it did to the grade.
+            if let g, g.pct != nil, let last = g.items.filter({ $0.earned != nil }).min(by: model.gradedFirst) {
+                Theme.divider.frame(height: 1)
+                HStack(spacing: Theme.Space.s) {
+                    Text(last.title).foregroundStyle(Theme.secondary).oneLine().frame(maxWidth: .infinity, alignment: .leading)
+                    Text(scoreText(last)).foregroundStyle(Theme.secondary)
+                    if let i = last.impact, abs(i) >= 0.005 {
+                        Text(Fmt.signed(i)).fontWeight(.semibold).foregroundStyle(i < 0 ? Theme.late : Theme.good)
                     }
                 }
+                .font(Theme.footnote.monospacedDigit())
             }
         }
-        .padding(16)
+        .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m)
         .card()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(a11y(g, cutoff))

@@ -21,14 +21,14 @@ struct GradeDetailView: View {
             VStack(alignment: .leading, spacing: 14) {
                 if let it = item {
                     scoreCard(it)
-                    if !it.comment.isEmpty { section("TEACHER'S COMMENT") { Text(it.comment).font(Theme.font(15)).textSelection(.enabled) } }
+                    if !it.comment.isEmpty { section("TEACHER'S COMMENT") { Text(it.comment).font(Theme.subhead).textSelection(.enabled) } }
                     if it.rubric != nil { rubricCard }
                     if let d = dropbox, !d.teacherComments.isEmpty {
                         section("COMMENTS ON YOUR SUBMISSION") {
                             ForEach(d.teacherComments, id: \.self) { c in
                                 VStack(alignment: .leading, spacing: 2) {
-                                    if let a = c.author, !a.isEmpty { Text(a).font(Theme.font(13, .semibold)).foregroundStyle(Theme.secondary) }
-                                    Text(c.text).font(Theme.font(15)).textSelection(.enabled)
+                                    if let a = c.author, !a.isEmpty { Text(a).font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary) }
+                                    Text(c.text).font(Theme.subhead).textSelection(.enabled)
                                 }
                             }
                         }
@@ -43,10 +43,10 @@ struct GradeDetailView: View {
                         }
                     }
                     Button("What if this were different?") { whatIf = true }
-                        .font(Theme.font(14, .medium))
+                        .font(Theme.subhead.weight(.medium))
                         .padding(.top, 4)
                     Button { sheet = SheetTarget(url: URL(string: "\(Engine.origin.absoluteString)/assignment/\(itemId)")!, assignmentId: itemId) } label: {
-                        Label("Open in Schoology ↗", systemImage: "globe").font(Theme.font(14, .medium))
+                        Label("Open in Schoology", systemImage: "globe").font(Theme.subhead.weight(.medium))
                     }
                 } else {
                     SkeletonRows(count: 3)
@@ -82,17 +82,17 @@ struct GradeDetailView: View {
 
     private func scoreCard(_ it: CourseGrade.Item) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(it.category.uppercased()).font(Theme.font(12, .semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+            Text(it.category.uppercased()).font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text(scoreText(it)).font(Theme.mono(30, .bold))
-                if let p = it.pct { Text(Fmt.pct(p)).font(Theme.mono(16)).foregroundStyle(Theme.secondary) }
+                Text(scoreText(it)).font(Theme.largeTitle.monospacedDigit())
+                if let p = it.pct { Text(Fmt.pct(p)).font(Theme.body.monospacedDigit()).foregroundStyle(Theme.secondary) }
             }
             if let i = it.impact {
                 Text(abs(i) < 0.005 ? "Didn't move your course grade" : "Moved your course grade \(Fmt.signed(i)) points")
-                    .font(Theme.font(14, .medium))
+                    .font(Theme.subhead.weight(.medium))
                     .foregroundStyle(abs(i) < 0.005 ? Theme.secondary : i < 0 ? Theme.late : Theme.good)
             }
-            if let d = Fmt.wallDate(it.due) { Text("Due \(Fmt.dayTime.string(from: d))").font(Theme.mono(12.5)).foregroundStyle(Theme.secondary) }
+            if let d = Fmt.wallDate(it.due) { Text("Due \(Fmt.dayTime.string(from: d))").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary) }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
@@ -104,29 +104,29 @@ struct GradeDetailView: View {
         if let r = rubric {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    Text(r.title.isEmpty ? "Rubric" : r.title).font(Theme.font(16, .semibold))
+                    Text(r.title.isEmpty ? "Rubric" : r.title).font(Theme.headline)
                     Spacer()
-                    Text("\(Fmt.num(r.earned)) / \(Fmt.num(r.total))").font(Theme.mono(15, .semibold))
+                    Text("\(Fmt.num(r.earned)) / \(Fmt.num(r.total))").font(Theme.subhead.weight(.semibold).monospacedDigit())
                 }
                 .padding(14)
                 ForEach(r.criteria, id: \.self) { c in
                     Theme.divider.frame(height: 1)
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(alignment: .firstTextBaseline) {
-                            Text(c.title).font(Theme.font(15, .medium))
+                            Text(c.title).font(Theme.subhead.weight(.medium))
                             Spacer()
-                            Text("\(Fmt.num(c.earned)) / \(Fmt.num(c.max))").font(Theme.mono(14, .semibold))
+                            Text("\(Fmt.num(c.earned)) / \(Fmt.num(c.max))").font(Theme.subhead.weight(.semibold).monospacedDigit())
                                 .foregroundStyle(c.earned != nil && c.earned == c.max ? Theme.good : Theme.text)
                         }
-                        if let l = c.level, !l.isEmpty { Text(l).font(Theme.font(13)).foregroundStyle(Theme.secondary) }
-                        if !c.comment.isEmpty { Text(c.comment).font(Theme.font(13)).foregroundStyle(Theme.accent) }
+                        if let l = c.level, !l.isEmpty { Text(l).font(Theme.footnote).foregroundStyle(Theme.secondary) }
+                        if !c.comment.isEmpty { Text(c.comment).font(Theme.footnote).foregroundStyle(Theme.accent) }
                     }
                     .padding(14)
                 }
             }
             .card()
         } else if let e = rubricError {
-            section("RUBRIC") { Text(e.message).font(Theme.font(14)).foregroundStyle(Theme.secondary) }
+            section("RUBRIC") { Text(e.message).font(Theme.subhead).foregroundStyle(Theme.secondary) }
         } else {
             section("RUBRIC") { ProgressView() }
         }
@@ -134,7 +134,7 @@ struct GradeDetailView: View {
 
     private func section<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(Theme.font(12, .semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+            Text(title).font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
             c()
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -158,11 +158,11 @@ struct WhatIfSheet: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 16) {
                 if let it = item, let sid = sectionId {
-                    Text(it.title).font(Theme.font(17, .semibold))
+                    Text(it.title).font(Theme.body.weight(.semibold))
                     HStack {
-                        TextField("score", text: $score).keyboardType(.decimalPad).font(Theme.mono(22, .semibold))
-                            .frame(width: 90).padding(8).background(Theme.accentSoft, in: RoundedRectangle(cornerRadius: 10))
-                        Text("/ \(Fmt.num(it.possible))").font(Theme.mono(22))
+                        TextField("score", text: $score).keyboardType(.decimalPad).font(Theme.title.weight(.semibold).monospacedDigit())
+                            .frame(width: 90).padding(8).background(Theme.accentSoft, in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+                        Text("/ \(Fmt.num(it.possible))").font(Theme.title.weight(.regular).monospacedDigit())
                     }
                     .onChange(of: score) { _, v in
                         guard let e = Double(v), let p = it.possible, let rows = model.gradeRows(sid) else { result = nil; return }
@@ -170,12 +170,12 @@ struct WhatIfSheet: View {
                     }
                     if let r = result, let real = model.grades[sid]?.pct {
                         HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(r.letter ?? "").font(Theme.font(34, .bold))
-                            Text(Fmt.pct(r.pct, digits: 2)).font(Theme.mono(18))
-                            if let p = r.pct { Text(Fmt.signed(p - real)).font(Theme.mono(15)).foregroundStyle(p < real ? Theme.late : Theme.good) }
+                            Text(r.letter ?? "").font(Theme.largeTitle)
+                            Text(Fmt.pct(r.pct, digits: 2)).font(Theme.body.monospacedDigit())
+                            if let p = r.pct { Text(Fmt.signed(p - real)).font(Theme.subhead.monospacedDigit()).foregroundStyle(p < real ? Theme.late : Theme.good) }
                         }
                         Text("Your real grade stays \(Fmt.pct(real, digits: 2)). Nothing changes on Schoology.")
-                            .font(Theme.font(13)).foregroundStyle(Theme.secondary)
+                            .font(Theme.footnote).foregroundStyle(Theme.secondary)
                     }
                 } else {
                     Text("Load this class's grades first.").foregroundStyle(Theme.secondary)

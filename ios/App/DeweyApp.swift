@@ -74,10 +74,10 @@ struct RootView: View {
         .overlay(alignment: .bottom) {
             if let t = model.toast {
                 Text(t)
-                    .font(Theme.font(14, .medium))
+                    .font(Theme.subhead.weight(.medium))
                     .foregroundStyle(Theme.card)
                     .padding(.horizontal, 16).padding(.vertical, 12)
-                    .background(Theme.text, in: RoundedRectangle(cornerRadius: 12))
+                    .background(Theme.text, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
                     .padding(.bottom, 90).padding(.horizontal, 20)
                     .transition(.move(edge: .bottom).combined(with: .opacity))
             }

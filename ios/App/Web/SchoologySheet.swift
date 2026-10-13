@@ -36,12 +36,12 @@ struct SchoologySheet: View {
                     ToolbarItem(placement: .principal) {
                         VStack(spacing: 0) {
                             Text(web.url?.host == Engine.host ? "Schoology" : (web.title.isEmpty ? "Page" : web.title))
-                                .font(Theme.font(15, .semibold)).oneLine()
+                                .font(Theme.subhead.weight(.semibold)).oneLine()
                             HStack(spacing: 3) {
                                 Image(systemName: web.url?.scheme == "https" ? "lock.fill" : "lock.open")
                                 Text(web.url?.host ?? target.url.host ?? "")
                             }
-                            .font(Theme.font(11)).foregroundStyle(Theme.secondary)
+                            .font(Theme.caption).foregroundStyle(Theme.secondary)
                         }
                     }
                     ToolbarItem(placement: .primaryAction) {
@@ -57,7 +57,7 @@ struct SchoologySheet: View {
                             Task { frameMissing = !(await web.openMainFrame()) }
                         } label: {
                             Label(frameMissing ? "No Google frame on this page yet" : "Open Google full screen", systemImage: "arrow.up.left.and.arrow.down.right")
-                                .font(Theme.font(15, .semibold)).frame(maxWidth: .infinity).padding(.vertical, 12)
+                                .font(Theme.subhead.weight(.semibold)).frame(maxWidth: .infinity).padding(.vertical, 12)
                         }
                         .buttonStyle(.borderedProminent).padding(.horizontal, 16).padding(.bottom, 8)
                     }

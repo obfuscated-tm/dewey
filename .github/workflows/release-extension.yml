@@ -23,6 +23,10 @@ jobs:
       - name: Pack the extension
         run: |
           VERSION=$(jq -r .version extension/manifest.json)
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "ext-v$VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match extension/manifest.json ($VERSION). Bump the manifest, commit, then tag ext-v<that version>."
+            exit 1
+          fi
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           # One top-level folder, so unzipping gives a single folder to pick in Load unpacked.
           cp -R extension dewey-extension

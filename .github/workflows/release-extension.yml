@@ -1,0 +1,44 @@
+# Packs extension/ into dewey-extension.zip and attaches it to a GitHub release,
+# so the README's Download button always points at the newest version:
+#   https://github.com/obfuscated-tm/dewey/releases/latest/download/dewey-extension.zip
+#
+# Runs when an ext-v* tag is pushed, or by hand from the Actions tab
+# (it then releases whatever version extension/manifest.json says).
+name: Release extension
+
+on:
+  push:
+    tags: ["ext-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pack the extension
+        run: |
+          VERSION=$(jq -r .version extension/manifest.json)
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          # One top-level folder, so unzipping gives a single folder to pick in Load unpacked.
+          cp -R extension dewey-extension
+          rm -rf dewey-extension/test
+          zip -r -X dewey-extension.zip dewey-extension -x '*.DS_Store'
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="ext-v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dewey-extension.zip --clobber
+          else
+            gh release create "$TAG" dewey-extension.zip \
+              --target "$GITHUB_SHA" --latest \
+              --title "Dewey extension $VERSION" \
+              --notes "Download **dewey-extension.zip**, unzip it, and load the \`dewey-extension\` folder in \`chrome://extensions\`. See the [README](https://github.com/obfuscated-tm/dewey#-install-the-extension-2-minutes) for the steps and [CHANGELOG.md](https://github.com/obfuscated-tm/dewey/blob/main/CHANGELOG.md) for what's new."
+          fi

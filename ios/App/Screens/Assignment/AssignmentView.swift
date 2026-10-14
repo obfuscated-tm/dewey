@@ -140,8 +140,10 @@ struct AssignmentView: View {
                 Text(url != nil ? "This class takes it on its own site (\(url!.host ?? "")). Schoology can't see it." : "No Schoology dropbox. Hand it in the way your teacher asked, then mark it turned in.")
                     .font(Theme.footnote).foregroundStyle(Theme.secondary)
             case .quiz:
-                Label("Test / quiz on Schoology", systemImage: "list.bullet.clipboard").font(Theme.body.weight(.semibold))
-                Text("It only opens when you tap Take on Schoology.").font(Theme.footnote).foregroundStyle(Theme.secondary)
+                if let q = a.quiz { quizFacts(q) } else {
+                    Label("Test / quiz on Schoology", systemImage: "list.bullet.clipboard").font(Theme.body.weight(.semibold))
+                    Text("It only opens when you tap Take on Schoology.").font(Theme.footnote).foregroundStyle(Theme.secondary)
+                }
             case .google:
                 Label("Google Assignment", systemImage: "doc.richtext").font(Theme.body.weight(.semibold))
                 Text("Turned in inside Schoology's Google frame. Schoology never tells the app whether you did, so check it there.")
@@ -161,9 +163,80 @@ struct AssignmentView: View {
         switch kind(a) {
         case .dropbox: return ("Submit on Schoology", { sheet = SheetTarget(url: pageURL, assignmentId: id) })
         case .outside(let url?): return ("Turn in on \(url.host ?? "lab site")", { sheet = SheetTarget(url: url) })
-        case .quiz: return ("Take on Schoology", { sheet = SheetTarget(url: URL(string: Engine.origin.absoluteString + (it?.url ?? "/assignment/\(id)"))!, assignmentId: id) })
+        case .quiz: return (quizAction(a.quiz), { sheet = SheetTarget(url: URL(string: Engine.origin.absoluteString + (it?.url ?? "/assignment/\(id)"))!, assignmentId: id) })
         case .google: return ("Open in Schoology", { sheet = SheetTarget(url: pageURL, assignmentId: id, google: true) })
         default: return nil
+        }
+    }
+
+    // ── A newer quiz: read from its landing page, never from the quiz itself ──
+
+    @ViewBuilder
+    private func quizFacts(_ q: QuizInfo) -> some View {
+        switch q.state {
+        case "in_progress":
+            Label("Attempt in progress", systemImage: "clock").font(Theme.body.weight(.semibold)).foregroundStyle(Theme.late)
+            Text("Started on Schoology but not turned in. Resume it there.").font(Theme.footnote).foregroundStyle(Theme.secondary)
+        case "submitted":
+            Label("Submitted on Schoology", systemImage: "checkmark.circle.fill").font(Theme.body.weight(.semibold)).foregroundStyle(Theme.good)
+        default:
+            Label("Not started", systemImage: "list.bullet.clipboard").font(Theme.body.weight(.semibold))
+            Text("Test / quiz on Schoology. It only opens when you tap Take on Schoology.").font(Theme.footnote).foregroundStyle(Theme.secondary)
+        }
+        VStack(alignment: .leading, spacing: 4) {
+            if let s = q.score {
+                let max = q.maxPoints.map { " / \(Fmt.num($0))" } ?? ""
+                quizRow("Score", "\(Fmt.num(s))\(max)" + (q.letter.map { " · \($0)" } ?? ""))
+            }
+            quizRow("Attempts", q.attemptsAllowed.map { "\(q.attemptsTaken) of \($0)" } ?? "\(q.attemptsTaken), no limit")
+            if let t = q.timeLimitMin { quizRow("Time limit", "\(Fmt.num(t)) min") }
+            if let d = Fmt.date(q.opensAt) { quizRow("Opens", Fmt.dayTime.string(from: d)) }
+            if let d = Fmt.date(q.closesAt) { quizRow("Closes", Fmt.dayTime.string(from: d)) }
+            if q.overdue == true { Text("Overdue").font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.late) }
+        }
+        .padding(.top, 4)
+        if !q.attempts.isEmpty {
+            Theme.divider.frame(height: 1).padding(.vertical, 4)
+            ForEach(q.attempts, id: \.self) { t in
+                HStack(spacing: 8) {
+                    Image(systemName: t.finished ? "checkmark.circle" : "clock").foregroundStyle(t.finished ? Theme.good : Theme.late)
+                    Text("Attempt \(t.n)").font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text)
+                    Spacer()
+                    Text(attemptDetail(t)).font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
+                }
+                .accessibilityElement(children: .combine)
+            }
+            if q.attempts.contains(where: \.canView) {
+                Text("Your answers are on Schoology: tap Review on Schoology, then View on the attempt.")
+                    .font(Theme.footnote).foregroundStyle(Theme.secondary)
+            }
+        }
+    }
+
+    private func quizRow(_ label: String, _ value: String) -> some View {
+        HStack {
+            Text(label).foregroundStyle(Theme.secondary)
+            Spacer()
+            Text(value).foregroundStyle(Theme.text).monospacedDigit()
+        }
+        .font(Theme.subhead)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func attemptDetail(_ t: QuizInfo.Attempt) -> String {
+        var parts: [String] = []
+        if let d = Fmt.date(t.at) { parts.append(Fmt.dayTime.string(from: d)) }
+        if let m = t.minutes { parts.append("\(Fmt.num(m)) min") }
+        if !t.finished { parts.append("in progress") }
+        return parts.joined(separator: " · ")
+    }
+
+    // Opening the quiz is always the student's tap, in the Schoology sheet.
+    private func quizAction(_ q: QuizInfo?) -> String {
+        switch q?.state {
+        case "in_progress": return "Resume on Schoology"
+        case "submitted": return q?.attempts.contains(where: \.canView) == true ? "Review on Schoology" : "Open on Schoology"
+        default: return "Take on Schoology"
         }
     }
 

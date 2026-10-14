@@ -10,5 +10,7 @@ export function isQuizTakingUrl(url) {
     // /assessment/5/start, /course/1/assessments/2/take, …/assessments/2/resume/
     || /\/assessments?\/(\d+\/)*(start|take|resume|submit|begin)(\/|$)/i.test(p)
     // the dropbox submit form: opening it submits nothing, but nothing here needs it
-    || /\/dropbox\/submit(\/|$)/i.test(p);
+    || /\/dropbox\/submit(\/|$)/i.test(p)
+    // a newer quiz being taken: /common-assessment-delivery/start/ID?action=onresume…
+    || /^\/common-assessment-delivery(\/|$)/i.test(p);
 }

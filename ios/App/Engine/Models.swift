@@ -69,6 +69,31 @@ struct Assignment: Codable {
     var attachments: [Attachment]
     var submission: SubmissionStatus?
     var dropboxUrl: String?
+    var quiz: QuizInfo?         // a newer quiz: its landing page's facts
+}
+
+/// reader/parse/quiz.js quizInfo(): what a newer quiz's landing page says.
+struct QuizInfo: Codable, Equatable {
+    struct Attempt: Codable, Equatable, Hashable {
+        var n: Int
+        var finished: Bool
+        var at: String?
+        var minutes: Double?
+        var canView: Bool
+    }
+    var title: String?
+    var instructions: String?
+    var attemptsAllowed: Int?   // nil: no limit
+    var attemptsTaken: Int
+    var timeLimitMin: Double?
+    var opensAt: String?
+    var closesAt: String?
+    var overdue: Bool?
+    var score: Double?
+    var maxPoints: Double?
+    var letter: String?
+    var state: String           // in_progress | submitted | not_started
+    var attempts: [Attempt]
 }
 
 struct RubricRef: Codable, Hashable {

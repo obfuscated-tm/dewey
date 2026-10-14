@@ -1177,7 +1177,70 @@ ${t.trim()}
   // ../extension/reader/guard.js
   function isQuizTakingUrl(url) {
     const p = new URL(url).pathname;
-    return /\/assessment\/?$/.test(p) || /\/assessment\/(start|take|resume|attempt|submit)/.test(p) || /\/(start|take|resume)[_-]?(attempt|assessment|quiz)/i.test(p) || /\/assessments?\/(\d+\/)*(start|take|resume|submit|begin)(\/|$)/i.test(p) || /\/dropbox\/submit(\/|$)/i.test(p);
+    return /\/assessment\/?$/.test(p) || /\/assessment\/(start|take|resume|attempt|submit)/.test(p) || /\/(start|take|resume)[_-]?(attempt|assessment|quiz)/i.test(p) || /\/assessments?\/(\d+\/)*(start|take|resume|submit|begin)(\/|$)/i.test(p) || /\/dropbox\/submit(\/|$)/i.test(p) || /^\/common-assessment-delivery(\/|$)/i.test(p);
+  }
+
+  // ../extension/reader/parse/quiz.js
+  function parseCommonAssessment(html) {
+    const start = html.indexOf('{"initialization"');
+    if (start < 0) return null;
+    let depth = 0;
+    let inStr = false;
+    let esc = false;
+    for (let k = start; k < html.length; k++) {
+      const c = html[k];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (c === "\\") esc = true;
+        else if (c === '"') inStr = false;
+        continue;
+      }
+      if (c === '"') inStr = true;
+      else if (c === "{") depth++;
+      else if (c === "}" && --depth === 0) {
+        try {
+          return JSON.parse(html.slice(start, k + 1)).initialization;
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  }
+  var QUIZ_LANDING_RE = /^\/course\/\d{1,20}\/(assessments|common-assessment)\/\d{1,20}\/?$/;
+  var htmlText = (s) => String(s || "").replace(/<br\s*\/?>|<\/(p|div|li)>/gi, "\n").replace(/<[^>]+>/g, "").replace(/&nbsp;/g, " ").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&amp;/g, "&").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
+  var num2 = (v) => typeof v === "number" && Number.isFinite(v) ? v : null;
+  var unix = (v) => num2(v) > 0 ? new Date(v * 1e3).toISOString() : null;
+  function quizInfo(html) {
+    const init = parseCommonAssessment(String(html || ""));
+    if (!init) return null;
+    const subs = Array.isArray(init.submissions) ? init.submissions : [];
+    const attempts = subs.map((s, i) => ({
+      n: i + 1,
+      finished: s.completed === true,
+      at: parseDueText(`${s.last_modified_date || ""} at ${s.last_modified_time || ""}`),
+      minutes: num2(s.minutes_elapsed),
+      can_view: s.can_student_view === true
+    }));
+    const score = num2(init.score);
+    const overdue = /"assessmentIsOverdue":(true|false)/.exec(html);
+    return {
+      title: init.title || null,
+      instructions: htmlText(init.instructions) || null,
+      attempts_allowed: num2(init.numAttemptsAllowed) || null,
+      // 0: no limit
+      attempts_taken: num2(init.numAttemptsTaken) ?? attempts.filter((a) => a.finished).length,
+      time_limit_min: num2(init.minutesMax) || null,
+      opens_at: unix(init.availableFrom),
+      closes_at: unix(init.availableTo),
+      overdue: overdue ? overdue[1] === "true" : null,
+      score,
+      max_points: num2(init.gradebookPointsTotal) ?? num2(init.pointsTotal),
+      // The letter is only meaningful once there is a score (it says "F" before).
+      letter: score != null ? init.gradebookCustomScaleText || null : null,
+      state: attempts.some((a) => !a.finished) ? "in_progress" : attempts.length ? "submitted" : "not_started",
+      attempts
+    };
   }
 
   // ../extension/reader/ratelimit.js
@@ -1539,7 +1602,7 @@ ${t.trim()}
         return false;
       }
     }
-    async function get(path, { redirect = "follow", headers } = {}) {
+    async function get(path, { redirect = "follow", headers, quizLanding = false } = {}) {
       const url = new URL(path, origin).href;
       if (new URL(url).host !== host) throw codeError("bad_args");
       if (refused(url)) throw codeError("quiz");
@@ -1570,13 +1633,21 @@ ${t.trim()}
         if (final.host !== host || final.pathname.startsWith("/login")) throw codeError("login");
         if (r.status === 401 || r.status === 403) throw codeError("login");
         if (r.status >= 400) throw codeError("http", { status: r.status });
-        if (isAssessmentUrl(final.href)) throw codeError("quiz");
+        if (refused(final.href)) {
+          if (quizLanding && QUIZ_LANDING_RE.test(final.pathname) && !isQuizTakingUrl(final.href)) {
+            return { text, url: final.href, status: r.status, quizLanding: true };
+          }
+          throw codeError("quiz");
+        }
         return { text, url: final.href, status: r.status };
       }
     }
     async function getParsed(path, kind, opts) {
       const r = await get(path, opts);
       if (r.redirected) throw codeError("quiz");
+      return parsed(r, kind);
+    }
+    function parsed(r, kind) {
       let p;
       try {
         p = (kind.mcp ? pMcp : pKind)(kind.name, r.text, r.url);
@@ -1585,6 +1656,26 @@ ${t.trim()}
       }
       if (p?.login) throw codeError("login");
       return { data: p.data, url: r.url };
+    }
+    async function getAssignment(path) {
+      const r = await get(path, { quizLanding: true });
+      if (r.redirected) throw codeError("quiz");
+      if (!r.quizLanding) return parsed(r, M("assignmentFull"));
+      const quiz = quizInfo(r.text);
+      if (!quiz) throw codeError("parse", { message: `no quiz data: ${r.url}` });
+      return {
+        data: {
+          title: quiz.title,
+          type: "quiz",
+          due: null,
+          instructions_md: quiz.instructions || "",
+          attachments: [],
+          submission: null,
+          dropboxUrl: null,
+          quiz
+        },
+        url: r.url
+      };
     }
     const K = (name) => ({ name, mcp: false });
     const M = (name) => ({ name, mcp: true });
@@ -1648,10 +1739,14 @@ ${t.trim()}
         if (p?.login) throw codeError("login");
         return { data: p.data, url: r.url };
       }),
-      /** { id, title, type, due, instructions_md, attachments, submission, dropboxUrl }. */
+      /**
+       * { id, title, type, due, instructions_md, attachments, submission, dropboxUrl }.
+       * A newer quiz redirects to its landing page: then type 'quiz' and `quiz`
+       * holds that page's facts (reader/parse/quiz.js quizInfo).
+       */
       assignment: ({ id } = {}) => wrap(async () => {
         const aid = validId(id);
-        const r = await getParsed(`/assignment/${aid}`, M("assignmentFull"));
+        const r = await getAssignment(`/assignment/${aid}`);
         return { data: { id: aid, ...r.data }, url: r.url };
       }),
       /** The gradebook's rows (reader/parse/grades.js). */
@@ -1688,7 +1783,7 @@ ${t.trim()}
         const shape = MATERIAL_SHAPES.find((s) => s.re.test(pathname));
         if (!shape) throw codeError("bad_args");
         if (shape.kind === "assignment") {
-          const r = await getParsed(pathname, M("assignmentFull"));
+          const r = await getAssignment(pathname);
           return {
             data: {
               url: r.url,

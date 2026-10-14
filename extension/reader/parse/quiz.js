@@ -1,5 +1,6 @@
 import { cleanText } from '../../util.js';
 import { htmlToMd } from '../md.js';
+import { parseDueText } from './sync.js';
 
 // ── Quizzes ──────────────────────────────────────────────────────────────
 
@@ -26,6 +27,55 @@ export function parseCommonAssessment(html) {
     }
   }
   return null;
+}
+
+/** A newer quiz's landing page (/course/X/assessments/Y or /course/X/common-assessment/Y). */
+export const QUIZ_LANDING_RE = /^\/course\/\d{1,20}\/(assessments|common-assessment)\/\d{1,20}\/?$/;
+
+const htmlText = (s) => String(s || '').replace(/<br\s*\/?>|<\/(p|div|li)>/gi, '\n').replace(/<[^>]+>/g, '')
+  .replace(/&nbsp;/g, ' ').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#0?39;/g, "'").replace(/&amp;/g, '&')
+  .replace(/[ \t]+\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+const num = (v) => (typeof v === 'number' && Number.isFinite(v) ? v : null);
+const unix = (v) => (num(v) > 0 ? new Date(v * 1000).toISOString() : null);
+
+/**
+ * What a newer quiz's landing page says, for reading only: { title,
+ * instructions, attempts_allowed, attempts_taken, time_limit_min, opens_at,
+ * closes_at, overdue, score, max_points, letter, state, attempts: [{ n,
+ * finished, at, minutes, can_view }] }. Pure (string in, JSON out), and it
+ * copies only these fields: the page also carries a CSRF token and a JWT,
+ * which must never leave it. `state` is in_progress (an attempt is open),
+ * submitted, or not_started. null when the page has no quiz data.
+ */
+export function quizInfo(html) {
+  const init = parseCommonAssessment(String(html || ''));
+  if (!init) return null;
+  const subs = Array.isArray(init.submissions) ? init.submissions : [];
+  const attempts = subs.map((s, i) => ({
+    n: i + 1,
+    finished: s.completed === true,
+    at: parseDueText(`${s.last_modified_date || ''} at ${s.last_modified_time || ''}`),
+    minutes: num(s.minutes_elapsed),
+    can_view: s.can_student_view === true,
+  }));
+  const score = num(init.score);
+  const overdue = /"assessmentIsOverdue":(true|false)/.exec(html);
+  return {
+    title: init.title || null,
+    instructions: htmlText(init.instructions) || null,
+    attempts_allowed: num(init.numAttemptsAllowed) || null, // 0: no limit
+    attempts_taken: num(init.numAttemptsTaken) ?? attempts.filter((a) => a.finished).length,
+    time_limit_min: num(init.minutesMax) || null,
+    opens_at: unix(init.availableFrom),
+    closes_at: unix(init.availableTo),
+    overdue: overdue ? overdue[1] === 'true' : null,
+    score,
+    max_points: num(init.gradebookPointsTotal) ?? num(init.pointsTotal),
+    // The letter is only meaningful once there is a score (it says "F" before).
+    letter: score != null ? (init.gradebookCustomScaleText || null) : null,
+    state: attempts.some((a) => !a.finished) ? 'in_progress' : attempts.length ? 'submitted' : 'not_started',
+    attempts,
+  };
 }
 
 // Assignment-based Test/Quiz: /assignment/ID/assessment_view lists your attempts with "view assessment" links.

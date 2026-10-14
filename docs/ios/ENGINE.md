@@ -49,7 +49,7 @@ Every op is `async`, takes one plain object, and returns one of:
 ```js
 { ok: true, data, url, fetchedAt }       // url = final URL after redirects; fetchedAt = ISO
 { ok: false, error: 'login' }            // Schoology sent its sign-in page / Google
-{ ok: false, error: 'quiz' }             // refused: quiz-taking page or /assessments/ (never followed)
+{ ok: false, error: 'quiz' }             // refused: quiz-taking page or /assessments/ (never followed; one exception below)
 { ok: false, error: 'ratelimit' }        // 429 or Schoology's "slow down" page
 { ok: false, error: 'parse', message }   // a parser threw: the screen shows its "couldn't read this page" fallback
 { ok: false, error: 'http', status }
@@ -60,7 +60,7 @@ Every op is `async`, takes one plain object, and returns one of:
 | `courses()` | `GET /iapi/course/active` | `parseKind('courses')` | `[{ section_id, title, section_title }]` in Course Dashboard order |
 | `todo()` | `GET /v2/events/overdue`, `GET /v2/events/upcoming`, following `@links.next` (the same source as `overlays/todo.js`) | `parseEventsJson` (reader/parse/sync.js) | `{ overdue: [{ schoology_id, title, course, section_id, due, graded, url }], upcoming: [...] }`. Chosen over the home ajax lists because it carries `section_id`, `url` (quiz detection: `/assessment` in it) and `graded`. |
 | `gradebook({ sectionId })` | `GET /course/{id}/student_grades` | `parseMcpKind('gradesFull')` | rows `[{ level: course\|period\|category\|item, title, due, grade, comment, weight?, id?, rubric?: { rubricId, enrollmentId } }]`. Feed to `periodsFromRows` for grade math. |
-| `assignment({ id })` | `GET /assignment/{id}` | `parseMcpKind('assignmentFull')` | `{ title, type: 'assignment'\|'quiz'\|'external_tool', due, instructions_md, attachments: [{ url, title }], submission: { state, late? } \| null, dropboxUrl }` |
+| `assignment({ id })` | `GET /assignment/{id}` | `parseMcpKind('assignmentFull')` | `{ title, type: 'assignment'\|'quiz'\|'external_tool', due, instructions_md, attachments: [{ url, title }], submission: { state, late? } \| null, dropboxUrl }`. A newer quiz redirects to its landing page `/course/{c}/assessments/{id}`; that one page is read (never anything past it) and the op returns `type: 'quiz'` plus `quiz: { title, instructions, attempts_allowed, attempts_taken, time_limit_min, opens_at, closes_at, overdue, score, max_points, letter, state: 'in_progress'\|'submitted'\|'not_started', attempts: [{ n, finished, at, minutes, can_view }] }` (`quizInfo`, reader/parse/quiz.js: copies only these fields, never the page's CSRF token or JWT). |
 | `status({ id })` | `GET /assignment/{id}/info` with **`redirect: 'manual'`** | `parseKind('status')` | `{ state: 'submitted'\|'not_submitted'\|'no_dropbox'\|'unknown', late?, quiz? }`. A redirect means a quiz: return `{ state: 'unknown', quiz: true }` without following it. |
 | `dropbox({ url })` | `GET {dropboxUrl}` | `parseMcpKind('dropboxFull')` | `{ grade, comments }` (drop system lines like "Revision 1 submitted") |
 | `rubric({ rubricId, enrollmentId, itemId })` | the two GETs from `rubricPaths()` | `parseRubric` | `{ title, total, earned, criteria: [{ title, max, earned, level, comment }] }` |
@@ -81,7 +81,7 @@ Swift calls everything through `SchoologyEngine.callJSON(op, args)`, which retur
 
 ## Fetch rules (the engine's `get`, ported from `reader/client.js` `getText`)
 
-1. **Refuse before requesting** any URL where `isQuizTakingUrl(url)` or `isAssessmentUrl(url)` is true → `error: 'quiz'`. Never open `/assessment`, take/start/resume, or `/dropbox/submit`.
+1. **Refuse before requesting** any URL where `isQuizTakingUrl(url)` or `isAssessmentUrl(url)` is true → `error: 'quiz'`. Never open `/assessment`, take/start/resume, `/common-assessment-delivery/…` (a newer quiz being taken), or `/dropbox/submit`. Where a redirect lands gets the same check; the only page let through is a quiz's landing page `/course/{c}/(assessments|common-assessment)/{id}`, for the `assignment` op.
 2. `fetch(url, { credentials: 'include', redirect })`. Final host not `fuhsd.schoology.com`, or path starts with `/login`, or the page has `form#s-user-login-form, #login-container` → `error: 'login'`.
 3. `isRateLimited(status, text)` → back off (wait, retry up to 3 times), then `error: 'ratelimit'`. HTTP 5xx → retry with 3 s, 6 s waits.
 4. At most 2 requests in flight, at least 300 ms apart. The app is one student's phone; never hammer Schoology.

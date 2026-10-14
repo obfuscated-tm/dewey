@@ -9,6 +9,8 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createEngine, refused, validId, samePath, makeQueue, courseGrade, planTest, call } from '../engine/engine.js';
 
+import { quizLandingHtml, DONE } from './fixtures/quiz-landing.js';
+
 const ORIGIN = 'https://fuhsd.schoology.com';
 
 function res(body, { status = 200, url, type = 'basic' } = {}) {
@@ -116,11 +118,32 @@ test('status: a redirect (a newer quiz) is reported, never followed', async () =
   assert.equal(calls[0].init.redirect, 'manual');
 });
 
-test('a page that lands on /assessments/ is error: quiz', async () => {
-  const { eng } = fakeEngine(new Map([['/assignment/7', res('<html>', { url: `${ORIGIN}/course/1/assessments/7` })]]), {
-    parseMcpKind: () => ({ data: {} }),
-  });
-  assert.equal((await eng.assignment({ id: 7 })).error, 'quiz');
+test('assignment: a redirect to a quiz landing page returns its facts, never its tokens', async () => {
+  const html = quizLandingHtml({ submissions: [DONE], score: 10, letter: 'A' });
+  const { eng } = fakeEngine(new Map([['/assignment/7', res(html, { url: `${ORIGIN}/course/1/assessments/7` })]]));
+  const r = await eng.assignment({ id: 7 });
+  assert.equal(r.ok, true);
+  assert.equal(r.data.type, 'quiz');
+  assert.equal(r.data.title, 'Worksheet 2.5 Quiz');
+  assert.equal(r.data.quiz.state, 'submitted');
+  assert.equal(r.data.quiz.score, 10);
+  assert.doesNotMatch(JSON.stringify(r), /SECRET|csrf|1978368064/i);
+});
+
+test('assignment: an /assessments/ page with no quiz data is parse; anything past the landing is quiz', async () => {
+  const bare = fakeEngine(new Map([['/assignment/7', res('<html>', { url: `${ORIGIN}/course/1/assessments/7` })]]));
+  assert.equal((await bare.eng.assignment({ id: 7 })).error, 'parse');
+  for (const to of ['/course/1/assessments/7/take', '/common-assessment-delivery/start/9?action=onresume', '/assignment/7/assessment']) {
+    const { eng } = fakeEngine(new Map([['/assignment/7', res(quizLandingHtml(), { url: `${ORIGIN}${to}` })]]));
+    assert.equal((await eng.assignment({ id: 7 })).error, 'quiz', to);
+  }
+});
+
+test('only the assignment op reads a quiz landing page; the rest still refuse it', async () => {
+  const { eng, calls } = fakeEngine(new Map());
+  assert.equal((await eng.material({ path: '/course/1/assessments/2' })).error, 'bad_args');
+  assert.equal(refused(`${ORIGIN}/common-assessment-delivery/start/9`), true);
+  assert.equal(calls.length, 0);
 });
 
 test('material: refuses paths outside the allowed shapes before fetching', async () => {

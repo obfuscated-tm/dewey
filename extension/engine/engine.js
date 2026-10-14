@@ -10,7 +10,8 @@
 // `callJSON(op, args)` is what Swift calls: the same result as a JSON string.
 //
 // Fetch rules (ported from reader/client.js getText): refuse quiz-taking and
-// /assessments/ URLs before requesting; GET only, credentials included; a
+// /assessments/ URLs before requesting (the one exception: an assignment that
+// redirects to its quiz's landing page, read for its facts, never the quiz); GET only, credentials included; a
 // sign-in page or another host is `login`; Schoology's rate-limit page backs
 // off and retries; at most 2 requests in flight, starts at least 300 ms apart.
 
@@ -19,6 +20,7 @@ import { parseMcpKind } from '../reader/parse/mcp.js';
 import { SHOW_MORE_RE } from '../reader/parse/feed.js';
 import { rubricPaths, parseRubric } from '../reader/parse/rubric.js';
 import { isQuizTakingUrl } from '../reader/guard.js';
+import { quizInfo, QUIZ_LANDING_RE } from '../reader/parse/quiz.js';
 import { isRateLimited } from '../reader/ratelimit.js';
 import * as grademath from '../overlays/grademath.js';
 import * as asgstate from '../overlays/asgstate.js';
@@ -139,8 +141,12 @@ export function createEngine(deps = {}) {
     }
   }
 
-  /** One GET. → { text, url, status } | { redirected: true, url }. Throws coded errors. */
-  async function get(path, { redirect = 'follow', headers } = {}) {
+  /**
+   * One GET. → { text, url, status, quizLanding? } | { redirected: true, url }.
+   * Throws coded errors. `quizLanding`: a redirect to a quiz's landing page
+   * (/course/X/assessments/Y) is returned, marked, instead of refused.
+   */
+  async function get(path, { redirect = 'follow', headers, quizLanding = false } = {}) {
     const url = new URL(path, origin).href;
     if (new URL(url).host !== host) throw codeError('bad_args');
     if (refused(url)) throw codeError('quiz');
@@ -172,7 +178,13 @@ export function createEngine(deps = {}) {
       if (final.host !== host || final.pathname.startsWith('/login')) throw codeError('login');
       if (r.status === 401 || r.status === 403) throw codeError('login');
       if (r.status >= 400) throw codeError('http', { status: r.status });
-      if (isAssessmentUrl(final.href)) throw codeError('quiz');
+      // Where a redirect ended up gets the same guard as the request.
+      if (refused(final.href)) {
+        if (quizLanding && QUIZ_LANDING_RE.test(final.pathname) && !isQuizTakingUrl(final.href)) {
+          return { text, url: final.href, status: r.status, quizLanding: true };
+        }
+        throw codeError('quiz');
+      }
       return { text, url: final.href, status: r.status };
     }
   }
@@ -181,6 +193,9 @@ export function createEngine(deps = {}) {
   async function getParsed(path, kind, opts) {
     const r = await get(path, opts);
     if (r.redirected) throw codeError('quiz');
+    return parsed(r, kind);
+  }
+  function parsed(r, kind) {
     let p;
     try {
       p = (kind.mcp ? pMcp : pKind)(kind.name, r.text, r.url);
@@ -189,6 +204,21 @@ export function createEngine(deps = {}) {
     }
     if (p?.login) throw codeError('login');
     return { data: p.data, url: r.url };
+  }
+  // An assignment page, or the landing page of the quiz it redirects to.
+  async function getAssignment(path) {
+    const r = await get(path, { quizLanding: true });
+    if (r.redirected) throw codeError('quiz');
+    if (!r.quizLanding) return parsed(r, M('assignmentFull'));
+    const quiz = quizInfo(r.text);
+    if (!quiz) throw codeError('parse', { message: `no quiz data: ${r.url}` });
+    return {
+      data: {
+        title: quiz.title, type: 'quiz', due: null, instructions_md: quiz.instructions || '',
+        attachments: [], submission: null, dropboxUrl: null, quiz,
+      },
+      url: r.url,
+    };
   }
   const K = (name) => ({ name, mcp: false });
   const M = (name) => ({ name, mcp: true });
@@ -256,10 +286,14 @@ export function createEngine(deps = {}) {
       return { data: p.data, url: r.url };
     }),
 
-    /** { id, title, type, due, instructions_md, attachments, submission, dropboxUrl }. */
+    /**
+     * { id, title, type, due, instructions_md, attachments, submission, dropboxUrl }.
+     * A newer quiz redirects to its landing page: then type 'quiz' and `quiz`
+     * holds that page's facts (reader/parse/quiz.js quizInfo).
+     */
     assignment: ({ id } = {}) => wrap(async () => {
       const aid = validId(id);
-      const r = await getParsed(`/assignment/${aid}`, M('assignmentFull'));
+      const r = await getAssignment(`/assignment/${aid}`);
       return { data: { id: aid, ...r.data }, url: r.url };
     }),
 
@@ -301,7 +335,7 @@ export function createEngine(deps = {}) {
       const shape = MATERIAL_SHAPES.find((s) => s.re.test(pathname));
       if (!shape) throw codeError('bad_args');
       if (shape.kind === 'assignment') {
-        const r = await getParsed(pathname, M('assignmentFull'));
+        const r = await getAssignment(pathname);
         return {
           data: {
             url: r.url, kind: 'assignment', title: r.data.title, body_md: r.data.instructions_md, target: null,

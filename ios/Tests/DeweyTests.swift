@@ -49,6 +49,16 @@ final class DecodingTests: XCTestCase {
         XCTAssertEqual(g.items[0].impact, -1.2)
     }
 
+    func testQuizAssignment() throws {
+        // engine.js assignment op on a newer quiz's landing page
+        let json = #"{"id":"8610387535","title":"Worksheet 2.4 Quiz","type":"quiz","due":null,"instructions_md":"","attachments":[],"submission":null,"dropboxUrl":null,"quiz":{"title":"Worksheet 2.4 Quiz","instructions":null,"attempts_allowed":2,"attempts_taken":1,"time_limit_min":null,"opens_at":null,"closes_at":null,"overdue":false,"score":10,"max_points":10,"letter":"A","state":"submitted","attempts":[{"n":1,"finished":true,"at":"2026-10-14T23:16:00.000Z","minutes":1,"can_view":true}]}}"#
+        let a = try JSONDecoder.engine.decode(Assignment.self, from: Data(json.utf8))
+        XCTAssertEqual(a.quiz?.state, "submitted")
+        XCTAssertEqual(a.quiz?.attemptsAllowed, 2)
+        XCTAssertEqual(a.quiz?.attempts.first?.canView, true)
+        XCTAssertNotNil(Fmt.date(a.quiz?.attempts.first?.at))
+    }
+
     func testDropboxFiltersSchoologyLines() throws {
         let json = #"{"grade":null,"comments":[{"author":"Me","text":"Revision 1 submitted"},{"author":"Ms. K","text":"Nice work"}]}"#
         let d = try JSONDecoder.engine.decode(DropboxInfo.self, from: Data(json.utf8))

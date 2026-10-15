@@ -79,10 +79,18 @@ enum WidgetBridge {
 
     static var activitiesAllowed: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
 
-    /// A countdown makes sense for work due in the next 12 hours (an activity lives 8 h, then 4 h on the Lock Screen).
-    static func canCountDown(_ it: ItemState, now: Date = Date()) -> Bool {
-        guard let d = it.due else { return false }
-        return d > now && d.timeIntervalSince(now) < 12 * 3600
+    /// iOS keeps an activity 8 h, then 4 h on the Lock Screen, so a countdown can only start 12 h out.
+    static let countdownLead: TimeInterval = 12 * 3600
+
+    enum CountdownWindow: Equatable {
+        case none                // no due time, or already past it
+        case opens(Date)         // due later; the countdown can start from this time
+        case open
+    }
+
+    nonisolated static func countdownWindow(due: Date?, now: Date = Date()) -> CountdownWindow {
+        guard let d = due, d > now else { return .none }
+        return d.timeIntervalSince(now) < countdownLead ? .open : .opens(d.addingTimeInterval(-countdownLead))
     }
 
     static func activity(for id: String) -> Activity<DueActivityAttributes>? {
@@ -95,6 +103,17 @@ enum WidgetBridge {
                                           isTest: it.type == .exam, accentHex: Theme.accentHex, startedAt: Date())
         let state = DueActivityAttributes.ContentState(due: due, finished: false)
         _ = try Activity.request(attributes: attrs, content: .init(state: state, staleDate: due.addingTimeInterval(3600)))
+    }
+
+    /// Why iOS refused to start one, in the student's words.
+    static func countdownErrorMessage(_ error: Error) -> String {
+        switch error as? ActivityAuthorizationError {
+        case .denied?: return "Live Activities are off for Dewey. Turn them on in Settings › Dewey."
+        case .globalMaximumExceeded?, .targetMaximumExceeded?:
+            return "Too many Live Activities are running. End one and try again."
+        case .visibility?: return "Couldn't start the countdown while Dewey was in the background. Try again."
+        default: return "Couldn't start the countdown. Try again."
+        }
     }
 
     static func stopCountdown(_ id: String) async {

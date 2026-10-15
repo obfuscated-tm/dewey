@@ -13,6 +13,7 @@ struct AssignmentView: View {
     @State private var file: FileTarget?
     @State private var whatIf = false
     @State private var counting = false
+    @State private var countdownError: String?
 
     private var it: ItemState? { _ = model.revision; return model.item(id) }
     private var pageURL: URL { URL(string: "\(Engine.origin.absoluteString)/assignment/\(id)")! }
@@ -261,19 +262,41 @@ struct AssignmentView: View {
             }
             Text(it.submitted ? "Schoology also shows it submitted." : "Only you see this. Turned in means you handed it in, on paper or another site.")
                 .font(Theme.footnote).foregroundStyle(Theme.secondary)
-            if counting || (WidgetBridge.canCountDown(it) && !model.isFinished(it) && WidgetBridge.activitiesAllowed) {
+            let window = WidgetBridge.countdownWindow(due: it.due)
+            if counting || (window != .none && !model.isFinished(it) && WidgetBridge.activitiesAllowed) {
                 Theme.divider.frame(height: 1).padding(.vertical, 4)
                 Toggle(isOn: Binding(get: { counting }, set: { on in
-                    counting = on
-                    if on { try? WidgetBridge.startCountdown(model, it) } else { Task { await WidgetBridge.stopCountdown(it.schoologyId) } }
+                    countdownError = nil
+                    guard on else {
+                        counting = false
+                        Task { await WidgetBridge.stopCountdown(it.schoologyId) }
+                        return
+                    }
+                    do {
+                        try WidgetBridge.startCountdown(model, it)
+                        counting = true
+                    } catch {
+                        counting = false
+                        countdownError = WidgetBridge.countdownErrorMessage(error)
+                    }
                 })) {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("Countdown on Lock Screen").font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text)
-                        Text("Shows the time left in the Dynamic Island. Ends when you mark it done.")
-                            .font(Theme.footnote).foregroundStyle(Theme.secondary)
+                        Group {
+                            if case .opens(let from) = window, !counting {
+                                Text("Available from \(from.formatted(date: .abbreviated, time: .shortened)), 12 hours before it's due.")
+                            } else {
+                                Text("Shows the time left in the Dynamic Island. Ends when you mark it done.")
+                            }
+                        }
+                        .font(Theme.footnote).foregroundStyle(Theme.secondary)
                     }
                 }
                 .tint(Theme.accent)
+                .disabled(!counting && window != .open)
+                if let countdownError {
+                    Text(countdownError).font(Theme.footnote).foregroundStyle(Theme.late)
+                }
             }
         }
         .onAppear { counting = WidgetBridge.activity(for: it.schoologyId) != nil }

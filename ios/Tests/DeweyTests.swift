@@ -222,6 +222,14 @@ final class DueReminderTests: XCTestCase {
         XCTAssertEqual(Reminders.testCountdown(due: at(15, 8), now: now, calendar: cal), "Test in 3 days")
         XCTAssertNil(Reminders.testCountdown(due: at(12, 7), now: now, calendar: cal))
     }
+
+    func testCountdownWindow() {
+        let now = at(12, 8)
+        XCTAssertEqual(WidgetBridge.countdownWindow(due: nil, now: now), .none)
+        XCTAssertEqual(WidgetBridge.countdownWindow(due: at(12, 7), now: now), .none)
+        XCTAssertEqual(WidgetBridge.countdownWindow(due: at(12, 19), now: now), .open)
+        XCTAssertEqual(WidgetBridge.countdownWindow(due: at(13, 23, 59), now: now), .opens(at(13, 11, 59)))
+    }
 }
 
 final class SiriTests: XCTestCase {

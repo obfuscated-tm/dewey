@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// R2 · Inbox: messages from teachers (dot for new, counted in the tab badge),
-/// new materials and grades in the student's classes, then School (hub
-/// messages and the rest, collapsed, not counted). Writing a message happens
+/// R2 · Inbox: new school messages first (until opened), messages from teachers
+/// (dot for new), new materials and grades in the student's classes, then School
+/// (hub messages and the rest, collapsed). Every new message counts in the tab badge. Writing a message happens
 /// in the Schoology sheet.
 struct InboxView: View {
     @Environment(AppModel.self) private var model
@@ -33,6 +33,15 @@ struct InboxView: View {
                             SkeletonRows(count: 4)
                         }
                     } else {
+                        // A new school message sits at the top until it's opened, then goes back under School.
+                        let newSchool = inbox.schoolThreads(classes).filter(inbox.isNew)
+                        if !newSchool.isEmpty {
+                            section("New from school") {
+                                ForEach(Array(newSchool.prefix(15).enumerated()), id: \.element.id) { i, th in
+                                    threadRow(th, divider: i > 0)
+                                }
+                            }
+                        }
                         section("From teachers") {
                             let t = inbox.teacherThreads(classes)
                             if t.isEmpty { emptyRow("No messages from teachers") }
@@ -86,7 +95,7 @@ struct InboxView: View {
 
     @ViewBuilder
     private func school(_ inbox: Inbox, _ classes: [Course]) -> some View {
-        let msgs = inbox.schoolThreads(classes)
+        let msgs = inbox.schoolThreads(classes).filter { !inbox.isNew($0) }
         let other = inbox.otherNotices(classes)
         if !msgs.isEmpty || !other.isEmpty {
             Button { withAnimation { showSchool.toggle() } } label: {

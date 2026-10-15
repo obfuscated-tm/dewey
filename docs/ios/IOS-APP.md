@@ -106,7 +106,7 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 
 ### R2 · Inbox tab (messages + notifications) (built 2026-10-11)
 - Extension first: parsers for `/home/notifications`, the `/messages` list and one message, with Node tests; engine ops for each. Fix the feed parser (cut-off text, date shown as a URL, no post id).
-- Tabs: To Do · Grades · Inbox · Classes · Schoology. Sections: From teachers (unread dot, tab badge), New in your classes, School (collapsed, not counted).
+- Tabs: To Do · Grades · Inbox · Classes · Schoology. Sections: New from school (new school messages, until opened), From teachers (unread dot), New in your classes, School (collapsed). Every new message, teacher or school, counts in the tab badge (2026-10-14).
 - Setting "Mark messages read when opened" (on by default; off = show the preview only, never open the message page). Reply / new message happen in the Schoology sheet.
 - Notifications for new teacher messages and new materials, each with its own switch.
 - **Done when:** the Inbox matches Schoology's messages and notifications pages, and a new teacher message gives one notification after a background refresh.

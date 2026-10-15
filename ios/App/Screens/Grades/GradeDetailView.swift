@@ -42,9 +42,10 @@ struct GradeDetailView: View {
                             }
                         }
                     }
-                    Button("What if this were different?") { whatIf = true }
-                        .font(Theme.subhead.weight(.medium))
-                        .padding(.top, 4)
+                    if it.possible != nil {
+                        WideButton(title: "Try a different score", systemImage: "slider.horizontal.3", filled: false) { whatIf = true }
+                            .padding(.top, 4)
+                    }
                     Button { sheet = SheetTarget(url: URL(string: "\(Engine.origin.absoluteString)/assignment/\(itemId)")!, assignmentId: itemId) } label: {
                         Label("Open in Schoology", systemImage: "globe").font(Theme.subhead.weight(.medium))
                     }
@@ -143,7 +144,9 @@ struct GradeDetailView: View {
     }
 }
 
-/// "What if I get __ / N?" for one item: the course grade with that score.
+/// "What if I get __ / N?" for one item: type a score, tap a quick one, or
+/// slide; the course grade shows now → with this score, and an ungraded item
+/// also shows the score that keeps the A.
 struct WhatIfSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -151,42 +154,142 @@ struct WhatIfSheet: View {
     let sectionId: String?
     @State private var score = ""
     @State private var result: CourseGrade?
+    @State private var needForA: PlanResult?
+    @State private var gen = 0
+    @FocusState private var typing: Bool
 
     private var item: CourseGrade.Item? { sectionId.flatMap { model.grades[$0]?.items.first { $0.id == itemId } } }
+    private var cutoff: Double { sectionId.flatMap { model.courseState($0).aCutoff } ?? 93 }
 
     var body: some View {
         NavigationStack {
-            VStack(alignment: .leading, spacing: 16) {
-                if let it = item, let sid = sectionId {
-                    Text(it.title).font(Theme.body.weight(.semibold))
-                    HStack {
-                        TextField("score", text: $score).keyboardType(.decimalPad).font(Theme.title.weight(.semibold).monospacedDigit())
-                            .frame(width: 90).padding(8).background(Theme.accentSoft, in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
-                        Text("/ \(Fmt.num(it.possible))").font(Theme.title.weight(.regular).monospacedDigit())
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    if let it = item, let sid = sectionId, let possible = it.possible, possible > 0 {
+                        content(it, sid, possible)
+                    } else {
+                        Text("Load this class's grades first.").foregroundStyle(Theme.secondary)
                     }
-                    .onChange(of: score) { _, v in
-                        guard let e = Double(v), let p = it.possible, let rows = model.gradeRows(sid) else { result = nil; return }
-                        Task { result = try? await model.summarize(rows: rows, whatIf: [itemId: ["earned": e, "possible": p]]) }
-                    }
-                    if let r = result, let real = model.grades[sid]?.pct {
-                        HStack(alignment: .firstTextBaseline, spacing: 8) {
-                            Text(r.letter ?? "").font(Theme.largeTitle)
-                            Text(Fmt.pct(r.pct, digits: 2)).font(Theme.body.monospacedDigit())
-                            if let p = r.pct { Text(Fmt.signed(p - real)).font(Theme.subhead.monospacedDigit()).foregroundStyle(p < real ? Theme.late : Theme.good) }
-                        }
-                        Text("Your real grade stays \(Fmt.pct(real, digits: 2)). Nothing changes on Schoology.")
-                            .font(Theme.footnote).foregroundStyle(Theme.secondary)
-                    }
-                } else {
-                    Text("Load this class's grades first.").foregroundStyle(Theme.secondary)
                 }
-                Spacer()
+                .padding(20)
             }
-            .padding(20)
+            .background(Theme.background)
             .navigationTitle("What if")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .task { await loadNeed() }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
+    }
+
+    @ViewBuilder
+    private func content(_ it: CourseGrade.Item, _ sid: String, _ possible: Double) -> some View {
+        let real = model.grades[sid]
+        let typed = Double(score)
+        VStack(alignment: .leading, spacing: 4) {
+            Text(it.title).font(Theme.headline)
+            Text(it.earned != nil ? "Real score \(scoreText(it))\(it.pct.map { " · " + Fmt.pct($0, digits: 0) } ?? "")" : "Not graded yet")
+                .font(Theme.footnote).foregroundStyle(Theme.secondary)
+        }
+
+        // The score: box, quick picks, slider.
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
+                TextField(it.earned.map { Fmt.num($0) } ?? "score", text: $score)
+                    .keyboardType(.decimalPad).focused($typing)
+                    .font(Theme.largeTitle.monospacedDigit()).multilineTextAlignment(.center)
+                    .frame(width: 110).padding(.vertical, 6)
+                    .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous).stroke(Theme.accent, lineWidth: typing ? 2 : 1))
+                    .accessibilityLabel("What-if score, out of \(Fmt.num(possible))")
+                Text("/ \(Fmt.num(possible))").font(Theme.title.weight(.regular).monospacedDigit()).foregroundStyle(Theme.secondary)
+                Spacer()
+                if let t = typed { Text(Fmt.pct(t / possible * 100, digits: 0)).font(Theme.title.monospacedDigit()).foregroundStyle(Theme.accent) }
+            }
+            HStack(spacing: 6) {
+                ForEach([100.0, 90, 80, 70, 60], id: \.self) { pc in
+                    let v = (possible * pc / 100 * 100).rounded() / 100
+                    let on = typed == v
+                    Button { typing = false; score = Fmt.num(v) } label: {
+                        Text("\(Int(pc))%").font(Theme.footnote.weight(.semibold).monospacedDigit())
+                            .frame(maxWidth: .infinity, minHeight: 32)
+                            .foregroundStyle(on ? Theme.onAccent : Theme.accent)
+                            .background(on ? Theme.accent : Theme.accentSoft, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("\(Int(pc)) percent, \(Fmt.num(v)) points")
+                }
+            }
+            Slider(value: Binding(get: { min(typed ?? it.earned ?? 0, possible) },
+                                  set: { score = Fmt.num(($0 * 2).rounded() / 2) }),
+                   in: 0...possible)
+                .accessibilityLabel("What-if score")
+        }
+        .padding(16)
+        .card()
+        .onChange(of: score) { _, _ in recompute(it, sid, possible) }
+
+        // Now → with this score.
+        HStack(spacing: 0) {
+            gradeColumn("NOW", real?.letter, real?.pct, color: Theme.secondary)
+            Image(systemName: "arrow.right").font(Theme.headline).foregroundStyle(Theme.tertiary).frame(width: 36)
+            if let r = result, typed != nil {
+                gradeColumn("WITH THIS SCORE", r.letter, r.pct, color: Theme.accent, delta: r.pct.flatMap { p in real?.pct.map { p - $0 } })
+            } else {
+                gradeColumn("WITH THIS SCORE", nil, nil, color: Theme.tertiary)
+            }
+        }
+        .padding(16)
+        .card()
+
+        if it.earned == nil, let n = needForA {
+            Text(needText(n, possible)).font(Theme.subhead.weight(.medium))
+                .foregroundStyle(n.status == "out" ? Theme.late : Theme.good)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(16).card()
+        }
+        Text("Only a preview. Nothing changes on Schoology.").font(Theme.footnote).foregroundStyle(Theme.tertiary)
+    }
+
+    private func gradeColumn(_ label: String, _ letter: String?, _ pct: Double?, color: Color, delta: Double? = nil) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(Theme.caption.weight(.bold)).foregroundStyle(color)
+            Text(letter ?? "—").font(Theme.largeTitle).foregroundStyle(pct == nil ? Theme.tertiary : Theme.text)
+            HStack(spacing: 6) {
+                Text(Fmt.pct(pct, digits: 2)).font(Theme.subhead.monospacedDigit()).foregroundStyle(Theme.secondary)
+                if let d = delta, abs(d) >= 0.005 {
+                    Text(Fmt.signed(d)).font(Theme.footnote.weight(.semibold).monospacedDigit()).foregroundStyle(d < 0 ? Theme.late : Theme.good)
+                }
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+    }
+
+    private func recompute(_ it: CourseGrade.Item, _ sid: String, _ possible: Double) {
+        guard let e = Double(score), let rows = model.gradeRows(sid) else { result = nil; return }
+        gen += 1
+        let g = gen
+        Task {
+            let r = try? await model.summarize(rows: rows, whatIf: [itemId: ["earned": e, "possible": possible]])
+            if g == gen { result = r }
+        }
+    }
+
+    /// An ungraded item counts like a new one in its category, so planTest gives the score that keeps the A.
+    private func loadNeed() async {
+        guard let it = item, it.earned == nil, let p = it.possible, let sid = sectionId else { return }
+        needForA = await model.plan(sectionId: sid, category: it.category, possible: p, target: cutoff)
+    }
+
+    private func needText(_ n: PlanResult, _ possible: Double) -> String {
+        switch n.status {
+        case "any": return "Any score here keeps you at \(Fmt.num(cutoff))% or above."
+        case "out": return "Even \(Fmt.num(possible)) / \(Fmt.num(possible)) leaves you under \(Fmt.num(cutoff))%."
+        case "need":
+            let need = min((n.need ?? 0).rounded(.up), possible)
+            return "You need \(Fmt.num(need)) / \(Fmt.num(possible)) (\(Fmt.pct(need / possible * 100, digits: 0))) to stay at \(Fmt.num(cutoff))%."
+        default: return ""
+        }
     }
 }

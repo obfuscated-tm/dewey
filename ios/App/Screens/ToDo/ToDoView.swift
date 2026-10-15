@@ -3,7 +3,7 @@ import SwiftUI
 /// 1a · To Do: everything due, grouped by class in Course Dashboard order.
 struct ToDoView: View {
     @Environment(AppModel.self) private var model
-    @State private var filter: TodoLogic.Bucket?
+    @State private var filter: DayFilter?
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showOlder = false
     @State private var sheet: SheetTarget?
@@ -39,14 +39,11 @@ struct ToDoView: View {
         }
     }
 
-    // ── Header: date, title, gear, three count buttons ───────────────────
+    // ── Header: date, title, gear, week strip ───────────────────
 
     @ViewBuilder
     private func header(items: [ItemState], now: Date) -> some View {
         let open = items.filter { !model.isFinished($0) }
-        let overdue = open.filter { TodoLogic.bucket(due: $0.due, now: now) == .overdue && !TodoLogic.isOlder(due: $0.due, now: now) }.count
-        let today = open.filter { TodoLogic.bucket(due: $0.due, now: now) == .today }.count
-        let week = open.filter { [.today, .week].contains(TodoLogic.bucket(due: $0.due, now: now)) }.count
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do") {
                 Button { showSettings = true } label: {
@@ -56,37 +53,36 @@ struct ToDoView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Settings")
             }
-            // Three across; stacked at the accessibility text sizes so the words fit.
-            (typeSize.isAccessibilitySize ? AnyLayout(VStackLayout(spacing: Theme.Space.m)) : AnyLayout(HStackLayout(spacing: Theme.Space.m))) {
-                countButton(overdue, "Overdue", .overdue, Theme.late)
-                countButton(today, "Due today", .today, Theme.accent)
-                countButton(week, "This week", .week, Theme.text)
+            // Late, today and the next six days, a dot per item still to do; tap one to show only it.
+            WeekStrip(items: open, now: now, selected: $filter)
+            if let f = filter {
+                HStack(spacing: Theme.Space.s) {
+                    Text(filterTitle(f, now: now)).font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary)
+                    Spacer()
+                    Button("Show all") { withAnimation(.snappy(duration: 0.2)) { filter = nil } }
+                        .font(Theme.footnote.weight(.semibold))
+                }
+                .padding(.horizontal, 4)
             }
-            HStack(spacing: 8) {
-                AsOfBanner(date: model.todoAsOf, error: model.todoError)
-                if model.refreshingTodo { ProgressView().controlSize(.small) }
+            // Offline note / refresh spinner: only takes room when there's something to show.
+            if (model.todoAsOf != nil && model.todoError != nil) || model.refreshingTodo {
+                HStack(spacing: 8) {
+                    AsOfBanner(date: model.todoAsOf, error: model.todoError)
+                    if model.refreshingTodo { ProgressView().controlSize(.small) }
+                }
             }
         }
     }
 
-    private func countButton(_ n: Int, _ label: String, _ b: TodoLogic.Bucket, _ color: Color) -> some View {
-        let on = filter == b
-        return Button {
-            filter = on ? nil : b
-        } label: {
-            VStack(alignment: .leading, spacing: 2) {
-                Text("\(n)").font(Theme.title.monospacedDigit()).foregroundStyle(on ? Theme.onAccent : color)
-                Text(label).font(Theme.footnote).foregroundStyle(on ? Theme.onAccent : Theme.secondary)
-            }
-            .padding(Theme.Space.m)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(on ? color : Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(on ? Color.clear : Theme.border))
+    private func filterTitle(_ f: DayFilter, now: Date) -> String {
+        switch f {
+        case .late: return "Late"
+        case .day(0): return "Today"
+        case .day(1): return "Tomorrow"
+        case .day(let k):
+            let d = Calendar.current.date(byAdding: .day, value: k, to: Calendar.current.startOfDay(for: now))!
+            return Fmt.header.string(from: d)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("\(n) \(label.lowercased())")
-        .accessibilityAddTraits(on ? .isSelected : [])
-        .accessibilityHint(on ? "Shows the whole list again" : "Shows only these")
     }
 
     // ── The groups ───────────────────────────────────────────────────────
@@ -103,14 +99,7 @@ struct ToDoView: View {
         } else {
             let filtered = items.filter { it in
                 guard let filter else { return true }
-                let b = TodoLogic.bucket(due: it.due, now: now)
-                if model.isFinished(it) { return false }
-                switch filter {
-                case .overdue: return b == .overdue && !TodoLogic.isOlder(due: it.due, now: now)
-                case .today: return b == .today
-                case .week: return b == .today || b == .week
-                case .later: return true
-                }
+                return !model.isFinished(it) && filter.matches(it, now: now)
             }
             let older = filtered.filter { TodoLogic.isOlder(due: $0.due, now: now) && !model.isFinished($0) }
             let current = filtered.filter { !older.contains($0) }
@@ -118,7 +107,7 @@ struct ToDoView: View {
             if groups.isEmpty && older.isEmpty {
                 Section {
                     EmptyState(icon: "checkmark.circle", title: filter == nil ? "Nothing due" : "Nothing here",
-                               detail: filter == nil ? "Schoology lists nothing for you right now." : "Tap the count again to see everything.",
+                               detail: filter == nil ? "Schoology lists nothing for you right now." : "Tap the day again to see everything.",
                                art: filter == nil ? "DeweyCaughtUp" : nil)
                 }
                 .listRowBackground(Color.clear).listRowInsets(EdgeInsets())
@@ -313,6 +302,7 @@ struct TodoRow: View {
     /// Only the text opens the assignment, so the status buttons never navigate
     /// (a row-wide link caught taps after the list re-sorted under the finger).
     let onOpen: () -> Void
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var progress: AppModel.Progress {
         item.turnedIn ? .turnedIn : (item.type == .exam ? item.studied : item.done) ? .done : .todo
@@ -320,8 +310,41 @@ struct TodoRow: View {
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
-            // Left column: the checkbox, and the type bar under it (fills the row's height).
-            VStack(spacing: 6) {
+            // The text decides the row's height (at least checkbox + type bar);
+            // the left column (below) fills it.
+            Color.clear.frame(width: 24, height: 24 + 4 + TypeBar.minHeight)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(item.title)
+                    .font(Theme.body)
+                    .foregroundStyle(Theme.text)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                    .onTapGesture(perform: onOpen)
+                    .accessibilityAddTraits(.isButton)
+                    .accessibilityHint("Opens the assignment")
+                    .accessibilityAction { onOpen() }
+                // The title keeps the full width; the one-tap action (Submit / Turn in /
+                // Undo) always sits at the right end of the due line, which wraps beside it.
+                // At the largest text sizes it goes under the due line instead.
+                if hasAction && !typeSize.isAccessibilitySize {
+                    HStack(alignment: .center, spacing: Theme.Space.s) {
+                        dueText.frame(maxWidth: .infinity, alignment: .leading)
+                        action
+                    }
+                } else {
+                    dueText
+                    if hasAction { action }
+                }
+                if let (text, color, strong) = statusNote {
+                    Text(text).font(Theme.footnote.weight(strong ? .bold : .medium)).foregroundStyle(color)
+                }
+            }
+        }
+        .fixedSize(horizontal: false, vertical: true)
+        // Left column: the checkbox, and the type bar under it, filling the row's
+        // height (a short row shows the bar without its label instead of growing).
+        .overlay(alignment: .topLeading) {
+            VStack(spacing: 4) {
                 // One tap: to do ↔ done (a turned-in row goes back to done), like the extension.
                 Button {
                     onSet(progress == .todo ? .done : progress == .done ? .todo : .done)
@@ -336,37 +359,12 @@ struct TodoRow: View {
                 TypeBar(type: item.type)
             }
             .frame(width: 24)
-            VStack(alignment: .leading, spacing: 6) {
-                Text(item.title)
-                    .font(Theme.body)
-                    .foregroundStyle(Theme.text)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .contentShape(Rectangle())
-                    .onTapGesture(perform: onOpen)
-                    .accessibilityAddTraits(.isButton)
-                    .accessibilityHint("Opens the assignment")
-                    .accessibilityAction { onOpen() }
-                // Due line with the one-tap action (Submit / Turn in / Undo) beside it;
-                // the action drops under it rather than cutting the text short.
-                ViewThatFits(in: .horizontal) {
-                    HStack(spacing: Theme.Space.s) {
-                        dueText.fixedSize(horizontal: true, vertical: false)
-                        Spacer(minLength: Theme.Space.xs)
-                        action
-                    }
-                    VStack(alignment: .leading, spacing: 6) {
-                        dueText
-                        action
-                    }
-                }
-                if let (text, color, strong) = statusNote {
-                    Text(text).font(Theme.footnote.weight(strong ? .bold : .medium)).foregroundStyle(color)
-                }
-            }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
-        .fixedSize(horizontal: false, vertical: true)
         .padding(.vertical, Theme.Space.xs)
     }
+
+    private var hasAction: Bool { !item.submitted && (item.turnedIn || item.hasDropbox || item.type != .exam) }
 
     @ViewBuilder
     private var action: some View {
@@ -390,14 +388,21 @@ struct TodoRow: View {
     }
 
     /// "Mon Oct 5, 11:59 pm · 7 days late"; a test adds its countdown and studied mark.
+    /// Each "·" part of the due line wraps as a whole ("9 days late" never splits).
+    private func nb(_ s: String) -> String { s.replacingOccurrences(of: " ", with: "\u{00A0}") }
+
     private var dueText: Text {
         let late = item.submitted || item.turnedIn ? nil : TodoLogic.daysLate(due: item.due, now: now)
-        var t = Text(Fmt.due(item.due, now: now))
-        if let late, late > 0 { t = t + Text(" · \(late) day\(late == 1 ? "" : "s") late") } else if late == 0 { t = t + Text(" · late") }
+        var t = Text(nb(Fmt.due(item.due, now: now)))
+        if let late, late > 0 { t = t + Text(" · " + nb("\(late) day\(late == 1 ? "" : "s") late")) } else if late == 0 { t = t + Text(" · late") }
         t = t.foregroundStyle(late != nil ? Theme.late : Theme.secondary)
         if item.type == .exam && !item.submitted && !item.turnedIn {
-            let countdown = Reminders.testCountdown(due: item.due, now: now).map { " · " + $0.replacingOccurrences(of: "Test ", with: "") } ?? ""
-            t = t + Text("\(countdown) · \(item.studied ? "studied" : "not studied")")
+            // "Tomorrow, 11:59 pm" already says it: no "· tomorrow" after it.
+            let dueWords = Fmt.due(item.due, now: now).lowercased()
+            let countdown = Reminders.testCountdown(due: item.due, now: now)
+                .map { $0.replacingOccurrences(of: "Test ", with: "") }
+                .flatMap { dueWords.hasPrefix($0.lowercased()) ? nil : " · " + nb($0) } ?? ""
+            t = t + Text("\(countdown) · \(nb(item.studied ? "studied" : "not studied"))")
                 .foregroundStyle(item.studied ? Theme.accent : Theme.secondary)
         }
         return t.font(Theme.footnote.weight(late != nil ? .semibold : .regular).monospacedDigit())
@@ -410,7 +415,7 @@ struct TodoRow: View {
         if item.type == .exam { return nil }
         if item.external { return (item.done ? "Done · check it in Schoology" : "Google Assignment · turn in on Schoology", item.done ? Theme.accent : Theme.secondary, false) }
         if item.done { return (item.hasDropbox ? "Done · not submitted yet" : "Done", Theme.accent, false) }
-        if !item.inSchoology { return ("Schoology dropped this · still yours to tick", Theme.secondary, false) }
+        if !item.inSchoology { return ("Not on Schoology anymore · tick when done", Theme.secondary, false) }
         return nil
     }
 }

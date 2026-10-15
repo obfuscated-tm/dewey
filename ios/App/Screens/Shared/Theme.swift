@@ -139,13 +139,15 @@ struct AdaptiveStack<Content: View>: View {
 /// A test is the one that stands out: black instead of grey.
 struct TypeBar: View {
     let type: ItemType
+    /// The tallest the label needs; the bar stretches to fill a taller row.
+    static let minHeight: CGFloat = 38
     var body: some View {
         Text(type.label)
-            .font(Theme.caption.weight(.bold))
-            .tracking(1)
+            .font(.system(size: 10, weight: .heavy))
+            .tracking(0.6)
             .fixedSize()
             .rotationEffect(.degrees(-90))
-            .frame(width: 18, height: 40)
+            .frame(width: 18, height: Self.minHeight)
             .frame(maxHeight: .infinity)
             .foregroundStyle(type == .exam ? Theme.card : Theme.secondary)
             .background(type == .exam ? Theme.text : Theme.tagSoft,

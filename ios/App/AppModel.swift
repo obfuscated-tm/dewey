@@ -385,9 +385,9 @@ final class AppModel {
     }
 
     func summarize(rows: Data, whatIf: [String: [String: Double]] = [:], extra: [[String: Any]] = [],
-                   weights: [String: Double] = [:]) async throws -> CourseGrade {
+                   drop: [String] = [], weights: [String: Double] = [:]) async throws -> CourseGrade {
         let rowsObj = try JSONSerialization.jsonObject(with: rows)
-        var opts: [String: Any] = ["whatIf": whatIf, "extra": extra]
+        var opts: [String: Any] = ["whatIf": whatIf, "extra": extra, "drop": drop]
         if !weights.isEmpty { opts["weights"] = weights }
         return try await engine.call("courseGrade", ["rows": rowsObj, "opts": opts])
     }

@@ -67,8 +67,8 @@ final class Inbox {
         return d > since
     }
 
-    /// The tab badge: new messages from teachers only (School isn't counted).
-    func newCount(_ classes: [Course]) -> Int { teacherThreads(classes).filter(isNew).count }
+    /// The tab badge: new messages, from teachers and from school (other School notices aren't counted).
+    func newCount(_ classes: [Course]) -> Int { threads.filter(isNew).count }
 
     func markSeen(_ id: String) {
         guard !seen.contains(id) else { return }

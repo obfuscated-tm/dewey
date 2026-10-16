@@ -24,7 +24,7 @@ A free Chrome extension for students on any school's Schoology, plus iPhone and 
 
 <br>
 
-<img src="docs/images/hero.png" alt="Dewey on Schoology: the To Do list grouped by class, a Grades page showing 3.92 above an A, and the one-click Archive card" width="900">
+<img src="docs/images/hero.png" alt="Dewey on Schoology: the To Do list grouped by class, a Grades page showing 1.76 above an A, and the one-click Archive card" width="900">
 
 </div>
 
@@ -218,9 +218,9 @@ Each class becomes a normal folder you can open in Finder or File Explorer:
 ## 📱 Dewey for iPhone and Android (beta)
 
 <div align="center">
-<img src="docs/images/ios-preview.png" alt="Dewey for iPhone: Classes, Grades, a class's grades, and Materials" width="100%">
+<img src="docs/images/ios-preview.png" alt="Dewey for iPhone: To Do, Grades, a class's grades, and Classes" width="100%">
 <br>
-<sub>Design previews of the iPhone app's Classes, Grades, class grades and Materials screens. The Android app has the same screens.</sub>
+<sub>The iPhone app's To Do, Grades, class grades and Classes screens, with a made-up student. The Android app has the same screens.</sub>
 </div>
 <br>
 
@@ -562,7 +562,7 @@ Without a token, the neo-plan parts of the overlays (type tags, **+ Add to neo-p
 │   ├── android/             Android-specific notes (the iOS docs stay the source of truth)
 │   ├── mcp/                 the extension-to-MCP bridge contract
 │   ├── history/             finished plans
-│   └── images/              README screenshots
+│   └── images/              README screenshots (make/ has the scripts that take them)
 └── package.json             `npm test` runs the extension and MCP tests
 ```
 
@@ -585,7 +585,9 @@ The `test/*.html` pages are stand-ins for Schoology pages, so you can look at th
 python3 -m http.server 8765 --directory extension
 ```
 
-Then open <http://localhost:8765/test/grades-page.html> (or `materials-page`, `home-page`, `assignment-page`, `archive-card`). The README screenshots come from these pages.
+Then open <http://localhost:8765/test/grades-page.html> (or `materials-page`, `home-page`, `assignment-page`, `archive-card`). They show a made-up student's classes.
+
+The README screenshots come from these pages and from the iPhone app's demo mode (a Debug build launched with `-DeweyDemo`, see [`ios/App/Engine/Demo.swift`](ios/App/Engine/Demo.swift)). With the server above running, `node docs/images/make/shoot.mjs` retakes the extension shots and `python3 docs/images/make/hero.py` rebuilds the hero; [`docs/images/make/phones.py`](docs/images/make/phones.py) frames the simulator screenshots.
 
 **Rules the code follows:** GET only; never touch a quiz; overlays only add, in their own shadow DOM; the neo-plan token stays in the background worker; the MCP server is read-only and binds to `127.0.0.1`.
 

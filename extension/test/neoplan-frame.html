@@ -22,10 +22,10 @@
         if (m.type === 'neoplan' && m.op === 'courses') {
           return { ok: true, status: 200, data: {
             courses: [
-              { section_id: 1, title: 'AP Comp Sci A - 2350', section_title: 'McLeodT p2', class_id: 'a', auto: true },
-              { section_id: 2, title: 'AP Physics 1 - 3750', section_title: 'AgarwalA p5', class_id: null },
+              { section_id: 1, title: 'AP Biology - 1101', section_title: 'RiveraM p2', class_id: 'a', auto: true },
+              { section_id: 2, title: 'Chemistry H - 1505', section_title: 'NguyenK p5', class_id: null },
             ],
-            classes: [{ id: 'a', name: 'Computer Science' }, { id: 'b', name: 'Physics' }],
+            classes: [{ id: 'a', name: 'Biology' }, { id: 'b', name: 'Chemistry' }],
           } };
         }
         if (m.type === 'sync') return { running: false, snapshot: { at: new Date(Date.now() - 6e5).toISOString() } };

@@ -29,7 +29,7 @@ h4 { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: .0
 label.toggle { display: block; margin-bottom: 12px; font-size: 12px; }
 </style></head>
 <body>
-<h2 id="crumb">AP Comp Sci A: McLeodT p2 T1</h2>
+<h2 id="crumb">AP Biology: RiveraM p2 T1</h2>
 <label class="toggle"><input type="checkbox" id="overlay-switch" checked> Overlay on</label>
 <div class="layout">
   <div class="main">
@@ -40,11 +40,11 @@ label.toggle { display: block; margin-bottom: 12px; font-size: 12px; }
     <div class="upcoming-events-wrapper" id="course-events">
       <h3 id="event-selector">Upcoming</h3>
       <h4>Sunday, September 27, 2026</h4>
-      <div class="upcoming-event" data-start="1790200740"><a href="/assignment/10">Lab 9.1 Fibonacci</a><span class="realm-title-course">AP Comp Sci A - 2350</span><span class="due-text">Due Sunday, September 27, 2026 at 11:59 pm</span></div>
-      <div class="upcoming-event" data-start="1790200740"><a href="/assignment/11">Read Lesson 9</a><span class="realm-title-course">AP Comp Sci A - 2350</span><span class="due-text">Due Sunday, September 27, 2026 at 11:59 pm</span></div>
+      <div class="upcoming-event" data-start="1790200740"><a href="/assignment/10">Lab 9.1 Diffusion</a><span class="realm-title-course">AP Biology - 1101</span><span class="due-text">Due Sunday, September 27, 2026 at 11:59 pm</span></div>
+      <div class="upcoming-event" data-start="1790200740"><a href="/assignment/11">Read Chapter 9</a><span class="realm-title-course">AP Biology - 1101</span><span class="due-text">Due Sunday, September 27, 2026 at 11:59 pm</span></div>
       <h4>Tuesday, September 29, 2026</h4>
-      <div class="upcoming-event" data-start="1790330700"><a href="/assignment/14">Mini Quiz 1 - Ternary Operator and If-Else logic</a><span class="realm-title-course">AP Comp Sci A - 2350</span><span class="due-text">Due Tuesday, September 29, 2026 at 10:05 am</span></div>
-      <div class="upcoming-event" data-start="1790352000"><a href="/assignment/15">In-class Lab 6.2 - Static Review</a><span class="realm-title-course">AP Comp Sci A - 2350</span><span class="due-text">Due Tuesday, September 29, 2026 at 4:00 pm</span></div>
+      <div class="upcoming-event" data-start="1790330700"><a href="/assignment/14">Mini Quiz 1 - Cell Organelles</a><span class="realm-title-course">AP Biology - 1101</span><span class="due-text">Due Tuesday, September 29, 2026 at 10:05 am</span></div>
+      <div class="upcoming-event" data-start="1790352000"><a href="/assignment/15">In-class Lab 6.2 - Microscopy Review</a><span class="realm-title-course">AP Biology - 1101</span><span class="due-text">Due Tuesday, September 29, 2026 at 4:00 pm</span></div>
     </div>
     </div></div>
   </div>
@@ -55,15 +55,15 @@ const SECTION = '23'; // matches this course page's own section, below
 
 // ── The events the panel filters down to this section (the task's own fixture) ──
 const OVERDUE = [
-  { schoology_id: '1', title: 'French Revolution Quick Write', course: 'World History - 1620', section_id: '16', due: '2026-09-15T18:59:00', graded: false, url: '/assignment/1' },
-  { schoology_id: '3', title: 'HW #13: Pg. 648 # 29-37(odd)', course: 'Pre-Calculus H - 2420', section_id: '24', due: '2026-09-21T18:59:00', graded: false, url: '/assignment/3' },
+  { schoology_id: '1', title: 'Reconstruction Quick Write', course: 'US History - 1606', section_id: '16', due: '2026-09-15T18:59:00', graded: false, url: '/assignment/1' },
+  { schoology_id: '3', title: 'HW #13: Pg. 212 # 1-35 odd', course: 'Algebra 2 - 1202', section_id: '24', due: '2026-09-21T18:59:00', graded: false, url: '/assignment/3' },
 ];
 const UPCOMING = [
-  { schoology_id: '10', title: 'Lab 9.1 Fibonacci', course: 'AP Comp Sci A - 2350', section_id: SECTION, due: '2026-09-27T23:59:00', graded: false, url: '/assignment/10' },
-  { schoology_id: '11', title: 'Read Lesson 9', course: 'AP Comp Sci A - 2350', section_id: SECTION, due: '2026-09-27T23:59:00', graded: false, url: '/assignment/11' },
-  { schoology_id: '14', title: 'Mini Quiz 1 - Ternary Operator and If-Else logic', course: 'AP Comp Sci A - 2350', section_id: SECTION, due: '2026-09-29T10:05:00', graded: false, url: '/assignment/14' },
-  { schoology_id: '15', title: 'In-class Lab 6.2 - Static Review', course: 'AP Comp Sci A - 2350', section_id: SECTION, due: '2026-09-29T16:00:00', graded: false, url: '/assignment/15' },
-  { schoology_id: '16', title: 'Chapter 10 Exam (points to be determined)', course: 'Pre-Calculus H - 2420', section_id: '24', due: '2026-09-29T23:59:00', graded: false, url: '/assignment/16' },
+  { schoology_id: '10', title: 'Lab 9.1 Diffusion', course: 'AP Biology - 1101', section_id: SECTION, due: '2026-09-27T23:59:00', graded: false, url: '/assignment/10' },
+  { schoology_id: '11', title: 'Read Chapter 9', course: 'AP Biology - 1101', section_id: SECTION, due: '2026-09-27T23:59:00', graded: false, url: '/assignment/11' },
+  { schoology_id: '14', title: 'Mini Quiz 1 - Cell Organelles', course: 'AP Biology - 1101', section_id: SECTION, due: '2026-09-29T10:05:00', graded: false, url: '/assignment/14' },
+  { schoology_id: '15', title: 'In-class Lab 6.2 - Microscopy Review', course: 'AP Biology - 1101', section_id: SECTION, due: '2026-09-29T16:00:00', graded: false, url: '/assignment/15' },
+  { schoology_id: '16', title: 'Chapter 10 Exam (points to be determined)', course: 'Algebra 2 - 1202', section_id: '24', due: '2026-09-29T23:59:00', graded: false, url: '/assignment/16' },
 ];
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function getEvents(list) {

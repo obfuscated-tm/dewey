@@ -10,7 +10,7 @@ enum Cache {
 
     private static let dir: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let d = base.appendingPathComponent("cache", isDirectory: true)
+        let d = base.appendingPathComponent(Demo.on ? "cache-demo" : "cache", isDirectory: true)
         try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
         return d
     }()

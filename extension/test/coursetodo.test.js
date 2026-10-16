@@ -15,15 +15,15 @@ const NOW = new Date('2026-09-27T12:00:00');
 
 // The fixture shared with test/todo.test.js and test/home-page.html.
 const OVERDUE = [
-  { schoology_id: '1', title: 'French Revolution Quick Write', course: 'World History - 1620', section_id: '16', due: '2026-09-15T18:59:00', graded: false, url: '/assignment/1' },
-  { schoology_id: '2', title: 'Interro de vocabulaire 1.2', course: 'French 2 - 4120', section_id: '41', due: '2026-09-16T18:59:00', graded: false, url: '/course/41/assessments/2' },
-  { schoology_id: '3', title: 'HW #13', course: 'Pre-Calculus H - 2420', section_id: '24', due: '2026-09-21T18:59:00', graded: false, url: '/assignment/3' },
+  { schoology_id: '1', title: 'Reconstruction Quick Write', course: 'US History - 1606', section_id: '16', due: '2026-09-15T18:59:00', graded: false, url: '/assignment/1' },
+  { schoology_id: '2', title: 'Prueba de vocabulario 1.2', course: 'Spanish 2 - 1404', section_id: '41', due: '2026-09-16T18:59:00', graded: false, url: '/course/41/assessments/2' },
+  { schoology_id: '3', title: 'HW #13', course: 'Algebra 2 - 1202', section_id: '24', due: '2026-09-21T18:59:00', graded: false, url: '/assignment/3' },
 ];
 const UPCOMING = [
-  { schoology_id: '10', title: 'Lab 9.1 Fibonacci', course: 'AP Comp Sci A - 2350', section_id: '23', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/10' },
-  { schoology_id: '11', title: 'Read Lesson 9', course: 'AP Comp Sci A - 2350', section_id: '23', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/11' },
-  { schoology_id: '14', title: 'Mini Quiz 1', course: 'AP Comp Sci A - 2350', section_id: '23', due: '2026-09-29T10:05:00', graded: false, url: '/assignment/14' },
-  { schoology_id: '16', title: 'Chapter 10 Exam', course: 'Pre-Calculus H - 2420', section_id: '24', due: '2026-09-29T23:59:00', graded: false, url: '/assignment/16' },
+  { schoology_id: '10', title: 'Lab 9.1 Diffusion', course: 'AP Biology - 1101', section_id: '23', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/10' },
+  { schoology_id: '11', title: 'Read Chapter 9', course: 'AP Biology - 1101', section_id: '23', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/11' },
+  { schoology_id: '14', title: 'Mini Quiz 1', course: 'AP Biology - 1101', section_id: '23', due: '2026-09-29T10:05:00', graded: false, url: '/assignment/14' },
+  { schoology_id: '16', title: 'Chapter 10 Exam', course: 'Algebra 2 - 1202', section_id: '24', due: '2026-09-29T23:59:00', graded: false, url: '/assignment/16' },
 ];
 
 test('courseItems: only this section\'s events, none of the others', () => {

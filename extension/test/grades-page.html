@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- A stand-in for /course/{id}/student_grades, built from fixtures/apcs-grades.md
+<!-- A stand-in for /course/{id}/student_grades, built from fixtures/demo-grades.md (a made-up class)
      with the markup docs/schoology-endpoints.md and Schoology Plus rely on, to
      look at overlays/grades.js outside Schoology. Serve extension/
      (python3 -m http.server) and open /test/grades-page.html. ?noweights drops the
@@ -20,16 +20,16 @@ tr.item-row th { padding-left: 28px; }
 .visually-hidden { position: absolute; clip: rect(0 0 0 0); width: 1px; height: 1px; overflow: hidden; }
 .hidden { display: none; }
 </style></head>
-<body><h2 id="h">AP Comp Sci A: McLeodT p2 T1</h2>
+<body><h2 id="h">AP Biology: RiveraM p2 T1</h2>
 <div class="s-grades-course-list" id="list"></div>
 <script type="module">
 const q = new URLSearchParams(location.search), ALL = q.has('all');
-const WEIGHTS = q.has('noweights') ? {} : { 'Labs & Homework': 25, 'Tests & Quizzes': 75 };
-const md = await (await fetch('./fixtures/apcs-grades.md')).text();
+const WEIGHTS = q.has('noweights') ? {} : { 'Labs & Homework': 30, 'Tests & Quizzes': 70 };
+const md = await (await fetch('./fixtures/demo-grades.md')).text();
 if (ALL) document.getElementById('h').textContent = 'Grades';
 // /grades/grades: each course a .gradebook-course, its grades hidden until
 // its title is clicked, and its Course Grade row display: none.
-const courses = ALL ? [['8465375857', 'AP Comp Sci A - 2350: McLeodT p2 T1'], ['8465370000', 'AP Comp Sci A, again']] : [['8465375857', '']];
+const courses = ALL ? [['7000375857', 'AP Biology - 1101: RiveraM p2 T1'], ['7000370000', 'AP Biology, again']] : [['7000375857', '']];
 for (const [courseId, name] of courses) {
 const item = document.createElement('div');
 item.className = 's-grades-course-item';
@@ -77,5 +77,5 @@ document.addEventListener('click', (e) => {
 });
 globalThis.__npNoAutoStart = true;
 const { start } = await import('../overlays/grades.js');
-window.overlay = await start({ loc: { pathname: ALL ? '/grades/grades' : '/course/8465375857/student_grades' } });
+window.overlay = await start({ loc: { pathname: ALL ? '/grades/grades' : '/course/7000375857/student_grades' } });
 </script></body></html>

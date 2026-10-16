@@ -153,7 +153,7 @@ private fun ThreadRow(t: MessageThread, isNew: Boolean) {
     }
 }
 
-/** "French 2 posted Interro des Pronoms …": each item opens (assignments natively, the rest in the sheet). */
+/** "Spanish 2 posted Prueba de pronombres …": each item opens (assignments natively, the rest in the sheet). */
 @Composable
 private fun NoticeRow(n: Notice) {
     val nav = nav

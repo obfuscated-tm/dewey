@@ -11,7 +11,7 @@ import java.util.Date
 
 @Serializable
 data class Course(val sectionId: String, val title: String, val sectionTitle: String = "") {
-    /** "AP Physics 1 - 12345: P3" → "AP Physics 1" (the course code goes). */
+    /** "Chemistry H - 12345: P3" → "Chemistry H" (the course code goes). */
     val shortTitle: String get() = short(title)
 
     /** "P3", "Period 3" … from the section title, or the section title itself. */
@@ -23,7 +23,7 @@ data class Course(val sectionId: String, val title: String, val sectionTitle: St
         get() = Regex("""^.+ - \d{3,5}:""").containsMatchIn("$title: $sectionTitle") || Regex("""- \d{3,5}$""").containsMatchIn(title)
 
     companion object {
-        /** The same for any Schoology course name, e.g. "French 2 - 4120: AggounI p4 T1" → "French 2". */
+        /** The same for any Schoology course name, e.g. "Spanish 2 - 1404: GarciaJ p4 T1" → "Spanish 2". */
         fun short(title: String): String {
             val t = title.replace(Regex("""\s*-\s*\d{3,6}\b.*$"""), "")
             return t.ifEmpty { title }

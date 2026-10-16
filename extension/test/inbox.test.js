@@ -9,10 +9,10 @@ import { splitSubject, parseDayHeader, atTimeOfDay, edgeType, idAfter } from '..
 import { SHOW_MORE_RE } from '../reader/parse/feed.js';
 
 test('splitSubject: the [group] prefix Schoology adds to course and group messages', () => {
-  assert.deepEqual(splitSubject('[AP Comp Sci A - 2350: McLeodT p2 T1] Lesson Slides 10-5-26'),
-    { group: 'AP Comp Sci A - 2350: McLeodT p2 T1', title: 'Lesson Slides 10-5-26' });
+  assert.deepEqual(splitSubject('[AP Biology - 1101: RiveraM p2 T1] Lesson Slides 10-5-26'),
+    { group: 'AP Biology - 1101: RiveraM p2 T1', title: 'Lesson Slides 10-5-26' });
   assert.deepEqual(splitSubject('  Question about the lab '), { group: null, title: 'Question about the lab' });
-  assert.deepEqual(splitSubject('[CHS Hub: Gr10]'), { group: 'CHS Hub: Gr10', title: 'CHS Hub: Gr10' });
+  assert.deepEqual(splitSubject('[School Hub: Gr10]'), { group: 'School Hub: Gr10', title: 'School Hub: Gr10' });
 });
 
 test('parseDayHeader + atTimeOfDay: a notification\'s day header and its own time', () => {
@@ -32,7 +32,7 @@ test('edgeType / idAfter / SHOW_MORE_RE', () => {
   assert.equal(edgeType('s-edge-type-dropbox-submit'), 'dropbox-submit');
   assert.equal(edgeType('nothing'), 'other');
   assert.equal(idAfter('/messages/view/1817060418', '/messages/view/'), '1817060418');
-  assert.equal(idAfter('/course/8465375718/materials', '/course/'), '8465375718');
+  assert.equal(idAfter('/course/7000375718/materials', '/course/'), '7000375718');
   assert.equal(idAfter('/user/', '/user/'), null);
   assert.ok(SHOW_MORE_RE.test('/update_post/8572299392/show_more/1af3ce6eb23db050a28c8536464433fa'));
   assert.ok(!SHOW_MORE_RE.test('/update_post/1/show_more/x/../../assignment/2'));

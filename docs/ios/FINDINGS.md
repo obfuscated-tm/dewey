@@ -42,47 +42,47 @@ Schoology has no phone layout: no viewport meta tag, a fixed 1200 px page (`#sid
 
 | Class | How work is turned in | What the app shows |
 |---|---|---|
-| AP Physics 1 | "Scan PDF" homework through the Schoology **dropbox** (`submission.state: submitted`), but not always: "HW 10/9 APCR FRQ" (2026-10) has no dropbox ("Do work on paper and bring to class") | Submit ↗ and real Submitted status when there is a dropbox; otherwise Mark as turned in |
-| AP CS A | **No dropboxes.** Labs go to apcs.tinocs.com (linked from the instructions) | "Turn in on lab site ↗" + Mark as turned in |
-| Pre-Calc H | Has dropboxes but **grades paper** (HW #13 graded 5/5 with the dropbox `not_submitted`) | Grey "Not used by this class" card + Mark as turned in |
-| World History | **Google Assignments** (Quick Writes, Haitian Revolution Document Packet) and **Schoology rubrics** | "Open in Schoology ↗" + Mark as turned in; rubric criteria on Graded work |
-| World Lit, French | Mostly paper / no dropbox. French quizzes are `/course/{id}/assessments/{id}` | Mark as turned in; quizzes only open on a tap |
+| Chemistry H | "Scan PDF" homework through the Schoology **dropbox** (`submission.state: submitted`), but not always: "HW 10/9 Stoichiometry FRQ" (2026-10) has no dropbox ("Do work on paper and bring to class") | Submit ↗ and real Submitted status when there is a dropbox; otherwise Mark as turned in |
+| AP Bio | **No dropboxes.** Labs go to the teacher's own lab site (linked from the instructions) | "Turn in on lab site ↗" + Mark as turned in |
+| Algebra 2 | Has dropboxes but **grades paper** (HW #13 graded 5/5 with the dropbox `not_submitted`) | Grey "Not used by this class" card + Mark as turned in |
+| US History | **Google Assignments** (Quick Writes, Reconstruction Document Packet) and **Schoology rubrics** | "Open in Schoology ↗" + Mark as turned in; rubric criteria on Graded work |
+| English 10, Spanish | Mostly paper / no dropbox. Spanish quizzes are `/course/{id}/assessments/{id}` | Mark as turned in; quizzes only open on a tap |
 
 Rules that follow:
 - **"Not submitted" does not mean missing.** Schoology's overdue list holds only unsubmitted dropbox work and quizzes. Paper work drops off that list once past due, so the app keeps its own list until the student ticks it.
 - Learn "paper class" per course: graded items whose dropbox is `not_submitted` → that class grades paper.
-- **Submit ↗** only when the item has a dropbox. If the instructions link an outside submit page (AP CS), the button opens that page. Otherwise only **Mark as turned in**.
-- Bad due dates exist (French "Interro: PC ou imparfait" due in 2025, a teacher typo). Overdue items older than 60 days go under "Older".
+- **Submit ↗** only when the item has a dropbox. If the instructions link an outside submit page (AP Bio), the button opens that page. Otherwise only **Mark as turned in**.
+- Bad due dates exist (Spanish "Prueba: pretérito o imperfecto" due in 2025, a teacher typo). Overdue items older than 60 days go under "Older".
 
 ## Google Assignments (spike S4, done)
 
-- The served page has `lti-app-grading` on `<body>` and `<iframe id="external-tool-iframe" src="/external_tool/{id}/launch/iframe">`, with a `.s-lti-gradable-launch-wrapper`. The final URL is `/assignment/{id}/info`. Some have instructions text (Haitian packet), some don't (Quick Write).
-- `parseAssignment` flags these as `isExternalTool`; the MCP returns `type: 'external_tool'`. Verified on the live pages: Quick Write and Haitian packet → true; Annotations, Physics HW 10/2, AP CS Lab 8.2, Pre-Calc HW #18 → false.
+- The served page has `lti-app-grading` on `<body>` and `<iframe id="external-tool-iframe" src="/external_tool/{id}/launch/iframe">`, with a `.s-lti-gradable-launch-wrapper`. The final URL is `/assignment/{id}/info`. Some have instructions text (Reconstruction packet), some don't (Quick Write).
+- `parseAssignment` flags these as `isExternalTool`; the MCP returns `type: 'external_tool'`. Verified on the live pages: Quick Write and Reconstruction packet → true; Annotations, Chemistry HW 10/2, AP Bio Lab 8.2, Algebra 2 HW #18 → false.
 - **Schoology never says whether you turned one in.** That lives inside Google's cross-site frame (it even drew at height 0 in desktop Chrome). The app shows "Open in Schoology ↗" + manual mark and never infers "submitted".
-- In the app's sheet (2026-10-11, Haitian Revolution Document Packet) the Google frame shows Google's "Allow Google access to your necessary cookies". Tapping **Allow cookies** worked once (Owen). Later opens showed "Can't access your Google Account … allowing cookie access to proceed" with no prompt, so WebKit doesn't keep the storage-access grant.
+- In the app's sheet (2026-10-11, Reconstruction Document Packet) the Google frame shows Google's "Allow Google access to your necessary cookies". Tapping **Allow cookies** worked once (Owen). Later opens showed "Can't access your Google Account … allowing cookie access to proceed" with no prompt, so WebKit doesn't keep the storage-access grant.
 - Fixes in the app (work on Owen's phone, 2026-10-11): (1) `NSCrossWebsiteTrackingUsageDescription` in Info.plist, which adds an **Allow Cross-Website Tracking** switch under iOS Settings → Dewey. Turning it on lifts WebKit's third-party cookie block for the app's web views. (2) An **Open Google full screen** button in the sheet for Google Assignments. It loads the page's biggest frame as the page itself, so Google is first-party and uses its own cookies. Checked in the simulator 2026-10-11: it loads `assignments.google.com` full screen with Owen's file, Add files / Create and Google's Submit (nothing pressed).
 
 ## Grades
 
-- **Comments** are real and sometimes long (a World Lit paragraph; "added 0.5 to factoring problem"; "score (104.45) capped at 100"). `parseGrades` returns them in `comment`.
+- **Comments** are real and sometimes long (an English 10 paragraph; "added 0.5 to factoring problem"; "score (104.45) capped at 100"). `parseGrades` returns them in `comment`.
 - A grade cell can hold an **exception word after a dash**: `—Collected`. "Missing" probably looks the same; parse the word.
 - Scores to handle: extra credit over 100% (`25 / 24`), `0 / 0` items (never divide by 0), raw and curved copies of one test. Skip the empty "(no grading period)" block.
-- **Scales differ by course.** Physics tops out at "A (100%)", others show A+. World History shows "A- (92%)", so its A line is above 92. Use 93 (`A_CUTOFF` in `overlays/grademath.js`) as approximate, narrow it with letter/% pairs seen in that course, let the user set it.
+- **Scales differ by course.** Chemistry tops out at "A (100%)", others show A+. US History shows "A- (92%)", so its A line is above 92. Use 93 (`A_CUTOFF` in `overlays/grademath.js`) as approximate, narrow it with letter/% pairs seen in that course, let the user set it.
 - Dropbox comments include system lines ("Revision 1 submitted"). Filter them out.
 
 ## Rubrics (spike S2, done)
 
-- Schoology rubrics are used in World History: the Enlightenment In-Class Essay and "The Enlightenment (Robinson) Annotations" (4.6 / 5).
+- Schoology rubrics are used in US History: the Reconstruction In-Class Essay and "The Constitution Annotations" (4.6 / 5).
 - In the **served** gradebook HTML the grade cell holds an empty placeholder `<div tpl-id="s_grades_rubric_grading_launch_btn_N" class="… s-grades-rubric-grading-launch-btn">`. Its ids are in the page's Drupal settings: `theme_js[tplId].args = ["rubricId", "enrollmentId", itemId, …]`. Once Schoology's JS renders it, a `<span rubric-id enrollment-id item-id total-rubric-points>` carries the same ids.
 - The rubric is two JSON GETs (what the popup loads):
   - `/iapi/grades/rubric/{rubricId}` → `body.rows[{ id, title, max_points, columns[{ pts, description }] }]`
   - `/iapi/grades/rubric_grade_info/{rubricId}/{itemId}/{enrollmentId}` → `body.gradeInfo{ [rowId]: { grade, comment } }`, `overrideGrade` (`gradeInfo` is `[]` when nothing is graded)
 - `parseGrades` returns `rubric: { rubricId, enrollmentId }` on those rows; `reader/parse/rubric.js` turns the two responses into criteria (tests in `test/rubric.test.js`). Verified live: Enlightenment Diagnostic Rubric 10/10 (Claim 3/3, Evidence Selection 3/3, Analysis 4/4, every level matched); Annotation Skills Check 4.6/5.
-- Many "rubrics" are just attached Google Docs or PDFs (French "UTILISEZ la RUBRIC", "French Revolution Essay AS + Rubric"). List those from the assignment's attachments.
+- Many "rubrics" are just attached Google Docs or PDFs (Spanish "USA LA RÚBRICA", "Civil War Essay + Rubric"). List those from the assignment's attachments.
 
 ## Uploading (spike S1, done in the simulator 2026-10-11)
 
-Checked on Pre-Calc HW #20's real dialog in the app's Schoology sheet, without attaching a file or pressing Submit: **Submit Assignment** opens Schoology's Upload popup (Upload / Create / Resources tabs, a file field, a comment box, **Submit** and **Cancel** side by side). Tapping the file icon brings up the iOS menu **Photo Library / Take Photo or Video / Choose Files** with no extra code. `NSCameraUsageDescription` is set. Not checked: the camera itself (the simulator has none) and an actual attach + Submit, which only Owen does, on real homework.
+Checked on Algebra 2 HW #20's real dialog in the app's Schoology sheet, without attaching a file or pressing Submit: **Submit Assignment** opens Schoology's Upload popup (Upload / Create / Resources tabs, a file field, a comment box, **Submit** and **Cancel** side by side). Tapping the file icon brings up the iOS menu **Photo Library / Take Photo or Video / Choose Files** with no extra code. `NSCameraUsageDescription` is set. Not checked: the camera itself (the simulator has none) and an actual attach + Submit, which only Owen does, on real homework.
 
 Testing rule: never press Submit, Resubmit or Unsubmit, never pick a file in the dialog (Schoology may upload on pick), and close with the sheet's **Done**, not the dialog's Cancel (it sits next to Submit).
 
@@ -92,7 +92,7 @@ Plan: `UIApplication.shared.open(url, options: [.universalLinksOnly: true])` so 
 
 ## Inbox pages (R2, checked live 2026-10-11)
 
-- **Messages list** `/messages?page=N` (0-based, 25 per page): `table.privatemsg-list tbody tr`; `.subject-link` → `/messages/view/{id}`; `.privatemsg-list-body` preview; `.names-date` sender + "Thu Oct 8, 2026 at 9:34 am"; `.pager-next` when there's more. The link text cuts long subjects short ("Lesson ..."); the row's checkbox label (`.form-checkbox-title`, "Inbox message with subject: …") has the whole subject. Course and group messages start with `[Course title: section]` (e.g. `[AP Comp Sci A - 2350: McLeodT p2 T1]`, school ones `[CHS Hub: Gr10]`). `.unread-count` is the global unread number. **Not seen yet:** how an unread row is marked (Owen had none unread); the parser accepts `unread`/`privatemsg-unread` classes or a `.new` marker. Check on the next unread message.
+- **Messages list** `/messages?page=N` (0-based, 25 per page): `table.privatemsg-list tbody tr`; `.subject-link` → `/messages/view/{id}`; `.privatemsg-list-body` preview; `.names-date` sender + "Thu Oct 8, 2026 at 9:34 am"; `.pager-next` when there's more. The link text cuts long subjects short ("Lesson ..."); the row's checkbox label (`.form-checkbox-title`, "Inbox message with subject: …") has the whole subject. Course and group messages start with `[Course title: section]` (e.g. `[AP Biology - 1101: RiveraM p2 T1]`, school ones `[School Hub: Gr10]`). `.unread-count` is the global unread number. **Not seen yet:** how an unread row is marked (Owen had none unread); the parser accepts `unread`/`privatemsg-unread` classes or a `.new` marker. Check on the next unread message.
 - **One thread** `/messages/view/{id}`: `.message-title h2`, `.message-participants`, one `.s_message_box` per message (`.message-body .name a` author, `.name .small.gray` date, body, `.s-message-attachments`). **Opening it marks the thread read on Schoology** (a GET with a side effect), so the app opens it only when "Mark messages read when opened" is on.
 - **Notifications** `/home/notifications`: page 1 is HTML, `?page=N` (from the "More" link) is JSON `{ output }`. `ul.s-notifications-mini`: `li.notif-date-header` ("Saturday, October 10, 2026") then items with `s-edge-type-course-materials-add` (posted materials, several grouped in `.other-items-list`) or `s-edge-type-grade-add` (no course link; map the assignment ids). Times are "Oct 10 at 7:11 am" without a year, so the date comes from the header.
 - **Course feed** fix: the date is `.edge-footer .created` (a link preview inside the post also uses `.small.gray`, which is why dates showed as URLs); the post id is in `/update_post/{id}/show_more/{hash}` or `comments-post-{id}`; `li[timestamp]` is Unix seconds. Long posts end at "Show More"; that path returns JSON `{ update: html }` with the full body, which the engine's `feed` op now fetches.

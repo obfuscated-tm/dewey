@@ -255,7 +255,7 @@ struct AssignmentView: View {
         }
     }
 
-    /// An outside submit page linked from the instructions (AP CS's lab site).
+    /// An outside submit page linked from the instructions (AP Bio's lab site).
     private func labLink(_ a: Assignment) -> URL? {
         guard let md = a.instructionsMd else { return nil }
         for m in md.matches(of: /\]\((https?:\/\/[^)\s]+)\)/) {

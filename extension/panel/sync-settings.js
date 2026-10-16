@@ -33,7 +33,7 @@ export function problemText(snap, skipped) {
   return '';
 }
 
-/** Strip Schoology's trailing course number: "AP Comp Sci A - 2350" → "AP Comp Sci A". */
+/** Strip Schoology's trailing course number: "AP Biology - 1101" → "AP Biology". */
 export const courseName = (t) => String(t || '').replace(/\s+-\s+\d+\s*$/, '').trim() || 'Untitled';
 
 export function createSyncSettings({ doc = document, np = defaultNp, send = (m) => chrome.runtime.sendMessage(m), storage = chrome.storage } = {}) {

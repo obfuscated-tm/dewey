@@ -33,8 +33,8 @@ class Inbox {
         enum class Kind { TEACHER, SCHOOL }
 
         /**
-         * A direct message, or one from a class's group ("[AP Comp Sci A - 2350: McLeodT p2 T1] …"), is from a
-         * teacher; anything from a hub or other group ("[CHS Hub: Gr10] …") is School.
+         * A direct message, or one from a class's group ("[AP Biology - 1101: RiveraM p2 T1] …"), is from a
+         * teacher; anything from a hub or other group ("[School Hub: Gr10] …") is School.
          */
         fun kind(group: String?, classes: List<Course>): Kind {
             val g = group?.trim()

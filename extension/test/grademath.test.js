@@ -1,7 +1,7 @@
 // node --test test/   (from extension/)
 //
-// The numbers are AP Comp Sci A's gradebook as the archive saved it on
-// 9/24/2026 (fixtures/apcs-grades.md). Schoology showed: Labs & Homework
+// The numbers are AP Biology's gradebook as the archive saved it on
+// 9/24/2026 (fixtures/sample-grades.md). Schoology showed: Labs & Homework
 // 100%, Tests & Quizzes 95.9%, course 97%. The weights (25 / 75) are the
 // category rows' .percentage-contrib, read in DevTools on 2026-09-26;
 // grades.md doesn't carry them.
@@ -31,7 +31,7 @@ function rowsFromMd(md) {
   return rows;
 }
 
-const ROWS = rowsFromMd(readFileSync(new URL('./fixtures/apcs-grades.md', import.meta.url), 'utf8'));
+const ROWS = rowsFromMd(readFileSync(new URL('./fixtures/sample-grades.md', import.meta.url), 'utf8'));
 const PERIODS = periodsFromRows(ROWS);
 const COURSE = currentPeriod(PERIODS);
 const close = (a, b, eps = 1e-9) => assert.ok(Math.abs(a - b) < eps, `${a} ≉ ${b}`);
@@ -93,11 +93,11 @@ test('weights are renormalized over categories that have grades', () => {
 });
 
 test('impact = with − without', () => {
-  close(impact(COURSE, id('Lesson 0-4 Test'), { weights: WEIGHTS }), 96.925 - (25 + 0.75 * (58.05 / 60) * 100));
-  close(impact(COURSE, id('Lesson 0-4 Test'), { weights: WEIGHTS }), -0.6375);
-  close(impact(COURSE, id('Lesson 0 Quiz'), { weights: WEIGHTS }), 96.925 - (25 + 0.75 * (86.44 / 90) * 100));
-  close(impact(COURSE, id('Lab 5.2 Illusions'), { weights: WEIGHTS }), 0);
-  assert.equal(impact(COURSE, id('Lab 6.1 Taxes'), { weights: WEIGHTS }), null); // ungraded
+  close(impact(COURSE, id('Unit 0-4 Test'), { weights: WEIGHTS }), 96.925 - (25 + 0.75 * (58.05 / 60) * 100));
+  close(impact(COURSE, id('Unit 0-4 Test'), { weights: WEIGHTS }), -0.6375);
+  close(impact(COURSE, id('Unit 0 Quiz'), { weights: WEIGHTS }), 96.925 - (25 + 0.75 * (86.44 / 90) * 100));
+  close(impact(COURSE, id('Lab 5.2 Cell Size'), { weights: WEIGHTS }), 0);
+  assert.equal(impact(COURSE, id('Lab 6.1 Photosynthesis'), { weights: WEIGHTS }), null); // ungraded
 });
 
 test('what-if: a zero on HW Quiz 7-8 costs −5.99', () => {
@@ -109,7 +109,7 @@ test('what-if: a zero on HW Quiz 7-8 costs −5.99', () => {
 });
 
 test('what-if overrides a graded item too: earned, and possible if given', () => {
-  const tId = id('Lesson 0-4 Test'); // real: 47.44 / 50
+  const tId = id('Unit 0-4 Test'); // real: 47.44 / 50
   // A bare number overrides earned only; possible (and every other item) stands.
   close(grade(COURSE, { weights: WEIGHTS, whatIf: { [tId]: 0 } }).pct, 25 + 0.75 * (58.05 / 110) * 100);
   // { earned, possible } overrides both.
@@ -122,9 +122,9 @@ test('what-if overrides a graded item too: earned, and possible if given', () =>
 
 test('history replays graded items by due date, one point per day', () => {
   const h = history(COURSE, { weights: WEIGHTS });
-  assert.deepEqual(h[0], { day: '2026-08-17', pct: 100, items: ['Academic Integrity Policy', 'Course Information Agreement', 'Sign Up For College Board Class P2'] });
+  assert.deepEqual(h[0], { day: '2026-08-17', pct: 100, items: ['Lab Safety Contract', 'Syllabus Agreement', 'AP Classroom Sign-Up'] });
   const aug27 = h.find((p) => p.day === '2026-08-27');
-  assert.deepEqual(aug27.items, ['Lesson 0 Quiz']);
+  assert.deepEqual(aug27.items, ['Unit 0 Quiz']);
   close(aug27.pct, 25 + 0.75 * (29.05 / 30) * 100);
   const last = h[h.length - 1];
   assert.equal(last.day, '2026-09-23');
@@ -152,7 +152,7 @@ test('"need X for an A" on a planned item', () => {
 });
 
 test('drop excludes an item from grade/impact/categoryFloor/needFor, like removing it from the course', () => {
-  const tId = id('Lesson 0-4 Test'); // in Tests & Quizzes
+  const tId = id('Unit 0-4 Test'); // in Tests & Quizzes
   const without = { ...COURSE, categories: COURSE.categories.map((c) => ({ ...c, items: c.items.filter((it) => it.id !== tId) })) };
   const dropOpts = { weights: WEIGHTS, drop: [tId] };
   const wOpts = { weights: WEIGHTS };
@@ -168,7 +168,7 @@ test('drop excludes an item from grade/impact/categoryFloor/needFor, like removi
 });
 
 test('history ignores both what-ifs and drops: it is the real term', () => {
-  const tId = id('Lesson 0-4 Test');
+  const tId = id('Unit 0-4 Test');
   const h1 = history(COURSE, { weights: WEIGHTS });
   const h2 = history(COURSE, { weights: WEIGHTS, whatIf: { [tId]: 0 }, drop: [tId] });
   assert.deepEqual(h1, h2);

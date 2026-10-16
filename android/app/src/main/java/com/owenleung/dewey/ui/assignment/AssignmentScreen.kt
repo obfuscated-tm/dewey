@@ -88,7 +88,7 @@ private sealed class Kind {
     data object Unknown : Kind()
 }
 
-/** An outside submit page linked from the instructions (AP CS's lab site). */
+/** An outside submit page linked from the instructions (AP Bio's lab site). */
 fun labLink(a: Assignment): String? {
     val md = a.instructionsMd ?: return null
     for (m in Regex("""\]\((https?://[^)\s]+)\)""").findAll(md)) {

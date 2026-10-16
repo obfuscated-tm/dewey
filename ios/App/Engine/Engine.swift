@@ -98,6 +98,8 @@ final class Engine: NSObject {
         ready = false
         loading = true
         webView.customUserAgent = WebConfig.userAgent
+        // Screenshot mode: a blank page on the Schoology origin, for engine.js's math only.
+        if Demo.on { webView.loadHTMLString("<!doctype html><title>Dewey demo</title>", baseURL: Self.origin); return }
         webView.load(URLRequest(url: Self.homePage))
     }
 
@@ -142,6 +144,9 @@ final class Engine: NSObject {
 
     /// Runs one op; returns the JSON of its `data`. Throws `EngineError`.
     func callRaw(_ op: String, _ args: [String: Any] = [:]) async throws -> Data {
+        if Demo.on, let data = try Demo.answer(op, args) {
+            return try JSONSerialization.data(withJSONObject: data, options: [.fragmentsAllowed])
+        }
         try await waitReady()
         guard let webView else { throw EngineError.notReady }
         let value: Any?

@@ -173,7 +173,7 @@ tr.hypo td{border-bottom:1px dashed var(--h-line)}
   <div class="demo-bar">
     <div>
       <h1>Schoology overlay demo</h1>
-      <p><span class="key"></span>Blue marks are what the extension adds. The Overlay switch in the page's top bar turns them off to show plain Schoology (Alt+S does the same). Real AP CS A grades from your archive; the 30 / 70 weights are inferred.</p>
+      <p><span class="key"></span>Blue marks are what the extension adds. The Overlay switch in the page's top bar turns them off to show plain Schoology (Alt+S does the same). Real AP Bio grades from your archive; the 30 / 70 weights are inferred.</p>
     </div>
     <div class="seg" role="group" aria-label="Page">
       <button id="tab-grades" aria-pressed="true">Grades page</button>
@@ -185,7 +185,7 @@ tr.hypo td{border-bottom:1px dashed var(--h-line)}
   <div class="host" id="page-grades">
     <div class="host-top"><b>Grades</b><span>Courses &#xB7; Groups &#xB7; Resources</span><button class="vt" data-vt aria-pressed="true" title="Switch between the overlay and plain Schoology (Alt+S)"><span class="sw"></span><span>Overlay</span></button><span class="mock">Schoology page (mock)</span></div>
     <div class="host-body">
-      <h2 class="host-title">AP Comp Sci A: McLeodT p2 T1</h2>
+      <h2 class="host-title">AP Biology: RiveraM p2 T1</h2>
       <div class="gb-wrap">
         <table class="gb">
           <thead><tr><th>Item</th><th class="g">Grade</th><th class="x"><span class="ext" style="color:var(--accent)">Impact</span></th></tr></thead>
@@ -196,9 +196,9 @@ tr.hypo td{border-bottom:1px dashed var(--h-line)}
   </div>
 
   <div class="host" id="page-mat" hidden>
-    <div class="host-top"><b>AP Comp Sci A</b><span>Courses &#xB7; Groups &#xB7; Resources</span><button class="vt" data-vt aria-pressed="true" title="Switch between the overlay and plain Schoology (Alt+S)"><span class="sw"></span><span>Overlay</span></button><span class="mock">Schoology page (mock)</span></div>
+    <div class="host-top"><b>AP Biology</b><span>Courses &#xB7; Groups &#xB7; Resources</span><button class="vt" data-vt aria-pressed="true" title="Switch between the overlay and plain Schoology (Alt+S)"><span class="sw"></span><span>Overlay</span></button><span class="mock">Schoology page (mock)</span></div>
     <div class="host-body">
-      <h2 class="host-title">AP Comp Sci A: McLeodT p2 T1</h2>
+      <h2 class="host-title">AP Biology: RiveraM p2 T1</h2>
       <div class="subnav"><span class="on">Materials</span><span>Updates</span><span>Grades</span><span>Members</span></div>
       <div class="strip ext">
         <label><input type="checkbox" id="only-open"> Only open work</label>
@@ -211,7 +211,7 @@ tr.hypo td{border-bottom:1px dashed var(--h-line)}
   </div>
 
   <div class="host" id="page-assign" hidden>
-    <div class="host-top"><b>AP Comp Sci A</b><span>Materials &#xB7; Updates &#xB7; Grades</span><button class="vt" data-vt aria-pressed="true" title="Switch between the overlay and plain Schoology (Alt+S)"><span class="sw"></span><span>Overlay</span></button><span class="mock">Schoology page (mock)</span></div>
+    <div class="host-top"><b>AP Biology</b><span>Materials &#xB7; Updates &#xB7; Grades</span><button class="vt" data-vt aria-pressed="true" title="Switch between the overlay and plain Schoology (Alt+S)"><span class="sw"></span><span>Overlay</span></button><span class="mock">Schoology page (mock)</span></div>
     <div class="host-body">
       <div class="variant" role="group" aria-label="Example"><button id="v-open" aria-pressed="true">Not turned in</button><button id="v-graded" aria-pressed="false">Graded</button></div>
       <div id="asg"></div>
@@ -223,17 +223,17 @@ tr.hypo td{border-bottom:1px dashed var(--h-line)}
 const W = { "Labs & Homework": 30, "Tests & Quizzes": 70 };
 const L = "Labs & Homework", T = "Tests & Quizzes";
 const RAW = [
-["Academic Integrity Policy","8/17/26 11:59pm",5,5,L],["Course Information Agreement","8/17/26 11:59pm",5,5,L],["Sign Up For College Board Class P2","8/17/26 11:59pm",5,5,L],
-["Video 1 HW Checkpoint","8/18/26 11:59pm",10,10,L],["Video 1 HW Submission","8/18/26 11:59pm",10,10,L],["Video 2 HW Submission","8/19/26 11:59pm",5,5,L],["Video 3 HW Submission","8/19/26 11:59pm",5,5,L],
-["Worksheet 0.1 For Loops","8/20/26 10:05am",5,5,L],["Lab 1.1 FirstHouse","8/24/26 11:59pm",10,10,L],["Lab 1.2 SecondHouse","8/25/26 11:59pm",10,10,L],["Lab 2.1 FinalHouse Checkpoint","8/26/26 11:59pm",10,10,L],
-["Lab 2.2 Final House","8/30/26 7:00pm",10,10,L],["Worksheets 3.1 and 3.2","9/01/26 10:05am",10,10,L],["Lab 4.1 Sphere","9/02/26 11:59pm",10,10,L],["Lesson 1-4 Practice Test","9/08/26 10:05am",10,10,L],
-["Lab 2.3 CoolHouse","9/09/26 11:59pm",10,10,L],["Worksheet 5.2","9/09/26 11:59pm",10,10,L],["Worksheet 5.1","9/10/26 10:05am",10,10,L],["Lab 5.2 Illusions","9/13/26 11:59pm",10,10,L],
-["Lesson 0-4 Checkpoint","9/14/26 10:05am",10,10,L],["Lab 6.1 Taxes","9/15/26 11:59pm",null,10,L],["Worksheet 6.4 Random","9/17/26 10:05am",10,10,L],["Worksheets 7.1 and 7.2","9/17/26 10:05am",10,10,L],
-["In Class Lab 6.3 - BankAccount","9/17/26 4:00pm",null,10,L],["Worksheets 8.1 and 8.2","9/20/26 11:59pm",10,10,L],["Worksheet 7.3 - Scanner & printf Review","9/22/26 4:00pm",10,10,L],
-["Lab 8.2 Happiness Detector","9/22/26 11:59pm",null,10,L],["Lab 7.1 MadLibs (optional)","9/23/26 11:59pm",null,10,L],["Lab 8.1 CheckMail","9/23/26 11:59pm",null,10,L],
-["Lesson 14 DeMorgan's Laws Checkpoint","9/23/26 11:59pm",10,10,L],["In-class Lab 6.2 - Static Review","9/29/26 4:00pm",null,10,L],
-["Lesson 0 Videos 1,2,3 HW Quiz","8/25/26 10:05am",10,10,T],["Lesson 0 Quiz","8/27/26 10:05am",19.05,20,T],["HW Quiz 1.1-2.1","9/01/26 10:05am",9,10,T],
-["HW Quiz 3-4","9/08/26 10:05am",10,10,T],["Lesson 0-4 Test","9/14/26 10:05am",47.44,50,T],["HW Quiz 5-6","9/17/26 10:05am",10,10,T],["HW Quiz 7-8","9/24/26 10:05am",null,10,T],
+["Lab Safety Contract","8/17/26 11:59pm",5,5,L],["Syllabus Agreement","8/17/26 11:59pm",5,5,L],["AP Classroom Sign-Up","8/17/26 11:59pm",5,5,L],
+["Video 1 Notes Check","8/18/26 11:59pm",10,10,L],["Video 1 Notes","8/18/26 11:59pm",10,10,L],["Video 2 Notes","8/19/26 11:59pm",5,5,L],["Video 3 Notes","8/19/26 11:59pm",5,5,L],
+["Worksheet 0.1 Scientific Method","8/20/26 10:05am",5,5,L],["Lab 1.1 Measuring pH","8/24/26 11:59pm",10,10,L],["Lab 1.2 Buffers","8/25/26 11:59pm",10,10,L],["Lab 2.1 Osmosis Checkpoint","8/26/26 11:59pm",10,10,L],
+["Lab 2.2 Osmosis in Potatoes","8/30/26 7:00pm",10,10,L],["Worksheets 3.1 and 3.2","9/01/26 10:05am",10,10,L],["Lab 4.1 Enzymes","9/02/26 11:59pm",10,10,L],["Unit 1-4 Practice Test","9/08/26 10:05am",10,10,L],
+["Lab 2.3 Microscopy","9/09/26 11:59pm",10,10,L],["Worksheet 5.2","9/09/26 11:59pm",10,10,L],["Worksheet 5.1","9/10/26 10:05am",10,10,L],["Lab 5.2 Cell Size","9/13/26 11:59pm",10,10,L],
+["Unit 0-4 Checkpoint","9/14/26 10:05am",10,10,L],["Lab 6.1 Photosynthesis","9/15/26 11:59pm",null,10,L],["Worksheet 6.4 Mitosis","9/17/26 10:05am",10,10,L],["Worksheets 7.1 and 7.2","9/17/26 10:05am",10,10,L],
+["In Class Lab 6.3 - Onion Root Tips","9/17/26 4:00pm",null,10,L],["Worksheets 8.1 and 8.2","9/20/26 11:59pm",10,10,L],["Worksheet 7.3 - Meiosis Review","9/22/26 4:00pm",10,10,L],
+["Lab 8.2 Yeast Respiration","9/22/26 11:59pm",null,10,L],["Lab 7.1 Karyotypes (optional)","9/23/26 11:59pm",null,10,L],["Lab 8.1 Leaf Disks","9/23/26 11:59pm",null,10,L],
+["Unit 14 Punnett Squares Checkpoint","9/23/26 11:59pm",10,10,L],["In-class Lab 6.2 - Microscopy Review","9/29/26 4:00pm",null,10,L],
+["Unit 0 Videos 1,2,3 HW Quiz","8/25/26 10:05am",10,10,T],["Unit 0 Quiz","8/27/26 10:05am",19.05,20,T],["HW Quiz 1.1-2.1","9/01/26 10:05am",9,10,T],
+["HW Quiz 3-4","9/08/26 10:05am",10,10,T],["Unit 0-4 Test","9/14/26 10:05am",47.44,50,T],["HW Quiz 5-6","9/17/26 10:05am",10,10,T],["HW Quiz 7-8","9/24/26 10:05am",null,10,T],
 ];
 function parseDue(s){const m=s.match(/(\d+)\/(\d+)\/(\d+) (\d+):(\d+)(am|pm)/);let h=+m[4]%12;if(m[6]==="pm")h+=12;return new Date(2000+ +m[3],m[1]-1,+m[2],h,+m[5]);}
 const ITEMS = RAW.map((r,i)=>({id:i,title:r[0],dueS:r[1],due:parseDue(r[1]),earned:r[2],pts:r[3],cat:r[4]}));
@@ -394,29 +394,29 @@ if(location.hash==="#assignment") show("assign"); if(location.hash==="#materials
 
 /* ---------- materials ---------- */
 // neo-plan state for work the gradebook hasn't scored (demo values)
-const STATE={"Lab 6.1 Taxes":"turned","In Class Lab 6.3 - BankAccount":"turned","In-class Lab 6.2 - Static Review":"todo",
-  "Lab 7.1 MadLibs (optional)":"none","Lab 8.1 CheckMail":"missing","Lab 8.2 Happiness Detector":"ready","HW Quiz 7-8":"turned",
-  "Read Lesson 2":"turned","Read Lesson 3":"turned","Read Chapter 4":"turned","Read Lesson 5":"turned","Read Lesson 8":"turned","Read Lesson 14":"turned",
-  "Fix Javadoc errors and clean up code":"turned"};
+const STATE={"Lab 6.1 Photosynthesis":"turned","In Class Lab 6.3 - Onion Root Tips":"turned","In-class Lab 6.2 - Microscopy Review":"todo",
+  "Lab 7.1 Karyotypes (optional)":"none","Lab 8.1 Leaf Disks":"missing","Lab 8.2 Yeast Respiration":"ready","HW Quiz 7-8":"turned",
+  "Read Chapter 2":"turned","Read Chapter 3":"turned","Read Chapter 4":"turned","Read Chapter 5":"turned","Read Chapter 8":"turned","Read Chapter 14":"turned",
+  "Lab notebook check":"turned"};
 const F=(n,...items)=>({name:n,items});
 const pdf=t=>({k:"pdf",t}), pg=t=>({k:"pg",t}), a=t=>({k:"asg",t});
 const FOLDERS=[
- F("Course Information",pdf("APCS First Day 2026.pdf"),pdf("Course Information.pdf"),pdf("Academic Integrity Policy.pdf"),a("Academic Integrity Policy"),a("Course Information Agreement"),a("Sign Up For College Board Class P2")),
- F("Lesson 0 - Introduction to Programming",pdf("Lesson 0 - Introduction to Programming.pdf"),pdf("Lesson 0 Day 2 Agenda.pdf"),pg("Additional Resources For Introduction to Programming in Java"),a("Video 1 HW Checkpoint"),a("Video 1 HW Submission"),a("Video 2 HW Submission"),a("Video 3 HW Submission"),a("Worksheet 0.1 For Loops"),a("Lesson 0 Videos 1,2,3 HW Quiz"),a("Lesson 0 Quiz")),
- F("Lesson 1 - Introduction to Object Oriented Programming (OOP)",pdf("Lesson 1 - Creating and Using Objects.pdf"),pdf("Lesson 1 Day 2 - Writing methods to draw house.pdf"),pg("How to run gpdraw using a Chromebook"),a("Lab 1.1 FirstHouse"),a("Lab 1.2 SecondHouse")),
- F("Lesson 2 - Object Oriented Programming",pdf("Lesson 2 - Object Oriented Programming.pdf"),pdf("Javadoc Command Line Slides.pdf"),a("Read Lesson 2"),a("Lab 2.1 FinalHouse Checkpoint"),a("Lab 2.2 Final House"),a("Lab 2.3 CoolHouse"),a("HW Quiz 1.1-2.1")),
- F("Lesson 3 - Primitive Data Types",pdf("Agenda 8 - 31 - 2026.pdf"),pdf("Lesson 3 - Part 1.pdf"),pdf("Lesson 3 - Part 2.pdf"),pdf("Lesson 3 - Part 3.pdf"),a("Read Lesson 3"),a("Worksheets 3.1 and 3.2"),a("Fix Javadoc errors and clean up code")),
- F("Lesson 4 - Object Behavior",pdf("Lesson 4 Agenda.pdf"),a("Read Chapter 4"),a("Lab 4.1 Sphere"),a("HW Quiz 3-4"),a("Lesson 1-4 Practice Test"),a("Lesson 0-4 Checkpoint"),a("Lesson 0-4 Test")),
- F("Lesson 5 - Designing and Using Classes",pdf("Agenda 9 - 8 - 2026.pdf"),pdf("Lesson 5 Slides.pdf"),a("Read Lesson 5"),a("Worksheet 5.1"),a("Worksheet 5.2"),a("Lab 5.2 Illusions")),
- F("Lesson 6 - Libraries and APIs",pdf("Agenda Monday 9 - 15.pdf"),pdf("Lesson 6 Lecture Slides.pdf"),pdf("Static vs Instance Methods and Fields.pdf"),a("Lab 6.1 Taxes"),a("Worksheet 6.4 Random"),a("HW Quiz 5-6"),a("In Class Lab 6.3 - BankAccount"),a("In-class Lab 6.2 - Static Review")),
- F("Lesson 7 - Simple I/O (printf and Scanner)",pdf("Lesson 7 Slides and Video.pdf"),a("Worksheets 7.1 and 7.2"),a("Worksheet 7.3 - Scanner & printf Review"),a("Lab 7.1 MadLibs (optional)")),
- F("Lesson 8 - Control Structures",pdf("Effective Reading + Agenda 9 - 17.pdf"),a("Read Lesson 8"),a("Worksheets 8.1 and 8.2"),a("Lab 8.1 CheckMail"),a("Lab 8.2 Happiness Detector"),a("HW Quiz 7-8")),
- F("Lesson 14 - DeMorgan's Laws",pdf("Lesson 14 - DeMorgan's Laws.pdf"),a("Read Lesson 14"),a("Lesson 14 DeMorgan's Laws Checkpoint")),
+ F("Course Information",pdf("AP Bio First Day 2026.pdf"),pdf("Course Information.pdf"),pdf("Lab Safety Contract.pdf"),a("Lab Safety Contract"),a("Syllabus Agreement"),a("AP Classroom Sign-Up")),
+ F("Unit 0 - Science Skills",pdf("Unit 0 - Science Skills.pdf"),pdf("Unit 0 Day 2 Agenda.pdf"),pg("Additional Resources For Graphing Data"),a("Video 1 Notes Check"),a("Video 1 Notes"),a("Video 2 Notes"),a("Video 3 Notes"),a("Worksheet 0.1 Scientific Method"),a("Unit 0 Videos 1,2,3 HW Quiz"),a("Unit 0 Quiz")),
+ F("Unit 1 - Chemistry of Life",pdf("Unit 1 - Water and pH.pdf"),pdf("Unit 1 Day 2 - Macromolecules.pdf"),pg("How to use the pH probes"),a("Lab 1.1 Measuring pH"),a("Lab 1.2 Buffers")),
+ F("Unit 2 - Cells and Membranes",pdf("Unit 2 - Cell Structure.pdf"),pdf("Membrane Transport Slides.pdf"),a("Read Chapter 2"),a("Lab 2.1 Osmosis Checkpoint"),a("Lab 2.2 Osmosis in Potatoes"),a("Lab 2.3 Microscopy"),a("HW Quiz 1.1-2.1")),
+ F("Unit 3 - Enzymes",pdf("Agenda 8 - 31 - 2026.pdf"),pdf("Unit 3 - Part 1.pdf"),pdf("Unit 3 - Part 2.pdf"),pdf("Unit 3 - Part 3.pdf"),a("Read Chapter 3"),a("Worksheets 3.1 and 3.2"),a("Lab notebook check")),
+ F("Unit 4 - Cell Communication",pdf("Unit 4 Agenda.pdf"),a("Read Chapter 4"),a("Lab 4.1 Enzymes"),a("HW Quiz 3-4"),a("Unit 1-4 Practice Test"),a("Unit 0-4 Checkpoint"),a("Unit 0-4 Test")),
+ F("Unit 5 - Cell Size and Transport",pdf("Agenda 9 - 8 - 2026.pdf"),pdf("Unit 5 Slides.pdf"),a("Read Chapter 5"),a("Worksheet 5.1"),a("Worksheet 5.2"),a("Lab 5.2 Cell Size")),
+ F("Unit 6 - Cell Cycle",pdf("Agenda Monday 9 - 15.pdf"),pdf("Unit 6 Lecture Slides.pdf"),pdf("Mitosis vs Meiosis.pdf"),a("Lab 6.1 Photosynthesis"),a("Worksheet 6.4 Mitosis"),a("HW Quiz 5-6"),a("In Class Lab 6.3 - Onion Root Tips"),a("In-class Lab 6.2 - Microscopy Review")),
+ F("Unit 7 - Genetics",pdf("Unit 7 Slides and Video.pdf"),a("Worksheets 7.1 and 7.2"),a("Worksheet 7.3 - Meiosis Review"),a("Lab 7.1 Karyotypes (optional)")),
+ F("Unit 8 - Cell Energy",pdf("Photosynthesis Reading + Agenda 9 - 17.pdf"),a("Read Chapter 8"),a("Worksheets 8.1 and 8.2"),a("Lab 8.1 Leaf Disks"),a("Lab 8.2 Yeast Respiration"),a("HW Quiz 7-8")),
+ F("Unit 14 - Heredity",pdf("Unit 14 - Punnett Squares.pdf"),a("Read Chapter 14"),a("Unit 14 Punnett Squares Checkpoint")),
 ];
 const byTitle=new Map(ITEMS.map(i=>[i.title,i]));
 function stateOf(t){ const g=byTitle.get(t); if(g&&g.earned!=null) return "graded"; return STATE[t]||"turned"; }
 const OPEN=new Set(["missing","ready","todo"]);
-const openF=new Set(["Lesson 8 - Control Structures"]);
+const openF=new Set(["Unit 8 - Cell Energy"]);
 let onlyOpen=false;
 const shortDue=g=>{ if(!g) return ""; const d=g.due; return d.toLocaleDateString("en-US",{weekday:"short",month:"numeric",day:"numeric"}); };
 function marker(t){
@@ -471,47 +471,47 @@ let variant="open", submitted=false;
 function renderAsg(){
   const el=document.getElementById("asg");
   if(variant==="open"){
-    const z=impactOf("Lab 8.1 CheckMail",0), full=impactOf("Lab 8.1 CheckMail",10);
+    const z=impactOf("Lab 8.1 Leaf Disks",0), full=impactOf("Lab 8.1 Leaf Disks",10);
     el.innerHTML=`<div class="alayout"><div style="display:grid;gap:12px;align-content:start">
-      <h2 class="host-title">Lab 8.1 CheckMail</h2>
+      <h2 class="host-title">Lab 8.1 Leaf Disks</h2>
       <div class="host-sub">Due Wednesday, September 23, 2026 at 11:59 pm</div>
       <div class="chip ext" role="status" id="as-chip"></div>
-      <p class="instr">Do <a href="https://apcs.tinocs.com/lesson/A8/Z-1.md" style="color:#0677BA">Lab 8.1 CheckMail</a></p>
-      ${alsoIn("Lesson 8","Lab 8.1 CheckMail")}
+      <p class="instr">Do <a href="#" style="color:#0677BA">Lab 8.1 Leaf Disks</a></p>
+      ${alsoIn("Unit 8","Lab 8.1 Leaf Disks")}
     </div>
     <aside class="aside">
       <button class="hbtn" id="as-submit">Submit Assignment</button>
-      ${submitted?`<div class="hcard"><h4>Submission</h4><span>CheckMail.java</span><span style="color:var(--h-dim)">Sat Sep 26, 2026</span></div>`:""}
+      ${submitted?`<div class="hcard"><h4>Submission</h4><span>Lab 8.1 report.pdf</span><span style="color:var(--h-dim)">Sat Sep 26, 2026</span></div>`:""}
       <div class="hcard"><h4>Grade</h4><span class="gv">\u2014 / 10</span></div>
       <div class="wiside ext"><span>What if I get <input id="as-wi" type="number" min="0" max="10" step="0.5" value="7" aria-label="What-if score"> / 10</span><span>Course grade <b id="as-wi-out"></b></span></div>
       <div class="hcard"><h4>Comments</h4><span style="color:var(--h-dim)">No comments</span></div>
     </aside></div>`;
     const inp=document.getElementById("as-wi"), out=document.getElementById("as-wi-out");
-    const upd=()=>{const v=Math.max(0,parseFloat(inp.value)||0); const d=impactOf("Lab 8.1 CheckMail",v); out.innerHTML=`${fmt(BASE.course+d)} <span class="imp ${d<0?"neg":"pos"}">${sgn(d)}</span>`;};
+    const upd=()=>{const v=Math.max(0,parseFloat(inp.value)||0); const d=impactOf("Lab 8.1 Leaf Disks",v); out.innerHTML=`${fmt(BASE.course+d)} <span class="imp ${d<0?"neg":"pos"}">${sgn(d)}</span>`;};
     inp.oninput=upd; upd();
     const chip=document.getElementById("as-chip");
     const drawChip=()=>{
       chip.innerHTML = submitted
-        ? `<span class="cls"><span class="dot"></span>AP CS A</span><span class="pill ok">Submitted</span><span class="sep"></span><span class="muted">Cleared in neo-plan</span><span class="sep"></span><span class="muted">Late by 3 days</span>`
-        : `<span class="cls"><span class="dot"></span>AP CS A</span><span class="pill bad">Missing</span><span class="sep"></span><span class="muted">A zero costs <span class="num" style="color:var(--bad)">${sgn(z)}</span></span><span class="sep"></span><span class="muted">Submit with Schoology's button</span><button class="linkbtn">Remove from neo-plan</button>`;
+        ? `<span class="cls"><span class="dot"></span>AP Bio</span><span class="pill ok">Submitted</span><span class="sep"></span><span class="muted">Cleared in neo-plan</span><span class="sep"></span><span class="muted">Late by 3 days</span>`
+        : `<span class="cls"><span class="dot"></span>AP Bio</span><span class="pill bad">Missing</span><span class="sep"></span><span class="muted">A zero costs <span class="num" style="color:var(--bad)">${sgn(z)}</span></span><span class="sep"></span><span class="muted">Submit with Schoology's button</span><button class="linkbtn">Remove from neo-plan</button>`;
     };
     drawChip();
     const sb=document.getElementById("as-submit");
     sb.textContent=submitted?"Resubmit":"Submit Assignment";
-    sb.onclick=()=>{ submitted=true; STATE["Lab 8.1 CheckMail"]="turned"; renderMat(); renderAsg(); };
+    sb.onclick=()=>{ submitted=true; STATE["Lab 8.1 Leaf Disks"]="turned"; renderMat(); renderAsg(); };
   } else {
-    const t="Lesson 0-4 Test", g=byTitle.get(t), d=IMPACT.get(g.id);
+    const t="Unit 0-4 Test", g=byTitle.get(t), d=IMPACT.get(g.id);
     const tests=ITEMS.filter(i=>i.cat===g.cat&&i.earned!=null).map(i=>i.earned/i.pts).sort((x,y)=>x-y);
     const rank=tests.indexOf(g.earned/g.pts)+1;
     const rankTxt=rank===1?"Lowest":rank===2?"2nd lowest":rank===3?"3rd lowest":`${rank}th lowest`;
     el.innerHTML=`<div class="alayout"><div style="display:grid;gap:12px;align-content:start">
       <h2 class="host-title">${t}</h2>
       <div class="host-sub">Due Monday, September 14, 2026 at 10:05 am</div>
-      <div class="chip ext" role="status"><span class="cls"><span class="dot"></span>AP CS A</span><span class="muted">Graded</span><span class="sep"></span>
+      <div class="chip ext" role="status"><span class="cls"><span class="dot"></span>AP Bio</span><span class="muted">Graded</span><span class="sep"></span>
         <span class="muted">Moved your course grade <span class="num" style="color:var(--bad)">${sgn(d)}</span></span><span class="sep"></span>
         <span class="muted">${rankTxt} of ${tests.length} in ${g.cat}</span></div>
       <p class="instr" style="color:var(--h-dim)">In-class test on Lessons 0 to 4.</p>
-      ${alsoIn("Lesson 4",t)}
+      ${alsoIn("Unit 4",t)}
     </div>
     <aside class="aside">
       <div class="hcard"><h4>Grade</h4><span class="gv">47.44 / 50</span></div>
@@ -519,7 +519,7 @@ function renderAsg(){
     </aside></div>`;
   }
 }
-document.getElementById("v-open").onclick=()=>{variant="open";submitted=false;STATE["Lab 8.1 CheckMail"]="missing";renderMat();document.getElementById("v-open").setAttribute("aria-pressed",true);document.getElementById("v-graded").setAttribute("aria-pressed",false);renderAsg();};
+document.getElementById("v-open").onclick=()=>{variant="open";submitted=false;STATE["Lab 8.1 Leaf Disks"]="missing";renderMat();document.getElementById("v-open").setAttribute("aria-pressed",true);document.getElementById("v-graded").setAttribute("aria-pressed",false);renderAsg();};
 document.getElementById("v-graded").onclick=()=>{variant="graded";document.getElementById("v-graded").setAttribute("aria-pressed",true);document.getElementById("v-open").setAttribute("aria-pressed",false);renderAsg();};
 renderAsg();
 

@@ -39,7 +39,7 @@ Tags: `ext-v1.10.0`, `mcp-v1.1.0`
 
 ### MCP server
 - `list_materials` / `open_material` read course materials live; `fetch_page` reads public course websites listed in `sites.json`.
-- Reads the Pre-Calc textbook site (framesets, image-only pages).
+- Reads the Algebra 2 textbook site (framesets, image-only pages).
 - Live data is preferred over the snapshot and archive.
 - The bridge probes a port with `fetch` before opening a WebSocket.
 

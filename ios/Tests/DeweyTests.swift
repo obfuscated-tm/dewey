@@ -5,10 +5,10 @@ import SwiftUI
 /// Decoding engine JSON (snake_case) and the pure To Do rules.
 final class DecodingTests: XCTestCase {
     func testCourse() throws {
-        let json = #"[{"section_id":"7001","title":"AP Physics 1 - 12345","section_title":"P3"}]"#
+        let json = #"[{"section_id":"7001","title":"Chemistry H - 12345","section_title":"P3"}]"#
         let c = try JSONDecoder.engine.decode([Course].self, from: Data(json.utf8))
         XCTAssertEqual(c[0].sectionId, "7001")
-        XCTAssertEqual(c[0].shortTitle, "AP Physics 1")
+        XCTAssertEqual(c[0].shortTitle, "Chemistry H")
         XCTAssertEqual(c[0].periodLabel, "P3")
         XCTAssertTrue(c[0].isClass)
     }
@@ -156,12 +156,12 @@ final class WidgetDataTests: XCTestCase {
 
 final class InboxTests: XCTestCase {
     func testKind() {
-        let classes = [Course(sectionId: "1", title: "AP Comp Sci A - 2350", sectionTitle: "McLeodT p2 T1")]
-        XCTAssertEqual(Inbox.kind(group: "AP Comp Sci A - 2350: McLeodT p2 T1", classes: classes), .teacher)
+        let classes = [Course(sectionId: "1", title: "AP Biology - 1101", sectionTitle: "RiveraM p2 T1")]
+        XCTAssertEqual(Inbox.kind(group: "AP Biology - 1101: RiveraM p2 T1", classes: classes), .teacher)
         XCTAssertEqual(Inbox.kind(group: nil, classes: classes), .teacher, "a direct message")
-        XCTAssertEqual(Inbox.kind(group: "CHS Hub: Gr10", classes: classes), .school)
-        XCTAssertEqual(Course.short("French 2 - 4120: AggounI p4 T1"), "French 2")
-        XCTAssertEqual(Course.short("Pre-Calculus H - 2420"), "Pre-Calculus H")
+        XCTAssertEqual(Inbox.kind(group: "School Hub: Gr10", classes: classes), .school)
+        XCTAssertEqual(Course.short("Spanish 2 - 1404: GarciaJ p4 T1"), "Spanish 2")
+        XCTAssertEqual(Course.short("Algebra 2 - 1202"), "Algebra 2")
     }
 
     func testDecode() throws {
@@ -169,7 +169,7 @@ final class InboxTests: XCTestCase {
         let l = try JSONDecoder.engine.decode(MessageList.self, from: Data(json.utf8))
         XCTAssertEqual(l.threads.first?.from, "Ms. K")
         XCTAssertNotNil(l.threads.first?.when)
-        let n = #"{"items":[{"key":"material|x|y","type":"material","course":"French 2 - 4120: AggounI p4 T1","sectionId":"7","text":"posted","date":null,"items":[{"title":"Quiz","url":"https://fuhsd.schoology.com/assignment/1","kind":"assignment"}]}],"hasMore":false}"#
+        let n = #"{"items":[{"key":"material|x|y","type":"material","course":"Spanish 2 - 1404: GarciaJ p4 T1","sectionId":"7","text":"posted","date":null,"items":[{"title":"Quiz","url":"https://fuhsd.schoology.com/assignment/1","kind":"assignment"}]}],"hasMore":false}"#
         XCTAssertEqual(try JSONDecoder.engine.decode(NoticeList.self, from: Data(n.utf8)).items.first?.items.first?.kind, "assignment")
         let m = #"{"id":"9","subject":"Lab","group":null,"participants":["Ms. K"],"messages":[{"author":"Ms. K","author_id":"5","date":null,"body_md":"Hello","attachments":[]}]}"#
         XCTAssertEqual(try JSONDecoder.engine.decode(MessageDetail.self, from: Data(m.utf8)).messages.first?.bodyMd, "Hello")

@@ -225,7 +225,7 @@ struct ThreadRow: View {
     }
 }
 
-/// "French 2 posted Interro des Pronoms …": each item opens (assignments natively, the rest in the sheet).
+/// "Spanish 2 posted Prueba de pronombres …": each item opens (assignments natively, the rest in the sheet).
 struct NoticeRow: View {
     let notice: Notice
     let divider: Bool

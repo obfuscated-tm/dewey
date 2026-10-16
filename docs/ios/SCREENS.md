@@ -50,14 +50,14 @@ Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red bad
 - **Shows:** everything due, grouped by class in Course Dashboard order (`courses()` order). Header: date, "To Do", gear (→ 4b). Three count buttons: Overdue (red), Due today (accent), This week; tapping one filters the list.
 - **Row:** check mark (see table above), title, type tag (HW / TEST / TASK / CW), due time in mono (red with "N d late" when overdue), a status line ("Done · not submitted yet", "Submitted on Schoology · 9:40 pm", "Not studied", "Turned in · not on Schoology"), and on dropbox work a **Submit ↗** pill.
 - **Data:** `todo()` (upcoming + overdue + events) merged with the app's own saved list (paper work that Schoology dropped from overdue stays until ticked). Per-row `status({id})` only for rows that might have a dropbox. Type: TEST if the gradebook category says Test/Quiz/Exam/Summative or the title says Exam/Quiz/Interro, else HW; neo-plan's type wins when connected. Overdue > 60 days → collapsed "Older" group.
-- **Taps:** circle = Done toggle (square = Studied toggle). Submit ↗ only on dropbox work → 1c. Swipe left → "Mark turned in" + the class's real turn-in place ("Turn in on lab site ↗" for AP CS, "Submit ↗" for dropbox, nothing extra for paper). Row → 1b. Pull → refresh.
+- **Taps:** circle = Done toggle (square = Studied toggle). Submit ↗ only on dropbox work → 1c. Swipe left → "Mark turned in" + the class's real turn-in place ("Turn in on lab site ↗" for AP Bio, "Submit ↗" for dropbox, nothing extra for paper). Row → 1b. Pull → refresh.
 
 ### 1b Assignment · `design/Assignment.dc.html`
 - **Shows:** class + folder, title, due + points; Submission card; Instructions (text + attachments, each with where it opens); "In neo-plan as" HW / Test / Task / CW switch; a dashed "What if I get __ / 20?" button. Bottom bar: Done + the main action. Globe button top right = this page in the Schoology sheet.
 - **Data:** `assignment({id})` + `status({id})` + gradebook row (category, score, comment).
 - **Submission card, exactly one of:**
   - Dropbox the class uses → "Submitted on Schoology" (green) / "Not submitted on Schoology" (red) + "Checked N min ago". Main action: **Submit on Schoology ↗**.
-  - No dropbox → "Turned in outside Schoology"; if the instructions link an outside submit page (AP CS lab site), that link is the main action ↗.
+  - No dropbox → "Turned in outside Schoology"; if the instructions link an outside submit page (AP Bio lab site), that link is the main action ↗.
   - Quiz (`type: 'quiz'` or `/assessments/`) → "Take on Schoology ↗", opened only on the student's tap.
   - Google Assignment (`type: 'external_tool'`) → "Open in Schoology ↗"; never shows submitted.
 - **Mark as turned in** is always present under the card and only changes the student's list.

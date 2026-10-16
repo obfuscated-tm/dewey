@@ -54,7 +54,7 @@ class LogicTest {
     @Test fun planDueReminders() {
         val now = at(2026, 10, 14, 12)
         val hw = Reminders.DueInput("1", "Essay", "English", at(2026, 10, 16, 23, 59), isTest = false, hasDropbox = true)
-        val test = Reminders.DueInput("2", "Unit Test", "Physics", at(2026, 10, 16, 8), isTest = true, hasDropbox = false)
+        val test = Reminders.DueInput("2", "Unit Test", "Chemistry", at(2026, 10, 16, 8), isTest = true, hasDropbox = false)
         val p = Reminders.plan(listOf(hw, test), Reminders.Settings(evening = true, hour = 19), now)
         assertEquals(listOf("due-1", "test-2", "soon-1").sorted(), p.map { it.id }.sorted())
         assertEquals(at(2026, 10, 15, 19).time, p.first { it.id == "test-2" }.fire)
@@ -86,10 +86,10 @@ class LogicTest {
     }
 
     @Test fun inboxKind() {
-        val classes = listOf(Course("1", "AP Comp Sci A - 2350", "McLeodT p2 T1"))
+        val classes = listOf(Course("1", "AP Biology - 1101", "RiveraM p2 T1"))
         assertEquals(Inbox.Companion.Kind.TEACHER, Inbox.kind(null, classes))
-        assertEquals(Inbox.Companion.Kind.TEACHER, Inbox.kind("AP Comp Sci A - 2350: McLeodT p2 T1", classes))
-        assertEquals(Inbox.Companion.Kind.SCHOOL, Inbox.kind("CHS Hub: Gr10", classes))
+        assertEquals(Inbox.Companion.Kind.TEACHER, Inbox.kind("AP Biology - 1101: RiveraM p2 T1", classes))
+        assertEquals(Inbox.Companion.Kind.SCHOOL, Inbox.kind("School Hub: Gr10", classes))
     }
 
     @Test fun camelKeys() {
@@ -106,9 +106,9 @@ class LogicTest {
     }
 
     @Test fun courseNames() {
-        val c = Course("1", "AP Physics 1 - 12345", "Period 3")
+        val c = Course("1", "Chemistry H - 12345", "Period 3")
         assertEquals("P3", c.periodLabel)
         assertTrue(c.isClass)
-        assertFalse(Course("2", "CHS Hub", "Gr10").isClass)
+        assertFalse(Course("2", "School Hub", "Gr10").isClass)
     }
 }

@@ -8,8 +8,8 @@
      /test/home-page.html. The ▲/▼ buttons on the dashboard cards simulate
      Owen dragging them, to check the sidebar's groups re-sort live. ?fail
      makes the events fetch fail, to check the fallback (Schoology's own
-     block stays up). The real data below is the fixture from the task and
-     from test/todo.test.js. -->
+     block stays up). The data below is made up (a pretend student's classes), so screenshots
+     of this page show no real class. -->
 <html><head><meta charset="utf-8"><title>Home stand-in</title>
 <style>
 body { font: 13px Arial, sans-serif; color: #333; background: #fff; margin: 24px; }
@@ -45,17 +45,17 @@ label.toggle { display: block; margin-bottom: 12px; font-size: 12px; }
     <div class="todo todo-wrapper" id="todo">
       <h3>To Do</h3>
       <h4>Overdue</h4>
-      <div class="upcoming-event" data-start="1789513140"><a href="/assignment/1">French Revolution Quick Write</a><span class="realm-title-course">World History - 1620</span><span class="due-text">12 days overdue</span></div>
-      <div class="upcoming-event"><a href="/course/41/assessments/2">Interro de vocabulaire 1.2</a><span class="realm-title-course">French 2 - 4120</span><span class="due-text">11 days overdue</span></div>
-      <div class="upcoming-event" data-start="1790027940"><a href="/assignment/3">HW #13: Pg. 648 # 29-37(odd), Pg. 655 # 15, 21, 33, 43, 56, 69, 73, Pg. 663 # 9, 11, 17, 42, 51, 103, 107</a><span class="realm-title-course">Pre-Calculus H - 2420</span><span class="due-text">6 days overdue</span></div>
+      <div class="upcoming-event" data-start="1789513140"><a href="/assignment/1">Vocabulario 2.3 Practice</a><span class="realm-title-course">Spanish 2 - 1404</span><span class="due-text">12 days overdue</span></div>
+      <div class="upcoming-event"><a href="/course/14/assessments/2">Prueba 2.2</a><span class="realm-title-course">Spanish 2 - 1404</span><span class="due-text">11 days overdue</span></div>
+      <div class="upcoming-event" data-start="1790027940"><a href="/assignment/3">HW 4.3: Pg. 212 # 1-35 odd, Pg. 218 # 4-20 even, Pg. 221 # 3, 7, 12</a><span class="realm-title-course">Algebra 2 - 1202</span><span class="due-text">6 days overdue</span></div>
       <h4>Upcoming</h4>
-      <div class="upcoming-event" data-start="1790200740"><a href="/assignment/10">Lab 9.1 Fibonacci</a><span class="realm-title-course">AP Comp Sci A - 2350</span><span class="due-text">Due Sunday, September 27, 2026 at 11:59 pm</span></div>
-      <div class="upcoming-event" data-start="1790200740"><a href="/assignment/11">Read Lesson 9</a><span class="realm-title-course">AP Comp Sci A - 2350</span><span class="due-text">Due Sunday, September 27, 2026 at 11:59 pm</span></div>
-      <div class="upcoming-event" data-start="1790253000"><a href="/assignment/12">HW 9/25 FBDs</a><span class="realm-title-course">AP Physics 1 - 3750</span><span class="due-text">Due Monday, September 28, 2026 at 8:30 am</span></div>
-      <div class="upcoming-event" data-start="1790253000"><a href="/assignment/13">Reminder: Quiz 2- NEED LOCKDOWN BROWSER</a><span class="realm-title-course">AP Physics 1 - 3750</span><span class="due-text">Due Monday, September 28, 2026 at 8:30 am</span></div>
-      <div class="upcoming-event" data-start="1790330700"><a href="/assignment/14">Mini Quiz 1 - Ternary Operator and If-Else logic</a><span class="realm-title-course">AP Comp Sci A - 2350</span><span class="due-text">Due Tuesday, September 29, 2026 at 10:05 am</span></div>
-      <div class="upcoming-event" data-start="1790352000"><a href="/assignment/15">In-class Lab 6.2 - Static Review</a><span class="realm-title-course">AP Comp Sci A - 2350</span><span class="due-text">Due Tuesday, September 29, 2026 at 4:00 pm</span></div>
-      <div class="upcoming-event" data-start="1790373540"><a href="/assignment/16">Chapter 10 Exam (points to be determined)</a><span class="realm-title-course">Pre-Calculus H - 2420</span><span class="due-text">Due Tuesday, September 29, 2026 at 11:59 pm</span></div>
+      <div class="upcoming-event" data-start="1790200740"><a href="/assignment/10">Lab 2.2 Cell Size and Diffusion</a><span class="realm-title-course">AP Biology - 1101</span><span class="due-text">Due Sunday, September 27, 2026 at 11:59 pm</span></div>
+      <div class="upcoming-event" data-start="1790200740"><a href="/assignment/11">Read Ch. 5: Membranes</a><span class="realm-title-course">AP Biology - 1101</span><span class="due-text">Due Sunday, September 27, 2026 at 11:59 pm</span></div>
+      <div class="upcoming-event" data-start="1790253000"><a href="/assignment/12">Stoichiometry Worksheet</a><span class="realm-title-course">Chemistry H - 1505</span><span class="due-text">Due Monday, September 28, 2026 at 8:30 am</span></div>
+      <div class="upcoming-event" data-start="1790253000"><a href="/assignment/13">Reminder: Unit 2 Quiz on Monday</a><span class="realm-title-course">Chemistry H - 1505</span><span class="due-text">Due Monday, September 28, 2026 at 8:30 am</span></div>
+      <div class="upcoming-event" data-start="1790330700"><a href="/assignment/14">Quiz 3.1 Cellular Respiration</a><span class="realm-title-course">AP Biology - 1101</span><span class="due-text">Due Tuesday, September 29, 2026 at 10:05 am</span></div>
+      <div class="upcoming-event" data-start="1790352000"><a href="/assignment/15">In-class Lab 2.3 Microscopy</a><span class="realm-title-course">AP Biology - 1101</span><span class="due-text">Due Tuesday, September 29, 2026 at 4:00 pm</span></div>
+      <div class="upcoming-event" data-start="1790373540"><a href="/assignment/16">Unit 4 Test (Chapters 4 and 5)</a><span class="realm-title-course">Algebra 2 - 1202</span><span class="due-text">Due Tuesday, September 29, 2026 at 11:59 pm</span></div>
     </div>
     </div>
     <div class="s-home-calendar"><h3>Calendar</h3><p style="color:#888">Untouched by the overlay.</p></div>
@@ -68,14 +68,14 @@ const q = new URLSearchParams(location.search);
 
 // ── The Course Dashboard's cards, with ▲/▼ to simulate a drag reorder ──────
 const CARD_NAMES = [
-  'Pre-Calculus H - 2420: JaehnigS p1 T1',
-  'AP Comp Sci A - 2350: McLeodT p2 T1',
-  'World Lit/Writ - 1020: Phelps McQuaideA p3 T1',
-  'French 2 - 4120: AggounI p4 T1',
-  'AP Physics 1 - 3750: AgarwalA p5 T1',
-  'World History - 1620: Santa Cruz RayM p7 T1',
-  'Closed Tutorial - 9100: McLeodT pCTut',
-  'CHS Hub: Gr10',
+  'Algebra 2 - 1202: ChenL p1 T1',
+  'AP Biology - 1101: RiveraM p2 T1',
+  'English 10 - 1303: PatelS p3 T1',
+  'Spanish 2 - 1404: GarciaJ p4 T1',
+  'Chemistry H - 1505: NguyenK p5 T1',
+  'US History - 1606: BrooksA p7 T1',
+  'Tutorial - 9100: RiveraM pTut',
+  'Hub: Gr10',
 ];
 const list = document.getElementById('dashboard-course-list');
 function drawCards() {
@@ -83,7 +83,7 @@ function drawCards() {
   for (const name of CARD_NAMES) {
     const card = document.createElement('li');
     card.className = 'sgy-grid-layout__item';
-    card.setAttribute('data-key', '.$' + (8465375000 + CARD_NAMES.indexOf(name)));
+    card.setAttribute('data-key', '.$' + (7000375000 + CARD_NAMES.indexOf(name)));
     const title = document.createElement('div');
     title.className = 'course-dashboard__card-context-title';
     title.textContent = name;
@@ -99,20 +99,20 @@ function drawCards() {
 }
 drawCards();
 
-// ── The events the sidebar groups (the task's own fixture) ────────────────
+// ── The events the sidebar groups (made up) ────────────────
 const OVERDUE = [
-  { schoology_id: '1', title: 'French Revolution Quick Write', course: 'World History - 1620', section_id: '16', due: '2026-09-15T18:59:00', graded: false, url: '/assignment/1' },
-  { schoology_id: '2', title: 'Interro de vocabulaire 1.2', course: 'French 2 - 4120', section_id: '41', due: '2026-09-16T18:59:00', graded: false, url: '/course/41/assessments/2' },
-  { schoology_id: '3', title: 'HW #13: Pg. 648 # 29-37(odd), Pg. 655 # 15, 21, 33, 43, 56, 69, 73, Pg. 663 # 9, 11, 17, 42, 51, 103, 107', course: 'Pre-Calculus H - 2420', section_id: '24', due: '2026-09-21T18:59:00', graded: false, url: '/assignment/3' },
+  { schoology_id: '1', title: 'Vocabulario 2.3 Practice', course: 'Spanish 2 - 1404', section_id: '14', due: '2026-09-15T18:59:00', graded: false, url: '/assignment/1' },
+  { schoology_id: '2', title: 'Prueba 2.2', course: 'Spanish 2 - 1404', section_id: '14', due: '2026-09-16T18:59:00', graded: false, url: '/course/14/assessments/2' },
+  { schoology_id: '3', title: 'HW 4.3: Pg. 212 # 1-35 odd, Pg. 218 # 4-20 even, Pg. 221 # 3, 7, 12', course: 'Algebra 2 - 1202', section_id: '12', due: '2026-09-21T18:59:00', graded: false, url: '/assignment/3' },
 ];
 const UPCOMING = [
-  { schoology_id: '10', title: 'Lab 9.1 Fibonacci', course: 'AP Comp Sci A - 2350', section_id: '23', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/10' },
-  { schoology_id: '11', title: 'Read Lesson 9', course: 'AP Comp Sci A - 2350', section_id: '23', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/11' },
-  { schoology_id: '12', title: 'HW 9/25 FBDs', course: 'AP Physics 1 - 3750', section_id: '37', due: '2026-09-28T08:30:00', graded: false, url: '/assignment/12' },
-  { schoology_id: '13', title: 'Reminder: Quiz 2- NEED LOCKDOWN BROWSER', course: 'AP Physics 1 - 3750', section_id: '37', due: '2026-09-28T08:30:00', graded: false, url: '/assignment/13' },
-  { schoology_id: '14', title: 'Mini Quiz 1 - Ternary Operator and If-Else logic', course: 'AP Comp Sci A - 2350', section_id: '23', due: '2026-09-29T10:05:00', graded: false, url: '/assignment/14' },
-  { schoology_id: '15', title: 'In-class Lab 6.2 - Static Review', course: 'AP Comp Sci A - 2350', section_id: '23', due: '2026-09-29T16:00:00', graded: false, url: '/assignment/15' },
-  { schoology_id: '16', title: 'Chapter 10 Exam (points to be determined)', course: 'Pre-Calculus H - 2420', section_id: '24', due: '2026-09-29T23:59:00', graded: false, url: '/assignment/16' },
+  { schoology_id: '10', title: 'Lab 2.2 Cell Size and Diffusion', course: 'AP Biology - 1101', section_id: '11', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/10' },
+  { schoology_id: '11', title: 'Read Ch. 5: Membranes', course: 'AP Biology - 1101', section_id: '11', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/11' },
+  { schoology_id: '12', title: 'Stoichiometry Worksheet', course: 'Chemistry H - 1505', section_id: '15', due: '2026-09-28T08:30:00', graded: false, url: '/assignment/12' },
+  { schoology_id: '13', title: 'Reminder: Unit 2 Quiz on Monday', course: 'Chemistry H - 1505', section_id: '15', due: '2026-09-28T08:30:00', graded: false, url: '/assignment/13' },
+  { schoology_id: '14', title: 'Quiz 3.1 Cellular Respiration', course: 'AP Biology - 1101', section_id: '11', due: '2026-09-29T10:05:00', graded: false, url: '/assignment/14' },
+  { schoology_id: '15', title: 'In-class Lab 2.3 Microscopy', course: 'AP Biology - 1101', section_id: '11', due: '2026-09-29T16:00:00', graded: false, url: '/assignment/15' },
+  { schoology_id: '16', title: 'Unit 4 Test (Chapters 4 and 5)', course: 'Algebra 2 - 1202', section_id: '12', due: '2026-09-29T23:59:00', graded: false, url: '/assignment/16' },
 ];
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function getEvents(list) {

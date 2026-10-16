@@ -60,7 +60,7 @@ test('validId / samePath reject anything off-shape or off-host', () => {
 });
 
 test('courses: GET /iapi/course/active, parsed, credentials included, GET only', async () => {
-  const body = { body: { courses: { courses: [{ nid: 9, course_title: 'AP Physics 1' }], sections: [{ nid: 101, course_nid: 9, section_title: 'P3' }] } } };
+  const body = { body: { courses: { courses: [{ nid: 9, course_title: 'Chemistry H' }], sections: [{ nid: 101, course_nid: 9, section_title: 'P3' }] } } };
   const { eng, calls } = fakeEngine(new Map([['/iapi/course/active', res(body)]]), {
     parseKind: (kind, text) => ({ data: JSON.parse(text).body.courses.sections.map((s) => ({ section_id: String(s.nid) })) }),
   });

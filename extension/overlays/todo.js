@@ -91,7 +91,7 @@ export function isClassCard(name) {
   return /^.+ - \d{3,5}\s*:/.test(String(name || '').trim());
 }
 
-/** "Pre-Calculus H - 2420: JaehnigS p1 T1" → "Pre-Calculus H"; "CHS Hub: Gr10" → "CHS Hub". */
+/** "Algebra 2 - 1202: ChenL p1 T1" → "Algebra 2"; "School Hub: Gr10" → "School Hub". */
 export function shortName(name) {
   const left = String(name || '').split(':')[0];
   return left.replace(/\s*-\s*\d{3,5}\s*$/, '').trim();

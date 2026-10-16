@@ -39,7 +39,7 @@ final class AppModel {
     var gradesAsOf: [String: Date] = [:]
     var gradeErrors: [String: EngineError] = [:]
 
-    init(inMemory: Bool = false) {
+    init(inMemory: Bool = Demo.on) {
         let config = ModelConfiguration(isStoredInMemoryOnly: inMemory)
         container = try! ModelContainer(for: ItemState.self, CourseState.self, configurations: config)
         if let c = Cache.load("courses", as: [Course].self) {
@@ -58,6 +58,7 @@ final class AppModel {
 
     /// On launch: try the course list; `login` → Sign in, anything else → in (offline uses saved copies).
     func boot() async {
+        if Demo.on, courses.isEmpty { Demo.seed(self) }
         engine.start()
         // Saved copies and no sign-out on record: show them now instead of a
         // spinner; a `login` below still sends the app to Sign in.

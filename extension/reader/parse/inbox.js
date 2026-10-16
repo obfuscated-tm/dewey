@@ -10,7 +10,7 @@ import { parseDueText } from './sync.js';
 const squash = (s) => String(s ?? '').replace(/\s+/g, ' ').trim();
 const MONTHS = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
 
-/** "[AP Comp Sci A - 2350: McLeodT p2 T1] Lesson Slides" → { group, title }. group is null without a bracket. */
+/** "[AP Biology - 1101: RiveraM p2 T1] Lesson Slides" → { group, title }. group is null without a bracket. */
 export function splitSubject(subject) {
   const s = squash(subject);
   const m = s.match(/^\[([^\]]+)\]\s*(.*)$/);

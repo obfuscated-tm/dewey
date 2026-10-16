@@ -42,12 +42,12 @@ struct TodoProvider: TimelineProvider {
 
 extension WidgetSnapshot {
     static let sample = WidgetSnapshot(items: [
-        WidgetItem(id: "1", title: "HW #20 Log Rules", course: "Pre-Calculus H", due: Date().addingTimeInterval(5 * 3600), isTest: false),
-        WidgetItem(id: "2", title: "Lab 4 write-up", course: "AP Physics 1", due: Date().addingTimeInterval(30 * 3600), isTest: false),
+        WidgetItem(id: "1", title: "HW #20 Log Rules", course: "Algebra 2", due: Date().addingTimeInterval(5 * 3600), isTest: false),
+        WidgetItem(id: "2", title: "Lab 4 write-up", course: "Chemistry H", due: Date().addingTimeInterval(30 * 3600), isTest: false),
         WidgetItem(id: "3", title: "Unit 3 Test", course: "US History", due: Date().addingTimeInterval(52 * 3600), isTest: true),
     ], updatedAt: Date(), signedIn: true, accentHex: "#1D5EA8", grades: [
-        WidgetGrade(id: "g1", sectionId: "1", title: "Lab 4", course: "AP Physics 1", grade: "18 / 20", day: nil),
-        WidgetGrade(id: "g2", sectionId: "2", title: "Quick Write 3", course: "World History", grade: "9 / 10", day: nil),
+        WidgetGrade(id: "g1", sectionId: "1", title: "Lab 4", course: "Chemistry H", grade: "18 / 20", day: nil),
+        WidgetGrade(id: "g2", sectionId: "2", title: "Quick Write 3", course: "US History", grade: "9 / 10", day: nil),
     ])
 }
 

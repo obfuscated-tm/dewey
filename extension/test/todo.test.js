@@ -15,68 +15,68 @@ import {
 const NOW = new Date('2026-09-27T12:00:00');
 
 const CARDS = [
-  { name: 'Pre-Calculus H - 2420: JaehnigS p1 T1' },
-  { name: 'AP Comp Sci A - 2350: McLeodT p2 T1' },
-  { name: 'World Lit/Writ - 1020: Phelps McQuaideA p3 T1' },
-  { name: 'French 2 - 4120: AggounI p4 T1' },
-  { name: 'AP Physics 1 - 3750: AgarwalA p5 T1' },
-  { name: 'World History - 1620: Santa Cruz RayM p7 T1' },
-  { name: 'Closed Tutorial - 9100: McLeodT pCTut' },
-  { name: 'CHS Hub: Gr10' },
+  { name: 'Algebra 2 - 1202: ChenL p1 T1' },
+  { name: 'AP Biology - 1101: RiveraM p2 T1' },
+  { name: 'English 10 - 1303: PatelS p3 T1' },
+  { name: 'Spanish 2 - 1404: GarciaJ p4 T1' },
+  { name: 'Chemistry H - 1505: NguyenK p5 T1' },
+  { name: 'US History - 1606: BrooksA p7 T1' },
+  { name: 'Tutorial - 9100: RiveraM pTut' },
+  { name: 'School Hub: Gr10' },
 ];
 
 test('isClassCard: a course code before a colon says class; a hub or advisory does not', () => {
-  assert.equal(isClassCard('Pre-Calculus H - 2420: JaehnigS p1 T1'), true);
-  assert.equal(isClassCard('Closed Tutorial - 9100: McLeodT pCTut'), true); // matches the code pattern, even though it isn't graded work
-  assert.equal(isClassCard('CHS Hub: Gr10'), false);
-  assert.equal(isClassCard('CHS_Counseling: Class of 2029'), false);
+  assert.equal(isClassCard('Algebra 2 - 1202: ChenL p1 T1'), true);
+  assert.equal(isClassCard('Tutorial - 9100: RiveraM pTut'), true); // matches the code pattern, even though it isn't graded work
+  assert.equal(isClassCard('School Hub: Gr10'), false);
+  assert.equal(isClassCard('School_Counseling: Class of 2029'), false);
   assert.equal(isClassCard('Jackson,A Advisees: Class of 2029'), false);
 });
 
 test('shortName: strips the course code and everything after the colon', () => {
-  assert.equal(shortName('Pre-Calculus H - 2420: JaehnigS p1 T1'), 'Pre-Calculus H');
-  assert.equal(shortName('Closed Tutorial - 9100: McLeodT pCTut'), 'Closed Tutorial');
-  assert.equal(shortName('CHS Hub: Gr10'), 'CHS Hub');
+  assert.equal(shortName('Algebra 2 - 1202: ChenL p1 T1'), 'Algebra 2');
+  assert.equal(shortName('Tutorial - 9100: RiveraM pTut'), 'Tutorial');
+  assert.equal(shortName('School Hub: Gr10'), 'School Hub');
   assert.equal(shortName('Jackson,A Advisees: Class of 2029'), 'Jackson,A Advisees');
 });
 
 test('cardKey: matches a card to an event whose course has no section suffix', () => {
-  assert.equal(cardKey('Pre-Calculus H - 2420: JaehnigS p1 T1'), cardKey('Pre-Calculus H - 2420'));
-  assert.notEqual(cardKey('Pre-Calculus H - 2420: JaehnigS p1 T1'), cardKey('AP Comp Sci A - 2350'));
+  assert.equal(cardKey('Algebra 2 - 1202: ChenL p1 T1'), cardKey('Algebra 2 - 1202'));
+  assert.notEqual(cardKey('Algebra 2 - 1202: ChenL p1 T1'), cardKey('AP Biology - 1101'));
 });
 
 // The fixture from the task: today is Sun Sep 27 2026.
 const OVERDUE = [
-  { schoology_id: '1', title: 'French Revolution Quick Write', course: 'World History - 1620', section_id: '16', due: '2026-09-15T18:59:00', graded: false, url: '/assignment/1' },
-  { schoology_id: '2', title: 'Interro de vocabulaire 1.2', course: 'French 2 - 4120', section_id: '41', due: '2026-09-16T18:59:00', graded: false, url: '/course/41/assessments/2' },
-  { schoology_id: '3', title: 'HW #13: Pg. 648 # 29-37(odd), Pg. 655 # 15, 21, 33, 43, 56, 69, 73, Pg. 663 # 9, 11, 17, 42, 51, 103, 107', course: 'Pre-Calculus H - 2420', section_id: '24', due: '2026-09-21T18:59:00', graded: false, url: '/assignment/3' },
+  { schoology_id: '1', title: 'Reconstruction Quick Write', course: 'US History - 1606', section_id: '16', due: '2026-09-15T18:59:00', graded: false, url: '/assignment/1' },
+  { schoology_id: '2', title: 'Prueba de vocabulario 1.2', course: 'Spanish 2 - 1404', section_id: '41', due: '2026-09-16T18:59:00', graded: false, url: '/course/41/assessments/2' },
+  { schoology_id: '3', title: 'HW #13: Pg. 212 # 1-35 odd, Pg. 218 # 4-20 even, Pg. 221 # 3, 7, 12, 15, 18, 22, 27, 31, 40, 44, 52', course: 'Algebra 2 - 1202', section_id: '24', due: '2026-09-21T18:59:00', graded: false, url: '/assignment/3' },
 ];
 const UPCOMING = [
-  { schoology_id: '10', title: 'Lab 9.1 Fibonacci', course: 'AP Comp Sci A - 2350', section_id: '23', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/10' },
-  { schoology_id: '11', title: 'Read Lesson 9', course: 'AP Comp Sci A - 2350', section_id: '23', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/11' },
-  { schoology_id: '12', title: 'HW 9/25 FBDs', course: 'AP Physics 1 - 3750', section_id: '37', due: '2026-09-28T08:30:00', graded: false, url: '/assignment/12' },
-  { schoology_id: '13', title: 'Reminder: Quiz 2- NEED LOCKDOWN BROWSER', course: 'AP Physics 1 - 3750', section_id: '37', due: '2026-09-28T08:30:00', graded: false, url: '/assignment/13' },
-  { schoology_id: '14', title: 'Mini Quiz 1 - Ternary Operator and If-Else logic', course: 'AP Comp Sci A - 2350', section_id: '23', due: '2026-09-29T10:05:00', graded: false, url: '/assignment/14' },
-  { schoology_id: '15', title: 'In-class Lab 6.2 - Static Review', course: 'AP Comp Sci A - 2350', section_id: '23', due: '2026-09-29T16:00:00', graded: false, url: '/assignment/15' },
-  { schoology_id: '16', title: 'Chapter 10 Exam (points to be determined)', course: 'Pre-Calculus H - 2420', section_id: '24', due: '2026-09-29T23:59:00', graded: false, url: '/assignment/16' },
+  { schoology_id: '10', title: 'Lab 9.1 Diffusion', course: 'AP Biology - 1101', section_id: '23', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/10' },
+  { schoology_id: '11', title: 'Read Chapter 9', course: 'AP Biology - 1101', section_id: '23', due: '2026-09-27T23:59:00', graded: false, url: '/assignment/11' },
+  { schoology_id: '12', title: 'HW 9/25 Stoichiometry', course: 'Chemistry H - 1505', section_id: '37', due: '2026-09-28T08:30:00', graded: false, url: '/assignment/12' },
+  { schoology_id: '13', title: 'Reminder: Quiz 2- NEED LOCKDOWN BROWSER', course: 'Chemistry H - 1505', section_id: '37', due: '2026-09-28T08:30:00', graded: false, url: '/assignment/13' },
+  { schoology_id: '14', title: 'Mini Quiz 1 - Cell Organelles', course: 'AP Biology - 1101', section_id: '23', due: '2026-09-29T10:05:00', graded: false, url: '/assignment/14' },
+  { schoology_id: '15', title: 'In-class Lab 6.2 - Microscopy Review', course: 'AP Biology - 1101', section_id: '23', due: '2026-09-29T16:00:00', graded: false, url: '/assignment/15' },
+  { schoology_id: '16', title: 'Chapter 10 Exam (points to be determined)', course: 'Algebra 2 - 1202', section_id: '24', due: '2026-09-29T23:59:00', graded: false, url: '/assignment/16' },
 ];
 
 test('groupEvents: class order follows the dashboard cards; classes with nothing due still show', () => {
   const groups = groupEvents({ overdue: OVERDUE, upcoming: UPCOMING, cards: CARDS, now: NOW });
   assert.deepEqual(groups.map((g) => g.name), [
-    'Pre-Calculus H', 'AP Comp Sci A', 'World Lit/Writ', 'French 2', 'AP Physics 1', 'World History', 'Closed Tutorial',
+    'Algebra 2', 'AP Biology', 'English 10', 'Spanish 2', 'Chemistry H', 'US History', 'Tutorial',
   ]);
 });
 
 test('groupEvents: every class card shows, even with nothing due; a non-class card only with items', () => {
   const groups = groupEvents({ overdue: OVERDUE, upcoming: UPCOMING, cards: CARDS, now: NOW });
-  const worldLit = groups.find((g) => g.name === 'World Lit/Writ');
+  const worldLit = groups.find((g) => g.name === 'English 10');
   assert.ok(worldLit, 'a class with nothing due still gets a group');
   assert.equal(worldLit.items.length, 0);
-  const closedTutorial = groups.find((g) => g.name === 'Closed Tutorial');
-  assert.ok(closedTutorial, 'Closed Tutorial matches the class heuristic (a code before the colon)');
+  const closedTutorial = groups.find((g) => g.name === 'Tutorial');
+  assert.ok(closedTutorial, 'Tutorial matches the class heuristic (a code before the colon)');
   assert.equal(closedTutorial.items.length, 0);
-  assert.equal(groups.some((g) => g.name === 'CHS Hub'), false, 'a non-class card with nothing due is left out entirely');
+  assert.equal(groups.some((g) => g.name === 'School Hub'), false, 'a non-class card with nothing due is left out entirely');
 });
 
 test('groupEvents: an item whose course matches no card goes to Other, at the bottom', () => {
@@ -88,18 +88,18 @@ test('groupEvents: an item whose course matches no card goes to Other, at the bo
 
 test('groupEvents: within a class, overdue first (oldest overdue first), then upcoming soonest first', () => {
   const groups = groupEvents({ overdue: OVERDUE, upcoming: UPCOMING, cards: CARDS, now: NOW });
-  const precalc = groups.find((g) => g.name === 'Pre-Calculus H');
+  const precalc = groups.find((g) => g.name === 'Algebra 2');
   assert.deepEqual(precalc.items.map((i) => i.schoology_id), ['3', '16']); // the 6-day-overdue HW, then Tuesday's exam
   assert.equal(precalc.items[0].overdue, true);
   assert.equal(precalc.items[0].days, 6);
-  const apcs = groups.find((g) => g.name === 'AP Comp Sci A');
+  const apcs = groups.find((g) => g.name === 'AP Biology');
   assert.deepEqual(apcs.items.map((i) => i.schoology_id), ['10', '11', '14', '15']); // both Sunday items, then Tue 10:05, then Tue 4pm
 });
 
 test('groupEvents: "Due today" shows on a group with anything due today', () => {
   const groups = groupEvents({ overdue: OVERDUE, upcoming: UPCOMING, cards: CARDS, now: NOW });
-  assert.equal(groups.find((g) => g.name === 'AP Comp Sci A').dueToday, true);
-  assert.equal(groups.find((g) => g.name === 'AP Physics 1').dueToday, false);
+  assert.equal(groups.find((g) => g.name === 'AP Biology').dueToday, true);
+  assert.equal(groups.find((g) => g.name === 'Chemistry H').dueToday, false);
 });
 
 test('formatOverdue and formatDue: always the full specific date, no relative words', () => {
@@ -197,8 +197,8 @@ test('cacheSkipsFetch: only when fresh AND younger than REREAD_MS', () => {
 });
 
 test('groupEvents: a card\'s section id wins over its name (renamed or duplicate course titles)', () => {
-  const cards = [{ name: 'Pre-Calculus H - 2420: JaehnigS p1 T1', section_id: '100' }, { name: 'Pre-Calculus H - 2420: OtherT p3 T1', section_id: '200' }];
-  const groups = groupEvents({ upcoming: [{ schoology_id: '1', title: 'x', course: 'Pre-Calculus H - 2420', section_id: '200', due: '2026-09-28T10:00:00' }], cards, now: new Date('2026-09-27T12:00:00') });
+  const cards = [{ name: 'Algebra 2 - 1202: ChenL p1 T1', section_id: '100' }, { name: 'Algebra 2 - 1202: OtherT p3 T1', section_id: '200' }];
+  const groups = groupEvents({ upcoming: [{ schoology_id: '1', title: 'x', course: 'Algebra 2 - 1202', section_id: '200', due: '2026-09-28T10:00:00' }], cards, now: new Date('2026-09-27T12:00:00') });
   assert.deepEqual(groups.map((g) => g.items.length), [0, 1]);
 });
 

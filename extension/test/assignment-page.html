@@ -1,15 +1,15 @@
 <!doctype html>
 <!-- A stand-in for /assignment/{id}/info, to look at overlays/assignment.js
      outside Schoology: the chip and the sidebar what-if.
-     The markup follows fuhsd.schoology.com as seen on 2026-09-26: the folder
+     The markup follows a district's schoology.com as seen on 2026-09-26: the folder
      in the breadcrumb (.folder-title a?f=), an empty p.due-date and
      .grading-grade in the title bar, .assignment-details > p.due-date,
      .info-body, .attachments, .comment-container, #right-column-inner. Serve
      extension/ (python3 -m http.server) and open
      /test/assignment-page.html. neo-plan, the gradebook, the folders and the
      archive are faked below.
-       ?a=802  Lab 8.1 CheckMail: missing (default)   ?a=803  done, not submitted
-       ?a=804  HW Quiz 7-8: graded                    ?a=806  not in neo-plan
+       ?a=802  Lab 3.1: missing (default)            ?a=803  done, not submitted
+       ?a=804  Quiz 3.1: graded                       ?a=806  not in neo-plan
        ?a=805  removed                                ?notoken  no neo-plan token
      "Submit" plays Schoology's submit dialog finishing (late). -->
 <html><head><meta charset="utf-8"><title>Assignment stand-in</title>
@@ -38,7 +38,7 @@ h1.page-title { margin: 6px 0 4px; font-size: 22px; }
 <div id="main-inner">
   <div id="center-col">
     <div id="center-top">
-      <div class="content-top-upper"><a href="/course/8465375857">AP Comp Sci A: McLeodT p2 T1</a><div class="folder-title"><a href="/course/8465375857/materials?f=8">Lesson 8 - Control Structures</a></div></div>
+      <div class="content-top-upper"><a href="/course/7000375857">AP Biology: RiveraM p2 T1</a><div class="folder-title"><a href="/course/7000375857/materials?f=8">Unit 3 - Cell Energy</a></div></div>
       <h1 class="page-title" id="title"></h1>
       <div class="content-top"><div class="info-container"><div class="info-text"><p class="due-date"></p></div><div class="grading-grade">Grade: <span id="gv"></span></div></div></div>
     </div>
@@ -46,7 +46,7 @@ h1.page-title { margin: 6px 0 4px; font-size: 22px; }
       <div class="assignment-details"><p class="due-date" id="due"></p></div>
       <div class="info-body" id="body"></div>
       <p class="posted-time">Posted Wed Sep 23, 2026 at 2:56 pm</p>
-      <div class="attachments"><a href="#">Lab 8.1 handout.pdf</a></div>
+      <div class="attachments"><a href="#">Lab 3.1 handout.pdf</a></div>
       <div class="comment-container"><h3>Comments</h3><span style="color:#777">There are no comments</span></div>
     </div>
   </div>
@@ -55,7 +55,7 @@ h1.page-title { margin: 6px 0 4px; font-size: 22px; }
   </div></div>
 </div>
 <script type="module">
-const SECTION = '8465375857';
+const SECTION = '7000375857';
 const q = new URLSearchParams(location.search);
 const ID = q.get('a') || '802';
 const F = (id, name, ...items) => ({ id, name, items });
@@ -64,24 +64,24 @@ const d = (id, t) => ({ k: 'document', id, t });
 const f = (id) => ({ k: 'folder', id });
 const FOLDERS = {
   root: F('root', 'Materials', f('info'), f('7'), f('8'), d('d0', 'Syllabus.pdf')),
-  info: F('info', 'Course Information', d('d1', 'Course Information.pdf'), a('101', 'Academic Integrity Policy', 'August 14, 2026 at 11:59 pm')),
-  7: F('7', 'Lesson 7 - Simple I/O (printf and Scanner)', d('d7', 'Lesson 7 Slides and Video.pdf'), a('701', 'Worksheets 7.1 and 7.2', 'September 18, 2026 at 11:59 pm')),
-  8: F('8', 'Lesson 8 - Control Structures', d('d8', 'Effective Reading + Agenda 9 - 17.pdf'), a('801', 'Read Lesson 8', 'September 21, 2026 at 11:59 pm'), a('802', 'Lab 8.1 CheckMail', 'September 23, 2026 at 11:59 pm'), a('803', 'Lab 8.2 Happiness Detector', 'September 30, 2026 at 11:59 pm'), a('804', 'HW Quiz 7-8', 'September 24, 2026 at 11:59 pm'), a('806', 'Lab 8.4 Extra', 'October 3, 2026 at 11:59 pm'), d('d9', 'Lesson 8 Slides.pdf'), f('8x')),
-  '8x': F('8x', 'Lesson 8 extras', a('805', 'Lab 8.3 Extra Credit', 'October 2, 2026 at 11:59 pm')),
+  info: F('info', 'Course Information', d('d1', 'Course Information.pdf'), a('101', 'Lab Safety Contract', 'August 14, 2026 at 11:59 pm')),
+  7: F('7', 'Unit 2 - Cells and Membranes', d('d7', 'Unit 2 Slides and Video.pdf'), a('701', 'Lab 2.1 Osmosis in Potatoes', 'September 18, 2026 at 11:59 pm')),
+  8: F('8', 'Unit 3 - Cell Energy', d('d8', 'Photosynthesis Reading + Agenda.pdf'), a('801', 'Read Ch. 8', 'September 21, 2026 at 11:59 pm'), a('802', 'Lab 3.1 Leaf Disk Photosynthesis', 'September 23, 2026 at 11:59 pm'), a('803', 'Lab 3.2 Yeast Respiration', 'September 30, 2026 at 11:59 pm'), a('804', 'Quiz 3.1 Cellular Respiration', 'September 24, 2026 at 11:59 pm'), a('806', 'Lab 3.4 Extension', 'October 3, 2026 at 11:59 pm'), d('d9', 'Unit 3 Slides.pdf'), f('8x')),
+  '8x': F('8x', 'Unit 3 extras', a('805', 'Extra Credit: Pigment Chromatography', 'October 2, 2026 at 11:59 pm')),
 };
-// Gradebook: Labs & Homework 25%, Tests & Quizzes 75%.
+// Gradebook: Labs & Homework 30%, Tests & Quizzes 70%.
 const GB = [
-  ['Labs & Homework', 25, [['101', 'Academic Integrity Policy', '5 / 5'], ['701', 'Worksheets 7.1 and 7.2', '19.05 / 20'], ['801', 'Read Lesson 8', '2 / 2'], ['802', 'Lab 8.1 CheckMail', '—'], ['803', 'Lab 8.2 Happiness Detector', '—'], ['806', 'Lab 8.4 Extra', '—']]],
-  ['Tests & Quizzes', 75, [['901', 'HW Quiz 1.1-2.1', '10 / 10'], ['902', 'Lesson 0-4 Test', '47.44 / 50'], ['804', 'HW Quiz 7-8', '8 / 10'], ['903', 'HW Quiz 5-6', '9.5 / 10']]],
+  ['Labs & Homework', 30, [['101', 'Lab Safety Contract', '5 / 5'], ['701', 'Lab 2.1 Osmosis in Potatoes', '19 / 20'], ['801', 'Read Ch. 8', '2 / 2'], ['802', 'Lab 3.1 Leaf Disk Photosynthesis', '—'], ['803', 'Lab 3.2 Yeast Respiration', '—'], ['806', 'Lab 3.4 Extension', '—']]],
+  ['Tests & Quizzes', 70, [['901', 'Unit 1 Quiz', '18 / 20'], ['902', 'Unit 1 Test', '46.5 / 50'], ['804', 'Quiz 3.1 Cellular Respiration', '8 / 10'], ['903', 'Quiz 2.1 Membranes', '10 / 10']]],
 ];
 const ITEMS = {
   802: { missing: true, work: 'todo' }, 803: { work: 'ready' }, 804: { cleared: true, cleared_by: 'schoology' }, 805: { removed: true }, 801: { cleared: true, cleared_by: 'schoology' },
 };
-const CLASS = { name: 'AP CS A', short_code: 'AP CS A', colour_index: 2 };
+const CLASS = { name: 'AP Bio', short_code: 'AP Bio', colour_index: 2 };
 const title = Object.values(FOLDERS).flatMap((x) => x.items).find((x) => x.id === ID);
 document.getElementById('title').textContent = title.t;
 document.getElementById('due').textContent = `Due ${title.due}`;
-document.getElementById('body').innerHTML = `Do <a href="#">${title.t}</a>. Hand in your .java files.`;
+document.getElementById('body').innerHTML = `Do <a href="#">${title.t}</a>. Hand in your lab report as a PDF.`;
 const graded = GB.flatMap(([, , its]) => its).find(([id]) => id === ID)?.[2];
 document.getElementById('gv').textContent = graded && graded !== '—' ? graded : 'N/A';
 if (graded && graded !== '—') document.getElementById('submit').remove();
@@ -108,9 +108,9 @@ function gradesHtml() {
 }
 
 const mem = {
-  'course:fuhsd.schoology.com:8465375857': {
-    courseName: 'AP Comp Sci A', runs: [{ at: new Date(Date.now() - 2 * 86400e3).toISOString() }],
-    items: { 'n-d8': { files: ['Lesson 8 - Control Structures/Effective Reading + Agenda 9 - 17.pdf'] }, 'n-d0': { files: ['Syllabus.pdf'] } },
+  'course:district.schoology.com:7000375857': {
+    courseName: 'AP Biology', runs: [{ at: new Date(Date.now() - 2 * 86400e3).toISOString() }],
+    items: { 'n-d8': { files: ['Unit 3 - Cell Energy/Photosynthesis Reading + Agenda.pdf'] }, 'n-d0': { files: ['Syllabus.pdf'] } },
   },
 };
 const store = {
@@ -151,12 +151,12 @@ document.getElementById('submit')?.addEventListener('click', () => {
   const s = document.getElementById('submit');
   const st = document.createElement('div');
   st.className = 'submission-status late';
-  st.textContent = 'Submitted late: CheckMail.java';
+  st.textContent = 'Submitted late: Lab 3.1 report.pdf';
   s.replaceWith(st);
 });
 
 globalThis.__npNoAutoStart = true;
 const { start } = await import('../overlays/assignment.js');
-const loc = { pathname: `/assignment/${ID}/info`, search: '', origin: location.origin, host: 'fuhsd.schoology.com', href: `${location.origin}/assignment/${ID}/info` };
+const loc = { pathname: `/assignment/${ID}/info`, search: '', origin: location.origin, host: 'district.schoology.com', href: `${location.origin}/assignment/${ID}/info` };
 window.overlay = start({ loc, call, getDoc, store, send });
 </script></body></html>

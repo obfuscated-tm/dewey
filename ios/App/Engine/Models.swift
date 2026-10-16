@@ -10,10 +10,10 @@ struct Course: Codable, Hashable, Identifiable {
     var sectionTitle: String
     var id: String { sectionId }
 
-    /// "AP Physics 1 - 12345: P3" → "AP Physics 1" (the course code goes).
+    /// "Chemistry H - 12345: P3" → "Chemistry H" (the course code goes).
     var shortTitle: String { Self.short(title) }
 
-    /// The same for any Schoology course name, e.g. a notification's "French 2 - 4120: AggounI p4 T1" → "French 2".
+    /// The same for any Schoology course name, e.g. a notification's "Spanish 2 - 1404: GarciaJ p4 T1" → "Spanish 2".
     static func short(_ title: String) -> String {
         let t = title.replacingOccurrences(of: #"\s*-\s*\d{3,6}\b.*$"#, with: "", options: .regularExpression)
         return t.isEmpty ? title : t

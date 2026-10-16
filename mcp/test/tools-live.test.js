@@ -183,7 +183,7 @@ function treeBridge() {
   return new FakeBridge((op, args) => {
     if (op === "courses") return [
       { section_id: "1111111111", title: "Physics" },
-      { section_id: "2222222222", title: "World History" },
+      { section_id: "2222222222", title: "US History" },
     ];
     if (op === "materials") return { section_id: args.section_id, folder_id: args.folder_id || null, rows: tree[`${args.section_id}:${args.folder_id || ""}`] || [] };
     throw new Error(`unexpected op ${op}`);
@@ -210,7 +210,7 @@ test("find_material searches every course's tree in one call, and caches the wal
   assert.deepEqual(r.hits.map((h) => [h.course, h.title, h.path]), [["Physics", "Vectors Answer Key", "Unit 1 / Notes"]]);
   const before = bridge.calls.filter((c) => c.op === "materials").length;
   const again = await toolsMod.findMaterialTool(ctx, { query: "syllabus" });
-  assert.equal(again.hits[0].course, "World History");
+  assert.equal(again.hits[0].course, "US History");
   assert.equal(bridge.calls.filter((c) => c.op === "materials").length, before, "second search reuses the walk");
   const byPath = await toolsMod.findMaterialTool(ctx, { query: "notes", kind: "document" });
   assert.equal(byPath.hits[0].title, "Vectors Answer Key");

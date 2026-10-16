@@ -61,7 +61,7 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 - Write `extension/engine/engine.js`: the ops and fetch rules in ENGINE.md. Export them on a global `SchoologyEngine`.
 - Add a bundler: `esbuild --bundle --format=iife --global-name=SchoologyEngine engine/engine.js --outfile=…`. esbuild is a devDependency in `ios/package.json` (`npm install` in ios/); `ios/scripts/build-engine.sh` runs it, and the Xcode pre-build step calls that script.
 - Tests: Node tests for the pure parts of engine.js (URL guard, op → path, result shaping) with fake `fetch`.
-- **Done when:** all extension tests pass; the bundle builds; pasting the bundle into the console of a logged-in Schoology tab and running `await SchoologyEngine.todo()`, `gradebook({sectionId})`, `assignment({id})`, `rubric(...)` returns the documented shapes (read-only; World History has rubric rows and Google Assignments to check against).
+- **Done when:** all extension tests pass; the bundle builds; pasting the bundle into the console of a logged-in Schoology tab and running `await SchoologyEngine.todo()`, `gradebook({sectionId})`, `assignment({id})`, `rubric(...)` returns the documented shapes (read-only; US History has rubric rows and Google Assignments to check against).
 
 ### M2 · Xcode project, login, engine bridge
 - `ios/project.yml`, tabs with placeholder screens, the shared web view wrapper with the login flow and automatic Safari-UA fallback (FINDINGS.md), `Engine.swift`.
@@ -69,7 +69,7 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 - **Done when:** in the simulator, Owen signs in once; after a relaunch he is still signed in; the debug screen shows real `courses()` and `todo()` results; `error: 'login'` after clearing cookies sends the app to Sign in.
 
 ### M3 · Spikes (each answers a question; write the answer into FINDINGS.md)
-- **S1 upload:** open AP Physics's next real "Scan PDF" Submit dialog in the sheet; check Photos / Camera / Files appear and a file attaches. Owen presses Submit only if it's real homework. Also open a World History Google Assignment in the sheet: does Google's frame load?
+- **S1 upload:** open Chemistry H's next real "Scan PDF" Submit dialog in the sheet; check Photos / Camera / Files appear and a file attaches. Owen presses Submit only if it's real homework. Also open a US History Google Assignment in the sheet: does Google's frame load?
 - **S3 Docs:** a docs.google.com link with `.universalLinksOnly` opens the Docs app with the school account (device only; needs the Docs app).
 
 ### M4 · To Do (1a)
@@ -78,11 +78,11 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 
 ### M5 · Assignment (1b) + Schoology sheet (1c)
 - The five-way Submission card, Mark as turned in, the sheet with re-check on close.
-- **Done when:** a Physics dropbox item shows its real state; after submitting in the sheet the row turns green without a manual refresh; AP CS shows the lab-site button; a Google Assignment shows "Open in Schoology ↗" and never "Submitted".
+- **Done when:** a Chemistry dropbox item shows its real state; after submitting in the sheet the row turns green without a manual refresh; AP Bio shows the lab-site button; a Google Assignment shows "Open in Schoology ↗" and never "Submitted".
 
 ### M6 · Grades (2a, 2b, 2c)
 - Grade math through `math.*`; rubric criteria; comments; what-if mode.
-- **Done when:** each class's % matches the Schoology gradebook (or the extension's grades overlay) and the World History rubric items show their criteria.
+- **Done when:** each class's % matches the Schoology gradebook (or the extension's grades overlay) and the US History rubric items show their criteria.
 
 ### M7 · Classes, Materials, file viewer, Schoology tab (3a–3d)
 

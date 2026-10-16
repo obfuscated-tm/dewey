@@ -132,7 +132,7 @@
     "h1": {
       "fill": "green",
       "maxH": 900,
-      "text": "ANSWERED · TURNING IN (checked live, 7 Oct)\n\n• Only some work has a Schoology dropbox. Physics 'Scan PDF' homework uses it. AP CS has none: labs are turned in on apcs.tinocs.com. Most other work is paper.\n• Pre-Calc has dropboxes but grades paper: HW #13 is 5/5 with nothing submitted. So 'not submitted' ≠ missing. Learn it per class and grey the card.\n• Schoology's overdue list = unsubmitted dropbox work + quizzes. HW #18 (Pre-Calc) shows as overdue though it's likely on paper. Paper work never shows as overdue.\n• Google Assignments ARE used in World History (Quick Writes, Haitian Revolution packet), marked by lti-app-grading on <body> + an /external_tool/ iframe. The parser now flags them (S4 done). Schoology never says if you turned one in, so: 'Open in Schoology ↗' + manual mark.\n• Quizzes come as /course/…/assessments/…: never open by itself.",
+      "text": "ANSWERED · TURNING IN (checked live, 7 Oct)\n\n• Only some work has a Schoology dropbox. Chemistry 'Scan PDF' homework uses it. AP Bio has none: labs are turned in on the teacher's lab site. Most other work is paper.\n• Algebra 2 has dropboxes but grades paper: HW #13 is 5/5 with nothing submitted. So 'not submitted' ≠ missing. Learn it per class and grey the card.\n• Schoology's overdue list = unsubmitted dropbox work + quizzes. HW #18 (Algebra 2) shows as overdue though it's likely on paper. Paper work never shows as overdue.\n• Google Assignments ARE used in US History (Quick Writes, Reconstruction Revolution packet), marked by lti-app-grading on <body> + an /external_tool/ iframe. The parser now flags them (S4 done). Schoology never says if you turned one in, so: 'Open in Schoology ↗' + manual mark.\n• Quizzes come as /course/…/assessments/…: never open by itself.",
       "w": 390,
       "x": 0,
       "y": 6880
@@ -140,7 +140,7 @@
     "h2": {
       "fill": "green",
       "maxH": 900,
-      "text": "ANSWERED · GRADES DATA\n\n• Comments: real and sometimes long (World Lit paragraph, 'added 0.5 to factoring', 'score (104.45) capped at 100').\n• Grade cells can be '—Collected' (an exception word after a dash). Missing will likely look the same: '—Missing'. Parse that word.\n• Scores: extra credit over 100% (25/24), 0/0 items, raw + curved duplicates. Never divide by 0; show >100% as is.\n• Scales differ: Physics tops out at 'A (100%)', others say A+. World History shows 'A- (92%)', so its A line is above 92. Use 93 as 'about', narrowed by the letter/% pairs seen in that class; let the user set it.\n• Skip the empty '(no grading period)' block.\n• Refresh: ~15 requests for everything (1 courses + 2 home lists + 6 gradebooks + 6 feeds) + 1 per open dropbox item.",
+      "text": "ANSWERED · GRADES DATA\n\n• Comments: real and sometimes long (English 10 paragraph, 'added 0.5 to factoring', 'score (104.45) capped at 100').\n• Grade cells can be '—Collected' (an exception word after a dash). Missing will likely look the same: '—Missing'. Parse that word.\n• Scores: extra credit over 100% (25/24), 0/0 items, raw + curved duplicates. Never divide by 0; show >100% as is.\n• Scales differ: Chemistry tops out at 'A (100%)', others say A+. US History shows 'A- (92%)', so its A line is above 92. Use 93 as 'about', narrowed by the letter/% pairs seen in that class; let the user set it.\n• Skip the empty '(no grading period)' block.\n• Refresh: ~15 requests for everything (1 courses + 2 home lists + 6 gradebooks + 6 feeds) + 1 per open dropbox item.",
       "w": 390,
       "x": 470,
       "y": 6880
@@ -148,7 +148,7 @@
     "h3": {
       "fill": "green",
       "maxH": 900,
-      "text": "DECIDED · YOUR OWN STATE\n\n• The app keeps Done / Studied / Turned in / type locally (SwiftData), so it works with no neo-plan. Connecting neo-plan stays fully supported (same token and ops as the extension); once connected, app, extension and website share one copy.\n• HW vs TEST without neo-plan: from the gradebook category (Tests, Quiz, Tests/Quizzes, Summatives) and title words (Exam, Quiz, Interro). neo-plan's type wins when connected.\n• Conflicts with the extension: neo-plan's newer edit wins. Offline taps queue and send later.\n• Bad due dates exist: French 'Interro: PC ou imparfait' is due in 2025 (teacher typo) and shows as a year overdue. Hide overdue > 60 days behind 'Older'.\n• Refresh: To Do on open + pull (3 requests); a class's gradebook when you open it or every 30 min; dropbox checks only for unsubmitted dropbox rows; feed only on Updates.",
+      "text": "DECIDED · YOUR OWN STATE\n\n• The app keeps Done / Studied / Turned in / type locally (SwiftData), so it works with no neo-plan. Connecting neo-plan stays fully supported (same token and ops as the extension); once connected, app, extension and website share one copy.\n• HW vs TEST without neo-plan: from the gradebook category (Tests, Quiz, Tests/Quizzes, Summatives) and title words (Exam, Quiz, Interro). neo-plan's type wins when connected.\n• Conflicts with the extension: neo-plan's newer edit wins. Offline taps queue and send later.\n• Bad due dates exist: Spanish 'Prueba: pretérito o imperfecto' is due in 2025 (teacher typo) and shows as a year overdue. Hide overdue > 60 days behind 'Older'.\n• Refresh: To Do on open + pull (3 requests); a class's gradebook when you open it or every 30 min; dropbox checks only for unsubmitted dropbox rows; feed only on Updates.",
       "w": 390,
       "x": 940,
       "y": 6880
@@ -156,7 +156,7 @@
     "h4": {
       "fill": "orange",
       "maxH": 900,
-      "text": "STILL OPEN · needs the app running\n\nS1 Upload: open Physics HW 10/7's Submit dialog in the sheet and attach a photo + a PDF. Don't press Submit unless it's real homework.\nDONE: S2 rubric source (two /iapi JSON GETs), S4 Google Assignment markup.\nAlso test with S1: does a Google Assignment's cross-site frame load inside the sheet (iOS third-party cookies)?\nS3 Google Docs: check the Docs app opens a docs.google.com link (universal link) and has the school account.\n\nSTILL TO DECIDE\n• Not designed: Updates feed, messages, calendar, dark mode, Dynamic Type, VoiceOver for swipes, iPad.\n• App name and icon.\n• Free account: rebuild every 7 days; local notifications only.",
+      "text": "STILL OPEN · needs the app running\n\nS1 Upload: open Chemistry HW 10/7's Submit dialog in the sheet and attach a photo + a PDF. Don't press Submit unless it's real homework.\nDONE: S2 rubric source (two /iapi JSON GETs), S4 Google Assignment markup.\nAlso test with S1: does a Google Assignment's cross-site frame load inside the sheet (iOS third-party cookies)?\nS3 Google Docs: check the Docs app opens a docs.google.com link (universal link) and has the school account.\n\nSTILL TO DECIDE\n• Not designed: Updates feed, messages, calendar, dark mode, Dynamic Type, VoiceOver for swipes, iPad.\n• App name and icon.\n• Free account: rebuild every 7 days; local notifications only.",
       "w": 390,
       "x": 1410,
       "y": 6880
@@ -170,7 +170,7 @@
     },
     "n1b": {
       "maxH": 560,
-      "text": "1b ASSIGNMENT\n\nDATA: assignment page (parseAssignment) + dropbox (submitted, late, revisions) + gradebook (category, score, comment).\n\nSUBMISSION card, one of four:\n• Dropbox, used by the class → Submitted / Not submitted, with when it was checked.\n• Dropbox, but the class grades paper (graded items with nothing submitted, like Pre-Calc) → grey 'Not used by this class'.\n• No dropbox → 'Turned in outside Schoology'; if the instructions link a submit page (AP CS lab site) show that as the ↗ button.\n• Quiz (/assessments/) → 'Take on Schoology ↗' only on your tap.\n• Google Assignment (empty body, World History) → 'Open in Schoology ↗'.\n'Mark as turned in' is always there and only changes your list.",
+      "text": "1b ASSIGNMENT\n\nDATA: assignment page (parseAssignment) + dropbox (submitted, late, revisions) + gradebook (category, score, comment).\n\nSUBMISSION card, one of four:\n• Dropbox, used by the class → Submitted / Not submitted, with when it was checked.\n• Dropbox, but the class grades paper (graded items with nothing submitted, like Algebra 2) → grey 'Not used by this class'.\n• No dropbox → 'Turned in outside Schoology'; if the instructions link a submit page (AP Bio lab site) show that as the ↗ button.\n• Quiz (/assessments/) → 'Take on Schoology ↗' only on your tap.\n• Google Assignment (empty body, US History) → 'Open in Schoology ↗'.\n'Mark as turned in' is always there and only changes your list.",
       "w": 390,
       "x": 470,
       "y": 884
@@ -198,7 +198,7 @@
     },
     "n2c": {
       "maxH": 560,
-      "text": "2c GRADED WORK\n\nScore, teacher comment (can be a long paragraph: World Lit), rubric, submitted files, effect on the course grade. What-if is a small link.\n\nDATA: gradebook row (score, comment) + dropbox (grade, comments, revisions, files). Drop system comments such as 'Revision 1 submitted'.\n\nRUBRIC: most 'rubrics' are attached Google Docs or PDFs (French, World History): list them from the assignment's attachments. Schoology rubrics ARE used (World History, Enlightenment Annotations 4.6/5). S2 done: parseGrades now returns rubric ids; criteria come from /iapi/grades/rubric/{id} + /iapi/grades/rubric_grade_info/{id}/{item}/{enrollment} (JSON; rubric.js parses them). Show each criterion: points, level text, comment.\n\n[Brackets] = placeholder text.",
+      "text": "2c GRADED WORK\n\nScore, teacher comment (can be a long paragraph: English 10), rubric, submitted files, effect on the course grade. What-if is a small link.\n\nDATA: gradebook row (score, comment) + dropbox (grade, comments, revisions, files). Drop system comments such as 'Revision 1 submitted'.\n\nRUBRIC: most 'rubrics' are attached Google Docs or PDFs (Spanish, US History): list them from the assignment's attachments. Schoology rubrics ARE used (US History, Enlightenment Annotations 4.6/5). S2 done: parseGrades now returns rubric ids; criteria come from /iapi/grades/rubric/{id} + /iapi/grades/rubric_grade_info/{id}/{item}/{enrollment} (JSON; rubric.js parses them). Show each criterion: points, level text, comment.\n\n[Brackets] = placeholder text.",
       "w": 390,
       "x": 940,
       "y": 2604

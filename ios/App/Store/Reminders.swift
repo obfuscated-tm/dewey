@@ -212,7 +212,7 @@ final class Reminders {
         }
     }
 
-    /// New materials posted in a class: one alert per Schoology notification ("French 2 posted …").
+    /// New materials posted in a class: one alert per Schoology notification ("Spanish 2 posted …").
     func newMaterials(_ notices: [Notice]) {
         guard materialAlerts else { return }
         for n in notices.prefix(3) {

@@ -4,6 +4,18 @@ The extension and the MCP server are versioned separately (see [Versioning and r
 
 Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git history. Apart from MCP 1.0.0 (tag `mcp-v1.0.0`), those versions were never tagged, so they're listed by date.
 
+## 2026-10-16 — Android 0.2
+
+Tag: `android-v0.2` (beta, sideloaded APK)
+
+### Android
+- Catches up with the iPhone app.
+- No more false sign-outs: when one page says "signed out", Dewey checks Schoology's course list before sending you to Sign in. An assignment that was removed or made private says so, with **Remove from my list**.
+- Inbox: each section is a box you can fold (School starts folded), and each has its own **Show older**.
+- Opens faster: saved copies show right away, dropbox checks and gradebooks load 2 at a time, and grades show from the last summary while the rest loads.
+- Settings → Look: six themes (Standard with a soft gray dark mode, Midnight, Dew, Frost, Pastel, Paper).
+- Done is an accent ring with a check; turned in is a solid green seal.
+
 ## 2026-09-30 — Extension 1.12.0
 
 Tag: `ext-v1.12.0`

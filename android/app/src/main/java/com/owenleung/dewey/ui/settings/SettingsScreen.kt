@@ -8,6 +8,8 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,6 +53,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -78,6 +84,7 @@ import com.owenleung.dewey.ui.WideButton
 import com.owenleung.dewey.ui.model
 import com.owenleung.dewey.ui.nav
 import com.owenleung.dewey.ui.theme.C
+import com.owenleung.dewey.ui.theme.Palette
 import com.owenleung.dewey.ui.theme.Theme
 import com.owenleung.dewey.web.WebConfig
 import com.owenleung.dewey.web.WebController
@@ -250,9 +257,16 @@ fun SettingsScreen() {
                     }
                 }
                 RowLine(true) {
+                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(Theme.Space.m)) {
+                        for (p in Palette.all) PaletteTile(p, Theme.palette.id == p.id) {
+                            Prefs.set(Theme.PALETTE_KEY, p.id); com.owenleung.dewey.widget.WidgetBridge.publish(model)
+                        }
+                    }
+                }
+                if (Theme.palette.accent == null) RowLine(true) {
                     Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Theme.accentOptions.forEachIndexed { i, hex ->
-                            val on = Theme.accentHex == hex
+                            val on = Theme.chosenAccentHex == hex
                             Box(Modifier.size(36.dp).border(if (on) 2.dp else 0.dp, if (on) C.text else C.card, CircleShape).padding(3.dp)
                                 .clip(CircleShape).background(Theme.hex(hex)).clickable { Prefs.set(Theme.ACCENT_KEY, hex); com.owenleung.dewey.widget.WidgetBridge.publish(model) })
                         }
@@ -431,5 +445,34 @@ private fun Step(n: String, title: String, sub: String) {
             Text(title, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text)
             Text(sub, style = Theme.footnote, color = C.secondary)
         }
+    }
+}
+
+/** A theme in Settings → Look: a tiny To Do card in its colours, following light or dark mode. */
+@Composable
+private fun PaletteTile(palette: Palette, selected: Boolean, onClick: () -> Unit) {
+    val dark = C.dark
+    fun col(n: String) = Theme.hex(palette.hex(n, dark))
+    val accent = palette.accent?.let { Theme.hex(if (dark) it.second else it.first) } ?: C.accent
+    Column(
+        Modifier.clickable(role = Role.Button, onClickLabel = "Use ${palette.name}", onClick = onClick)
+            .semantics(mergeDescendants = true) { contentDescription = palette.name + " theme"; this.selected = selected },
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Theme.Space.xs),
+    ) {
+        Box(
+            Modifier.clip(RoundedCornerShape(Theme.Radius.card)).background(col("background"))
+                .border(if (selected) 2.dp else 1.dp, if (selected) C.accent else C.border, RoundedCornerShape(Theme.Radius.card))
+                .padding(Theme.Space.s)
+        ) {
+            Column(
+                Modifier.size(64.dp, 50.dp).clip(RoundedCornerShape(Theme.Radius.tag)).background(col("card")).padding(Theme.Space.s),
+                verticalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Box(Modifier.size(34.dp, 5.dp).clip(CircleShape).background(col("text")))
+                Box(Modifier.size(22.dp, 4.dp).clip(CircleShape).background(col("tertiary")))
+                Box(Modifier.padding(top = 2.dp).size(40.dp, 9.dp).clip(CircleShape).background(accent))
+            }
+        }
+        Text(palette.name, style = Theme.caption, color = if (selected) C.text else C.secondary)
     }
 }

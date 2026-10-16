@@ -10,6 +10,8 @@ import com.owenleung.dewey.engine.MessageList
 import com.owenleung.dewey.engine.MessageThread
 import com.owenleung.dewey.engine.Notice
 import com.owenleung.dewey.engine.NoticeList
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.serialization.builtins.ListSerializer
 import java.util.Date
 
@@ -59,6 +61,15 @@ class Inbox {
     var asOf by mutableStateOf<Date?>(null)
     var error by mutableStateOf<EngineError?>(null)
     var loading by mutableStateOf(false)
+    /** The last page loaded of each list: 0 until a box's "Show older" asks for more. */
+    private var messagePage = 0
+    private var noticePage = 0
+    var hasOlderMessages by mutableStateOf(true)
+        private set
+    var hasOlderNotices by mutableStateOf(true)
+        private set
+    private var loadingOlderMessages = false
+    private var loadingOlderNotices = false
     private var seen by mutableStateOf(Prefs.strings(SEEN_KEY).toSet())
 
     init {
@@ -107,11 +118,18 @@ class Inbox {
         if (loading) return
         loading = true
         try {
-            val list: MessageList = m.engine.call("messages", mapOf("page" to 0))
-            val nl: NoticeList = m.engine.call("notifications", mapOf("page" to 0))
+            val (list, nl) = coroutineScope {
+                val messages = async { m.engine.call<MessageList>("messages", mapOf("page" to 0)) }
+                val notifications = async { m.engine.call<NoticeList>("notifications", mapOf("page" to 0)) }
+                messages.await() to notifications.await()
+            }
             if (!Prefs.has(SINCE_KEY)) Prefs.setDate(SINCE_KEY, Date())
             threads = list.threads
             notices = nl.items
+            messagePage = 0
+            noticePage = 0
+            hasOlderMessages = list.hasMore ?: list.threads.isNotEmpty()
+            hasOlderNotices = nl.hasMore ?: nl.items.isNotEmpty()
             asOf = Date()
             error = null
             Cache.save("inbox-messages", ListSerializer(MessageThread.serializer()), threads)
@@ -132,9 +150,58 @@ class Inbox {
         }
     }
 
+    /**
+     * The next page of the messages list, added under what's there. No alerts,
+     * and not cached: the next refresh goes back to the first page.
+     */
+    suspend fun loadOlderMessages(m: AppModel) {
+        if (loading || loadingOlderMessages || !hasOlderMessages) return
+        loadingOlderMessages = true
+        try {
+            val list: MessageList = m.engine.call("messages", mapOf("page" to messagePage + 1))
+            val ids = threads.map { it.id }.toSet()
+            val fresh = list.threads.filter { it.id !in ids }
+            threads = threads + fresh
+            messagePage += 1
+            hasOlderMessages = fresh.isNotEmpty() && (list.hasMore ?: true)
+            error = null
+        } catch (e: EngineError) {
+            error = e
+        } catch (e: Exception) {
+            error = EngineError.Js(e.message ?: "$e")
+        } finally {
+            loadingOlderMessages = false
+        }
+    }
+
+    /** The next page of /home/notifications, the same way. */
+    suspend fun loadOlderNotices(m: AppModel) {
+        if (loading || loadingOlderNotices || !hasOlderNotices) return
+        loadingOlderNotices = true
+        try {
+            val nl: NoticeList = m.engine.call("notifications", mapOf("page" to noticePage + 1))
+            val keys = notices.map { it.key }.toSet()
+            val fresh = nl.items.filter { it.key !in keys }
+            notices = notices + fresh
+            noticePage += 1
+            hasOlderNotices = fresh.isNotEmpty() && (nl.hasMore ?: true)
+            error = null
+        } catch (e: EngineError) {
+            error = e
+        } catch (e: Exception) {
+            error = EngineError.Js(e.message ?: "$e")
+        } finally {
+            loadingOlderNotices = false
+        }
+    }
+
     fun clear() {
         threads = emptyList()
         notices = emptyList()
         asOf = null
+        messagePage = 0
+        noticePage = 0
+        hasOlderMessages = true
+        hasOlderNotices = true
     }
 }

@@ -62,8 +62,8 @@ fun scoreText(i: CourseGrade.Item): String {
 @Composable
 fun GradesScreen() {
     val model = model
-    LaunchedEffect(Unit) { for (c in model.classes) model.loadGrades(c.sectionId) }
-    ScrollPage(refresh = { for (c in model.classes) model.loadGrades(c.sectionId, force = true) }, spacing = 12.dp) {
+    LaunchedEffect(Unit) { model.twoAtATime(model.classes) { model.loadGrades(it.sectionId) } }
+    ScrollPage(refresh = { model.twoAtATime(model.classes) { model.loadGrades(it.sectionId, force = true) } }, spacing = 12.dp) {
         ScreenHeader("Grades")
         val fresh = model.newGrades()
         if (fresh.isNotEmpty()) {

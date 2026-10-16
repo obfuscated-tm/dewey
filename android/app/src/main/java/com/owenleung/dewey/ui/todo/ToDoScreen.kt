@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
@@ -307,28 +308,35 @@ private fun statusNote(item: ItemState): Triple<String, Color, Boolean>? {
 }
 
 /**
- * Blue filled = done or studied (student) · green filled, heavy check = turned
- * in (submitted on Schoology, or marked). Dashed = not in neo-plan yet.
+ * Accent ring with an accent check = done or studied (student) · solid green
+ * seal = turned in (submitted on Schoology, or marked). Dashed = not in neo-plan yet.
  */
 @Composable
 fun CheckMark(item: ItemState, size: androidx.compose.ui.unit.Dp = 24.dp) {
     val good = C.good
     val accent = C.accent
-    val onAccent = C.onAccent
+    val accentSoft = C.accentSoft
     val dashed = item.neoPlanId == null && NeoPlanClient.connected
     val ring = if (dashed) C.tertiary else C.secondary
-    val filled = when {
-        item.submitted || item.turnedIn -> good
-        if (item.isExam) item.studied else item.done -> accent
-        else -> null
-    }
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.size(size)) {
-            if (filled != null) drawCircle(filled)
-            else drawCircle(ring, style = Stroke(width = 1.6.dp.toPx(), pathEffect = if (dashed) PathEffect.dashPathEffect(floatArrayOf(6f, 5f)) else null),
-                radius = this.size.minDimension / 2 - 1.dp.toPx())
+        when {
+            // Solid green seal with a check = turned in (submitted on Schoology, or marked): stamped, received.
+            // The seal's outline keeps it apart from done in every theme, even where the accent and green are close.
+            item.submitted || item.turnedIn ->
+                Icon(Icons.Filled.Verified, null, tint = good, modifier = Modifier.size(size * 1.12f))
+            // Accent ring with an accent check = done or studied (student).
+            if (item.isExam) item.studied else item.done -> {
+                Canvas(Modifier.size(size)) {
+                    drawCircle(accentSoft)
+                    drawCircle(accent, style = Stroke(width = 2.dp.toPx()), radius = this.size.minDimension / 2 - 1.dp.toPx())
+                }
+                Icon(Icons.Outlined.Check, null, tint = accent, modifier = Modifier.size(size * 0.62f))
+            }
+            else -> Canvas(Modifier.size(size)) {
+                drawCircle(ring, style = Stroke(width = 1.6.dp.toPx(), pathEffect = if (dashed) PathEffect.dashPathEffect(floatArrayOf(6f, 5f)) else null),
+                    radius = this.size.minDimension / 2 - 1.dp.toPx())
+            }
         }
-        if (filled != null) Icon(Icons.Outlined.Check, null, tint = onAccent, modifier = Modifier.size(size * 0.62f))
     }
 }
 
@@ -350,7 +358,7 @@ fun ProgressChips(current: AppModel.Progress, isExam: Boolean, onPick: (AppModel
                     .clickable(role = Role.RadioButton) { onPick(p) },
                 horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (on) { Icon(Icons.Outlined.Check, null, tint = C.onAccent, modifier = Modifier.size(15.dp)); Spacer(Modifier.width(4.dp)) }
+                if (on) { Icon(if (p == AppModel.Progress.TURNED_IN) Icons.Filled.Verified else Icons.Outlined.Check, null, tint = C.onAccent, modifier = Modifier.size(15.dp)); Spacer(Modifier.width(4.dp)) }
                 Text(title, style = Theme.footnote.copy(fontWeight = if (on) FontWeight.Bold else FontWeight.SemiBold), color = if (on) C.onAccent else color, maxLines = 1)
             }
         }

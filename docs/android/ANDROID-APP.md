@@ -4,6 +4,8 @@ A native Kotlin + Jetpack Compose port of the iOS app (`ios/`). Same screens, sa
 
 **Status (2026-10-15):** every iOS screen and feature is ported and builds (`assembleDebug`). JVM unit tests pass. On a Pixel 8 emulator (API 36) the app launches to Sign in, and the sign-in web view reaches Google's "Sign in with Google" page with no "disallowed user agent" refusal. Nothing past sign-in has been checked yet; see "Not verified yet".
 
+**Caught up with iOS (2026-10-16):** the iOS changes up to `acd01cc` are ported: no sign-out on a single op's `login` (the engine asks `/iapi/course/active` first; a 403 shows "removed or made private" with "Remove from my list"), foldable Inbox boxes with "Show older", faster loading (saved copies on launch, dropbox checks and gradebooks 2 at a time, saved grade summaries per build, no re-adding an unchanged set of reminders), the six themes in Settings → Look, and the accent-ring done vs green-seal turned-in marks. They build and pass unit tests, but haven't been run on the emulator. iOS's Debug-only demo mode (`-DeweyDemo`) is not ported.
+
 ## Rules (same as iOS)
 
 1. **Read-only on Schoology.** GET only. Never open quiz-taking pages. Never press Submit. Never enter or store Owen's passwords; he signs in himself.
@@ -124,4 +126,4 @@ Still to check:
 | Schoology tab | done, not run live |
 | Settings, Developer, neo-plan | done, not run live |
 | Widgets, background refresh, reminders, countdown | done, checked on emulator |
-| Unit tests | 10 pass |
+| Unit tests | 11 pass (ThemeTest checks contrast in every theme) |

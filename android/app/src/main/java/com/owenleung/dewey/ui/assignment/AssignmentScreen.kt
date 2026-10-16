@@ -24,6 +24,7 @@ import androidx.compose.material.icons.outlined.HighlightOff
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Schedule
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material.icons.outlined.OpenInNew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -208,6 +209,13 @@ fun AssignmentScreen(id: String) {
                 }
             } else if (error != null) {
                 ErrorState(error!!, pageUrl, retry = null, open = { u -> nav.openSheet(SheetTarget(u, id)) })
+                // 403: the teacher removed it or made it private. The saved row would stay forever otherwise.
+                if (error == EngineError.Http(403) && it != null && !it.dismissed) {
+                    WideButton("Remove from my list", icon = Icons.Outlined.Delete, filled = false, color = C.late) {
+                        model.dismiss(it)
+                        nav.pop()
+                    }
+                }
             } else {
                 SkeletonRows(3)
             }

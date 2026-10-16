@@ -55,7 +55,8 @@ sealed class EngineError(msg: String) : Exception(msg) {
             Quiz -> "This is a quiz page. It only opens when you tap it."
             RateLimit -> "Schoology asked us to slow down. Try again in a minute."
             is Parse -> "Couldn't read this page."
-            is Http -> "Schoology answered with an error${status?.let { " ($it)" } ?: ""}."
+            is Http -> if (status == 403) "This was removed or made private on Schoology."
+                else "Schoology answered with an error${status?.let { " ($it)" } ?: ""}."
             is Network -> "You're offline, or Schoology can't be reached."
             BadArgs -> "That link isn't one the app can open."
             NotReady -> "Still connecting to Schoology."
@@ -261,10 +262,55 @@ class Engine(private val context: Context) {
             (obj["message"] as? JsonPrimitive)?.content,
         )
         if (err == EngineError.Login) {
-            ready = false
-            onSignedOut?.invoke()
+            // One op's `login` isn't proof: a 403 page, a redirect off Schoology or
+            // a page with a login box in it all say `login` while the session is
+            // fine. Only sign out when Schoology's own course list says so.
+            when (probeSession(wv)) {
+                SessionProbe.Gone -> {
+                    ready = false
+                    onSignedOut?.invoke()
+                }
+                SessionProbe.Alive -> throw EngineError.Http(403)
+                SessionProbe.Unknown -> throw EngineError.Network(null)
+            }
         }
         throw err
+    }
+
+    private enum class SessionProbe { Alive, Gone, Unknown }
+
+    /** Asks `/iapi/course/active` (no redirects followed) whether the session is still there. */
+    private suspend fun probeSession(wv: WebView): SessionProbe {
+        val id = UUID.randomUUID().toString()
+        val d = CompletableDeferred<String>()
+        pending[id] = d
+        val js = """
+            (async function(){
+              let v = 'unknown';
+              try {
+                const r = await fetch('/iapi/course/active', { credentials: 'include', redirect: 'manual' });
+                if (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400) || r.status === 401) v = 'gone';
+                else {
+                  const t = await r.text();
+                  if (/s-user-login-form|login-container/.test(t)) v = 'gone';
+                  else if (r.ok) v = 'alive';
+                }
+              } catch (e) {}
+              DeweyBridge.resolve(${JsonPrimitive(id)}, v);
+            })();
+        """.trimIndent()
+        wv.evaluateJavascript(js, null)
+        val v = try {
+            withTimeout(20_000) { d.await() }
+        } catch (e: Exception) {
+            pending.remove(id)
+            "unknown"
+        }
+        return when (v) {
+            "gone" -> SessionProbe.Gone
+            "alive" -> SessionProbe.Alive
+            else -> SessionProbe.Unknown
+        }
     }
 
     /** Runs one op and decodes its `data`. */

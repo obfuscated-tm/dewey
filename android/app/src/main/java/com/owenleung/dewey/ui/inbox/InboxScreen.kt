@@ -19,6 +19,8 @@ import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.NoteAdd
 import androidx.compose.material.icons.outlined.Verified
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -26,16 +28,19 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -69,7 +74,9 @@ import kotlinx.coroutines.launch
 /**
  * R2 · Inbox: new school messages first (until opened), messages from teachers
  * (dot for new), new materials and grades in the student's classes, then School
- * (hub messages and the rest, collapsed). Writing a message happens in the Schoology sheet.
+ * (hub messages and the rest). Each is a box that folds away (School starts
+ * folded) and has its own "Show older" at the bottom. Writing a message happens
+ * in the Schoology sheet.
  */
 @Composable
 fun InboxScreen() {
@@ -78,12 +85,13 @@ fun InboxScreen() {
     val scope = rememberCoroutineScope()
     val inbox = model.inbox
     val classes = model.classes
-    var showSchool by rememberSaveable { mutableStateOf(false) }
+    /** Rows shown per box; "Show older" adds a step. */
+    val shown = remember { mutableStateMapOf<String, Int>() }
     LaunchedEffect(Unit) {
         val at = inbox.asOf
         if (at == null || System.currentTimeMillis() - at.time > 120_000) inbox.refresh(model)
     }
-    ScrollPage(refresh = { inbox.refresh(model) }) {
+    ScrollPage(refresh = { inbox.refresh(model); shown.clear() }) {
         ScreenHeader("Inbox") {
             IconButton(onClick = { nav.openSheet(SheetTarget("${Engine.ORIGIN}/messages/new")) }) {
                 Icon(Icons.Outlined.EditNote, "New message in Schoology", tint = C.secondary)
@@ -97,38 +105,105 @@ fun InboxScreen() {
         }
         // A new school message sits at the top until it's opened, then goes back under School.
         val newSchool = inbox.schoolThreads(classes).filter(inbox::isNew)
-        if (newSchool.isNotEmpty()) Section("New from school") { newSchool.take(15).forEachIndexed { i, t -> if (i > 0) Divider(); ThreadRow(t, true) } }
-        Section("From teachers") {
-            val t = inbox.teacherThreads(classes)
-            if (t.isEmpty()) EmptyRow("No messages from teachers")
-            t.take(15).forEachIndexed { i, th -> if (i > 0) Divider(); ThreadRow(th, inbox.isNew(th)) }
+        if (newSchool.isNotEmpty()) InboxBox("newSchool", "New from school", shown, sources = emptySet()) { newSchool.map(InboxRow::Thread) }
+        InboxBox("teachers", "From teachers", shown, empty = "No messages from teachers", sources = setOf(Source.MESSAGES)) {
+            it.teacherThreads(classes).map(InboxRow::Thread)
         }
-        Section("New in your classes") {
-            val n = inbox.classNotices(classes)
-            if (n.isEmpty()) EmptyRow("Nothing new")
-            n.take(15).forEachIndexed { i, no -> if (i > 0) Divider(); NoticeRow(no) }
+        InboxBox("classes", "New in your classes", shown, empty = "Nothing new", sources = setOf(Source.NOTICES)) {
+            it.classNotices(classes).map(InboxRow::Notice)
         }
-        val msgs = inbox.schoolThreads(classes).filter { !inbox.isNew(it) }
-        val other = inbox.otherNotices(classes)
-        if (msgs.isNotEmpty() || other.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth().clickable { showSchool = !showSchool }.padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("School", style = Theme.title, color = C.text)
-                Spacer(Modifier.width(6.dp))
-                Text("${msgs.size + other.size}", style = Theme.footnote, color = C.tertiary, modifier = Modifier.weight(1f))
-                Icon(if (showSchool) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, if (showSchool) "Hide school messages" else "Show school messages", tint = C.tertiary)
-            }
-            if (showSchool) Card {
-                msgs.take(15).forEachIndexed { i, t -> if (i > 0) Divider(); ThreadRow(t, false) }
-                other.take(10).forEachIndexed { i, no -> if (i > 0 || msgs.isNotEmpty()) Divider(); NoticeRow(no) }
-            }
+        InboxBox("school", "School", shown, empty = "Nothing from school", sources = setOf(Source.MESSAGES, Source.NOTICES)) { i ->
+            i.schoolThreads(classes).filter { !i.isNew(it) }.map(InboxRow::Thread) + i.otherNotices(classes).map(InboxRow::Notice)
         }
     }
 }
 
+// ── Boxes ────────────────────────────────────────────────────────────
+
+private sealed class InboxRow {
+    data class Thread(val t: MessageThread) : InboxRow()
+    data class Notice(val n: com.owenleung.dewey.engine.Notice) : InboxRow()
+}
+
+/** The Schoology lists a box's rows come from; "Show older" loads their next page. */
+private enum class Source { MESSAGES, NOTICES }
+
+private const val STEP = 10
+/** Folded boxes, by id, kept across launches. */
+private const val FOLDED_KEY = "inboxFolded"
+
+private fun folded(): List<String> = Prefs.string(FOLDED_KEY)?.split(",")?.filter { it.isNotEmpty() } ?: listOf("school")
+
+private fun hasOlder(inbox: Inbox, sources: Set<Source>) =
+    (Source.MESSAGES in sources && inbox.hasOlderMessages) || (Source.NOTICES in sources && inbox.hasOlderNotices)
+
 @Composable
-private fun Section(title: String, content: @Composable () -> Unit) {
-    Text(title, style = Theme.title, color = C.text, modifier = Modifier.padding(top = 6.dp))
-    Card { content() }
+private fun InboxBox(id: String, title: String, shown: MutableMap<String, Int>, empty: String? = null, sources: Set<Source>,
+                rows: (Inbox) -> List<InboxRow>) {
+    val model = model
+    val inbox = model.inbox
+    val scope = rememberCoroutineScope()
+    Prefs.revision.intValue
+    val all = rows(inbox)
+    val isFolded = id in folded()
+    val limit = shown[id] ?: STEP
+    var busy by remember { mutableStateOf(false) }
+
+    fun showOlder() {
+        if (all.size > limit) { shown[id] = limit + STEP; return }
+        busy = true
+        scope.launch {
+            // Up to 3 pages, in case a page holds nothing for this box.
+            for (n in 0 until 3) {
+                if (rows(inbox).size > limit || !hasOlder(inbox, sources)) break
+                if (Source.MESSAGES in sources && inbox.hasOlderMessages) inbox.loadOlderMessages(model)
+                if (Source.NOTICES in sources && inbox.hasOlderNotices) inbox.loadOlderNotices(model)
+                if (inbox.error != null) break
+            }
+            busy = false
+            shown[id] = limit + STEP
+        }
+    }
+
+    Card {
+        Row(
+            Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .clickable(onClickLabel = if (isFolded) "Show $title" else "Hide $title") {
+                    val set = folded().toMutableList()
+                    if (!set.remove(id)) set += id
+                    Prefs.set(FOLDED_KEY, set.joinToString(","))
+                }
+                .semantics { heading(); stateDescription = if (isFolded) "Folded" else "Open" }
+                .padding(horizontal = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(title, style = Theme.headline, color = C.text)
+            Spacer(Modifier.width(8.dp))
+            Text("${all.size}", style = Theme.footnote, color = C.tertiary, modifier = Modifier.weight(1f))
+            Icon(if (isFolded) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess, null, tint = C.tertiary)
+        }
+        if (!isFolded) {
+            Divider()
+            if (all.isEmpty() && empty != null) EmptyRow(empty)
+            all.take(limit).forEachIndexed { i, row ->
+                if (i > 0) Divider()
+                when (row) {
+                    is InboxRow.Thread -> ThreadRow(row.t, inbox.isNew(row.t))
+                    is InboxRow.Notice -> NoticeRow(row.n)
+                }
+            }
+            if (all.size > limit || hasOlder(inbox, sources)) {
+                Divider()
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(enabled = !busy) { showOlder() },
+                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
+                ) {
+                    if (busy) { CircularProgressIndicator(Modifier.size(16.dp), color = C.accent, strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)) }
+                    Text(if (busy) "Loading…" else "Show older", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.accent)
+                }
+            }
+        }
+    }
 }
 
 @Composable

@@ -31,6 +31,10 @@ import com.owenleung.dewey.widget.WidgetBridge
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -146,6 +150,9 @@ class AppModel private constructor(val context: Context) {
         if (booted && session != Session.CHECKING) return
         booted = true
         engine.start()
+        // Saved copies and no sign-out on record: show them now instead of a
+        // spinner; a `login` below still sends the app to Sign in.
+        if (session == Session.CHECKING && courses.isNotEmpty() && !Reminders.sessionEnded) moveTo(Session.SIGNED_IN)
         try {
             loadCourses()
             moveTo(Session.SIGNED_IN)
@@ -230,6 +237,8 @@ class AppModel private constructor(val context: Context) {
             merge(lists)
             todoError = null
             todoAsOf = Date().also { Cache.saveDate("todoAsOf", it) }
+            // Show the merged list now; dropbox checks and neo-plan fill in after.
+            revision.intValue++
             checkStatuses()
             syncNeoPlan()
         } catch (e: EngineError) {
@@ -269,7 +278,13 @@ class AppModel private constructor(val context: Context) {
             .filter { !it.isQuiz && !it.external && it.statusState != "no_dropbox" && (it.statusCheckedAt ?: 0) < cutoff }
             .sortedBy { it.statusCheckedAt ?: 0 }
             .take(cap)
-        for (it in candidates) checkStatus(it)
+        twoAtATime(candidates) { checkStatus(it) }
+    }
+
+    /** Runs `body` over `list`, two at a time: the engine lets 2 requests run at once. */
+    suspend fun <T> twoAtATime(list: List<T>, body: suspend (T) -> Unit) = coroutineScope {
+        val gate = Semaphore(2)
+        list.map { x -> launch { gate.withPermit { body(x) } } }.joinAll()
     }
 
     suspend fun checkStatus(it: ItemState): SubmissionStatus? {
@@ -409,7 +424,10 @@ class AppModel private constructor(val context: Context) {
         if (grades[sectionId] == null) {
             Cache.loadRaw("grades-$sectionId")?.let { (raw, at) ->
                 gradesAsOf[sectionId] = at
-                runCatching { summarize(raw) }.getOrNull()?.let { grades[sectionId] = it }
+                // The saved summary shows at once; working it out again waits for the engine page.
+                val saved = Cache.load(summaryKey(sectionId), CourseGrade.serializer())
+                if (saved != null && saved.second.time >= at.time - 5_000) grades[sectionId] = saved.first
+                else runCatching { summarize(raw) }.getOrNull()?.let { grades[sectionId] = it }
             }
         }
         val at = gradesAsOf[sectionId]
@@ -418,6 +436,7 @@ class AppModel private constructor(val context: Context) {
             val raw = engine.callRaw("gradebook", com.owenleung.dewey.engine.jsonArgs(mapOf("sectionId" to sectionId))).toString()
             Cache.saveRaw("grades-$sectionId", raw)
             val g = summarize(raw)
+            Cache.save(summaryKey(sectionId), CourseGrade.serializer(), g)
             noteNewGrades(sectionId, grades[sectionId], g)
             grades[sectionId] = g
             gradesAsOf[sectionId] = Date()
@@ -428,6 +447,14 @@ class AppModel private constructor(val context: Context) {
         } catch (e: Exception) {
             gradeErrors[sectionId] = EngineError.Js(e.message ?: "$e")
         }
+    }
+
+    /** Per build, so new grade math never shows an old summary. */
+    private fun summaryKey(sectionId: String) = "gradeSummary-$sectionId-$buildCode"
+
+    private val buildCode: Long by lazy {
+        runCatching { androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(context.packageName, 0)) }
+            .getOrDefault(0L)
     }
 
     suspend fun summarize(rows: String, whatIf: Map<String, Map<String, Double>> = emptyMap(),
@@ -450,8 +477,9 @@ class AppModel private constructor(val context: Context) {
     /** The gradebook category gives an item its type. */
     private fun learnFromGrades(g: CourseGrade) {
         var changed = false
+        val byId = ItemStore.all().associateBy { it.schoologyId }
         for (gi in g.items) {
-            val it = ItemStore.item(gi.id) ?: continue
+            val it = byId[gi.id] ?: continue
             if (it.categoryHint != gi.category) { it.categoryHint = gi.category; changed = true }
         }
         if (changed) save()
@@ -506,7 +534,7 @@ class AppModel private constructor(val context: Context) {
         val key = "gradeRotation"
         val start = Prefs.int(key) % list.size
         val n = minOf(count, list.size)
-        for (i in 0 until n) loadGrades(list[(start + i) % list.size])
+        twoAtATime((0 until n).map { list[(start + it) % list.size] }) { loadGrades(it) }
         Prefs.set(key, start + n)
     }
 

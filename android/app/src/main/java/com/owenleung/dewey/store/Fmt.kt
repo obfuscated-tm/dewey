@@ -34,7 +34,9 @@ object Fmt {
         }.getOrNull()
     }
 
-    private fun f(p: String) = DateTimeFormatter.ofPattern(p, Locale.US)
+    // Built once per pattern: these run per row.
+    private val formatters = java.util.concurrent.ConcurrentHashMap<String, DateTimeFormatter>()
+    private fun f(p: String) = formatters.getOrPut(p) { DateTimeFormatter.ofPattern(p, Locale.US) }
     private fun fmt(p: String, d: Date): String =
         f(p).format(d.toInstant().atZone(zone)).replace("AM", "am").replace("PM", "pm")
 

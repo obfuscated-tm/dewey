@@ -100,7 +100,10 @@ object Reminders {
     }
 
     /** Asks for the notification permission (Android 13+) through the open activity. */
-    suspend fun requestPermission(): Boolean = if (permitted()) true else MainActivity.requestNotifications()
+    suspend fun requestPermission(): Boolean {
+        lastPlan = null
+        return if (permitted()) true else MainActivity.requestNotifications()
+    }
 
     // ── Due reminders ────────────────────────────────────────────────────
 
@@ -203,12 +206,18 @@ object Reminders {
     fun schedule(items: List<ItemState>, courses: List<Course>) {
         val inputs = items.map { it.toDueInput(courses) }
         val plan = plan(inputs, settings, Date())
+        // Most saves change no reminder: skip setting the same set again.
+        if (plan == lastPlan) return
         pending?.cancel()
         pending = CoroutineScope(Dispatchers.Default).launch {
             delay(300)
+            lastPlan = plan
             apply(plan)
         }
     }
+
+    /** The set last handed to AlarmManager (nil after a permission prompt, so it's set again). */
+    @Volatile private var lastPlan: List<Planned>? = null
 
     fun ItemState.toDueInput(courses: List<Course>) = DueInput(
         schoologyId, title, courses.firstOrNull { it.sectionId == sectionId }?.shortTitle ?: courseName ?: "",

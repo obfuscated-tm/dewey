@@ -8,7 +8,7 @@
 ### Schoology, but it finally makes sense.
 
 **See what's due. Know your grade to the decimal. Save every class before it disappears.**<br>
-A free Chrome extension for students on any school's Schoology, with an iPhone app on the way.
+A free Chrome extension for students on any school's Schoology, plus iPhone and Android apps in beta.
 
 <br>
 
@@ -18,9 +18,9 @@ A free Chrome extension for students on any school's Schoology, with an iPhone a
 
 <br>
 
-[![Latest extension](https://img.shields.io/github/v/release/obfuscated-tm/dewey?filter=ext-v*&label=extension&color=1D9E75)](https://github.com/obfuscated-tm/dewey/releases/latest) ![iOS app: beta](https://img.shields.io/badge/iOS%20app-beta-0F6E56?logo=apple) ![Claude add-on 1.1.0](https://img.shields.io/badge/Claude%20add--on-1.1.0-d97706) [![License: MIT](https://img.shields.io/badge/license-MIT-16a34a)](LICENSE)
+[![Latest extension](https://img.shields.io/github/v/release/obfuscated-tm/dewey?filter=ext-v*&label=extension&color=1D9E75)](https://github.com/obfuscated-tm/dewey/releases/latest) ![iOS app: beta](https://img.shields.io/badge/iOS%20app-beta-0F6E56?logo=apple) ![Android app: beta](https://img.shields.io/badge/Android%20app-beta-0F6E56?logo=android) ![Claude add-on 1.1.0](https://img.shields.io/badge/Claude%20add--on-1.1.0-d97706) [![License: MIT](https://img.shields.io/badge/license-MIT-16a34a)](LICENSE)
 
-[**Install**](#-install-the-extension-2-minutes) · [**Features**](#-what-you-get) · [**iPhone app**](#-dewey-for-iphone-beta) · [**Claude**](#-study-with-claude-optional) · [**Safety**](#%EF%B8%8F-is-it-safe) · [**Help**](#-troubleshooting)
+[**Install**](#-install-the-extension-2-minutes) · [**Features**](#-what-you-get) · [**Phone apps**](#-dewey-for-iphone-and-android-beta) · [**Claude**](#-study-with-claude-optional) · [**Safety**](#%EF%B8%8F-is-it-safe) · [**Help**](#-troubleshooting)
 
 <br>
 
@@ -87,11 +87,28 @@ Optional add-on: ask Claude *"quiz me on Unit 3"* and it reads your actual slide
 <summary><b>📸 See it in action</b></summary>
 <br>
 
-| Grades page | Assignment page |
-|---|---|
-| ![The Grades page with the course graph, distance above an A, and each score's impact](docs/images/grades.png) | ![Assignment page with a Missing chip and a what-if box](docs/images/assignment.png) |
-| **Materials page** | **Save a class** |
-| ![Materials page with per-folder status and scores](docs/images/materials.png) | ![The Archive card: pick a course and click Archive this course](docs/images/archive.png) |
+**Grades page:** a graph of the term, how far above an A you are, how low each category can drop, and what each score did to your grade.
+
+<img src="docs/images/grades.png" alt="The Grades page with the course graph, distance above an A, and each score's impact" width="100%">
+
+**Materials page:** every folder shows what's still open and your score.
+
+<img src="docs/images/materials.png" alt="Materials page with per-folder status and scores" width="100%">
+
+**Assignment page:** a Missing chip and a what-if box right under the title.
+
+<img src="docs/images/assignment.png" alt="Assignment page with a Missing chip and a what-if box" width="100%">
+
+<table>
+<tr>
+<th width="50%">To Do on the home page</th>
+<th width="50%">Save a class</th>
+</tr>
+<tr>
+<td valign="top" align="center"><img src="docs/images/home.png" alt="The To Do column grouped by class, with Done, Turn in and Undo buttons on each row" width="320"></td>
+<td valign="top" align="center"><img src="docs/images/archive.png" alt="The Archive card: pick a course and click Archive this course" width="400"></td>
+</tr>
+</table>
 
 </details>
 
@@ -198,21 +215,28 @@ Each class becomes a normal folder you can open in Finder or File Explorer:
 
 ---
 
-## 📱 Dewey for iPhone (beta)
+## 📱 Dewey for iPhone and Android (beta)
 
 <div align="center">
-<img src="docs/images/ios-preview.png" alt="Dewey for iPhone: Classes, Grades, a class's grades, and Materials" width="900">
+<img src="docs/images/ios-preview.png" alt="Dewey for iPhone: Classes, Grades, a class's grades, and Materials" width="100%">
 <br>
-<sub>Design previews of the iPhone app's Classes, Grades, class grades and Materials screens.</sub>
+<sub>Design previews of the iPhone app's Classes, Grades, class grades and Materials screens. The Android app has the same screens.</sub>
 </div>
 <br>
 
-Everything the extension does, rebuilt for your phone in SwiftUI: To Do grouped by class with one-tap **Done** / **Turn in**, grades with comments and rubrics, **what-if** scores, materials that open right in the app, a home-screen widget, and full Schoology one tab away when you need it.
+Everything the extension does, rebuilt for your phone:
 
-It's not on the App Store yet. **Want it now? You can build it yourself** with a Mac and Xcode.
+- **To Do** grouped by class, with a week strip (late work plus the next 7 days, tap a day to filter) and one-tap **Done** / **Turn in**.
+- **Grades** with comments and rubrics, a grade-over-time graph you can drag, and **what-if** scores on every row, including made-up assignments.
+- **Classes and Materials** that open right in the app (PDFs, Google Docs, class websites), plus a search across every class.
+- **Inbox** for announcements and school messages, with new ones at the top.
+- **Reminders**, home-screen widgets, and a countdown to your next test (a Live Activity on iPhone, a notification on Android).
+- **Themes** with a soft dark mode, and full Schoology one tab away when you need it.
+
+Neither app is in a store yet. **Want one now? You can build it yourself.** Both only read Schoology; anything that changes it (like submitting) happens in Schoology's own page inside the app. Sign in with your school's normal Schoology login.
 
 <details>
-<summary><b>🛠️ Build the iPhone app yourself</b></summary>
+<summary><b>🍎 Build the iPhone app yourself</b></summary>
 <br>
 
 **You need:** a Mac, [Xcode](https://apps.apple.com/app/xcode/id497799835) (with the iOS 17+ SDK), [Node.js](https://nodejs.org), and [XcodeGen](https://github.com/yonaskolb/XcodeGen) (`brew install xcodegen`).
@@ -232,9 +256,28 @@ open Dewey.xcodeproj
 - **Simulator:** pick an iPhone simulator and press ▶. No Apple account needed.
 - **Your own iPhone:** in [`ios/project.yml`](ios/project.yml), replace every `DEVELOPMENT_TEAM` with your own team ID and `com.owenleung` in the bundle IDs with something of yours, run `xcodegen generate` again, then plug in your phone and press ▶. A free Apple account works, but the app has to be re-installed every 7 days.
 
-Sign in with your school's normal Schoology login. The app only reads Schoology; anything that changes it (like submitting) happens in Schoology's own page inside the app.
-
 The design, screens and plan are in [`docs/ios/`](docs/ios/IOS-APP.md).
+
+</details>
+
+<details>
+<summary><b>🤖 Build the Android app yourself</b></summary>
+<br>
+
+**You need:** [JDK 21](https://adoptium.net) and the [Android SDK](https://developer.android.com/studio) (Android Studio installs it). The phone needs Android 8.0 or newer.
+
+```bash
+git clone https://github.com/obfuscated-tm/dewey.git
+```
+
+```bash
+cd dewey/android && ./gradlew assembleDebug
+```
+
+- **Your own phone:** turn on USB debugging, plug it in, and run `./gradlew installDebug` from `android/`. No Google account or Play Store needed.
+- **Emulator:** open the `android` folder in Android Studio and press ▶, or install `app/build/outputs/apk/debug/app-debug.apk` with `adb install`.
+
+If you change anything in `extension/engine/`, run `npm install` in `ios/` once so the build re-bundles it; otherwise it uses the bundle already in the repo. Android notes are in [`docs/android/`](docs/android/ANDROID-APP.md).
 
 </details>
 
@@ -375,6 +418,7 @@ flowchart LR
 | Chrome extension (Manifest V3, plain ES modules, no build step) | [`extension/`](extension/) | 1.12.0 |
 | MCP server (Node, stdio) | [`mcp/`](mcp/) | 1.1.0 |
 | iPhone app (SwiftUI; runs the extension's parsers in a hidden web view) | [`ios/`](ios/) | beta |
+| Android app (Kotlin + Compose port of the iPhone app, same engine) | [`android/`](android/) | beta (0.1) |
 
 - The **extension** is the only part that talks to Schoology. It reads normal pages with your login, because many districts turn off Schoology's API for students.
 - The **MCP server** answers from three sources, best first: **live** (asks the extension right now), **snapshot** (the extension's last background read, cached on disk), and **archive** (the folder). Every result includes `source` and `as_of`.
@@ -494,7 +538,7 @@ Without a token, the neo-plan parts of the overlays (type tags, **+ Add to neo-p
 ├── extension/               the Chrome extension (Dewey for Schoology)
 │   ├── manifest.json        version lives here
 │   ├── background.js        run lock, kill switch, sync schedule, message routing
-│   ├── engine/              the iOS app's engine: the extension's own parsers, bundled
+│   ├── engine/              the phone apps' engine: the extension's own parsers, bundled
 │   ├── reader/              everything that reads Schoology (client.js + parse/)
 │   ├── outputs/archive/     the archive run, saving, change tracking, Google exports
 │   ├── outputs/neoplan/     every call to neo-plan
@@ -505,15 +549,17 @@ Without a token, the neo-plan parts of the overlays (type tags, **+ Add to neo-p
 │   ├── panel/               neo-plan frame and folder picker for the Settings card
 │   └── test/                tests + stand-in pages
 ├── ios/                     the iPhone app (SwiftUI; XcodeGen spec in project.yml)
+├── android/                 the Android app (Kotlin + Compose; Gradle wrapper)
 ├── mcp/                     the Claude add-on (local MCP server)
 │   ├── server.js
 │   ├── sites.json           course websites
 │   ├── src/                 tools, bridge, cache, archive reader, PDF text, network guard
 │   └── test/
-├── brand/                   logo, icons, colours (placeholders for now)
+├── brand/                   logo, mascot, icons, colours (placeholder art for now)
 ├── docs/
 │   ├── extension/           overlay design and grade math
 │   ├── ios/                 the iOS plan, engine contract, findings, screens, mockups
+│   ├── android/             Android-specific notes (the iOS docs stay the source of truth)
 │   ├── mcp/                 the extension-to-MCP bridge contract
 │   ├── history/             finished plans
 │   └── images/              README screenshots
@@ -531,7 +577,7 @@ The extension's own [README](extension/README.md) has a file-by-file map.
 npm test
 ```
 
-That runs both suites (`npm run test:extension`, `npm run test:mcp`). At extension 1.11.0 / MCP 1.1.0 there are 209 + 59 tests, all passing.
+That runs both suites (`npm run test:extension`, `npm run test:mcp`). At extension 1.12.0 / MCP 1.1.0 there are 215 + 59 tests, all passing. The phone apps have their own tests: Xcode's test action for `ios/`, and `./gradlew testDebugUnitTest` for `android/`.
 
 The `test/*.html` pages are stand-ins for Schoology pages, so you can look at the overlays without logging in:
 
@@ -584,6 +630,8 @@ Pushing an `ext-v*` tag runs [`.github/workflows/release-extension.yml`](.github
 | [`mcp/README.md`](mcp/README.md) | Full MCP server reference |
 | [`docs/mcp/MCP-BRIDGE.md`](docs/mcp/MCP-BRIDGE.md) | The extension↔MCP WebSocket contract |
 | [`docs/extension/OVERLAY-UI.md`](docs/extension/OVERLAY-UI.md) | Overlay design and grade math |
+| [`docs/ios/IOS-APP.md`](docs/ios/IOS-APP.md) | The iPhone app: rules, layout, milestones |
+| [`docs/android/ANDROID-APP.md`](docs/android/ANDROID-APP.md) | The Android app: build, layout, how iOS maps to Android |
 | [`docs/history/EXTENSION-STEPS.md`](docs/history/EXTENSION-STEPS.md) | The original build plan (history) |
 | [`CHANGELOG.md`](CHANGELOG.md) | What changed in each version |
 

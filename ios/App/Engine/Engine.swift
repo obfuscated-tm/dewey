@@ -19,6 +19,7 @@ enum EngineError: Error, Equatable {
         case .quiz: return "This is a quiz page. It only opens when you tap it."
         case .rateLimit: return "Schoology asked us to slow down. Try again in a minute."
         case .parse: return "Couldn't read this page."
+        case .http(403): return "This was removed or made private on Schoology."
         case .http(let s): return "Schoology answered with an error\(s.map { " (\($0))" } ?? "")."
         case .network: return "You're offline, or Schoology can't be reached."
         case .badArgs: return "That link isn't one the app can open."
@@ -164,10 +165,41 @@ final class Engine: NSObject {
         let err = EngineError.from(code: obj["error"] as? String ?? "", status: obj["status"] as? Int,
                                    message: obj["message"] as? String)
         if err == .login {
-            ready = false
-            onSignedOut?()
+            // One op's `login` isn't proof: a 403 page, a redirect off Schoology or
+            // a page with a login box in it all say `login` while the session is
+            // fine. Only sign out when Schoology's own course list says so.
+            switch await probeSession(webView) {
+            case .gone:
+                ready = false
+                onSignedOut?()
+            case .alive:
+                throw EngineError.http(403)
+            case .unknown:
+                throw EngineError.network(nil)
+            }
         }
         throw err
+    }
+
+    private enum SessionProbe { case alive, gone, unknown }
+
+    /// Asks `/iapi/course/active` (no redirects followed) whether the session is still there.
+    private func probeSession(_ webView: WKWebView) async -> SessionProbe {
+        let js = """
+        try {
+          const r = await fetch('/iapi/course/active', { credentials: 'include', redirect: 'manual' });
+          if (r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400) || r.status === 401) return 'gone';
+          const t = await r.text();
+          if (/s-user-login-form|login-container/.test(t)) return 'gone';
+          return r.ok ? 'alive' : 'unknown';
+        } catch (e) { return 'unknown'; }
+        """
+        let v = try? await webView.callAsyncJavaScript(js, arguments: [:], in: nil, contentWorld: .page)
+        switch v as? String {
+        case "gone": return .gone
+        case "alive": return .alive
+        default: return .unknown
+        }
     }
 
     /// Runs one op and decodes its `data`.

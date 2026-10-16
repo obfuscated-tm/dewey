@@ -2,12 +2,19 @@ import SwiftUI
 
 /// R2 · Inbox: new school messages first (until opened), messages from teachers
 /// (dot for new), new materials and grades in the student's classes, then School
-/// (hub messages and the rest, collapsed). Every new message counts in the tab badge. Writing a message happens
-/// in the Schoology sheet.
+/// (hub messages and the rest). Each is a box that folds away (School starts
+/// folded) and has its own "Show older" at the bottom. Every new message counts
+/// in the tab badge. Writing a message happens in the Schoology sheet.
 struct InboxView: View {
     @Environment(AppModel.self) private var model
     @State private var sheet: SheetTarget?
-    @State private var showSchool = false
+    /// Folded boxes, by id, kept across launches.
+    @AppStorage("inboxFolded") private var foldedRaw = "school"
+    /// Rows shown per box; "Show older" adds a step.
+    @State private var shown: [String: Int] = [:]
+    @State private var fetching: Set<String> = []
+
+    private static let step = 10
 
     var body: some View {
         let inbox = model.inbox
@@ -36,34 +43,28 @@ struct InboxView: View {
                         // A new school message sits at the top until it's opened, then goes back under School.
                         let newSchool = inbox.schoolThreads(classes).filter(inbox.isNew)
                         if !newSchool.isEmpty {
-                            section("New from school") {
-                                ForEach(Array(newSchool.prefix(15).enumerated()), id: \.element.id) { i, th in
-                                    threadRow(th, divider: i > 0)
-                                }
-                            }
+                            box("newSchool", "New from school", sources: [],
+                                rows: { _ in newSchool.map(Row.thread) })
                         }
-                        section("From teachers") {
-                            let t = inbox.teacherThreads(classes)
-                            if t.isEmpty { emptyRow("No messages from teachers") }
-                            ForEach(Array(t.prefix(15).enumerated()), id: \.element.id) { i, th in
-                                threadRow(th, divider: i > 0)
-                            }
-                        }
-                        section("New in your classes") {
-                            let n = inbox.classNotices(classes)
-                            if n.isEmpty { emptyRow("Nothing new") }
-                            ForEach(Array(n.prefix(15).enumerated()), id: \.element.id) { i, no in
-                                NoticeRow(notice: no, divider: i > 0) { sheet = $0 }
-                            }
-                        }
-                        school(inbox, classes)
+                        box("teachers", "From teachers", empty: "No messages from teachers", sources: [.messages],
+                            rows: { i in i.teacherThreads(classes).map(Row.thread) })
+                        box("classes", "New in your classes", empty: "Nothing new", sources: [.notices],
+                            rows: { i in i.classNotices(classes).map(Row.notice) })
+                        box("school", "School", empty: "Nothing from school", sources: [.messages, .notices],
+                            rows: { i in
+                                i.schoolThreads(classes).filter { !i.isNew($0) }.map(Row.thread)
+                                    + i.otherNotices(classes).map(Row.notice)
+                            })
                     }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
             }
             .background(Theme.background)
-            .refreshable { await inbox.refresh(model) }
+            .refreshable {
+                await inbox.refresh(model)
+                shown = [:]
+            }
             .navigationDestination(for: MessageThread.self) { MessageView(thread: $0) }
             .navigationDestination(for: AssignmentLink.self) { AssignmentView(id: $0.id) }
             .toolbar(.hidden, for: .navigationBar)
@@ -74,10 +75,110 @@ struct InboxView: View {
         }
     }
 
+    // ── Boxes ────────────────────────────────────────────────────────────
+
+    private enum Row: Identifiable {
+        case thread(MessageThread)
+        case notice(Notice)
+        var id: String {
+            switch self {
+            case .thread(let t): return "m\(t.id)"
+            case .notice(let n): return "n\(n.key)"
+            }
+        }
+    }
+
+    /// The Schoology lists a box's rows come from; "Show older" loads their next page.
+    private enum Source { case messages, notices }
+
+    private func isFolded(_ id: String) -> Bool { foldedRaw.split(separator: ",").contains(Substring(id)) }
+
+    private func toggleFold(_ id: String) {
+        var set = foldedRaw.split(separator: ",").map(String.init)
+        if let i = set.firstIndex(of: id) { set.remove(at: i) } else { set.append(id) }
+        withAnimation(.snappy) { foldedRaw = set.joined(separator: ",") }
+    }
+
+    private func hasOlder(_ sources: Set<Source>) -> Bool {
+        (sources.contains(.messages) && model.inbox.hasOlderMessages)
+            || (sources.contains(.notices) && model.inbox.hasOlderNotices)
+    }
+
     @ViewBuilder
-    private func section<C: View>(_ title: String, @ViewBuilder _ content: () -> C) -> some View {
-        Text(title).font(Theme.title).padding(.top, 6)
-        VStack(spacing: 0) { content() }.card()
+    private func box(_ id: String, _ title: String, empty: String? = nil, sources: Set<Source>,
+                     rows: @escaping (Inbox) -> [Row]) -> some View {
+        let all = rows(model.inbox)
+        let folded = isFolded(id)
+        let limit = shown[id] ?? Self.step
+        let busy = fetching.contains(id)
+        VStack(spacing: 0) {
+            Button { toggleFold(id) } label: {
+                HStack(spacing: 8) {
+                    Text(title).font(Theme.headline)
+                    Text("\(all.count)").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.tertiary)
+                    Spacer()
+                    Image(systemName: "chevron.down")
+                        .font(Theme.footnote.weight(.semibold))
+                        .rotationEffect(.degrees(folded ? -90 : 0))
+                        .foregroundStyle(Theme.tertiary)
+                }
+                .padding(.horizontal, 14)
+                .frame(minHeight: 48)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityValue(folded ? "Folded" : "Open")
+            .accessibilityHint(folded ? "Shows \(title)" : "Hides \(title)")
+
+            if !folded {
+                Theme.divider.frame(height: 1)
+                if all.isEmpty, let empty { emptyRow(empty) }
+                ForEach(Array(all.prefix(limit).enumerated()), id: \.element.id) { i, row in
+                    switch row {
+                    case .thread(let t): threadRow(t, divider: i > 0)
+                    case .notice(let n): NoticeRow(notice: n, divider: i > 0) { sheet = $0 }
+                    }
+                }
+                if all.count > limit || hasOlder(sources) {
+                    Theme.divider.frame(height: 1)
+                    Button { showOlder(id, sources: sources, rows: rows) } label: {
+                        HStack(spacing: 8) {
+                            if busy { ProgressView().controlSize(.small) }
+                            Text(busy ? "Loading…" : "Show older")
+                        }
+                        .font(Theme.subhead.weight(.semibold))
+                        .foregroundStyle(Theme.accent)
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(busy)
+                }
+            }
+        }
+        .card()
+    }
+
+    /// Shows the next rows already loaded; if there are none, loads older pages
+    /// (up to 3, in case a page holds nothing for this box).
+    private func showOlder(_ id: String, sources: Set<Source>, rows: @escaping (Inbox) -> [Row]) {
+        let limit = shown[id] ?? Self.step
+        let inbox = model.inbox
+        if rows(inbox).count > limit {
+            withAnimation { shown[id] = limit + Self.step }
+            return
+        }
+        fetching.insert(id)
+        Task {
+            for _ in 0..<3 where rows(inbox).count <= limit && hasOlder(sources) {
+                if sources.contains(.messages), inbox.hasOlderMessages { await inbox.loadOlderMessages(model) }
+                if sources.contains(.notices), inbox.hasOlderNotices { await inbox.loadOlderNotices(model) }
+                if inbox.error != nil { break }
+            }
+            fetching.remove(id)
+            withAnimation { shown[id] = limit + Self.step }
+        }
     }
 
     private func emptyRow(_ s: String) -> some View {
@@ -91,35 +192,6 @@ struct InboxView: View {
                 .overlay(alignment: .top) { if divider { Theme.divider.frame(height: 1) } }
         }
         .buttonStyle(.plain)
-    }
-
-    @ViewBuilder
-    private func school(_ inbox: Inbox, _ classes: [Course]) -> some View {
-        let msgs = inbox.schoolThreads(classes).filter { !inbox.isNew($0) }
-        let other = inbox.otherNotices(classes)
-        if !msgs.isEmpty || !other.isEmpty {
-            Button { withAnimation { showSchool.toggle() } } label: {
-                HStack {
-                    Text("School").font(Theme.title)
-                    Text("\(msgs.count + other.count)").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.tertiary)
-                    Spacer()
-                    Image(systemName: "chevron.down").rotationEffect(.degrees(showSchool ? 0 : -90)).foregroundStyle(Theme.tertiary)
-                }
-                .padding(.top, 6)
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityHint(showSchool ? "Hides school messages" : "Shows school messages")
-            if showSchool {
-                VStack(spacing: 0) {
-                    ForEach(Array(msgs.prefix(15).enumerated()), id: \.element.id) { i, th in threadRow(th, divider: i > 0) }
-                    ForEach(Array(other.prefix(10).enumerated()), id: \.element.id) { i, no in
-                        NoticeRow(notice: no, divider: i > 0 || !msgs.isEmpty) { sheet = $0 }
-                    }
-                }
-                .card()
-            }
-        }
     }
 }
 

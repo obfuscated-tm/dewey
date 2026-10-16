@@ -4,6 +4,7 @@ import SwiftUI
 /// type switch, what-if, and the main action.
 struct AssignmentView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.dismiss) private var dismiss
     let id: String
     @State private var a: Assignment?
     @State private var status: SubmissionStatus?
@@ -31,6 +32,19 @@ struct AssignmentView: View {
                     whatIfButton
                 } else if let error {
                     ErrorState(error: error, schoologyURL: pageURL, retry: { Task { await load() } }, open: { sheet = SheetTarget(url: $0, assignmentId: id) })
+                    // 403: the teacher removed it or made it private. The saved row would stay forever otherwise.
+                    if error == .http(403), let it, !it.dismissed {
+                        Button(role: .destructive) {
+                            model.dismiss(it)
+                            dismiss()
+                        } label: {
+                            Label("Remove from my list", systemImage: "trash")
+                                .font(Theme.subhead.weight(.semibold))
+                                .frame(maxWidth: .infinity, minHeight: 44)
+                        }
+                        .buttonStyle(.bordered)
+                        .tint(Theme.late)
+                    }
                 } else {
                     SkeletonRows(count: 3)
                 }

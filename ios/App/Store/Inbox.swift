@@ -21,6 +21,13 @@ final class Inbox {
     var asOf: Date?
     var error: EngineError?
     var loading = false
+    /// The last page loaded of each list: 0 until a box's "Show older" asks for more.
+    private(set) var messagePage = 0
+    private(set) var noticePage = 0
+    private(set) var hasOlderMessages = true
+    private(set) var hasOlderNotices = true
+    private(set) var loadingOlderMessages = false
+    private(set) var loadingOlderNotices = false
     private(set) var seen: Set<String>
 
     init() {
@@ -86,11 +93,16 @@ final class Inbox {
         loading = true
         defer { loading = false }
         do {
-            let list: MessageList = try await m.engine.call("messages", ["page": 0])
-            let nl: NoticeList = try await m.engine.call("notifications", ["page": 0])
+            async let messages: MessageList = m.engine.call("messages", ["page": 0])
+            async let notifications: NoticeList = m.engine.call("notifications", ["page": 0])
+            let (list, nl) = try await (messages, notifications)
             if UserDefaults.standard.object(forKey: Self.since) == nil { UserDefaults.standard.set(Date(), forKey: Self.since) }
             threads = list.threads
             notices = nl.items
+            messagePage = 0
+            noticePage = 0
+            hasOlderMessages = list.hasMore ?? !list.threads.isEmpty
+            hasOlderNotices = nl.hasMore ?? !nl.items.isEmpty
             asOf = Date()
             error = nil
             Cache.save("inbox-messages", threads)
@@ -109,6 +121,43 @@ final class Inbox {
         }
     }
 
+    /// The next page of the messages list, added under what's there. No alerts,
+    /// and not cached: the next refresh goes back to the first page.
+    func loadOlderMessages(_ m: AppModel) async {
+        guard !loading, !loadingOlderMessages, hasOlderMessages else { return }
+        loadingOlderMessages = true
+        defer { loadingOlderMessages = false }
+        do {
+            let list: MessageList = try await m.engine.call("messages", ["page": messagePage + 1])
+            let ids = Set(threads.map(\.id))
+            let fresh = list.threads.filter { !ids.contains($0.id) }
+            threads += fresh
+            messagePage += 1
+            hasOlderMessages = !fresh.isEmpty && (list.hasMore ?? true)
+            error = nil
+        } catch {
+            self.error = error as? EngineError ?? .js(error.localizedDescription)
+        }
+    }
+
+    /// The next page of /home/notifications, the same way.
+    func loadOlderNotices(_ m: AppModel) async {
+        guard !loading, !loadingOlderNotices, hasOlderNotices else { return }
+        loadingOlderNotices = true
+        defer { loadingOlderNotices = false }
+        do {
+            let nl: NoticeList = try await m.engine.call("notifications", ["page": noticePage + 1])
+            let keys = Set(notices.map(\.key))
+            let fresh = nl.items.filter { !keys.contains($0.key) }
+            notices += fresh
+            noticePage += 1
+            hasOlderNotices = !fresh.isEmpty && (nl.hasMore ?? true)
+            error = nil
+        } catch {
+            self.error = error as? EngineError ?? .js(error.localizedDescription)
+        }
+    }
+
     /// The ids in `ids` no earlier refresh saw; remembers them all. None on the very first run.
     private static func unknown(_ ids: [String], key: String) -> Set<String> {
         let d = UserDefaults.standard
@@ -124,5 +173,9 @@ final class Inbox {
         threads = []
         notices = []
         asOf = nil
+        messagePage = 0
+        noticePage = 0
+        hasOlderMessages = true
+        hasOlderNotices = true
     }
 }

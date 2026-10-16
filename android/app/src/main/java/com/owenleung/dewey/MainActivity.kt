@@ -43,7 +43,16 @@ class MainActivity : ComponentActivity() {
             val a = current.get() ?: return false
             a.fileCallback?.onReceiveValue(null)
             a.fileCallback = callback
-            val pick = params.createIntent().apply { addCategory(Intent.CATEGORY_OPENABLE) }
+            // OPEN_DOCUMENT opens the Files picker (which also reaches Photos and Drive). The page's own
+            // createIntent() is GET_CONTENT, which on Android 14+ can resolve to the photo picker only, so PDFs
+            // and documents couldn't be picked.
+            val types = params.acceptTypes.orEmpty().map { it.trim() }.filter { it.contains('/') }
+            val pick = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                addCategory(Intent.CATEGORY_OPENABLE)
+                type = "*/*"
+                if (types.isNotEmpty()) putExtra(Intent.EXTRA_MIME_TYPES, types.toTypedArray())
+                putExtra(Intent.EXTRA_ALLOW_MULTIPLE, params.mode == WebChromeClient.FileChooserParams.MODE_OPEN_MULTIPLE)
+            }
             val dir = File(a.cacheDir, "camera").apply { mkdirs() }
             val photo = File(dir, "scan-${System.currentTimeMillis()}.jpg")
             a.cameraUri = FileProvider.getUriForFile(a, "${a.packageName}.files", photo)

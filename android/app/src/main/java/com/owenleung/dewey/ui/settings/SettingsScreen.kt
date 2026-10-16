@@ -72,6 +72,7 @@ import com.owenleung.dewey.ui.Card
 import com.owenleung.dewey.ui.DetailScaffold
 import com.owenleung.dewey.ui.Divider
 import com.owenleung.dewey.ui.Route
+import com.owenleung.dewey.ui.SheetTarget
 import com.owenleung.dewey.ui.ScrollPage
 import com.owenleung.dewey.ui.WideButton
 import com.owenleung.dewey.ui.model
@@ -167,6 +168,21 @@ fun SettingsScreen() {
     }
     fun askIfOn(on: Boolean) { if (on) scope.launch { Reminders.requestPermission() } }
 
+    val ctx = LocalContext.current
+    // Re-read when coming back from Android's "Alarms & reminders" page, and reschedule with exact times.
+    var exact by remember { mutableStateOf(Reminders.exactAllowed) }
+    val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycle) {
+        val o = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            if (e == androidx.lifecycle.Lifecycle.Event.ON_RESUME && Reminders.exactAllowed != exact) {
+                exact = Reminders.exactAllowed
+                Reminders.schedule(model.todoItems(), model.courses)
+            }
+        }
+        lifecycle.lifecycle.addObserver(o)
+        onDispose { lifecycle.lifecycle.removeObserver(o) }
+    }
+
     DetailScaffold("Settings") { pad ->
         ScrollPage(pad, spacing = 22.dp) {
             Section("Schoology") {
@@ -200,13 +216,15 @@ fun SettingsScreen() {
             }
 
             Section("Due reminders", "A test reminder stops once you mark it Studied; the others stop once it's submitted, turned in or done. " +
-                "The 2-hour one is for Schoology dropboxes only and still comes if you marked it done but haven't submitted.") {
+                "The 2-hour one is for Schoology dropboxes only and still comes if you marked it done but haven't submitted." +
+                if (exact) "" else " Without exact times, Android may send each one up to 10 minutes late.") {
                 Toggle("2 hours before, if not submitted", Reminders.SOON_KEY, true, divider = false, onChange = ::dueChanged)
                 Toggle("Night before a test", Reminders.TEST_NIGHT_KEY, true, onChange = ::dueChanged)
                 Toggle("Homework the evening before", Reminders.ENABLED_KEY, false, onChange = ::dueChanged)
                 if (Reminders.enabled || Prefs.bool(Reminders.TEST_NIGHT_KEY, true)) HourPicker("Evening time", Reminders.HOUR_KEY, 19, 15..22) { dueChanged(false) }
                 Toggle("Morning summary", Reminders.MORNING_KEY, false, onChange = ::dueChanged)
                 if (Prefs.bool(Reminders.MORNING_KEY)) HourPicker("Morning time", Reminders.MORNING_HOUR_KEY, 7, 5..10) { dueChanged(false) }
+                if (!exact) Action("Allow exact reminder times") { Reminders.openExactAlarmSettings(ctx) }
             }
 
             Section("Notifications", "Grade, message, material and signed-out alerts come when the app refreshes in the background, so they can be late. Schoology signs you out about once a day.") {
@@ -266,6 +284,7 @@ fun SettingsScreen() {
 @Composable
 fun DeveloperScreen() {
     val model = model
+    val nav = nav
     val ctx = LocalContext.current
     val scope = rememberCoroutineScope()
     val examples = linkedMapOf(
@@ -284,8 +303,11 @@ fun DeveloperScreen() {
     DetailScaffold("Developer") { pad ->
         ScrollPage(pad, spacing = 22.dp) {
             val planned = Reminders.planned()
-            Section("Scheduled reminders (${planned.size})") {
-                if (planned.isEmpty()) RowLine(false) { Text("None", style = Theme.subhead, color = C.secondary) }
+            Section("Scheduled reminders (${planned.size})", if (Reminders.exactAllowed) "Exact times allowed." else "Exact times not allowed: each can come up to 10 minutes late.") {
+                Action("Test reminder in 1 minute", divider = false) { Reminders.testInOneMinute() }
+                Action("Background refresh in 30 seconds") { com.owenleung.dewey.RefreshWorker.runOnce(ctx, 30) }
+                if (planned.isNotEmpty()) Divider()
+                if (planned.isEmpty()) RowLine(true) { Text("None", style = Theme.subhead, color = C.secondary) }
                 planned.forEachIndexed { i, p ->
                     RowLine(i > 0) {
                         Column {
@@ -323,6 +345,12 @@ fun DeveloperScreen() {
                     }
                 }
                 Action("Reload engine") { model.engine.reload() }
+                // The Schoology sheet's file chooser (Files, Photos, camera) on a local page: nothing is sent anywhere.
+                Action("Test file picker") {
+                    nav.openSheet(SheetTarget("data:text/html,<meta name=viewport content='width=device-width'>" +
+                        "<p style='font:18px sans-serif'>File picker test. Nothing is uploaded.</p><input type=file id=f multiple>" +
+                        "<p id=o style='font:16px sans-serif'></p><script>f.onchange=()=>o.textContent=[...f.files].map(x=>x.name+' ('+x.size+' bytes)').join(', ')</script>"))
+                }
             }
             if (output.isNotEmpty()) Section("Result") {
                 RowLine(false) { SelectionContainer { Text(output.take(60_000), style = Theme.code, color = C.text) } }

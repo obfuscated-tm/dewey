@@ -55,7 +55,17 @@ data class WidgetSnapshot(
     companion object {
         private const val KEY = "widgetSnapshot"
         fun load(): WidgetSnapshot = runCatching { Cache.json.decodeFromString(serializer(), Prefs.string(KEY) ?: "") }.getOrDefault(WidgetSnapshot())
-        fun save(s: WidgetSnapshot) = Prefs.set(KEY, Cache.json.encodeToString(serializer(), s))
+
+        /**
+         * The latest snapshot, for widgets to collect. Glance keeps a widget's session (and its provideGlance
+         * locals) alive between updates, so a snapshot read once there would go stale.
+         */
+        val latest: kotlinx.coroutines.flow.MutableStateFlow<WidgetSnapshot?> = kotlinx.coroutines.flow.MutableStateFlow(null)
+
+        fun save(s: WidgetSnapshot) {
+            Prefs.set(KEY, Cache.json.encodeToString(serializer(), s))
+            latest.value = s
+        }
     }
 }
 

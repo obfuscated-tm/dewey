@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
@@ -128,8 +130,11 @@ class TodoWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Exact
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val s = WidgetSnapshot.load()
-        provideContent { TodoContent(context, s) }
+        val first = WidgetSnapshot.load()
+        provideContent {
+            val s by WidgetSnapshot.latest.collectAsState()
+            TodoContent(context, s ?: first)
+        }
     }
 
     @Composable
@@ -206,8 +211,11 @@ class TestsWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(DpSize(110.dp, 110.dp), DpSize(250.dp, 110.dp), DpSize(250.dp, 250.dp)))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val s = WidgetSnapshot.load()
-        provideContent { Content(context, s) }
+        val first = WidgetSnapshot.load()
+        provideContent {
+            val s by WidgetSnapshot.latest.collectAsState()
+            Content(context, s ?: first)
+        }
     }
 
     @Composable

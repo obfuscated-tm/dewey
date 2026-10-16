@@ -86,6 +86,19 @@ object Reminders {
     fun permitted(): Boolean = Build.VERSION.SDK_INT < 33 ||
         ContextCompat.checkSelfPermission(app, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
 
+    /** Android 12+ needs "Alarms & reminders" allowed for on-the-minute reminders; new installs start without it. */
+    val exactAllowed: Boolean
+        get() = Build.VERSION.SDK_INT < 31 || app.getSystemService(AlarmManager::class.java).canScheduleExactAlarms()
+
+    /** Opens the system page that allows exact alarms for Dewey. */
+    fun openExactAlarmSettings(ctx: Context) {
+        if (Build.VERSION.SDK_INT < 31) return
+        runCatching {
+            ctx.startActivity(Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${ctx.packageName}"))
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+    }
+
     /** Asks for the notification permission (Android 13+) through the open activity. */
     suspend fun requestPermission(): Boolean = if (permitted()) true else MainActivity.requestNotifications()
 
@@ -211,13 +224,23 @@ object Reminders {
         val am = app.getSystemService(AlarmManager::class.java)
         val keep = plan.map { it.id }.toSet()
         for (old in planned()) if (old.id !in keep) am.cancel(alarmIntent(old))
-        val exact = Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()
+        val exact = exactAllowed
         for (p in plan) {
             val pi = alarmIntent(p)
+            // Without exact alarms, setAndAllowWhileIdle can come up to an hour late; a 10-minute window
+            // is the tightest Android allows (it can still wait for Doze to end).
             if (exact) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, p.fire, pi)
-            else am.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, p.fire, pi)
+            else am.setWindow(AlarmManager.RTC_WAKEUP, p.fire, 10 * 60_000L, pi)
         }
         Prefs.set(PLANNED_KEY, Cache.json.encodeToString(ListSerializer(Planned.serializer()), plan))
+    }
+
+    /** Settings → Developer: one reminder a minute from now, through the same alarm and receiver. Not saved in the plan. */
+    fun testInOneMinute() {
+        val am = app.getSystemService(AlarmManager::class.java)
+        val p = Planned("dev-test", System.currentTimeMillis() + 60_000, "Test reminder", "From Settings → Developer")
+        if (exactAllowed) am.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, p.fire, alarmIntent(p))
+        else am.setWindow(AlarmManager.RTC_WAKEUP, p.fire, 10 * 60_000L, alarmIntent(p))
     }
 
     private fun alarmIntent(p: Planned): PendingIntent {
@@ -313,11 +336,14 @@ class ReminderReceiver : BroadcastReceiver() {
     }
 }
 
-/** Alarms don't survive a reboot: plan them again. */
+/** Alarms don't survive a reboot or an app update: plan them again. */
 class BootReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Intent.ACTION_BOOT_COMPLETED) return
+        if (intent.action != Intent.ACTION_BOOT_COMPLETED && intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
         val m = AppModel.get(context)
+        // schedule() waits 300 ms (debounce) on another thread: keep the process alive until it has run.
+        val pending = goAsync()
         Reminders.schedule(m.todoItems(), m.courses)
+        android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({ pending.finish() }, 2_000)
     }
 }

@@ -51,6 +51,7 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         DeweyApp.setUp(applicationContext)
         if (Reminders.sessionEnded) return@withContext Result.success()
         val m = AppModel.get(applicationContext)
+        val t0 = System.currentTimeMillis()
         m.boot()
         if (m.session == AppModel.Session.SIGNED_IN) {
             m.refreshTodo()
@@ -58,11 +59,21 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
             m.inbox.refresh(m, notify = true)
         }
         WidgetBridge.publishNow(m)
+        android.util.Log.d("DeweyRefresh", "background refresh ${System.currentTimeMillis() - t0} ms, ${m.session}")
         Result.success()
     }
 
     companion object {
         private const val NAME = "refresh"
+
+        /** Settings → Developer: one refresh after `delaySec`, to test it with the app closed. */
+        fun runOnce(ctx: Context, delaySec: Long) {
+            val req = androidx.work.OneTimeWorkRequestBuilder<RefreshWorker>()
+                .setInitialDelay(delaySec, TimeUnit.SECONDS)
+                .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+                .build()
+            WorkManager.getInstance(ctx).enqueueUniqueWork("refresh-test", androidx.work.ExistingWorkPolicy.REPLACE, req)
+        }
 
         fun schedule(ctx: Context) {
             val req = PeriodicWorkRequestBuilder<RefreshWorker>(2, TimeUnit.HOURS)

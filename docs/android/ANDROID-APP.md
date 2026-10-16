@@ -91,12 +91,24 @@ Deep links: `dewey://todo`, `dewey://grades`, `dewey://inbox`, `dewey://assignme
 
 Done 2026-10-15 on the emulator: Google sign-in finishes; engine.js runs on the JSON page `/iapi/course/active`, so the `/home` fallback isn't needed; the session survives the app restarting (WebView keeps Schoology's session cookies, unlike WebKit); To Do, assignment, gradebook, messages and notifications ops each take 0.2–1.2 s.
 
+Also done 2026-10-15 on the emulator:
+- **Reminders** are scheduled from the To Do list and fire. Settings → Developer → "Test reminder in 1 minute" goes through the same AlarmManager → `ReminderReceiver` → notification path; it posted 3 min after the tap. They're rescheduled after a reboot (`BootReceiver`, about 50 s after boot on the emulator) and after an app update (`MY_PACKAGE_REPLACED`).
+- **Widgets:** both show up in the launcher's widget list. The To Do widget shows real data. Ticking a circle or box from the home screen marks it in Dewey and the widget redraws without opening the app.
+- **The countdown** notification shows (ongoing, silent, counting down to the due time) and goes away when switched off.
+- **Background refresh** with the app closed (Developer → "Background refresh in 30 seconds", a one-off run of `RefreshWorker`): To Do, grades, messages and notifications in 4.2 s, still signed in.
+- **Uploads:** Developer → "Test file picker" opens a local page with a file input in the Schoology sheet; nothing is sent anywhere. Files (a .txt from Downloads) and Camera (a photo) both reach the page.
+
+Fixed while checking:
+- Without "Alarms & reminders" allowed (new installs on Android 12+ start without it), `setAndAllowWhileIdle` gave each reminder up to an hour of slack. Now it's `setWindow` with 10 minutes, and Settings has an "Allow exact reminder times" row that opens Android's page for it.
+- The widgets read their snapshot once per Glance session, so a tick saved but didn't redraw. They now collect `WidgetSnapshot.latest`.
+- The file chooser used the page's `createIntent()` (GET_CONTENT), which on Android 16 offered only Photos & videos, so PDFs and documents couldn't be picked. Now it's OPEN_DOCUMENT (the Files picker) plus Camera.
+
 Still to check:
 
-4. Every engine op in Settings → Developer returns data like it does on iOS.
-5. Reminders fire at the right time, including after a reboot. Widgets update and the tick works. The countdown notification shows.
-6. The background refresh runs and sends grade, message and signed-out alerts.
-7. Uploads in the Schoology sheet open the file picker and camera. Don't submit anything; just check that the picker opens.
+1. Every engine op in Settings → Developer returns data like it does on iOS.
+2. Grade, message, material and signed-out **alerts** with real new data. The refresh runs, and posting uses the same `Reminders.post` that the test reminder exercised, but nothing new arrived during the test.
+3. An upload on a real Schoology dropbox (Owen, by hand; the app never presses Submit).
+4. Exact reminder times once "Alarms & reminders" is allowed (the code path is the one the app used before; not run on the emulator).
 
 ## Progress
 
@@ -111,5 +123,5 @@ Still to check:
 | Inbox, messages | done, not run live |
 | Schoology tab | done, not run live |
 | Settings, Developer, neo-plan | done, not run live |
-| Widgets, background refresh, reminders, countdown | done, not run live |
+| Widgets, background refresh, reminders, countdown | done, checked on emulator |
 | Unit tests | 10 pass |

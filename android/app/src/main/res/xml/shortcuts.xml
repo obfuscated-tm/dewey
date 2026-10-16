@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="todo"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_todo">
+        <intent android:action="android.intent.action.VIEW" android:data="dewey://todo"
+            android:targetPackage="com.owenleung.dewey" android:targetClass="com.owenleung.dewey.MainActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="grades"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_grades">
+        <intent android:action="android.intent.action.VIEW" android:data="dewey://grades"
+            android:targetPackage="com.owenleung.dewey" android:targetClass="com.owenleung.dewey.MainActivity" />
+    </shortcut>
+</shortcuts>

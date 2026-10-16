@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="shortcut_todo">To Do</string>
+    <string name="shortcut_grades">Grades</string>
+    <string name="widget_todo_desc">What\'s due, soonest first. Tap the circle to mark it done in Dewey.</string>
+    <string name="widget_tests_desc">Your next tests and latest grades.</string>
+</resources>

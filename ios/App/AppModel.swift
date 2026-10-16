@@ -59,6 +59,9 @@ final class AppModel {
     /// On launch: try the course list; `login` → Sign in, anything else → in (offline uses saved copies).
     func boot() async {
         engine.start()
+        // Saved copies and no sign-out on record: show them now instead of a
+        // spinner; a `login` below still sends the app to Sign in.
+        if session == .checking, !courses.isEmpty, !Reminders.shared.sessionEnded { session = .signedIn }
         do {
             try await loadCourses()
             session = .signedIn
@@ -138,8 +141,16 @@ final class AppModel {
         return try? context.fetch(d).first
     }
 
+    /// Every saved row, fetched once per `revision` (views call this on every
+    /// redraw: the tab badge, each class tile). Rows are live objects, so marks
+    /// show at once; only a new row needs a refetch, and `merge` drops the copy.
+    @ObservationIgnored private var fetchedItems: (revision: Int, items: [ItemState])?
+
     func allItems() -> [ItemState] {
-        (try? context.fetch(FetchDescriptor<ItemState>())) ?? []
+        if let f = fetchedItems, f.revision == revision { return f.items }
+        let items = (try? context.fetch(FetchDescriptor<ItemState>())) ?? []
+        fetchedItems = (revision, items)
+        return items
     }
 
     /// The To Do list: visible items (TodoLogic.isVisible).
@@ -173,9 +184,10 @@ final class AppModel {
             todoError = nil
             todoAsOf = Date()
             Cache.save("todoAsOf", todoAsOf!)
+            // Show the merged list now; dropbox checks and neo-plan fill in after.
+            revision += 1
             await checkStatuses()
             await syncNeoPlan()
-            Reminders.shared.schedule(items: todoItems(), courses: courses)
         } catch let e as EngineError {
             todoError = e
         } catch {
@@ -188,11 +200,15 @@ final class AppModel {
 
     func merge(_ lists: TodoLists, now: Date = Date()) {
         var seen = Set<String>()
+        let all = allItems()
+        var byId = Dictionary(all.map { ($0.schoologyId, $0) }, uniquingKeysWith: { a, _ in a })
         for e in lists.overdue + lists.upcoming {
             seen.insert(e.schoologyId)
-            let it = item(e.schoologyId) ?? {
+            let it = byId[e.schoologyId] ?? {
                 let n = ItemState(schoologyId: e.schoologyId, title: e.title)
                 context.insert(n)
+                byId[e.schoologyId] = n
+                fetchedItems = nil
                 return n
             }()
             it.title = e.title
@@ -204,7 +220,7 @@ final class AppModel {
             it.inSchoology = true
             it.lastSeen = now
         }
-        for it in allItems() where !seen.contains(it.schoologyId) {
+        for it in all where !seen.contains(it.schoologyId) {
             it.inSchoology = false
         }
         try? context.save()
@@ -217,8 +233,16 @@ final class AppModel {
             .filter { !$0.isQuiz && !$0.external && $0.statusState != "no_dropbox" && ($0.statusCheckedAt ?? .distantPast) < cutoff }
             .sorted { ($0.statusCheckedAt ?? .distantPast) < ($1.statusCheckedAt ?? .distantPast) }
             .prefix(cap)
-        for it in candidates {
-            await checkStatus(it)
+        await twoAtATime(Array(candidates)) { await self.checkStatus($0) }
+    }
+
+    /// Runs `body` over `list`, two at a time: the engine lets 2 requests run at once.
+    func twoAtATime<T>(_ list: [T], _ body: @escaping @MainActor (T) async -> Void) async {
+        await withTaskGroup(of: Void.self) { group in
+            for (i, x) in list.enumerated() {
+                if i >= 2 { await group.next() }
+                group.addTask { @MainActor in await body(x) }
+            }
         }
     }
 
@@ -365,13 +389,19 @@ final class AppModel {
     func loadGrades(_ sectionId: String, force: Bool = false) async {
         if grades[sectionId] == nil, let cached = Cache.loadRaw("grades-\(sectionId)") {
             gradesAsOf[sectionId] = cached.1
-            if let g = try? await summarize(rows: cached.0) { grades[sectionId] = g }
+            // The saved summary shows at once; working it out again waits for the engine page.
+            if let s = Cache.load(Self.summaryKey(sectionId), as: CourseGrade.self), s.savedAt >= cached.1.addingTimeInterval(-5) {
+                grades[sectionId] = s.value
+            } else if let g = try? await summarize(rows: cached.0) {
+                grades[sectionId] = g
+            }
         }
         if !force, let at = gradesAsOf[sectionId], Date().timeIntervalSince(at) < 30 * 60, grades[sectionId] != nil { return }
         do {
             let raw = try await engine.callRaw("gradebook", ["sectionId": sectionId])
             Cache.saveRaw("grades-\(sectionId)", raw)
             let g = try await summarize(rows: raw)
+            Cache.save(Self.summaryKey(sectionId), g)
             noteNewGrades(sectionId: sectionId, old: grades[sectionId], new: g)
             grades[sectionId] = g
             gradesAsOf[sectionId] = Date()
@@ -382,6 +412,11 @@ final class AppModel {
         } catch {
             gradeErrors[sectionId] = .js(error.localizedDescription)
         }
+    }
+
+    /// Per build, so new grade math never shows an old summary.
+    nonisolated static func summaryKey(_ sectionId: String) -> String {
+        "gradeSummary-\(sectionId)-\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0")"
     }
 
     func summarize(rows: Data, whatIf: [String: [String: Double]] = [:], extra: [[String: Any]] = [],
@@ -400,8 +435,9 @@ final class AppModel {
     /// The gradebook category gives an item its type.
     private func learnFromGrades(sectionId: String, _ g: CourseGrade) {
         var changed = false
+        let byId = Dictionary(allItems().map { ($0.schoologyId, $0) }, uniquingKeysWith: { a, _ in a })
         for gi in g.items {
-            guard let it = item(gi.id) else { continue }
+            guard let it = byId[gi.id] else { continue }
             if it.categoryHint != gi.category { it.categoryHint = gi.category; changed = true }
         }
         if changed { save() }
@@ -485,9 +521,8 @@ final class AppModel {
         guard !list.isEmpty else { return }
         let key = "gradeRotation"
         let start = UserDefaults.standard.integer(forKey: key) % list.count
-        for i in 0..<min(count, list.count) {
-            await loadGrades(list[(start + i) % list.count])
-        }
+        let picked = (0..<min(count, list.count)).map { list[(start + $0) % list.count] }
+        await twoAtATime(picked) { await self.loadGrades($0) }
         UserDefaults.standard.set(start + min(count, list.count), forKey: key)
     }
 

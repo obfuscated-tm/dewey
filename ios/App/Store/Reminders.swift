@@ -26,7 +26,8 @@ final class Reminders {
     var materialAlerts: Bool { UserDefaults.standard.object(forKey: Self.materialsKey) as? Bool ?? true }
 
     func requestPermission() async -> Bool {
-        (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
+        lastPlan = nil
+        return (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])) ?? false
     }
 
     /// Every due reminder, worked out from the To Do list and replaced as a set
@@ -39,10 +40,13 @@ final class Reminders {
                      done: it.done, studied: it.studied, turnedIn: it.turnedIn, submitted: it.submitted)
         }
         let plan = Self.plan(inputs, settings: settings, now: Date())
+        // Most saves change no reminder: skip re-adding the same set.
+        guard plan != lastPlan else { return }
         pending?.cancel()
         pending = Task {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
+            lastPlan = plan
             let center = UNUserNotificationCenter.current()
             let keep = Set(plan.map(\.id))
             let stale = await center.pendingNotificationRequests().map(\.identifier)
@@ -61,6 +65,8 @@ final class Reminders {
         }
     }
     private var pending: Task<Void, Never>?
+    /// The set last handed to iOS (nil after a permission prompt, so it's added again).
+    private var lastPlan: [Planned]?
 
     static let soonKey = "dueSoonOn"
     static let testNightKey = "testNightOn"

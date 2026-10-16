@@ -64,11 +64,17 @@ enum Fmt {
     /// grademath's 'YYYY-MM-DDTHH:MM' wall-clock date.
     static func wallDate(_ s: String?) -> Date? {
         guard let s else { return nil }
+        return (s.count > 10 ? wallDateTime : wallDay).date(from: s)
+    }
+    // Built once: a DateFormatter is slow to make, and these run per row.
+    private static func posix(_ pattern: String) -> DateFormatter {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
-        f.dateFormat = s.count > 10 ? "yyyy-MM-dd'T'HH:mm" : "yyyy-MM-dd"
-        return f.date(from: s)
+        f.dateFormat = pattern
+        return f
     }
+    private static let wallDateTime = posix("yyyy-MM-dd'T'HH:mm")
+    private static let wallDay = posix("yyyy-MM-dd")
 
     private static func fmt(_ pattern: String) -> DateFormatter {
         let f = DateFormatter()
@@ -83,6 +89,7 @@ enum Fmt {
     static let dayTime = fmt("EEE MMM d, h:mm a")
     static let header = fmt("EEEE, MMM d")
     static let short = fmt("MMM d")
+    static let weekdayCommaTime = fmt("EEE, h:mm a")
 
     /// "Today, 11:59 pm", "Fri, 8:30 am", "Tue Sep 29, 8:30 am".
     static func due(_ d: Date?, now: Date = Date()) -> String {
@@ -91,7 +98,7 @@ enum Fmt {
         if cal.isDate(d, inSameDayAs: now) { return "Today, \(time.string(from: d))" }
         if let t = cal.date(byAdding: .day, value: 1, to: now), cal.isDate(d, inSameDayAs: t) { return "Tomorrow, \(time.string(from: d))" }
         let days = cal.dateComponents([.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: d)).day ?? 99
-        if days > 0 && days < 7 { return fmt("EEE, h:mm a").string(from: d) }
+        if days > 0 && days < 7 { return weekdayCommaTime.string(from: d) }
         return dayTime.string(from: d)
     }
 

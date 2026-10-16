@@ -259,8 +259,8 @@ export function createEngine(deps = {}) {
      * title, course, section_id, due, graded, url }.
      */
     todo: () => wrap(async () => {
-      const out = {};
-      for (const list of ['overdue', 'upcoming']) {
+      // Both lists at once (the queue still allows only 2 in flight).
+      const [overdue, upcoming] = await Promise.all(['overdue', 'upcoming'].map(async (list) => {
         const rows = [];
         let url = `/v2/events/${list}`;
         const seen = new Set();
@@ -270,9 +270,9 @@ export function createEngine(deps = {}) {
           rows.push(...parseEventsJson(r.json));
           url = nextEventsUrl(r.json);
         }
-        out[list] = rows;
-      }
-      return { data: out, url: null };
+        return rows;
+      }));
+      return { data: { overdue, upcoming }, url: null };
     }),
 
     /** Schoology's own submission status. A redirect (a quiz) is never followed. */

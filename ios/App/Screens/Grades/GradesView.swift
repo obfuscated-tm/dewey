@@ -35,7 +35,7 @@ struct GradesView: View {
     }
 
     private func loadAll(force: Bool) async {
-        for c in model.classes { await model.loadGrades(c.sectionId, force: force) }
+        await model.twoAtATime(model.classes) { await model.loadGrades($0.sectionId, force: force) }
     }
 
     /// Scores that appeared since the student last looked, newest first.

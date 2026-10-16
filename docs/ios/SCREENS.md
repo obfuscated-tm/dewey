@@ -18,9 +18,9 @@ Anything that **changes** Schoology (submit, take a quiz, post in a discussion, 
 
 | Mark | Meaning | Who sets it |
 |---|---|---|
-| Filled blue circle ✓ | You marked it done | Student |
-| Filled green circle ✓ | Schoology shows a submission (dropbox work only) | Schoology, read by the app |
-| Filled green circle ✓ (same look; the status line says "not on Schoology") | You marked it turned in (paper, lab site, elsewhere) | Student (local / neo-plan only) |
+| Accent ring with an accent ✓ (outlined, not solid) | You marked it done | Student |
+| Solid green seal with ✓ | Schoology shows a submission (dropbox work only) | Schoology, read by the app |
+| Solid green seal with ✓ (same look; the status line says "not on Schoology") | You marked it turned in (paper, lab site, elsewhere) | Student (local / neo-plan only) |
 | Rounded square | A test: Studied / not studied | Student |
 | Dashed outline | Not in neo-plan yet | — |
 
@@ -39,6 +39,8 @@ Arrows: `›` opens a native screen; `↗` opens Schoology or a website (sheet o
 | HW tag | `#5E6670` on `#EEF0F3`; TEST tag white on `#1F2429` |
 | fonts | SF Pro only, seven styles in `Theme` (all Dynamic Type): largeTitle 34 bold · title 22 bold · headline 17 semibold · body 17 · subhead 15 · footnote 13 · caption 12. Numbers add `.monospacedDigit()`; no code font in the UI. ThemeTests fails on a raw point size. |
 | shapes | `Theme.Radius`: 6 for tags and type bars, 14 (continuous) for every card; buttons are capsules, checkboxes circles. Spacing 4 / 8 / 12 / 16 / 24 (`Theme.Space`). Touch targets 44 pt; pill buttons 30 pt tall inside a 44 pt row. |
+
+These are the mockups' values. The app's colours live in `Palette.all` (`Theme.swift`). Settings → Look picks a theme, and each theme has light and dark values: **Standard** (dark mode is soft graphite), **Midnight** (Standard with true-black dark), **Dew** (brand teal), **Frost** (cool blue-grey), **Pastel** (soft lavender) and **Paper** (warm sepia). Standard and Midnight use the accent dots; the other themes bring their own accent. ThemeTests checks contrast in every theme.
 
 Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red badge with the overdue count.
 

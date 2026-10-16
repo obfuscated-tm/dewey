@@ -271,20 +271,27 @@ final class ThemeTests: XCTestCase {
     }
     func ui(_ hex: String) -> UIColor { UIColor(Color(hex: hex)) }
 
-    /// Every text colour is readable (≥ 4.5:1) on every surface, in light and dark, and every accent on a card.
+    /// In every theme, every text colour is readable (≥ 4.5:1) on every surface, in light and dark,
+    /// and every accent on a card and under its button text.
     func testContrast() {
-        for fg in ["text", "secondary", "tertiary", "late", "good"] {
-            for bg in ["card", "background", "tagSoft"] {
-                let (f, b) = (Theme.hex[fg]!, Theme.hex[bg]!)
-                XCTAssertGreaterThanOrEqual(ratio(ui(f.light), ui(b.light)), 4.5, "light \(fg) on \(bg)")
-                XCTAssertGreaterThanOrEqual(ratio(ui(f.dark), ui(b.dark)), 4.5, "dark \(fg) on \(bg)")
+        for p in Palette.all {
+            for fg in ["text", "secondary", "tertiary", "late", "good"] {
+                for bg in ["card", "background", "tagSoft"] {
+                    let (f, b) = (p.hex[fg]!, p.hex[bg]!)
+                    XCTAssertGreaterThanOrEqual(ratio(ui(f.light), ui(b.light)), 4.5, "\(p.id) light \(fg) on \(bg)")
+                    XCTAssertGreaterThanOrEqual(ratio(ui(f.dark), ui(b.dark)), 4.5, "\(p.id) dark \(fg) on \(bg)")
+                }
             }
-        }
-        for a in Theme.accentOptions {
-            XCTAssertGreaterThanOrEqual(ratio(ui(a), ui(Theme.hex["card"]!.light)), 4.5, "accent \(a)")
-            XCTAssertGreaterThanOrEqual(ratio(Accent.dark(ui(a)), ui(Theme.hex["card"]!.dark)), 4.5, "dark accent \(a)")
-            // White text on a filled accent button (light mode).
-            XCTAssertGreaterThanOrEqual(ratio(ui(a), .white), 4.5, "on-accent \(a)")
+            let card = p.hex["card"]!
+            let accents: [(light: UIColor, dark: UIColor)] = p.accent.map { [(ui($0.light), ui($0.dark))] }
+                ?? Theme.accentOptions.map { (ui($0), Accent.dark(ui($0))) }
+            for a in accents {
+                XCTAssertGreaterThanOrEqual(ratio(a.light, ui(card.light)), 4.5, "\(p.id) accent")
+                XCTAssertGreaterThanOrEqual(ratio(a.dark, ui(card.dark)), 4.5, "\(p.id) dark accent")
+                // Text on a filled accent button: white in light mode, near-black in dark.
+                XCTAssertGreaterThanOrEqual(ratio(a.light, .white), 4.5, "\(p.id) on-accent")
+                XCTAssertGreaterThanOrEqual(ratio(a.dark, ui("#101418")), 4.5, "\(p.id) dark on-accent")
+            }
         }
     }
 

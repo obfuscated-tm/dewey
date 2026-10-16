@@ -39,7 +39,6 @@ struct DeweyApp: App {
             RootView()
                 .environment(model)
                 .modelContainer(model.container)
-                .tint(Theme.accent)
                 .onAppear { AppModel.live = model }
         }
         .onChange(of: phase) { _, p in
@@ -83,6 +82,7 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut, value: model.toast)
+        .tint(Theme.accent)
         .preferredColorScheme(Theme.colorScheme(appearance))
     }
 }

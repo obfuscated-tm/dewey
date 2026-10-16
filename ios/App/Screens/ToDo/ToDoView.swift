@@ -289,7 +289,7 @@ struct ProgressChips: View {
         switch p {
         case .todo: "circle"
         case .done: on ? "checkmark.circle.fill" : "checkmark.circle"
-        case .turnedIn: on ? "checkmark.circle.fill" : "tray.and.arrow.down"
+        case .turnedIn: on ? "checkmark.seal.fill" : "checkmark.seal"
         }
     }
 }
@@ -420,8 +420,10 @@ struct TodoRow: View {
     }
 }
 
-/// Blue filled = done or studied (student) · green filled, heavy check = turned
-/// in (submitted on Schoology, or marked). Always a circle: the type bar says it's a test.
+/// Accent ring with an accent check = done or studied (student) · solid green seal with
+/// a check = turned in (submitted on Schoology, or marked): stamped, received. The seal's
+/// outline keeps them apart in every theme, even where the accent and green are close.
+/// Never a square: the type bar says it's a test.
 /// The words beside it say which kind of turned in it is.
 struct CheckMark: View {
     let item: ItemState
@@ -430,11 +432,15 @@ struct CheckMark: View {
     var body: some View {
         ZStack {
             if item.submitted || item.turnedIn {
-                Circle().fill(Theme.good)
-                check(Theme.onAccent, weight: .black)
+                Image(systemName: "checkmark.seal.fill").resizable().scaledToFit()
+                    .symbolRenderingMode(.palette).foregroundStyle(Theme.onAccent, Theme.good)
+                    .fontWeight(.bold)
+                    // The seal's points sit inside its box; this makes its body match the circles.
+                    .scaleEffect(1.12)
             } else if item.type == .exam ? item.studied : item.done {
-                Circle().fill(Theme.accent)
-                check(Theme.onAccent)
+                Circle().fill(Theme.accentSoft)
+                Circle().strokeBorder(Theme.accent, lineWidth: 2)
+                check(Theme.accent)
             } else {
                 Circle().stroke(item.neoPlanId == nil && NeoPlanClient().connected ? Theme.tertiary : Theme.secondary,
                                 style: StrokeStyle(lineWidth: 1.6, dash: item.neoPlanId == nil && NeoPlanClient().connected ? [3, 2.5] : []))
@@ -443,7 +449,7 @@ struct CheckMark: View {
         .frame(width: size, height: size)
     }
 
-    private func check(_ c: Color, weight: Font.Weight = .bold) -> some View {
-        Image(systemName: "checkmark").font(.system(size: size * 0.5, weight: weight)).foregroundStyle(c)
+    private func check(_ c: Color) -> some View {
+        Image(systemName: "checkmark").font(.system(size: size * 0.5, weight: .bold)).foregroundStyle(c)
     }
 }

@@ -20,7 +20,7 @@ struct SettingsView: View {
     @AppStorage(Reminders.messagesKey) private var messageAlerts = true
     @AppStorage(Reminders.materialsKey) private var materialAlerts = true
     @AppStorage(Inbox.markReadKey) private var markRead = true
-    @AppStorage(Theme.accentKey) private var accent = Theme.accentOptions[0]
+    private let theme = ThemeStore.shared
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
     @AppStorage(WebConfig.compatKey) private var compat = false
     @State private var confirmSignOut = false
@@ -114,16 +114,27 @@ struct SettingsView: View {
                         Text("Dark").tag("dark")
                     }
                     .pickerStyle(.segmented)
-                    HStack(spacing: 14) {
-                        ForEach(Theme.accentOptions, id: \.self) { hex in
-                            Circle().fill(Color(hex: hex)).frame(width: 30, height: 30)
-                                .overlay(Circle().stroke(Theme.text, lineWidth: accent == hex ? 2 : 0).padding(-3))
-                                .onTapGesture { accent = hex; WidgetBridge.publish(model) }
-                                .accessibilityLabel(["Blue", "Green", "Purple", "Red"][Theme.accentOptions.firstIndex(of: hex) ?? 0])
-                                .accessibilityAddTraits(accent == hex ? [.isButton, .isSelected] : .isButton)
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: Theme.Space.m) {
+                            ForEach(Palette.all) { p in
+                                PaletteTile(palette: p, selected: theme.paletteID == p.id)
+                                    .onTapGesture { theme.paletteID = p.id; WidgetBridge.publish(model) }
+                            }
                         }
+                        .padding(.vertical, Theme.Space.xs)
                     }
-                    .padding(.vertical, 4)
+                    if theme.palette.accent == nil {
+                        HStack(spacing: 14) {
+                            ForEach(Theme.accentOptions, id: \.self) { hex in
+                                Circle().fill(Color(hex: hex)).frame(width: 30, height: 30)
+                                    .overlay(Circle().stroke(Theme.text, lineWidth: theme.accentHex == hex ? 2 : 0).padding(-3))
+                                    .onTapGesture { theme.accentHex = hex; WidgetBridge.publish(model) }
+                                    .accessibilityLabel(["Blue", "Green", "Purple", "Red"][Theme.accentOptions.firstIndex(of: hex) ?? 0])
+                                    .accessibilityAddTraits(theme.accentHex == hex ? [.isButton, .isSelected] : .isButton)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
                 }
 
                 Section {
@@ -270,5 +281,34 @@ struct DeveloperView: View {
         }
         let out = await model.engine.debugCall(op, a)
         output = String(format: "%.2fs\n", Date().timeIntervalSince(t0)) + out
+    }
+}
+
+/// A theme in Settings → Look: a tiny To Do card in its colours, following light or dark mode.
+private struct PaletteTile: View {
+    let palette: Palette
+    let selected: Bool
+
+    var body: some View {
+        let accent = palette.accent.map { Color(light: $0.light, dark: $0.dark) } ?? Theme.accent
+        VStack(spacing: Theme.Space.xs) {
+            VStack(alignment: .leading, spacing: 5) {
+                Capsule().fill(palette.color("text")).frame(width: 34, height: 5)
+                Capsule().fill(palette.color("tertiary")).frame(width: 22, height: 4)
+                Capsule().fill(accent).frame(width: 40, height: 9).padding(.top, 2)
+            }
+            .padding(Theme.Space.s)
+            .frame(width: 64, height: 50, alignment: .topLeading)
+            .background(palette.color("card"), in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+            .padding(Theme.Space.s)
+            .background(palette.color("background"), in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
+                .stroke(selected ? Theme.accent : Theme.border, lineWidth: selected ? 2 : 1))
+            Text(palette.name).font(Theme.caption).foregroundStyle(selected ? Theme.text : Theme.secondary)
+        }
+        .contentShape(Rectangle())
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(palette.name + " theme")
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
     }
 }

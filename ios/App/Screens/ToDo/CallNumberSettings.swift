@@ -7,7 +7,7 @@ struct CallNumberSettings: View {
     @AppStorage(CallNumber.key) private var raw = ""
 
     var body: some View {
-        Form {
+        DewForm {
             Section {
                 ForEach(model.classes) { c in
                     Picker(selection: binding(c)) {

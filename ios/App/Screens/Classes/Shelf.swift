@@ -225,7 +225,7 @@ struct ShelfSettings: View {
     @AppStorage(Shelf.offKey) private var offRaw = ""
 
     var body: some View {
-        Form {
+        DewForm {
             Section {
                 ForEach(model.classes) { c in
                     Toggle(isOn: Binding(get: { !Shelf.off(offRaw).contains(c.sectionId) },

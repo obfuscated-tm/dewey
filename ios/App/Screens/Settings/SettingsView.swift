@@ -32,7 +32,7 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            Form {
+            DewForm {
                 Section {
                     row(.schoology, "graduationcap", 5, "Schoology", subtitle: Engine.host)
                 }
@@ -54,10 +54,10 @@ struct SettingsView: View {
                     row(.todo, "checklist", 1, "To Do", value: (ToDoLayout(rawValue: todoLayout) ?? .week).title)
                     row(.grades, "chart.bar", 0, "Grades", value: reportCard ? "Letters" : "List")
                     row(.classes, "books.vertical", 4, "Classes", value: "\(onShelf) on shelf")
-                    row(.inbox, "envelope", 7, "Inbox")
+                    row(.inbox, "envelope", 5, "Inbox")
                 }
                 Section {
-                    row(.help, "questionmark", 6, "Help", value: connected ? "neo-plan on" : nil)
+                    row(.help, "questionmark", 7, "Help", value: connected ? "neo-plan on" : nil)
                     row(.about, "info", 6, "About", value: BuildInfo.daysLeftText)
                 }
             }
@@ -99,6 +99,7 @@ struct SettingsView: View {
     }
 
     /// An iOS Settings-style row: a white symbol on a class-colour square, the title, and its value.
+    /// The square uses the spine colour (the same in dark mode) so the white symbol stays readable.
     private func row(_ p: SettingsPage, _ symbol: String, _ color: Int, _ title: String,
                      value: String? = nil, subtitle: String? = nil) -> some View {
         NavigationLink(value: p) {
@@ -118,7 +119,7 @@ struct SettingsView: View {
         Image(systemName: symbol)
             .font(Theme.footnote.weight(.semibold)).foregroundStyle(.white)
             .frame(width: 29, height: 29)
-            .background(Theme.classColor(color), in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+            .background(Theme.spineColor(color), in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
             .accessibilityHidden(true)
     }
 
@@ -158,7 +159,7 @@ private struct SchoologySettings: View {
     @AppStorage(WebConfig.compatKey) private var compat = false
 
     var body: some View {
-        Form {
+        DewForm {
             Section {
                 LabeledContent("Signed in to", value: Engine.host)
                 Button("Sign out", role: .destructive) { confirmSignOut = true }
@@ -189,7 +190,7 @@ private struct NotificationSettings: View {
     @AppStorage(Reminders.materialsKey) private var materialAlerts = true
 
     var body: some View {
-        Form {
+        DewForm {
             Section {
                 Toggle("2 hours before, if not submitted", isOn: $dueSoon)
                     .onChange(of: dueSoon) { _, on in ReminderSettings.dueChanged(model, on) }
@@ -241,7 +242,7 @@ private struct ToDoSettings: View {
     @AppStorage(Reminders.testNightKey) private var testNight = true
 
     var body: some View {
-        Form {
+        DewForm {
             Section {
                 Picker("View", selection: $todoLayout) {
                     ForEach(ToDoLayout.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
@@ -271,7 +272,7 @@ private struct GradesSettings: View {
     @AppStorage(GradesLook.reportCardKey) private var reportCard = true
 
     var body: some View {
-        Form {
+        DewForm {
             Section {
                 Toggle("Letters across the top", isOn: $reportCard)
             } footer: {
@@ -288,7 +289,7 @@ private struct InboxSettings: View {
     @AppStorage(Inbox.markReadKey) private var markRead = true
 
     var body: some View {
-        Form {
+        DewForm {
             Section {
                 Toggle("Mark messages read when opened", isOn: $markRead)
             } footer: {
@@ -305,7 +306,7 @@ private struct HelpSettings: View {
     @Binding var connected: Bool
 
     var body: some View {
-        Form {
+        DewForm {
             Section {
                 NavigationLink("How statuses work") { StatusGuideView() }
                 NavigationLink { NeoPlanView(connected: $connected) } label: {
@@ -322,7 +323,7 @@ private struct HelpSettings: View {
 
 private struct AboutSettings: View {
     var body: some View {
-        Form {
+        DewForm {
             Section {
                 LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")
                 LabeledContent("Expires", value: BuildInfo.expiryText)
@@ -389,7 +390,7 @@ struct DeveloperView: View {
     ]
 
     var body: some View {
-        Form {
+        DewForm {
             Section("Scheduled reminders (\(scheduled.count))") {
                 ForEach(scheduled, id: \.identifier) { r in
                     VStack(alignment: .leading, spacing: 2) {

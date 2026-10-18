@@ -144,6 +144,16 @@ struct CardStyle: ViewModifier {
     }
 }
 
+/// A grouped Form on the Dew background and cards instead of the system greys (Settings pages).
+struct DewForm<Content: View>: View {
+    @ViewBuilder let content: () -> Content
+    var body: some View {
+        Form { content().listRowBackground(Theme.card) }
+            .scrollContentBackground(.hidden)
+            .background(Theme.background)
+    }
+}
+
 extension View {
     func card() -> some View { modifier(CardStyle()) }
     /// At most `n` lines, but no limit at the accessibility text sizes so nothing gets cut off.

@@ -476,10 +476,17 @@ struct CourseGradesView: View {
 
     // ── Plan an upcoming test (needFor) ──────────────────────────────────
 
+    /// The planner's category: the student's pick, else the first one about tests, else the first.
+    private var chosenCategory: String {
+        if !planCategory.isEmpty { return planCategory }
+        return real?.categories.first(where: { $0.title.localizedCaseInsensitiveContains("test") })?.title ?? real?.categories.first?.title ?? ""
+    }
+
     private var planner: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("Plan an upcoming test").font(Theme.headline)
-            Picker("Category", selection: $planCategory) {
+            // Resolved while drawing, so the picker never sees "" (no such tag) on its first pass.
+            Picker("Category", selection: Binding(get: { chosenCategory }, set: { planCategory = $0 })) {
                 ForEach(real?.categories.map(\.title) ?? [], id: \.self) { Text($0).tag($0) }
             }
             .pickerStyle(.menu)
@@ -492,7 +499,7 @@ struct CourseGradesView: View {
                 PillButton(title: "Work it out", filled: true) {
                     focused = nil
                     Task {
-                        plan = await model.plan(sectionId: course.sectionId, category: planCategory,
+                        plan = await model.plan(sectionId: course.sectionId, category: chosenCategory,
                                                 possible: Double(planPoints) ?? 0, target: cutoff)
                     }
                 }
@@ -504,7 +511,7 @@ struct CourseGradesView: View {
         }
         .padding(16)
         .card()
-        .onAppear { if planCategory.isEmpty { planCategory = real?.categories.first(where: { $0.title.localizedCaseInsensitiveContains("test") })?.title ?? real?.categories.first?.title ?? "" } }
+
     }
 
     private func planText(_ p: PlanResult) -> String {

@@ -233,14 +233,15 @@ private struct CoachOverlay: View {
             Bubble(step: step, cheering: coach.cheering, reduceMotion: reduceMotion)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { coach.controls["bubble"] = $0 }
                 .padding(.horizontal, Theme.Space.l)
-                .frame(width: size.width, height: size.height - 110, alignment: .bottom)
+                .frame(width: size.width, height: max(0, size.height - 110), alignment: .bottom)
         } else if let step = coach.step {
             let above = (hole?.midY ?? 0) > size.height * 0.5
             Bubble(step: step, cheering: coach.cheering, reduceMotion: reduceMotion)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { coach.controls["bubble"] = $0 }
                 .padding(.horizontal, Theme.Space.l)
                 .frame(width: size.width)
-                .frame(height: hole.map { above ? $0.minY - 10 : size.height - $0.maxY - 10 } ?? size.height,
+                // Never negative: the first pass can have a zero size, or a hole near an edge.
+                .frame(height: max(0, hole.map { above ? $0.minY - 10 : size.height - $0.maxY - 10 } ?? size.height),
                        alignment: hole == nil ? .center : above ? .bottom : .top)
                 .offset(y: hole.map { above ? 0 : $0.maxY + 10 } ?? 0)
         }

@@ -18,7 +18,6 @@ struct ToDoView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showOlder = false
     @State private var sheet: SheetTarget?
-    @State private var showSettings = false
     @State private var path: [AssignmentRoute] = []
     // The status tip: shown once, under the first row the student ticks, until closed.
     @AppStorage("statusTipShown") private var tipShown = false
@@ -47,7 +46,6 @@ struct ToDoView: View {
             .navigationDestination(isPresented: $showGuide) { StatusGuideView() }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $sheet) { SchoologySheet(target: $0) }
-            .sheet(isPresented: $showSettings) { SettingsView() }
         }
         .onChange(of: model.deepLinkAssignment, initial: true) { _, id in
             guard let id else { return }
@@ -70,21 +68,11 @@ struct ToDoView: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do") {
                 if !typeSize.isAccessibilitySize, let ripple { ripple.padding(.bottom, Theme.Space.xs) }
-                Menu {
+                ScreenOptions {
                     Picker("View", selection: $layoutID) {
                         ForEach(ToDoLayout.allCases, id: \.self) { Label($0.title, systemImage: $0.icon).tag($0.rawValue) }
                     }
-                } label: {
-                    Image(systemName: layout.icon).font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
-                        .frame(width: 44, height: 44)
                 }
-                .accessibilityLabel("View: \(layout.title)")
-                Button { showSettings = true } label: {
-                    Image(systemName: "gearshape").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
-                        .frame(width: 44, height: 44)
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Settings")
             }
             if typeSize.isAccessibilitySize, let ripple { ripple.padding(.horizontal, Theme.Space.xs) }
             // Late, today and the next six days, a dot per item still to do; tap one to show only it.

@@ -12,6 +12,14 @@ struct ClassesView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
+                    ScreenHeader(title: "Classes") {
+                        // The same list as Settings → Grades and Classes → Classes on the shelf.
+                        ScreenOptions {
+                            Button("Edit shelf", systemImage: "books.vertical") { editShelf = true }
+                        }
+                    }
+                    .padding(.top, Theme.Space.s)
+                    SearchField(text: $query, prompt: "Search every class's materials")
                     if query.isEmpty {
                         tiles
                         recent
@@ -23,18 +31,11 @@ struct ClassesView: View {
                 .padding(.bottom, 24)
             }
             .background(Theme.background)
-            .navigationTitle("Classes")
-            .searchable(text: $query, prompt: "Search every class's materials")
+            .toolbar(.hidden, for: .navigationBar)
             .onChange(of: query) { _, q in if !q.isEmpty { index.build(model) } }
             .navigationDestination(for: Course.self) { MaterialsView(sectionId: $0.sectionId, folderId: nil, title: $0.shortTitle, trail: []) }
             .navigationDestination(for: AssignmentRoute.self) { AssignmentView(id: $0.id) }
             .refreshable { try? await model.loadCourses() }
-            // The same list as Settings → Grades and Classes → Classes on the shelf.
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button("Edit shelf") { editShelf = true }
-                }
-            }
             .sheet(isPresented: $editShelf) {
                 NavigationStack {
                     ShelfSettings()
@@ -83,6 +84,33 @@ struct ClassesView: View {
             }
             .card()
         }
+    }
+}
+
+/// The search box under the Classes title (in the page, like every tab's header,
+/// not in a navigation bar).
+struct SearchField: View {
+    @Binding var text: String
+    let prompt: String
+    @FocusState private var focused: Bool
+    var body: some View {
+        HStack(spacing: Theme.Space.s) {
+            Image(systemName: "magnifyingglass").foregroundStyle(Theme.secondary)
+            TextField(prompt, text: $text)
+                .focused($focused)
+                .submitLabel(.search)
+                .autocorrectionDisabled()
+            if !text.isEmpty {
+                Button { text = ""; focused = false } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(Theme.tertiary) }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Clear search")
+            }
+        }
+        .font(Theme.body)
+        .padding(.horizontal, Theme.Space.m)
+        .frame(minHeight: 44)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(Theme.border))
     }
 }
 

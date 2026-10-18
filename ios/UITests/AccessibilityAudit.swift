@@ -52,9 +52,10 @@ final class AccessibilityAudit: XCTestCase {
             if tab == "Classes" { try open("grade ", as: "Class") }
         }
         app.tabBars.buttons["To Do"].tap()
-        let gear = app.buttons["Settings"]
+        let gear = app.buttons["Options"]
         if gear.waitForExistence(timeout: 5) {
             gear.tap()
+            app.buttons["Settings"].tap()
             try check("Settings")
         }
         XCTAssertTrue(issues.isEmpty, "\(issues.count) accessibility issues:\n" + issues.joined(separator: "\n"))

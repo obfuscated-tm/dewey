@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tutorial options</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F6F7F9;--card:#fff;--line:#E3E6EA;--text:#1F2429;--dim:#5E6670;--faint:#8A929B;--accent:#1D5EA8;--soft:#E6EEF8;--good:#23794A;--goodsoft:#E5F2EA;--late:#B8430F;--warn:#FFF6E5}
+*{box-sizing:border-box}
+body{margin:0;background:#E9ECEF;font-family:'Instrument Sans',system-ui,sans-serif;color:var(--text)}
+header.top{max-width:1300px;margin:0 auto;padding:32px 24px 8px}
+header.top h1{margin:0 0 6px;font-size:28px}
+header.top p{margin:0;color:var(--dim);max-width:820px;line-height:1.5}
+section.opt{max-width:1300px;margin:0 auto;padding:28px 24px}
+section.opt>h2{margin:0 0 4px;font-size:20px}
+section.opt>p.lede{margin:0 0 16px;color:var(--dim);max-width:820px;line-height:1.5}
+.row{display:flex;gap:28px;flex-wrap:wrap;align-items:flex-start}
+.phone{width:390px;height:844px;background:var(--bg);border-radius:44px;border:10px solid #1F2429;position:relative;overflow:hidden;flex:none;font-size:15px}
+.cap{width:390px;font-size:13px;color:var(--dim);line-height:1.45;margin-top:10px}
+.cap b{color:var(--text)}
+.pros{font-size:13px;line-height:1.5;margin:8px 0 0;padding-left:18px;color:var(--dim)}
+.status{height:44px}
+.screen{padding:0 14px}
+.kicker{font-size:13px;color:var(--dim);font-weight:600;margin:6px 6px 0}
+.big{font-size:32px;font-weight:700;margin:0 6px 12px}
+.ghead{font-size:13px;font-weight:600;color:var(--dim);text-transform:uppercase;letter-spacing:.04em;margin:14px 6px 6px}
+.group{background:var(--card);border-radius:14px;overflow:hidden}
+.trow{display:grid;grid-template-columns:28px 1fr auto;gap:10px;padding:11px 14px;border-top:1px solid #EEF0F3;align-items:start}
+.trow:first-child{border-top:0}
+.t{font-size:15.5px}
+.due{font-size:13px;color:var(--dim);margin-top:3px}
+.due.late{color:var(--late);font-weight:600}
+.note{font-size:13px;margin-top:3px;font-weight:500}
+.circ{width:24px;height:24px;border-radius:50%;border:1.6px solid var(--dim);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.circ.done{border:2px solid var(--accent);background:var(--soft);color:var(--accent)}
+.seal{width:24px;height:24px;border-radius:50%;background:var(--good);color:#fff;display:inline-flex;align-items:center;justify-content:center;flex:none}
+.circ svg,.seal svg{width:13px;height:13px}
+.pill{font-size:13px;font-weight:600;padding:5px 11px;border-radius:999px;white-space:nowrap}
+.pill.go{background:var(--goodsoft);color:var(--good)}
+.pill.sub{background:var(--soft);color:var(--accent)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--card);border-radius:22px 22px 0 0;box-shadow:0 -8px 30px rgba(0,0,0,.18);padding:10px 20px 28px}
+.grab{width:38px;height:5px;border-radius:3px;background:#D5D9DE;margin:0 auto 14px}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.28)}
+h3{margin:0 0 4px;font-size:21px}
+.sub{color:var(--dim);font-size:14px;line-height:1.45;margin:0 0 14px}
+.ladder{display:flex;flex-direction:column;gap:0}
+.step{display:grid;grid-template-columns:28px 1fr;gap:12px;padding:10px 0}
+.step .w{font-weight:600;font-size:15.5px}
+.step .d{color:var(--dim);font-size:13.5px;line-height:1.45;margin-top:2px}
+.branch{margin:6px 0 0;display:flex;flex-direction:column;gap:6px}
+.branch div{font-size:13px;line-height:1.4;padding:7px 10px;border-radius:10px;background:#F3F5F7}
+.branch b{color:var(--good)}
+.callout{background:var(--warn);border-radius:12px;padding:11px 13px;font-size:13.5px;line-height:1.45;margin:8px 0 12px}
+.callout b{display:block;margin-bottom:2px}
+.btn{display:block;width:100%;text-align:center;background:var(--accent);color:#fff;font-weight:600;border-radius:14px;padding:14px;font-size:16px;border:0}
+.btn.ghost{background:none;color:var(--accent);padding:8px}
+.dots{display:flex;gap:6px;justify-content:center;margin:12px 0}
+.dots i{width:7px;height:7px;border-radius:50%;background:#D5D9DE}
+.dots i.on{background:var(--accent)}
+.tip{margin:0 0 0 0;background:var(--soft);border-radius:12px;padding:11px 13px;font-size:13.5px;line-height:1.45;position:relative}
+.tip a{color:var(--accent);font-weight:600;text-decoration:none}
+.tip .x{position:absolute;right:10px;top:8px;color:var(--faint);font-size:16px}
+.srow{display:flex;align-items:center;gap:10px;min-height:46px;padding:0 14px 0 16px;border-top:1px solid #EEF0F3;font-size:15.5px}
+.srow:first-child{border-top:0}
+.val{margin-left:auto;color:var(--dim);font-size:14px}
+.chev{color:var(--faint);margin-left:6px}
+.foot{font-size:12.5px;color:var(--dim);padding:6px 16px 0;line-height:1.4}
+.page{padding:0 16px;overflow:hidden;height:760px}
+.back{color:var(--accent);font-size:17px;padding:6px 0 4px}
+.page h2{font-size:28px;margin:4px 0 6px}
+.page h4{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim);margin:16px 0 6px}
+.page p{margin:0 0 8px;font-size:14.5px;line-height:1.5}
+.sync{background:var(--card);border-radius:12px;padding:4px 12px}
+.sync div{display:flex;gap:8px;padding:7px 0;border-top:1px solid #EEF0F3;font-size:13.5px;line-height:1.4}
+.sync div:first-child{border-top:0}
+.sync span:first-child{width:18px;flex:none;color:var(--accent);font-weight:700}
+.connect{background:var(--card);border-radius:14px;padding:12px 14px}
+.connect ol{margin:0 0 10px;padding-left:20px;font-size:14px;line-height:1.55}
+.field{border:1px solid var(--line);border-radius:10px;padding:10px 12px;color:var(--faint);font-size:14px;margin-bottom:8px;font-family:ui-monospace,monospace}
+.disc{background:var(--card);border-radius:14px;overflow:hidden}
+.disc .q{display:flex;justify-content:space-between;padding:13px 14px;border-top:1px solid #EEF0F3;font-size:15px;font-weight:500}
+.disc .q:first-child{border-top:0}
+.disc .a{padding:0 14px 12px;font-size:13.5px;color:var(--dim);line-height:1.5}
+.compare{display:grid;grid-template-columns:1fr 1fr;gap:12px;width:390px}
+.mini{background:var(--card);border-radius:14px;padding:12px;font-size:13px;line-height:1.45}
+.mini h5{margin:0 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--dim)}
+.mini .n{display:flex;gap:8px;align-items:center;margin:5px 0}
+.mini .n i{font-style:normal;width:20px;height:20px;border-radius:50%;background:var(--soft);color:var(--accent);font-size:11px;font-weight:700;display:inline-flex;align-items:center;justify-content:center}
+.strike{text-decoration:line-through;color:var(--faint)}
+.rec{display:inline-block;background:var(--goodsoft);color:var(--good);font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:8px;vertical-align:middle}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>Tutorial: status guide + neo-plan explainer</h1>
+  <p>Pick one of A / B / C for the status guide and one of 1 / 2 for the neo-plan page. The guide's words are the same in all three; only how it shows up changes. Nothing relies on swipes. Every option is also reachable again from Settings → <b>How statuses work</b>.</p>
+</header>
+
+<!-- ───────────── Status guide ───────────── -->
+<section class="opt">
+  <h2>Status guide · option A: one sheet, the whole ladder</h2>
+  <p class="lede">The first time you tick something, a sheet slides up over To Do. One screen, read top to bottom, one button. Same sheet opens from Settings.</p>
+  <div class="row">
+    <div>
+      <div class="phone">
+        <div class="status"></div>
+        <div class="screen">
+          <div class="kicker">Sat, Oct 18</div><div class="big">To Do</div>
+          <div class="ghead">Chemistry H</div>
+          <div class="group"><div class="trow"><span class="circ done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M5 12l5 5 9-10"/></svg></span><div><div class="t">Lab 4 write-up</div><div class="due">Mon Oct 20, 11:59 pm</div><div class="note" style="color:var(--accent)">Done · not submitted yet</div></div><span class="pill sub">Submit ↗</span></div></div>
+        </div>
+        <div class="dim"></div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <h3>How Dewey tracks your work</h3>
+          <p class="sub">You just marked something Done. Here's what each step means.</p>
+          <div class="ladder">
+            <div class="step"><span class="circ"></span><div><div class="w">To do</div><div class="d">Not finished yet.</div></div></div>
+            <div class="step"><span class="circ done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M5 12l5 5 9-10"/></svg></span><div><div class="w">Done</div><div class="d">You finished it. Nothing is handed in yet. “Done · not submitted yet” means it still needs <b>Submit</b> on Schoology.</div></div></div>
+            <div class="step"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M5 12l5 5 9-10"/></svg></span><div><div class="w">Turned in</div><div class="d">Your teacher has it. Two kinds:</div>
+              <div class="branch">
+                <div><b>Submitted on Schoology</b>: Schoology's dropbox has your file. Dewey says this only when Schoology does.</div>
+                <div><b>Turned in · not on Schoology</b>: you tapped <b style="color:var(--text)">Turn in</b> because it went in on paper, a lab site or in class.</div>
+              </div></div></div>
+          </div>
+          <div class="callout"><b>“Not submitted” isn't “missing”</b>Schoology only sees its own dropbox. Paper work, lab sites and Google Assignments look “not submitted” there even when they're in. Tap Turn in and Dewey stops calling it late.</div>
+          <div class="step" style="padding-top:0"><span class="circ" style="border-radius:6px"></span><div><div class="w">Tests: Studied</div><div class="d">Tests aren't turned in. Tick Studied when you're ready; the night-before reminder stops.</div></div></div>
+          <button class="btn">Got it</button>
+        </div>
+      </div>
+      <ul class="pros cap"><li>Everything in one glance; easy to come back to.</li><li>Dense: it's a lot of reading right after a tap.</li></ul>
+    </div>
+  </div>
+</section>
+
+<section class="opt">
+  <h2>Status guide · option B: three short cards</h2>
+  <p class="lede">Same sheet, split into three cards with Next / Back buttons (no swiping). Each card has one idea and shows the row you just ticked as the example.</p>
+  <div class="row">
+    <div>
+      <div class="phone">
+        <div class="status"></div><div class="dim" style="background:rgba(0,0,0,.28)"></div>
+        <div class="sheet" style="height:470px">
+          <div class="grab"></div>
+          <h3>Done is just for you</h3>
+          <p class="sub">Done means you finished it. Nothing has gone to your teacher yet.</p>
+          <div class="group" style="background:#F3F5F7"><div class="trow"><span class="circ done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M5 12l5 5 9-10"/></svg></span><div><div class="t">Lab 4 write-up</div><div class="note" style="color:var(--accent)">Done · not submitted yet</div></div><span class="pill sub">Submit ↗</span></div></div>
+          <p class="sub" style="margin-top:12px">This one has a Schoology dropbox, so it still needs <b>Submit</b>.</p>
+          <div class="dots"><i class="on"></i><i></i><i></i></div>
+          <button class="btn">Next</button>
+        </div>
+      </div>
+      <p class="cap"><b>Card 1 of 3.</b></p>
+    </div>
+    <div>
+      <div class="phone">
+        <div class="status"></div><div class="dim"></div>
+        <div class="sheet" style="height:560px">
+          <div class="grab"></div>
+          <h3>Turned in: two ways</h3>
+          <p class="sub">Once your teacher has it, the row gets a green seal.</p>
+          <div class="group" style="background:#F3F5F7">
+            <div class="trow"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M5 12l5 5 9-10"/></svg></span><div><div class="t">Lab 4 write-up</div><div class="note" style="color:var(--good);font-weight:700">Submitted on Schoology</div></div><span></span></div>
+            <div class="trow"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M5 12l5 5 9-10"/></svg></span><div><div class="t">Unit 2 worksheet</div><div class="note" style="color:var(--good);font-weight:700">Turned in · not on Schoology</div></div><span></span></div>
+          </div>
+          <div class="callout" style="margin-top:12px"><b>“Not submitted” isn't “missing”</b>Paper, lab-site and Google work always looks “not submitted” on Schoology. Tap <b>Turn in</b> when you hand it in.</div>
+          <div class="dots"><i></i><i class="on"></i><i></i></div>
+          <button class="btn">Next</button><button class="btn ghost">Back</button>
+        </div>
+      </div>
+      <p class="cap"><b>Card 2 of 3.</b> Card 3: “Tests: tick Studied” with a test row, and <b>Got it</b>.</p>
+    </div>
+  </div>
+  <ul class="pros cap" style="width:auto;max-width:800px"><li>Easiest to read; the example rows look exactly like the list.</li><li>Three taps to get through; some people will tap Next without reading.</li></ul>
+</section>
+
+<section class="opt">
+  <h2>Status guide · option C: a tip in the list, full guide behind it <span class="rec">My pick</span></h2>
+  <p class="lede">No sheet. The first tick drops a small tip right under that row, saying the one thing that matters now. “How statuses work” opens the full guide (option A's sheet, as a page). The tip stays until you close it.</p>
+  <div class="row">
+    <div>
+      <div class="phone">
+        <div class="status"></div>
+        <div class="screen">
+          <div class="kicker">Sat, Oct 18</div><div class="big">To Do</div>
+          <div class="ghead">Chemistry H</div>
+          <div class="group">
+            <div class="trow"><span class="circ done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M5 12l5 5 9-10"/></svg></span><div><div class="t">Lab 4 write-up</div><div class="due">Mon Oct 20, 11:59 pm</div><div class="note" style="color:var(--accent)">Done · not submitted yet</div></div><span class="pill sub">Submit ↗</span></div>
+            <div style="padding:0 12px 12px"><div class="tip"><span class="x">×</span><b>Done is just for you.</b> Hand it in next: <b>Submit ↗</b> for a Schoology dropbox, <b>Turn in</b> for paper or a lab site. <a href="#">How statuses work</a></div></div>
+            <div class="trow"><span class="circ"></span><div><div class="t">Chapter 5 reading notes</div><div class="due late">Thu Oct 16, 11:59 pm · 2 days late</div></div><span class="pill go">Turn in</span></div>
+          </div>
+          <div class="ghead">AP Bio</div>
+          <div class="group"><div class="trow"><span class="circ" style="border-radius:50%"></span><div><div class="t">Unit 3 test</div><div class="due">Wed Oct 22 · in 4 days · not studied</div></div><span></span></div></div>
+        </div>
+      </div>
+      <p class="cap"><b>The tip.</b> For a first tick on a test it says: “Studied stops the night-before reminder. Tests are never turned in.”</p>
+    </div>
+    <div>
+      <div class="phone">
+        <div class="status"></div>
+        <div class="page">
+          <div class="back">‹ To Do</div>
+          <h2>How statuses work</h2>
+          <div class="ladder">
+            <div class="step"><span class="circ"></span><div><div class="w">To do</div><div class="d">Not finished yet.</div></div></div>
+            <div class="step"><span class="circ done"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M5 12l5 5 9-10"/></svg></span><div><div class="w">Done</div><div class="d">You finished it. Nothing is handed in yet. “Done · not submitted yet” means it still needs Submit on Schoology.</div></div></div>
+            <div class="step"><span class="seal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="4"><path d="M5 12l5 5 9-10"/></svg></span><div><div class="w">Turned in</div><div class="d">Your teacher has it.</div>
+              <div class="branch"><div><b>Submitted on Schoology</b>: the dropbox has your file. Dewey says this only when Schoology does.</div><div><b>Turned in · not on Schoology</b>: you tapped Turn in (paper, lab site, in class).</div></div></div></div>
+          </div>
+          <div class="callout"><b>Why paper work is never “missing”</b>Schoology only knows about its own dropbox. Paper, lab sites and Google Assignments look “not submitted” there even after you hand them in, and some teachers grade paper even when there's a dropbox. Dewey shows them late until you tap Turn in, never missing.</div>
+          <div class="step"><span class="circ" style="border-radius:6px"></span><div><div class="w">Tests: Studied</div><div class="d">Tests aren't turned in. Tick Studied when you're ready and the night-before reminder stops.</div></div></div>
+          <div class="step"><span style="font-size:18px">↺</span><div><div class="w">Changed your mind?</div><div class="d">Tap the circle again, or <b>Undo</b> on a turned-in row. Press and hold a row to pick any status.</div></div></div>
+        </div>
+      </div>
+      <p class="cap"><b>The full guide</b>, a page (from the tip, or Settings → How statuses work).</p>
+    </div>
+  </div>
+  <ul class="pros cap" style="width:auto;max-width:800px"><li>Doesn't interrupt the tick; teaches the next step exactly where it's needed.</li><li>The full guide is a normal page you can scroll and come back to.</li><li>Easier to miss than a sheet (that's the trade-off).</li></ul>
+</section>
+
+<!-- ───────────── neo-plan ───────────── -->
+<section class="opt">
+  <h2>neo-plan: hidden until connected</h2>
+  <p class="lede">Sign in loses its neo-plan step. In Settings, neo-plan becomes one row that opens its own page; the token field moves onto that page. Assignment pages already hide neo-plan when it isn't connected.</p>
+  <div class="row">
+    <div class="compare">
+      <div class="mini"><h5>Sign in, now</h5><div class="n"><i>1</i>Sign in to fuhsd.schoology.com</div><div class="n strike"><i>2</i>Connect neo-plan</div><div class="n"><i>3</i>Turn on reminders</div></div>
+      <div class="mini"><h5>Sign in, after</h5><div class="n"><i>1</i>Sign in to fuhsd.schoology.com</div><div class="n"><i>2</i>Turn on reminders</div></div>
+      <div style="grid-column:1/3">
+        <div class="ghead" style="margin-left:16px">Settings</div>
+        <div class="group">
+          <div class="srow">How statuses work<span class="chev" style="margin-left:auto">›</span></div>
+          <div class="srow">neo-plan<span class="val">Not connected</span><span class="chev">›</span></div>
+        </div>
+        <div class="foot">An optional planner board. Most people don't need it.</div>
+        <p class="cap" style="width:auto">A new <b>Help</b> section, under Schoology. When connected the row says “Connected · synced 2 min ago”.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="opt">
+  <h2>neo-plan page · layout 1: read top to bottom <span class="rec">My pick</span></h2>
+  <p class="lede">A short article: what it is, who'd want it, what syncs, then how to connect, with the token field at the end.</p>
+  <div class="row">
+    <div>
+      <div class="phone">
+        <div class="status"></div>
+        <div class="page">
+          <div class="back">‹ Settings</div>
+          <h2>neo-plan</h2>
+          <p style="color:var(--dim)">Optional. Dewey works fully without it.</p>
+          <h4>What it is</h4>
+          <p>A planner website (neo-plan.vercel.app) that lays your week out as a board, one column per class. Dewey can fill it from Schoology for you.</p>
+          <h4>Who it's for</h4>
+          <p>People who already plan in neo-plan, or want one board shared between this phone and a computer with the Dewey extension. If you don't have an account, skip this.</p>
+          <h4>What Dewey syncs</h4>
+          <div class="sync">
+            <div><span>+</span><span>New work from your To Do goes onto the board.</span></div>
+            <div><span>✓</span><span>Done, Studied and Turned in, both ways. The newer change wins.</span></div>
+            <div><span>✓</span><span>Submitted on Schoology clears it from the board.</span></div>
+            <div><span>✓</span><span>Type: HW, Test, Task or Classwork.</span></div>
+            <div><span style="color:var(--dim)">–</span><span style="color:var(--dim)">Never your Schoology password, grades or messages.</span></div>
+          </div>
+          <h4>Connect</h4>
+          <div class="connect">
+            <ol><li>Sign in at neo-plan.vercel.app.</li><li>Open Settings and make an extension token.</li><li>Copy it (starts with np_) and paste it here.</li></ol>
+            <div class="field">np_…</div>
+            <button class="btn" style="padding:11px">Connect</button>
+          </div>
+        </div>
+      </div>
+      <p class="cap">Scrolls a little on small phones. Kept in the Keychain, as now.</p>
+    </div>
+  </div>
+</section>
+
+<section class="opt">
+  <h2>neo-plan page · layout 2: connect first, questions folded</h2>
+  <p class="lede">The connect box sits at the top; the explanation is a list of questions you open one at a time.</p>
+  <div class="row">
+    <div>
+      <div class="phone">
+        <div class="status"></div>
+        <div class="page">
+          <div class="back">‹ Settings</div>
+          <h2>neo-plan</h2>
+          <p style="color:var(--dim)">An optional planner board that Dewey keeps in step with Schoology.</p>
+          <div class="connect" style="margin:12px 0 18px">
+            <div class="field">Paste your np_… token</div>
+            <button class="btn" style="padding:11px">Connect</button>
+          </div>
+          <div class="disc">
+            <div class="q">What is neo-plan?<span>⌄</span></div>
+            <div class="q">Do I need it?<span>⌃</span></div>
+            <div class="a">Probably not. It's for people who already plan in neo-plan, or want one board shared with the Dewey extension on a computer. Everything else in Dewey works without it.</div>
+            <div class="q">What does Dewey sync?<span>⌄</span></div>
+            <div class="q">How do I get a token?<span>⌄</span></div>
+            <div class="q">What does it never see?<span>⌄</span></div>
+          </div>
+        </div>
+      </div>
+      <p class="cap">Shorter, but the “do I need it?” answer is hidden behind a tap.</p>
+    </div>
+  </div>
+</section>
+
+<section class="opt">
+  <h2>Extension, after iOS</h2>
+  <p class="lede">Same words, same choices. One catch: in the extension, Done and Turn in are stored in neo-plan, so without a token the To Do rows show no ticks at all. So:</p>
+  <ul class="pros" style="max-width:820px;font-size:14px">
+    <li><b>Welcome card</b> drops step 3 (Connect neo-plan) and the “neo-plan” in step 1's Settings line: two steps.</li>
+    <li><b>Settings → neo-plan</b> page gets the same explainer above the token frame.</li>
+    <li><b>Assignment page</b>: the quiet “Token needed” goes away when there's no token.</li>
+    <li><b>Status guide</b>: a new Settings page “How statuses work” with the extension's words (Done, not submitted · Turned in · Submitted · Missing · Studied), and the same tip (option C) or card (A/B) on the first Done click. That only happens once neo-plan is connected.</li>
+  </ul>
+</section>
+</body>
+</html>

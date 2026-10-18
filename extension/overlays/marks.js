@@ -16,6 +16,7 @@
 import { np, createHost, el, debounce, failText, keepEvents } from './ui.js';
 import { rowState } from './matstate.js';
 import { MARK_CSS, markerFor } from './marker.js';
+import { tipKindFor } from './statusguide.js';
 
 // /home's rows are flex rows (title block, then Schoology's status icon), as
 // is the title cell of a /home/assignments row: the marker is the last item. A course page's rows are plain blocks: the marker
@@ -124,6 +125,13 @@ export function startMarks({ rowsIn, doc = document, loc = location, call = np }
     if (r.ok && r.data) known.set(row.schoology_id, r.data);
     else errors.set(row.schoology_id, failText(r));
     drawAll();
+    return r;
+  }
+
+  /** A row marked done / studied / turned in: its tip, the first time ever (todorows.js). */
+  function ticked(row, op, args) {
+    const kind = tipKindFor(op, args);
+    if (kind) row.onTick?.(kind);
   }
 
   const add = (row) => change(row, () => call('addItem', {
@@ -139,7 +147,10 @@ export function startMarks({ rowsIn, doc = document, loc = location, call = np }
   }));
   const restore = (row) => change(row, () => call('restore', { id: known.get(row.schoology_id)?.id }));
   // Turn in, and its undo: neo-plan puts an assignment back done, not turned in.
-  const turnIn = (row) => change(row, () => call('turnIn', { id: known.get(row.schoology_id)?.id }));
+  const turnIn = async (row) => {
+    const r = await change(row, () => call('turnIn', { id: known.get(row.schoology_id)?.id }));
+    if (r?.ok) ticked(row, 'turnIn');
+  };
   const putBack = (row) => change(row, () => call('putBack', { id: known.get(row.schoology_id)?.id }));
   // Studied/not studied, done/not done: flips instantly (the state known.get
   // already shows before the call answers), and rolls back on refusal.
@@ -153,7 +164,7 @@ export function startMarks({ rowsIn, doc = document, loc = location, call = np }
       const r = await call('work', { id: it.id, work });
       if (!r.ok) known.set(row.schoology_id, it); // rollback: the marker flips back
       return r;
-    });
+    }).then((r) => { if (r?.ok) ticked(row, 'work', { work, exam: it.type === 'exam' }); });
   }
 
   /** Where the marker goes in this row, and how it sits there. */

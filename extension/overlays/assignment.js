@@ -295,7 +295,7 @@ export function start({
 
   // ── neo-plan: this assignment ──
   function fail(r) {
-    if (r.status === 401) state.error = { text: 'Token needed', quiet: true };
+    if (r.status === 401) state.error = null; // no neo-plan: say nothing about it
     else state.error = { text: failText(r) };
   }
 

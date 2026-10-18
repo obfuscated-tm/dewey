@@ -93,26 +93,33 @@ struct MainTabs: View {
     @State private var tab = Demo.startTab
     @State private var schoologyURL: URL?
     @AppStorage(TourView.shownKey) private var tourShown = false
+    /// The tour's "Take me there" opens a tab fresh: its screens are rebuilt (practice only).
+    @State private var resets = [0, 0, 0, 0, 0]
     @State private var showTour = false
 
     var body: some View {
         TabView(selection: $tab) {
             ToDoView()
+                .id(resets[0])
                 .tabItem { Label("To Do", systemImage: "checklist") }
                 .badge(model.overdueCount())
                 .tag(0)
             GradesView()
+                .id(resets[1])
                 .tabItem { Label("Grades", systemImage: "chart.bar") }
                 .badge(model.newGradeCount())
                 .tag(1)
             InboxView()
+                .id(resets[2])
                 .tabItem { Label("Inbox", systemImage: "tray") }
                 .badge(model.inbox.newCount(model.classes))
                 .tag(2)
             ClassesView()
+                .id(resets[3])
                 .tabItem { Label("Classes", systemImage: "square.grid.2x2") }
                 .tag(3)
             SchoologyTabView()
+                .id(resets[4])
                 .tabItem { Label("Schoology", systemImage: "globe") }
                 .tag(4)
         }
@@ -122,6 +129,12 @@ struct MainTabs: View {
             if let id = AppLink.assignmentId(url) { model.deepLinkAssignment = id }
         }
         .fullScreenCover(isPresented: $showTour) { TourView() }
+        .onChange(of: Coach.shared.jump) {
+            guard model.practice else { return }
+            let t = Coach.shared.jumpTab
+            resets[t] += 1
+            tab = t
+        }
         .task {
             if !tourShown && Demo.showTour && !model.practice { showTour = true }
             if let id = Demo.startAssignment { model.deepLinkAssignment = id }

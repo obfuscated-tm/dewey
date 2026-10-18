@@ -6,6 +6,10 @@ import UIKit
 /// outside the hole are swallowed. It lives in its own window above the app,
 /// so it also covers sheets. Screens say where things are with `.coachTarget`
 /// (practice only); a step ends when the practice model shows it happened.
+/// If the target goes missing (another tab, a page pushed over it, a closed
+/// sheet, scrolled away), the coach is "lost": it stops blocking and offers
+/// "Take me there", which opens the step's tab fresh and rewinds to the step
+/// that leads back, so a wrong tap never strands anyone.
 @MainActor
 @Observable
 final class Coach {
@@ -26,6 +30,10 @@ final class Coach {
         /// No dimming and every tap goes through: for a press-and-hold menu or a
         /// back button, which draw outside any hole.
         var free = false
+        /// The tab the target lives on, for "Take me there".
+        var tab: Int?
+        /// How many steps back "Take me there" goes: to the step that opens this one's screen.
+        var rewind = 0
     }
 
     enum Hint { case tap, swipeLeft, none }
@@ -42,6 +50,12 @@ final class Coach {
     private(set) var flags: Set<String> = []
     /// The overlay's own controls (bubble, Skip), which take taps.
     var controls: [String: CGRect] = [:]
+    /// The step's target has been off screen for a moment: nothing is blocked, and the bubble offers a way back.
+    private(set) var lost = false
+    /// Bumped by "Take me there": MainTabs opens `jumpTab` and resets its screens.
+    private(set) var jump = 0
+    private(set) var jumpTab = 0
+    private var lostTask: Task<Void, Never>?
 
     private weak var model: AppModel?
     private var window: CoachWindow?
@@ -61,12 +75,55 @@ final class Coach {
         return f.insetBy(dx: -8, dy: -6)
     }
 
+    /// The hole's middle is on screen.
+    private var onScreen: Bool {
+        guard let h = hole, let b = window?.bounds else { return false }
+        return b.contains(CGPoint(x: h.midX, y: h.midY))
+    }
+
+    /// Notices a missing target (after 1.5 s, so screens can slide in first).
+    func watch() {
+        guard let s = step, s.target != nil, s.tab != nil, !onScreen else {
+            lostTask?.cancel()
+            lostTask = nil
+            lost = false
+            return
+        }
+        guard lostTask == nil, !lost else { return }
+        lostTask = Task {
+            try? await Task.sleep(for: .milliseconds(1500))
+            guard !Task.isCancelled else { return }
+            lostTask = nil
+            if !onScreen { lost = true }
+        }
+    }
+
+    /// "Take me there": back to the step that opens this screen, on its tab, started fresh.
+    func recover() {
+        guard let s = step, let t = s.tab else { return }
+        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+        index = max(0, index - s.rewind)
+        flags = []
+        lostTask?.cancel()
+        lostTask = nil
+        lost = false
+        jumpTab = t
+        jump += 1
+        announce()
+        Task {
+            try? await Task.sleep(for: .milliseconds(600))
+            check()
+            watch()
+        }
+    }
+
     func start(_ steps: [Step], model: AppModel, from first: Int = 0, onFinish: @escaping () -> Void) {
         self.steps = steps
         self.model = model
         self.onFinish = onFinish
         index = min(max(first, 0), steps.count - 1)
         cheering = false
+        lost = false
         flags = []
         running = true
         guard window == nil, let scene = UIApplication.shared.connectedScenes
@@ -140,7 +197,8 @@ final class Coach {
         // A what-if box keeps the keyboard up; the next step may be under it.
         UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
         index += 1
-        if index >= steps.count { finish() } else { announce(); check() }
+        lost = false
+        if index >= steps.count { finish() } else { announce(); check(); watch() }
     }
 
     func finish() {
@@ -151,6 +209,9 @@ final class Coach {
         frames = [:]
         controls = [:]
         flags = []
+        lost = false
+        lostTask?.cancel()
+        lostTask = nil
         let f = onFinish
         onFinish = nil
         f?()
@@ -169,7 +230,7 @@ final class CoachWindow: UIWindow {
         let c = Coach.shared
         guard let step = c.step else { return nil }
         if c.controls.values.contains(where: { $0.contains(point) }) { return super.hitTest(point, with: event) }
-        if UIAccessibility.isVoiceOverRunning || step.free { return nil }
+        if UIAccessibility.isVoiceOverRunning || step.free || c.lost { return nil }
         if step.button == nil, let hole = c.hole, hole.contains(point) { return nil }
         return rootViewController?.view
     }
@@ -209,9 +270,9 @@ private struct CoachOverlay: View {
             let hole = coach.hole
             ZStack(alignment: .topLeading) {
                 SpotlightShape(hole: hole ?? .zero)
-                    .fill(Color.black.opacity(coach.step?.free == true ? 0 : 0.55), style: FillStyle(eoFill: true))
+                    .fill(Color.black.opacity(coach.step?.free == true || coach.lost ? 0 : 0.55), style: FillStyle(eoFill: true))
                     .accessibilityHidden(true)
-                if let hole, coach.step?.button == nil {
+                if let hole, coach.step?.button == nil, coach.step?.hint != Coach.Hint.none, !coach.lost {
                     HintMark(hole: hole, hint: coach.step?.hint ?? .none, reduceMotion: reduceMotion)
                 }
                 bubble(hole: hole, size: geo.size)
@@ -221,22 +282,24 @@ private struct CoachOverlay: View {
         }
         .ignoresSafeArea()
         .preferredColorScheme(Theme.colorScheme(appearanceSetting))
-        .onChange(of: coach.frames) { coach.check() }
+        .onChange(of: coach.frames) { coach.check(); coach.watch() }
+        .onChange(of: coach.index) { coach.watch() }
         .onChange(of: coach.revision) { coach.check() }
         .onChange(of: coach.flags) { coach.check() }
     }
 
     @ViewBuilder
     private func bubble(hole: CGRect?, size: CGSize) -> some View {
-        if let step = coach.step, step.free, hole != nil {
-            // A press-and-hold menu opens next to its target: keep out of its way, above the tab bar.
-            Bubble(step: step, cheering: coach.cheering, reduceMotion: reduceMotion)
+        if let step = coach.step, (step.free && hole != nil) || coach.lost {
+            // A press-and-hold menu opens next to its target, and a lost student needs the
+            // screen: keep out of the way, above the tab bar.
+            Bubble(step: step, cheering: coach.cheering, lost: coach.lost, reduceMotion: reduceMotion)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { coach.controls["bubble"] = $0 }
                 .padding(.horizontal, Theme.Space.l)
                 .frame(width: size.width, height: max(0, size.height - 110), alignment: .bottom)
         } else if let step = coach.step {
             let above = (hole?.midY ?? 0) > size.height * 0.5
-            Bubble(step: step, cheering: coach.cheering, reduceMotion: reduceMotion)
+            Bubble(step: step, cheering: coach.cheering, lost: false, reduceMotion: reduceMotion)
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { coach.controls["bubble"] = $0 }
                 .padding(.horizontal, Theme.Space.l)
                 .frame(width: size.width)
@@ -303,6 +366,7 @@ private struct HintMark: View {
 private struct Bubble: View {
     let step: Coach.Step
     let cheering: Bool
+    let lost: Bool
     let reduceMotion: Bool
     @State private var bob = false
 
@@ -323,7 +387,14 @@ private struct Bubble: View {
                     Text(step.text).font(Theme.subhead).foregroundStyle(Theme.text)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                if let b = step.button, !cheering {
+                if lost {
+                    Text("Lost your place? I'll take you back.").font(Theme.footnote).foregroundStyle(Theme.secondary)
+                    Button("Take me there") { Coach.shared.recover() }
+                        .font(Theme.subhead.weight(.semibold))
+                        .buttonStyle(.borderedProminent)
+                        .buttonBorderShape(.capsule)
+                        .foregroundStyle(Theme.onAccent)
+                } else if let b = step.button, !cheering {
                     Button(b) { Coach.shared.next() }
                         .font(Theme.subhead.weight(.semibold))
                         .buttonStyle(.borderedProminent)

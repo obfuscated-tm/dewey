@@ -18,6 +18,8 @@ final class Inbox {
 
     var threads: [MessageThread] = []
     var notices: [Notice] = []
+    /// Updates posted in the student's groups (hubs, counseling, advisory), newest first.
+    var posts: [GroupPost] = []
     var asOf: Date?
     var error: EngineError?
     var loading = false
@@ -33,6 +35,7 @@ final class Inbox {
     init() {
         if let c = Cache.load("inbox-messages", as: [MessageThread].self) { threads = c.value; asOf = c.savedAt }
         if let c = Cache.load("inbox-notices", as: [Notice].self) { notices = c.value }
+        if let c = Cache.load("inbox-posts", as: [GroupPost].self) { posts = c.value }
         seen = Set(UserDefaults.standard.stringArray(forKey: Self.seenKey) ?? [])
     }
 
@@ -107,6 +110,7 @@ final class Inbox {
             error = nil
             Cache.save("inbox-messages", threads)
             Cache.save("inbox-notices", notices)
+            await refreshPosts(m)
             let classes = m.classes
             let newMessages = Self.unknown(teacherThreads(classes).map(\.id), key: Self.knownMessagesKey)
             let newNotices = Self.unknown(classNotices(classes).filter { $0.type == "material" }.map(\.key), key: Self.knownNoticesKey)
@@ -119,6 +123,23 @@ final class Inbox {
         } catch {
             self.error = .js(error.localizedDescription)
         }
+    }
+
+    /// The first page of each group's updates (a group that fails keeps its last posts).
+    /// Hub posts never reach /home/notifications or the messages list, so they're read here.
+    private func refreshPosts(_ m: AppModel) async {
+        let classIds = Set(m.courses.filter(\.isClass).map(\.sectionId))
+        let groups = m.courses.filter { !classIds.contains($0.sectionId) }
+        var got: [String: [GroupPost]] = Dictionary(grouping: posts, by: \.sectionId)
+        // A few groups: one at a time, so a slow hub never holds up the messages.
+        for g in groups {
+            guard let list: [FeedPost] = try? await m.engine.call("feed", ["sectionId": g.sectionId, "page": 0]) else { continue }
+            got[g.sectionId] = list.map { GroupPost(group: g.shortTitle, sectionId: g.sectionId, post: $0) }
+        }
+        let ids = Set(groups.map(\.sectionId))
+        posts = got.filter { ids.contains($0.key) }.values.flatMap { $0 }
+            .sorted { ($0.when ?? .distantPast) > ($1.when ?? .distantPast) }
+        Cache.save("inbox-posts", posts)
     }
 
     /// The next page of the messages list, added under what's there. No alerts,
@@ -172,10 +193,20 @@ final class Inbox {
     func clear() {
         threads = []
         notices = []
+        posts = []
         asOf = nil
         messagePage = 0
         noticePage = 0
         hasOlderMessages = true
         hasOlderNotices = true
     }
+}
+
+/// One update from a group's feed, with the group it came from.
+struct GroupPost: Codable, Hashable, Identifiable {
+    var group: String
+    var sectionId: String
+    var post: FeedPost
+    var id: String { "\(sectionId)-\(post.id ?? post.date ?? post.bodyMd ?? "")" }
+    var when: Date? { Fmt.date(post.time) }
 }

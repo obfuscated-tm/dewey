@@ -1,4 +1,5 @@
 import Foundation
+import SwiftUI
 
 /// Last good engine results on disk (Application Support/cache), so every screen
 /// can show the saved copy offline with "as of N min ago".
@@ -133,6 +134,10 @@ enum Fmt {
 
     static func signed(_ d: Double?) -> String {
         guard let d else { return "" }
-        return (d < 0 ? "−" : "+") + String(format: "%.2f%%", abs(d))
+        // Under half a hundredth rounds to nothing: "+0.00%", never "−0.00%".
+        return (d <= -0.005 ? "−" : "+") + String(format: "%.2f%%", abs(d))
     }
+
+    /// A score's effect on the grade: red down, green up, grey when it didn't move.
+    static func impactColor(_ d: Double) -> Color { abs(d) < 0.005 ? Theme.tertiary : d < 0 ? Theme.late : Theme.good }
 }

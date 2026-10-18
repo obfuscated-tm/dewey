@@ -486,15 +486,26 @@ final class AppModel {
     }
 
     /// Unseen new scores, newest first.
+    /// The classes Grades shows: every class but the ones hidden there (Settings → Grades).
+    var gradeClasses: [Course] {
+        let hidden = GradesLook.hidden(UserDefaults.standard.string(forKey: GradesLook.hiddenKey) ?? "")
+        return classes.filter { !hidden.contains($0.sectionId) }
+    }
+
     func newGrades() -> [(Course, CourseGrade.Item)] {
-        classes.flatMap { c in (grades[c.sectionId]?.items ?? []).filter { isNewGrade($0.id) }.map { (c, $0) } }
+        gradeClasses.flatMap { c in (grades[c.sectionId]?.items ?? []).filter { isNewGrade($0.id) }.map { (c, $0) } }
             .sorted { gradedFirst($0.1, $1.1) }
     }
 
     /// Unseen new scores in one class, or everywhere (from the saved log, so the
     /// tab badge is right before any gradebook has loaded this launch).
     func newGradeCount(_ sectionId: String? = nil) -> Int {
-        guard let sectionId else { return gradeLog.keys.filter(isNewGrade).count }
+        guard let sectionId else {
+            // Hidden classes don't count (their items are known once a gradebook is saved).
+            let hidden = GradesLook.hidden(UserDefaults.standard.string(forKey: GradesLook.hiddenKey) ?? "")
+            let skip = Set(hidden.flatMap { (grades[$0]?.items ?? []).map(\.id) })
+            return gradeLog.keys.filter { isNewGrade($0) && !skip.contains($0) }.count
+        }
         return (grades[sectionId]?.items ?? []).filter { isNewGrade($0.id) }.count
     }
 
@@ -518,7 +529,8 @@ final class AppModel {
     private func noteNewGrades(sectionId: String, old: CourseGrade?, new: CourseGrade) {
         let fresh = Self.logGrades(&gradeLog, old: old?.items, new: new.items)
         Cache.save("gradeLog", gradeLog)
-        if !fresh.isEmpty, let c = course(sectionId) {
+        let hidden = GradesLook.hidden(UserDefaults.standard.string(forKey: GradesLook.hiddenKey) ?? "")
+        if !fresh.isEmpty, !hidden.contains(sectionId), let c = course(sectionId) {
             Reminders.shared.newGrades(course: c.shortTitle, items: fresh, from: old?.pct, to: new.pct)
         }
     }

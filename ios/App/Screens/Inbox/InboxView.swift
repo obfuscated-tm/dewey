@@ -50,6 +50,10 @@ struct InboxView: View {
                             rows: { i in i.teacherThreads(classes).map(Row.thread) })
                         box("classes", "New in your classes", empty: "Nothing new", sources: [.notices],
                             rows: { i in i.classNotices(classes).map(Row.notice) })
+                        if !inbox.posts.isEmpty {
+                            box("updates", "School updates", sources: [],
+                                rows: { i in i.posts.map(Row.post) })
+                        }
                         box("school", "School", empty: "Nothing from school", sources: [.messages, .notices],
                             rows: { i in
                                 i.schoolThreads(classes).filter { !i.isNew($0) }.map(Row.thread)
@@ -80,10 +84,12 @@ struct InboxView: View {
     private enum Row: Identifiable {
         case thread(MessageThread)
         case notice(Notice)
+        case post(GroupPost)
         var id: String {
             switch self {
             case .thread(let t): return "m\(t.id)"
             case .notice(let n): return "n\(n.key)"
+            case .post(let p): return "p\(p.id)"
             }
         }
     }
@@ -138,6 +144,7 @@ struct InboxView: View {
                     switch row {
                     case .thread(let t): threadRow(t, divider: i > 0)
                     case .notice(let n): NoticeRow(notice: n, divider: i > 0) { sheet = $0 }
+                    case .post(let p): PostRow(post: p, divider: i > 0)
                     }
                 }
                 if all.count > limit || hasOlder(sources) {
@@ -192,6 +199,45 @@ struct InboxView: View {
                 .overlay(alignment: .top) { if divider { Theme.divider.frame(height: 1) } }
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// A hub or group update: who posted where and when, the text folded to five
+/// lines (tap for all of it). Links in it open in the in-app browser.
+struct PostRow: View {
+    let post: GroupPost
+    let divider: Bool
+    @State private var open = false
+
+    var body: some View {
+        Button { withAnimation(.snappy) { open.toggle() } } label: {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: "megaphone").font(Theme.subhead).foregroundStyle(Theme.accent)
+                    .frame(width: 22).padding(.top, 1)
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(post.group).font(Theme.subhead.weight(.semibold)).oneLine()
+                        Spacer()
+                        if let d = post.when { Text(Fmt.ago(d)).font(Theme.footnote).foregroundStyle(Theme.tertiary) }
+                    }
+                    if let a = post.post.author { Text(a).font(Theme.footnote).foregroundStyle(Theme.secondary) }
+                    Text(body(post.post.bodyMd ?? ""))
+                        .font(Theme.subhead).foregroundStyle(Theme.text)
+                        .lineLimit(open ? nil : 5)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            .padding(14)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .overlay(alignment: .top) { if divider { Theme.divider.frame(height: 1) } }
+        .accessibilityHint(open ? "Shows less" : "Shows the whole update")
+    }
+
+    private func body(_ md: String) -> AttributedString {
+        (try? AttributedString(markdown: md, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(md)
     }
 }
 

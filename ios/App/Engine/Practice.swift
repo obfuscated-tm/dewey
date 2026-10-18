@@ -11,8 +11,11 @@ enum Practice {
     /// Work "submitted" in the pretend dropbox; `status` answers from this.
     nonisolated(unsafe) static var submitted: Set<String> = []
 
+    @MainActor
     static func begin() {
         submitted = []
+        // A practice the app was quit in the middle of left its settings behind.
+        clearSettings()
         active = true
         Cache.clearPractice()
     }
@@ -22,12 +25,19 @@ enum Practice {
         active = false
         submitted = []
         Cache.clearPractice()
+        clearSettings()
+    }
+
+    @MainActor
+    private static func clearSettings() {
         // Settings the pretend classes left behind: shelf and opened categories.
         let ids = Set(courses.map(\.id))
         let d = UserDefaults.standard
         let off = Shelf.off(d.string(forKey: Shelf.offKey) ?? "").subtracting(ids)
         d.set(off.sorted().joined(separator: ","), forKey: Shelf.offKey)
         for id in ids { d.removeObject(forKey: "expandedCategories-\(id)") }
+        let hidden = GradesLook.hidden(d.string(forKey: GradesLook.hiddenKey) ?? "").subtracting(ids)
+        d.set(hidden.sorted().joined(separator: ","), forKey: GradesLook.hiddenKey)
     }
 
     // ── The pretend week: three classes, four things due ─────────────────

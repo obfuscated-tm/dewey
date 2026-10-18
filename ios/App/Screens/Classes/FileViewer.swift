@@ -64,6 +64,7 @@ struct AttachmentRow: View {
 /// 3c · Downloads with the Schoology session (the shared WebKit cookies), then
 /// PDFKit for PDFs, QuickLook for the rest. Cached for offline; Share / Save to Files.
 struct FileViewer: View {
+    @Environment(AppModel.self) private var model
     let target: FileTarget
     @Environment(\.dismiss) private var dismiss
     @State private var local: URL?
@@ -104,18 +105,32 @@ struct FileViewer: View {
 
     private func download() async {
         do {
-            let f = try await FileStore.fetch(target)
+            let f = try await FileStore.fetch(try await realFile())
             if f.pathExtension.lowercased() == "pdf" { pdf = PDFDocument(url: f) }
             local = f
         } catch {
             self.error = error.localizedDescription
         }
     }
+
+    /// A course's file row points at Schoology's viewer page (/materials/gp/ID), not the
+    /// file: read that page (engine `material`) for the real /attachment/…/source/… link.
+    private func realFile() async throws -> FileTarget {
+        guard target.url.host == Engine.host, target.url.path.contains("/materials/gp/") else { return target }
+        let m: Material = try await model.engine.call("material", ["path": target.url.path])
+        let files = m.files.compactMap { URL(string: $0.url, relativeTo: Engine.origin)?.absoluteURL }
+        guard let u = files.first(where: { $0.host == Engine.host }) else { throw FileStore.NoFile() }
+        return FileTarget(url: u, title: target.title)
+    }
 }
 
 enum FileStore {
     struct NotAFile: LocalizedError {
         var errorDescription: String? { "Schoology sent a web page instead of the file. You may need to sign in again." }
+    }
+
+    struct NoFile: LocalizedError {
+        var errorDescription: String? { "This page has no file to download. Open it in Schoology instead." }
     }
 
     static let dir: URL = {

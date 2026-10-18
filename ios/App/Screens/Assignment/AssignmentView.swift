@@ -421,7 +421,7 @@ struct AssignmentView: View {
                         if !g.comment.isEmpty { Text(g.comment).font(Theme.footnote).foregroundStyle(Theme.secondary).maxLines(2) }
                     }
                     Spacer()
-                    if let i = g.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.footnote.monospacedDigit()).foregroundStyle(i < 0 ? Theme.late : Theme.good) }
+                    if let i = g.impact { Text(Fmt.signed(i)).font(Theme.footnote.monospacedDigit()).foregroundStyle(Fmt.impactColor(i)) }
                     Image(systemName: "chevron.right").foregroundStyle(Theme.tertiary)
                 }
                 .padding(16)

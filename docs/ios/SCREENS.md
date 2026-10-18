@@ -136,7 +136,7 @@ A short list of rows, each with a class-colour icon square and its current value
 - **Notifications** (On / Off): Due work (2 hours before if not submitted, night before a test, homework the evening before + time, morning summary + time) and Alerts (new grades, messages, new materials, signed out; best effort).
 - **Appearance** (System / Light / Dark): a picker right in the list, not a page.
 - **To Do** (view): View, Call numbers, and the 2-hour and test-night reminders (the same switches as Notifications).
-- **Grades** (Letters / List): Letters across the top.
+- **Grades** (Letters / List): Letters across the top, and **Classes in Grades** (a switch per class; a hidden class also leaves New, Recently graded, the badge and grade alerts; pressing and holding a class in Grades hides it too).
 - **Classes** (N on shelf): which classes stand on the shelf.
 - **Inbox**: Mark messages read when opened.
 - **Help** ("neo-plan on" when connected): **Take the tour** and **Tour cards** (4a), **How statuses work** (the full status guide) and **neo-plan** ("Not connected" / "Connected"), a page that explains what it is, who it's for and what syncs, then connects (token field, Keychain) or shows the masked token, Sync now and Disconnect (`design/Tutorial.options.html`, layout 1).

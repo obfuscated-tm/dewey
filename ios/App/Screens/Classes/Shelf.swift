@@ -60,6 +60,7 @@ struct Shelf: View {
                 }
                 .buttonStyle(.plain)
                 .coachTarget("shelf.flat.\(c.sectionId)")
+                .coachTarget("shelf.flat.any")
                 .contextMenu {
                     if !flatAll { Button("Put on the shelf", systemImage: "arrow.up.to.line") { offRaw = Self.toggled(offRaw, c.sectionId) } }
                 }

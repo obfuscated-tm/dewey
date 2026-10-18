@@ -77,6 +77,8 @@ struct SettingsView: View {
                 Text("Clears the Schoology session and saved pages. Your Done marks stay.")
             }
         }
+        // The whole sheet, whichever page is showing (the tour's Settings steps).
+        .coachTarget("settings.sheet")
     }
 
     private var done: some ToolbarContent {
@@ -271,7 +273,9 @@ private struct ToDoSettings: View {
 }
 
 private struct GradesSettings: View {
+    @Environment(AppModel.self) private var model
     @AppStorage(GradesLook.reportCardKey) private var reportCard = true
+    @AppStorage(GradesLook.hiddenKey) private var hiddenRaw = ""
 
     var body: some View {
         DewForm {
@@ -280,6 +284,19 @@ private struct GradesSettings: View {
             } footer: {
                 Text(reportCard ? "Grades starts with every class's letter in one row, like a report card."
                                 : "Grades starts straight with the list; each class shows its letter.")
+            }
+            Section {
+                ForEach(model.classes) { c in
+                    Toggle(isOn: Binding(get: { !GradesLook.hidden(hiddenRaw).contains(c.sectionId) },
+                                         set: { _ in hiddenRaw = GradesLook.toggled(hiddenRaw, c.sectionId) })) {
+                        HStack(spacing: Theme.Space.s) {
+                            Circle().fill(model.classColor(c.sectionId)).frame(width: 8, height: 8).accessibilityHidden(true)
+                            Text(c.shortTitle)
+                        }
+                    }
+                }
+            } header: { Text("Classes in Grades") } footer: {
+                Text("A hidden class leaves the list, the letters, New and Recently graded, and sends no grade alerts. You can also press and hold a class in Grades.")
             }
         }
         .navigationTitle("Grades")

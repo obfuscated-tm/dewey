@@ -8,6 +8,13 @@ import SwiftUI
 struct GradesView: View {
     @Environment(AppModel.self) private var model
     @AppStorage(GradesLook.reportCardKey) private var reportCard = true
+    @AppStorage(GradesLook.hiddenKey) private var hiddenRaw = ""
+
+    /// The classes shown here; read from `hiddenRaw` so hiding one redraws the screen.
+    private var visible: [Course] {
+        let h = GradesLook.hidden(hiddenRaw)
+        return model.classes.filter { !h.contains($0.sectionId) }
+    }
 
     var body: some View {
         NavigationStack {
@@ -50,12 +57,22 @@ struct GradesView: View {
             Text("Classes").font(Theme.headline).padding(.top, model.newGrades().isEmpty ? Theme.Space.s : Theme.Space.l)
                 .accessibilityAddTraits(.isHeader)
             VStack(spacing: 0) {
-                ForEach(Array(model.classes.enumerated()), id: \.element.sectionId) { i, c in
+                ForEach(Array(visible.enumerated()), id: \.element.sectionId) { i, c in
                     NavigationLink(value: c) { ClassGradeRow(course: c, showLetter: !reportCard) }
                         .buttonStyle(.plain)
                         .coachTarget("grades.class.\(c.sectionId)")
                         .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
+                        .contextMenu {
+                            Button("Hide from Grades", systemImage: "eye.slash") {
+                                withAnimation { hiddenRaw = GradesLook.toggled(hiddenRaw, c.sectionId) }
+                            }
+                        }
                 }
+            }
+            let hiddenCount = model.classes.count - visible.count
+            if hiddenCount > 0 {
+                Text("\(hiddenCount) hidden. Show \(hiddenCount == 1 ? "it" : "them") again in Settings → Grades.")
+                    .font(Theme.footnote).foregroundStyle(Theme.tertiary)
             }
         }
     }
@@ -84,7 +101,7 @@ struct GradesView: View {
     /// Newest scores across all classes (by when the score appeared, then due date).
     @ViewBuilder
     private var recent: some View {
-        let rows: [(Course, CourseGrade.Item)] = model.classes.flatMap { c in
+        let rows: [(Course, CourseGrade.Item)] = visible.flatMap { c in
             (model.grades[c.sectionId]?.items ?? []).filter { $0.earned != nil }.map { (c, $0) }
         }
         .sorted { model.gradedFirst($0.1, $1.1) }
@@ -113,7 +130,7 @@ struct GradesView: View {
                         Spacer()
                         VStack(alignment: .trailing, spacing: 3) {
                             Text(scoreText(r.1)).font(Theme.subhead.weight(.semibold).monospacedDigit())
-                            if let i = r.1.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.caption.monospacedDigit()).foregroundStyle(i < 0 ? Theme.late : Theme.good) }
+                            if let i = r.1.impact { Text(Fmt.signed(i)).font(Theme.caption.monospacedDigit()).foregroundStyle(Fmt.impactColor(i)) }
                         }
                     }
                     .padding(.vertical, 10)
@@ -131,6 +148,14 @@ struct GradesView: View {
 enum GradesLook {
     /// Show every class's letter in one row at the top of Grades (on by default).
     static let reportCardKey = "gradesReportCard"
+    /// Section ids of classes hidden from Grades, comma-separated (a class with nothing worth tracking).
+    static let hiddenKey = "gradesHidden"
+    static func hidden(_ raw: String) -> Set<String> { Set(raw.split(separator: ",").map(String.init)) }
+    static func toggled(_ raw: String, _ id: String) -> String {
+        var s = hidden(raw)
+        if s.contains(id) { s.remove(id) } else { s.insert(id) }
+        return s.sorted().joined(separator: ",")
+    }
 
     /// "Algebra 2" → "ALGE 2", "AP Biology" → "AP BIOL", "US History" → "US HIST":
     /// short enough for six across.
@@ -146,8 +171,11 @@ struct ReportCardRow: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dynamicTypeSize) private var typeSize
 
+    @AppStorage(GradesLook.hiddenKey) private var hiddenRaw = ""
+
     var body: some View {
-        let classes = model.classes
+        let h = GradesLook.hidden(hiddenRaw)
+        let classes = model.classes.filter { !h.contains($0.sectionId) }
         let perRow = typeSize.isAccessibilitySize ? 3 : min(max(classes.count, 1), 6)
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: perRow), spacing: Theme.Space.m) {
             ForEach(classes) { c in
@@ -270,8 +298,8 @@ struct ClassGradeRow: View {
                     HStack(spacing: Theme.Space.s) {
                         Text(last.title).oneLine().frame(maxWidth: .infinity, alignment: .leading)
                         Text(scoreText(last))
-                        if let i = last.impact, abs(i) >= 0.005 {
-                            Text(Fmt.signed(i)).fontWeight(.semibold).foregroundStyle(i < 0 ? Theme.late : Theme.good)
+                        if let i = last.impact {
+                            Text(Fmt.signed(i)).fontWeight(.semibold).foregroundStyle(Fmt.impactColor(i))
                         }
                     }
                     .font(Theme.footnote.monospacedDigit())

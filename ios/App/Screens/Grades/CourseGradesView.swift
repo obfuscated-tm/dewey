@@ -314,7 +314,7 @@ struct CourseGradesView: View {
                 Text(scoreText(it)).font(Theme.subhead.weight(.semibold).monospacedDigit()).foregroundStyle(it.earned == nil ? Theme.tertiary : Theme.text)
                 HStack(spacing: 6) {
                     if let p = it.pct { Text(Fmt.pct(p, digits: 0)).font(Theme.caption.monospacedDigit()).foregroundStyle(Theme.secondary) }
-                    if let i = it.impact, abs(i) >= 0.005 { Text(Fmt.signed(i)).font(Theme.caption.monospacedDigit()).foregroundStyle(i < 0 ? Theme.late : Theme.good) }
+                    if let i = it.impact { Text(Fmt.signed(i)).font(Theme.caption.monospacedDigit()).foregroundStyle(Fmt.impactColor(i)) }
                 }
             }
         }

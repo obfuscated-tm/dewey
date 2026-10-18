@@ -120,13 +120,14 @@ struct EmptyState: View {
 struct ScreenOptions: View {
     let page: SettingsPage
     @State private var showSettings = false
+    @State private var path: [SettingsPage] = []
     var body: some View {
-        Button { showSettings = true } label: {
+        Button { path = [page]; showSettings = true } label: {
             Image(systemName: "gearshape").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
                 .frame(width: 44, height: 44)
         }
         .accessibilityLabel("Settings")
-        .sheet(isPresented: $showSettings) { SettingsView(start: page) }
+        .sheet(isPresented: $showSettings) { SettingsView(path: $path) }
     }
 }
 

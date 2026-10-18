@@ -3,18 +3,20 @@ import UserNotifications
 
 /// A page in Settings. The gear on To Do, Grades and Classes opens Settings on its own page.
 enum SettingsPage: Hashable {
-    case schoology, notifications, look, todo, grades, classes, inbox, help, about
+    case schoology, notifications, todo, grades, classes, inbox, help, about
 }
 
-/// 4b · A short list of pages: Schoology, Notifications, Look, one page per tab
-/// (To Do, Grades, Classes, Inbox), Help and About. Each row shows its current value.
+/// 4b · A short list of pages: Schoology, Notifications, one page per tab
+/// (To Do, Grades, Classes, Inbox), Help and About, plus the Appearance picker.
+/// Each row shows its current value.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @State private var path: [SettingsPage]
+    /// Held by the gear, not here: changing Appearance rebuilds the sheet's contents,
+    /// and a path kept in this view would jump back to the start page.
+    @Binding var path: [SettingsPage]
     @State private var connected = NeoPlanClient().connected
     @State private var confirmSignOut = false
-    private let theme = ThemeStore.shared
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
     @AppStorage(ToDoLayout.key) private var todoLayout = ToDoLayout.week.rawValue
     @AppStorage(GradesLook.reportCardKey) private var reportCard = true
@@ -28,10 +30,6 @@ struct SettingsView: View {
     @AppStorage(Reminders.messagesKey) private var messageAlerts = true
     @AppStorage(Reminders.materialsKey) private var materialAlerts = true
 
-    init(start: SettingsPage? = nil) {
-        _path = State(initialValue: start.map { [$0] } ?? [])
-    }
-
     var body: some View {
         NavigationStack(path: $path) {
             Form {
@@ -40,7 +38,17 @@ struct SettingsView: View {
                 }
                 Section {
                     row(.notifications, "bell", 3, "Notifications", value: notificationsOn ? "On" : "Off")
-                    row(.look, "paintpalette", 2, "Look", value: theme.palette.name)
+                    Picker(selection: $appearance) {
+                        Text("System").tag("system")
+                        Text("Light").tag("light")
+                        Text("Dark").tag("dark")
+                    } label: {
+                        HStack(spacing: Theme.Space.m) {
+                            icon("circle.lefthalf.filled", 2)
+                            Text("Appearance")
+                        }
+                    }
+                    .tint(Theme.secondary)
                 }
                 Section {
                     row(.todo, "checklist", 1, "To Do", value: (ToDoLayout(rawValue: todoLayout) ?? .week).title)
@@ -79,7 +87,6 @@ struct SettingsView: View {
             switch p {
             case .schoology: SchoologySettings(confirmSignOut: $confirmSignOut)
             case .notifications: NotificationSettings()
-            case .look: LookSettings()
             case .todo: ToDoSettings()
             case .grades: GradesSettings()
             case .classes: ShelfSettings(title: "Classes")
@@ -96,11 +103,7 @@ struct SettingsView: View {
                      value: String? = nil, subtitle: String? = nil) -> some View {
         NavigationLink(value: p) {
             HStack(spacing: Theme.Space.m) {
-                Image(systemName: symbol)
-                    .font(Theme.footnote.weight(.semibold)).foregroundStyle(.white)
-                    .frame(width: 29, height: 29)
-                    .background(Theme.classColor(color), in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
-                    .accessibilityHidden(true)
+                icon(symbol, color)
                 VStack(alignment: .leading, spacing: 1) {
                     Text(title)
                     if let subtitle { Text(subtitle).font(Theme.caption).foregroundStyle(Theme.secondary) }
@@ -109,6 +112,14 @@ struct SettingsView: View {
                 if let value { Text(value).foregroundStyle(Theme.secondary) }
             }
         }
+    }
+
+    private func icon(_ symbol: String, _ color: Int) -> some View {
+        Image(systemName: symbol)
+            .font(Theme.footnote.weight(.semibold)).foregroundStyle(.white)
+            .frame(width: 29, height: 29)
+            .background(Theme.classColor(color), in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+            .accessibilityHidden(true)
     }
 
     private var notificationsOn: Bool {
@@ -218,50 +229,6 @@ private struct NotificationSettings: View {
             }
         }
         .navigationTitle("Notifications")
-        .navigationBarTitleDisplayMode(.inline)
-    }
-}
-
-private struct LookSettings: View {
-    @Environment(AppModel.self) private var model
-    private let theme = ThemeStore.shared
-    @AppStorage(Theme.appearanceKey) private var appearance = "system"
-
-    var body: some View {
-        Form {
-            Section {
-                Picker("Appearance", selection: $appearance) {
-                    Text("System").tag("system")
-                    Text("Light").tag("light")
-                    Text("Dark").tag("dark")
-                }
-                .pickerStyle(.segmented)
-            }
-            Section("Theme") {
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: Theme.Space.m) {
-                        ForEach(Palette.all) { p in
-                            PaletteTile(palette: p, selected: theme.paletteID == p.id)
-                                .onTapGesture { theme.paletteID = p.id; WidgetBridge.publish(model) }
-                        }
-                    }
-                    .padding(.vertical, Theme.Space.xs)
-                }
-                if theme.palette.accent == nil {
-                    HStack(spacing: 14) {
-                        ForEach(Theme.accentOptions, id: \.self) { hex in
-                            Circle().fill(Color(hex: hex)).frame(width: 30, height: 30)
-                                .overlay(Circle().stroke(Theme.text, lineWidth: theme.accentHex == hex ? 2 : 0).padding(-3))
-                                .onTapGesture { theme.accentHex = hex; WidgetBridge.publish(model) }
-                                .accessibilityLabel(["Blue", "Green", "Purple", "Red"][Theme.accentOptions.firstIndex(of: hex) ?? 0])
-                                .accessibilityAddTraits(theme.accentHex == hex ? [.isButton, .isSelected] : .isButton)
-                        }
-                    }
-                    .padding(.vertical, 4)
-                }
-            }
-        }
-        .navigationTitle("Look")
         .navigationBarTitleDisplayMode(.inline)
     }
 }
@@ -480,31 +447,3 @@ struct DeveloperView: View {
     }
 }
 
-/// A theme in Settings → Look: a tiny To Do card in its colours, following light or dark mode.
-private struct PaletteTile: View {
-    let palette: Palette
-    let selected: Bool
-
-    var body: some View {
-        let accent = palette.accent.map { Color(light: $0.light, dark: $0.dark) } ?? Theme.accent
-        VStack(spacing: Theme.Space.xs) {
-            VStack(alignment: .leading, spacing: 5) {
-                Capsule().fill(palette.color("text")).frame(width: 34, height: 5)
-                Capsule().fill(palette.color("tertiary")).frame(width: 22, height: 4)
-                Capsule().fill(accent).frame(width: 40, height: 9).padding(.top, 2)
-            }
-            .padding(Theme.Space.s)
-            .frame(width: 64, height: 50, alignment: .topLeading)
-            .background(palette.color("card"), in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
-            .padding(Theme.Space.s)
-            .background(palette.color("background"), in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                .stroke(selected ? Theme.accent : Theme.border, lineWidth: selected ? 2 : 1))
-            Text(palette.name).font(Theme.caption).foregroundStyle(selected ? Theme.text : Theme.secondary)
-        }
-        .contentShape(Rectangle())
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(palette.name + " theme")
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-    }
-}

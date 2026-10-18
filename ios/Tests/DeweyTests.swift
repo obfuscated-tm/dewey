@@ -271,42 +271,33 @@ final class ThemeTests: XCTestCase {
     }
     func ui(_ hex: String) -> UIColor { UIColor(Color(hex: hex)) }
 
-    /// In every theme, every text colour is readable (≥ 4.5:1) on every surface, in light and dark,
-    /// and every accent on a card and under its button text.
+    /// Every text colour is readable (≥ 4.5:1) on every surface, in light and dark,
+    /// and the accent on a card and under its button text.
     func testContrast() {
-        for p in Palette.all {
-            for fg in ["text", "secondary", "tertiary", "late", "good"] {
-                for bg in ["card", "background", "tagSoft"] {
-                    let (f, b) = (p.hex[fg]!, p.hex[bg]!)
-                    XCTAssertGreaterThanOrEqual(ratio(ui(f.light), ui(b.light)), 4.5, "\(p.id) light \(fg) on \(bg)")
-                    XCTAssertGreaterThanOrEqual(ratio(ui(f.dark), ui(b.dark)), 4.5, "\(p.id) dark \(fg) on \(bg)")
-                }
-            }
-            let card = p.hex["card"]!
-            let accents: [(light: UIColor, dark: UIColor)] = p.accent.map { [(ui($0.light), ui($0.dark))] }
-                ?? Theme.accentOptions.map { (ui($0), Accent.dark(ui($0))) }
-            for a in accents {
-                XCTAssertGreaterThanOrEqual(ratio(a.light, ui(card.light)), 4.5, "\(p.id) accent")
-                XCTAssertGreaterThanOrEqual(ratio(a.dark, ui(card.dark)), 4.5, "\(p.id) dark accent")
-                // Text on a filled accent button: white in light mode, near-black in dark.
-                XCTAssertGreaterThanOrEqual(ratio(a.light, .white), 4.5, "\(p.id) on-accent")
-                XCTAssertGreaterThanOrEqual(ratio(a.dark, ui("#101418")), 4.5, "\(p.id) dark on-accent")
+        let p = Palette.dew
+        for fg in ["text", "secondary", "tertiary", "late", "good", "accent"] {
+            for bg in ["card", "background", "tagSoft"] where !(fg == "accent" && bg == "tagSoft") {
+                let (f, b) = (p.hex[fg]!, p.hex[bg]!)
+                XCTAssertGreaterThanOrEqual(ratio(ui(f.light), ui(b.light)), 4.5, "light \(fg) on \(bg)")
+                XCTAssertGreaterThanOrEqual(ratio(ui(f.dark), ui(b.dark)), 4.5, "dark \(fg) on \(bg)")
             }
         }
+        // Text on a filled accent button: white in light mode, near-black in dark.
+        let a = p.hex["accent"]!
+        XCTAssertGreaterThanOrEqual(ratio(ui(a.light), .white), 4.5, "on-accent")
+        XCTAssertGreaterThanOrEqual(ratio(ui(a.dark), ui("#101418")), 4.5, "dark on-accent")
     }
 
     /// White class names read on every class colour (the Classes shelf), and the
-    /// colour itself reads as text (Grades letters, the catalog line) on every theme's cards.
+    /// colour itself reads as text (Grades letters, the catalog line) on the cards.
     func testClassColors() {
+        let card = Palette.dew.hex["card"]!, bg = Palette.dew.hex["background"]!
         for hex in Theme.classColors {
             XCTAssertGreaterThanOrEqual(ratio(ui(hex), .white), 4.5, hex)
-            for p in Palette.all {
-                let card = p.hex["card"]!, bg = p.hex["background"]!
-                XCTAssertGreaterThanOrEqual(ratio(ui(hex), ui(card.light)), 4.5, "\(hex) on \(p.id) card")
-                XCTAssertGreaterThanOrEqual(ratio(ui(hex), ui(bg.light)), 4.5, "\(hex) on \(p.id) background")
-                XCTAssertGreaterThanOrEqual(ratio(Accent.dark(ui(hex)), ui(card.dark)), 4.5, "\(hex) on \(p.id) dark card")
-                XCTAssertGreaterThanOrEqual(ratio(Accent.dark(ui(hex)), ui(bg.dark)), 4.5, "\(hex) on \(p.id) dark background")
-            }
+            XCTAssertGreaterThanOrEqual(ratio(ui(hex), ui(card.light)), 4.5, "\(hex) on card")
+            XCTAssertGreaterThanOrEqual(ratio(ui(hex), ui(bg.light)), 4.5, "\(hex) on background")
+            XCTAssertGreaterThanOrEqual(ratio(Accent.dark(ui(hex)), ui(card.dark)), 4.5, "\(hex) on dark card")
+            XCTAssertGreaterThanOrEqual(ratio(Accent.dark(ui(hex)), ui(bg.dark)), 4.5, "\(hex) on dark background")
         }
     }
 

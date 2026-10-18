@@ -124,7 +124,7 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 ### R5 · Accessibility and dark mode (built 2026-10-11)
 - Dynamic Type up to the largest sizes, VoiceOver labels on every control, a dark mode pass on every screen and widget.
 - **Done when:** every screen is usable at the largest text size and with VoiceOver, and nothing is unreadable in dark mode.
-- Check: `xcodebuild -scheme A11yAudit -collect-test-diagnostics never test` (Apple's audit on each tab, class grades and a class page, light and dark, largest text; needs the simulator signed in). Colour contrast is `ThemeTests` (every text colour on every surface, all four accents).
+- Check: `xcodebuild -scheme A11yAudit -collect-test-diagnostics never test` (Apple's audit on each tab, class grades and a class page, light and dark, largest text; needs the simulator signed in). Colour contrast is `ThemeTests` (every text colour on every surface, light and dark).
 
 ### Later / dropped
 - Later: Focus filter, GPA, offline classes, distribution (TestFlight needs a paid account).

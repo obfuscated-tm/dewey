@@ -31,7 +31,7 @@ Arrows: `›` opens a native screen; `↗` opens Schoology or a website (sheet o
 
 | Token | Value |
 |---|---|
-| accent | `#1D5EA8` (user can change in Settings; options `#23794A`, `#6A4BA8`, `#A8324A`) |
+| accent | `#1D5EA8` in the mockups; the app uses Dew's `#0F6E56` (dark `#5DCAA5`), not user-changeable |
 | accent soft (fills) | `#E7EFF8` |
 | background | `#F6F7F9`; cards `#FFFFFF`, border `#E3E6EA`, dividers `#E9ECEF` |
 | text / secondary / tertiary | `#1F2429` / `#5E6670` / `#8A929B` |
@@ -41,7 +41,7 @@ Arrows: `›` opens a native screen; `↗` opens Schoology or a website (sheet o
 | fonts | SF Pro, seven styles in `Theme` (all Dynamic Type): largeTitle 34 bold · title 22 bold · headline 17 semibold · body 17 · subhead 15 · footnote 13 · caption 12. Plus New York (system serif) for character in two places only: `display` 34 bold for screen titles and the big grade letter, `displaySmall` 22 bold for the letter on a Grades card. Numbers add `.monospacedDigit()`; no code font in the UI. ThemeTests fails on a raw point size. |
 | shapes | `Theme.Radius`: 6 for tags and type bars, 14 (continuous) for every card; buttons are capsules, checkboxes circles. Spacing 4 / 8 / 12 / 16 / 24 (`Theme.Space`). Touch targets 44 pt; pill buttons 30 pt tall inside a 44 pt row. |
 
-These are the mockups' values. The app's colours live in `Palette.all` (`Theme.swift`). Settings → Look picks a theme (new installs start on **Dew**, listed first), and each theme has light and dark values: **Standard** (dark mode is soft graphite), **Midnight** (Standard with true-black dark), **Dew** (brand teal), **Frost** (cool blue-grey), **Pastel** (soft lavender) and **Paper** (warm sepia). Standard and Midnight use the accent dots; the other themes bring their own accent. ThemeTests checks contrast in every theme.
+These are the mockups' values. The app has one palette, **Dew** (brand teal), in `Palette.dew` (`Theme.swift`), with a light and a dark value for every colour. Settings → Appearance picks System (the default), Light or Dark. No other themes or accent choices (2026-10-18: fewer palettes to keep readable). ThemeTests checks contrast in light and dark.
 
 Tabs: **To Do · Grades · Classes · Schoology**. To Do, Grades and Classes each have one gear beside the title (`ScreenOptions`). One tap opens Settings on that tab's own page (To Do, Grades or Classes), with the full Settings list one tap back. The To Do tab shows a red badge with the overdue count.
 
@@ -129,7 +129,7 @@ neo-plan isn't mentioned here: it stays out of sight until connected, and is exp
 A short list of rows, each with a class-colour icon square and its current value on the right, each opening a page (`SettingsPage`):
 - **Schoology** (subtitle: the host): signed in to, Sign out (clears the data store), Login compatibility mode.
 - **Notifications** (On / Off): Due work (2 hours before if not submitted, night before a test, homework the evening before + time, morning summary + time) and Alerts (new grades, messages, new materials, signed out; best effort).
-- **Look** (theme name): Appearance, theme tiles, accent dots for Standard and Midnight.
+- **Appearance** (System / Light / Dark): a picker right in the list, not a page.
 - **To Do** (view): View, Call numbers, and the 2-hour and test-night reminders (the same switches as Notifications).
 - **Grades** (Letters / List): Letters across the top.
 - **Classes** (N on shelf): which classes stand on the shelf.

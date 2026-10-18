@@ -155,6 +155,11 @@ enum Theme {
         guard let d = base.fontDescriptor.withDesign(.serif)?.withSymbolicTraits(.traitBold) else { return }
         UINavigationBar.appearance().largeTitleTextAttributes = [.font: UIFont(descriptor: d, size: 0)]
     }
+    /// 17 bold New York · the Dewey number on a To Do catalog card.
+    static let callNumber = Font.system(.headline, design: .serif, weight: .bold)
+    /// A To Do catalog card's red rule under its heading, and its pale blue ruled lines.
+    static let catalogRule = Color(light: "#C94B4B", dark: "#D9706B")
+    static let catalogLine = Color(light: "#C9DDF0", dark: "#2E4258")
     /// 10 heavy · the word on a shelf book's bookmark ribbon only (like the type bar's
     /// label: a fixed size so the ribbon stays thinner than the spine's name).
     static let ribbon = Font.system(size: 10, weight: .heavy)

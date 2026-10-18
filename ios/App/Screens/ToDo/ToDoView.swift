@@ -24,6 +24,8 @@ struct ToDoView: View {
     @AppStorage("statusTipRow") private var tipRow = ""
     @AppStorage("statusTipKind") private var tipKind = StatusTip.Kind.done.rawValue
     @State private var showGuide = false
+    @AppStorage(CallNumber.key) private var callRaw = ""
+    @State private var showCallNumbers = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -39,11 +41,13 @@ struct ToDoView: View {
                 content(items: items, now: now)
             }
             .listStyle(.insetGrouped)
+            .listSectionSpacing(Theme.Space.l)
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .refreshable { await model.refreshTodo() }
             .navigationDestination(for: AssignmentRoute.self) { r in AssignmentView(id: r.id) }
             .navigationDestination(isPresented: $showGuide) { StatusGuideView() }
+            .navigationDestination(isPresented: $showCallNumbers) { CallNumberSettings() }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $sheet) { SchoologySheet(target: $0) }
         }
@@ -72,6 +76,7 @@ struct ToDoView: View {
                     Picker("View", selection: $layoutID) {
                         ForEach(ToDoLayout.allCases, id: \.self) { Label($0.title, systemImage: $0.icon).tag($0.rawValue) }
                     }
+                    Button("Call numbers", systemImage: "number") { showCallNumbers = true }
                 }
             }
             if typeSize.isAccessibilitySize, let ripple { ripple.padding(.horizontal, Theme.Space.xs) }
@@ -134,14 +139,15 @@ struct ToDoView: View {
                 }
                 .listRowBackground(Color.clear).listRowInsets(EdgeInsets())
             }
+            // Each group is a library catalog card: its heading (Dewey number, class) over
+            // a red rule, then the work on pale blue ruled lines.
             ForEach(groups, id: \.key) { g in
                 Section {
+                    cardHeading(g.title, g.items, now: now, sectionId: g.key)
                     ForEach(g.items, id: \.schoologyId) { it in
                         row(it, now: now)
                         if tipRow == it.schoologyId { tip }
                     }
-                } header: {
-                    groupHeader(g.title, g.items, now: now, sectionId: g.key)
                 }
             }
             if !older.isEmpty {
@@ -205,21 +211,47 @@ struct ToDoView: View {
         }
     }
 
-    private func groupHeader(_ title: String, _ items: [ItemState], now: Date, sectionId: String) -> some View {
+    /// The top of a catalog card: the class's call number in its colour (none when
+    /// Dewey can't tell, see CallNumber), the class, its period, a red rule under it.
+    /// Long-press to set the number.
+    private func cardHeading(_ title: String, _ items: [ItemState], now: Date, sectionId: String) -> some View {
         let open = items.filter { !model.isFinished($0) }
+        let course = model.course(sectionId)
+        let number = course.flatMap { CallNumber.number(for: $0, raw: callRaw) }
         // Urgent first already has a Today section.
         let dueToday = layout == .week && open.contains { TodoLogic.bucket(due: $0.due, now: now) == .today }
-        return HStack(spacing: 8) {
-            if let course = model.course(sectionId) { Circle().fill(model.classColor(course.sectionId)).frame(width: 10, height: 10) }
+        return AdaptiveStack(spacing: Theme.Space.s) {
+            if let number {
+                Text(number).font(Theme.callNumber.monospacedDigit())
+                    .foregroundStyle(course.map { model.classColor($0.sectionId) } ?? Theme.accent)
+                    .accessibilityLabel("Call number \(number)")
+            }
             Text(title).font(Theme.headline).foregroundStyle(Theme.text)
             if dueToday {
                 Text("Due today").font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.accent)
                     .padding(.horizontal, 7).padding(.vertical, 2).background(Theme.accentSoft, in: Capsule())
             }
-            Spacer()
-            Text("\(open.count)").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
+            Spacer(minLength: 0)
+            Text([course?.periodLabel.count ?? 9 <= 3 ? course?.periodLabel : nil, "\(open.count) open"].compactMap { $0 }.joined(separator: " · "))
+                .font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
         }
-        .textCase(nil)
+        .padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.s)
+        .overlay(alignment: .bottom) { Theme.catalogRule.frame(height: 1.5) }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+        .listRowBackground(Theme.card)
+        .listRowSeparator(.hidden)
+        .contextMenu {
+            if let course {
+                Picker("Call number", selection: Binding(
+                    get: { CallNumber.overrides(callRaw)[sectionId] ?? "auto" },
+                    set: { callRaw = CallNumber.setting(callRaw, sectionId, $0 == "auto" ? nil : $0) })) {
+                    Text(CallNumber.guess(course.shortTitle).map { "Automatic · \($0)" } ?? "Automatic · none").tag("auto")
+                    Text("None").tag("")
+                    ForEach(CallNumber.mains, id: \.number) { m in Text("\(m.number) · \(m.name)").tag(m.number) }
+                }
+            }
+        }
     }
 
     // ── One row ──────────────────────────────────────────────────────────
@@ -233,9 +265,9 @@ struct ToDoView: View {
                 onOpen: { path.append(AssignmentRoute(id: it.schoologyId)) })
             // Every separator starts under the checkbox, whatever the row holds.
             .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
-            // Grouped by whitespace and the class heading, not a white card.
-            .listRowBackground(Color.clear)
-            .listRowSeparatorTint(Theme.divider)
+            // A line on the class's catalog card.
+            .listRowBackground(Theme.card)
+            .listRowSeparatorTint(Theme.catalogLine)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if it.turnedIn {
                     Button { model.setTurnedIn(it, false) } label: { Label("Not turned in", systemImage: "arrow.uturn.backward") }

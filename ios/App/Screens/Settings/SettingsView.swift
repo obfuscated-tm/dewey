@@ -91,6 +91,7 @@ struct SettingsView: View {
                     Picker("View", selection: $todoLayout) {
                         ForEach(ToDoLayout.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
                     }
+                    NavigationLink("Call numbers") { CallNumberSettings() }
                 } header: { Text("To Do") } footer: {
                     Text(todoLayout == ToDoLayout.urgent.rawValue
                          ? "One list, late and due today at the top, each row with its class."

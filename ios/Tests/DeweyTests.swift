@@ -327,6 +327,51 @@ final class ThemeTests: XCTestCase {
     }
 }
 
+/// Call numbers: right for clear names, the main class for vague ones, and
+/// nothing (never a wrong number) for names that aren't subjects.
+final class CallNumberTests: XCTestCase {
+    func testClearNamesGetTheirNumber() {
+        let cases = [
+            "AP Biology": "570", "AP Comp Sci A": "005", "AP Physics 1": "530", "Algebra 2_Trig": "512",
+            "World History": "909", "US History": "973", "APUSH": "973", "English 10": "820", "Spanish 2": "460",
+            "Chemistry H": "540", "AP Spanish Literature": "860", "AP Lang": "808", "AP Lit": "820",
+            "Computer Science Principles": "005", "AP CSP": "005", "Political Science": "320", "AP Gov": "320",
+            "Economics": "330", "AP Psych": "150", "Concert Band": "780", "Ceramics 1": "738", "PE 9": "796",
+            "Physical Education": "796", "Health": "613", "Intro to Engineering Design": "620", "Biotech 1": "660",
+            "Geometry H": "516", "AP Calculus BC": "515", "Precalculus": "515", "AP Statistics": "519",
+            "Integrated Math 2": "510", "ELD 2": "420", "AP Euro": "940", "Yearbook": "070", "French 3": "440",
+        ]
+        for (name, number) in cases { XCTAssertEqual(CallNumber.guess(name), number, name) }
+    }
+
+    func testVagueNamesGetTheMainClass() {
+        XCTAssertEqual(CallNumber.guess("Integrated Science 1"), "500")
+        XCTAssertEqual(CallNumber.guess("Social Studies 9"), "300")
+        XCTAssertEqual(CallNumber.guess("Art 1"), "700")
+        XCTAssertEqual(CallNumber.guess("History of the Americas"), "900")
+    }
+
+    func testNonSubjectsAndUnknownsGetNothing() {
+        for name in ["Advisory", "Homeroom 214", "Study Hall", "School Hub", "Freshman Seminar", "AP Seminar",
+                     "Tutorial", "Leadership", "Teacher Aide", "Link Crew", "Flex", "Microbe Club", "Europa"] {
+            XCTAssertNil(CallNumber.guess(name), name)
+        }
+    }
+
+    func testHandSetNumbersWin() {
+        let c = Course(sectionId: "9", title: "Leadership - 1234", sectionTitle: "P4")
+        XCTAssertNil(CallNumber.number(for: c, raw: ""))
+        var raw = CallNumber.setting("", "9", "300")
+        XCTAssertEqual(CallNumber.number(for: c, raw: raw), "300")
+        raw = CallNumber.setting(raw, "9", "")
+        XCTAssertNil(CallNumber.number(for: c, raw: raw), "None hides it")
+        let bio = Course(sectionId: "7", title: "AP Biology - 1101", sectionTitle: "P2")
+        XCTAssertEqual(CallNumber.number(for: bio, raw: raw), "570")
+        raw = CallNumber.setting(raw, "9", nil)
+        XCTAssertEqual(CallNumber.overrides(raw), [:], "automatic again")
+    }
+}
+
 final class NewGradeTests: XCTestCase {
     private func item(_ id: String, _ earned: Double?) -> CourseGrade.Item {
         CourseGrade.Item(id: id, category: "Labs", title: id, due: nil, grade: "", comment: "", rubric: nil,

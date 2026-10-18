@@ -1,0 +1,8 @@
+{
+  "images" : [
+    { "filename" : "dewey-archiving.svg", "idiom" : "universal" },
+    { "appearances" : [ { "appearance" : "luminosity", "value" : "dark" } ], "filename" : "dewey-archiving-dark.svg", "idiom" : "universal" }
+  ],
+  "info" : { "author" : "xcode", "version" : 1 },
+  "properties" : { "preserves-vector-representation" : true }
+}

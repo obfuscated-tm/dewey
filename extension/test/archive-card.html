@@ -94,6 +94,7 @@
   globalThis.chrome = {
     runtime: {
       id: 'test-extension',
+      getURL: (p) => `${location.origin}/${p}`,
       sendMessage: async (m) => {
         if (m.type === 'archiveFolderInfo') return { ok: true, custom: true, name: 'Schoology Archive', granted: true };
         if (m.type === 'archiveStart') return { ok: true, jobId: 'x' };

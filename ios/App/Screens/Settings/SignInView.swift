@@ -11,9 +11,9 @@ struct SignInView: View {
             Theme.background.ignoresSafeArea()
             VStack(alignment: .leading, spacing: 18) {
                 Spacer()
-                Image("DeweyMark")
+                Image(Mascot.hello)
                     .resizable().scaledToFit()
-                    .frame(width: 60, height: 60)
+                    .frame(width: 84, height: 84)
                     .accessibilityHidden(true)
                 Text("Dewey")
                     .font(Theme.largeTitle)

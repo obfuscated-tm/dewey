@@ -1,8 +1,8 @@
 <!doctype html>
 <!-- The overlay's Settings and Welcome cards outside the extension, with a
      fake `chrome`: the switch bottom left, the gear opens Settings, and the
-     Welcome card opens by itself (?seen=1 to skip it). The neo-plan frame is
-     test/neoplan-frame.html. Serve extension/ (python3 -m http.server) and
+     Welcome card opens by itself (?seen=1 to skip it; ?theme=dark for a
+     theme). The neo-plan frame is test/neoplan-frame.html. Serve extension/ (python3 -m http.server) and
      open /test/settings-card.html. -->
 <html><head><meta charset="utf-8"><title>Settings card stand-in</title>
 <style>body { font: 13px Arial, sans-serif; margin: 0; padding: 24px; background: #F1F4F4; }</style>
@@ -13,6 +13,7 @@
 <script type="module">
   const q = new URLSearchParams(location.search);
   const store = { introSeen: q.has('seen') };
+  if (q.get('theme')) store.overlaySettings = { theme: q.get('theme') }; // e.g. ?theme=dark
   let folder = { ok: true, custom: false };
   const changed = new Set();
   const fire = (key, value) => changed.forEach((fn) => fn({ [key]: { newValue: value } }, 'local'));

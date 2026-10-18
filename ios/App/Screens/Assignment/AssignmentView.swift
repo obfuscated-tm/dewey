@@ -140,34 +140,40 @@ struct AssignmentView: View {
     @ViewBuilder
     private func submissionCard(_ a: Assignment) -> some View {
         let k = kind(a)
-        VStack(alignment: .leading, spacing: 6) {
-            Text("SUBMISSION").font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
-            switch k {
-            case .dropbox(let done):
-                Label(done ? "Submitted on Schoology" : "Not submitted on Schoology",
-                      systemImage: done ? "checkmark.circle.fill" : "xmark.circle")
-                    .font(Theme.body.weight(.semibold))
-                    .foregroundStyle(done ? Theme.good : Theme.late)
-                if done, status?.late == true { Text("Late").font(Theme.footnote).foregroundStyle(Theme.late) }
-                if let checkedAt { Text("Checked \(Fmt.ago(checkedAt))").font(Theme.footnote).foregroundStyle(Theme.secondary) }
-            case .outside(let url):
-                Label("Handed in outside Schoology", systemImage: "arrow.up.right.square").font(Theme.body.weight(.semibold))
-                Text(url != nil ? "This class takes it on its own site (\(url!.host ?? "")). Schoology can't see it." : "No Schoology dropbox. Hand it in the way your teacher asked, then mark it turned in.")
-                    .font(Theme.footnote).foregroundStyle(Theme.secondary)
-            case .quiz:
-                if let q = a.quiz { quizFacts(q) } else {
-                    Label("Test / quiz on Schoology", systemImage: "list.bullet.clipboard").font(Theme.body.weight(.semibold))
-                    Text("It only opens when you tap Take on Schoology.").font(Theme.footnote).foregroundStyle(Theme.secondary)
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("SUBMISSION").font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+                switch k {
+                case .dropbox(let done):
+                    Label(done ? "Submitted on Schoology" : "Not submitted on Schoology",
+                          systemImage: done ? "checkmark.circle.fill" : "xmark.circle")
+                        .font(Theme.body.weight(.semibold))
+                        .foregroundStyle(done ? Theme.good : Theme.late)
+                    if done, status?.late == true { Text("Late").font(Theme.footnote).foregroundStyle(Theme.late) }
+                    if let checkedAt { Text("Checked \(Fmt.ago(checkedAt))").font(Theme.footnote).foregroundStyle(Theme.secondary) }
+                case .outside(let url):
+                    Label("Handed in outside Schoology", systemImage: "arrow.up.right.square").font(Theme.body.weight(.semibold))
+                    Text(url != nil ? "This class takes it on its own site (\(url!.host ?? "")). Schoology can't see it." : "No Schoology dropbox. Hand it in the way your teacher asked, then mark it turned in.")
+                        .font(Theme.footnote).foregroundStyle(Theme.secondary)
+                case .quiz:
+                    if let q = a.quiz { quizFacts(q) } else {
+                        Label("Test / quiz on Schoology", systemImage: "list.bullet.clipboard").font(Theme.body.weight(.semibold))
+                        Text("It only opens when you tap Take on Schoology.").font(Theme.footnote).foregroundStyle(Theme.secondary)
+                    }
+                case .google:
+                    Label("Google Assignment", systemImage: "doc.richtext").font(Theme.body.weight(.semibold))
+                    Text("Turned in inside Schoology's Google frame. Schoology never tells the app whether you did, so check it there.")
+                        .font(Theme.footnote).foregroundStyle(Theme.secondary)
+                case .unknown:
+                    Label("Checking Schoology…", systemImage: "hourglass").font(Theme.body.weight(.semibold)).foregroundStyle(Theme.secondary)
                 }
-            case .google:
-                Label("Google Assignment", systemImage: "doc.richtext").font(Theme.body.weight(.semibold))
-                Text("Turned in inside Schoology's Google frame. Schoology never tells the app whether you did, so check it there.")
-                    .font(Theme.footnote).foregroundStyle(Theme.secondary)
-            case .unknown:
-                Label("Checking Schoology…", systemImage: "hourglass").font(Theme.body.weight(.semibold)).foregroundStyle(Theme.secondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Dewey, a little worried: only here, on the one overdue thing you opened.
+            if let it, model.isOverdue(it) {
+                Image(Mascot.uhOh).resizable().scaledToFit().frame(width: 44, height: 44).accessibilityHidden(true)
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .card()
     }

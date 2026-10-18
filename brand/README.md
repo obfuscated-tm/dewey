@@ -30,7 +30,14 @@ Every file has a `-dark` version for dark backgrounds (except the small glyph). 
 
 ## Dewey the drop (mascot, placeholder)
 
-`mascot/dewey-{hello,caught-up,archiving,uh-oh}.svg`, each with a `-dark` version (light outline). He shows up rarely: the iOS empty To Do (`caught-up`) today; onboarding (`hello`), an archive run (`archiving`) and overdue work (`uh-oh`) are ready if wanted. The rest of the app stays plain. Redraw him with the logo (to-do above); the glasses are the part to keep.
+`mascot/dewey-{hello,caught-up,archiving,uh-oh}.svg`, each with a `-dark` version (light outline). He shows up rarely, and nowhere else (the rest of the app stays plain):
+
+- `hello`: iOS Sign in, and the extension's Welcome card
+- `caught-up`: the iOS empty To Do
+- `archiving`: the extension's Archive card while a run is going
+- `uh-oh`: the Submission card of an overdue iOS assignment you open (past due, not marked done or turned in, not in Older). Never on lists or badges.
+
+The apps use copies: after a redraw, replace the files here (same names) and run `brand/sync-mascot.sh`. It copies them into the iOS asset catalog (`Dewey{Hello,CaughtUp,Archiving,UhOh}`, light + dark) and `extension/overlays/mascot/`; `extension/test/mascot.test.js` fails while a copy is stale. Redraw him with the logo (to-do above); the glasses are the part to keep.
 
 ## Icons
 

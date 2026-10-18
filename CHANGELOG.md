@@ -4,6 +4,28 @@ The extension and the MCP server are versioned separately (see [Versioning and r
 
 Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git history. Apart from MCP 1.0.0 (tag `mcp-v1.0.0`), those versions were never tagged, so they're listed by date.
 
+## 2026-10-18 — Extension 1.13.0 · MCP 1.1.1
+
+Tags: `ext-v1.13.0`, `mcp-v1.1.1`
+
+### Extension
+- A one-time tip after your first Done, Turn in or Studied, with a full **How statuses work** guide (To do → Done → Turned in, Submitted on Schoology vs turned in elsewhere, why paper or lab-site work isn't missing). Reachable again from Settings → Statuses.
+- neo-plan stays out of sight until you connect it: the Welcome card is two steps, the assignment page no longer says "Token needed", and Settings → neo-plan explains what it is before connecting.
+- Marking a To Do row done plays a small ripple from the button (off with reduced motion).
+- Dewey the drop shows up on the Welcome card and while an archive is running.
+- Numbers use Instrument Sans with even-width digits; grade-impact deltas end in % ("+0.24%").
+
+### MCP server
+- Renamed to `dewey-mcp` (package, server name, log prefix, user agent). MIT license.
+
+### iPhone (not in a store; build it yourself)
+- Guided tour on first launch: Dewey walks you through a pretend week inside the real screens, with everything but the next step dimmed. If you tap somewhere else, **Take me there** brings you back. Settings → Help has the tour and reference cards.
+- Grades: press and hold a class (or use Settings → Grades) to hide it; hidden classes don't count toward new-grade alerts.
+- Inbox: **School updates** from groups such as a class hub.
+- PDFs in a class's materials open (Schoology's own viewer page is resolved to the file).
+- A grade change that rounds to nothing shows "+0.00%" in gray instead of nothing.
+- One look, Dew, with a System / Light / Dark Appearance switch; serif screen titles; faster start from saved copies; a newer quiz's page shows its facts instead of an error.
+
 ## 2026-10-16 — Android 0.2
 
 Tag: `android-v0.2` (beta, sideloaded APK)

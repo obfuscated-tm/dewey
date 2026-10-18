@@ -57,7 +57,7 @@ async function main() {
   const ctx = { bridge, cache, sites };
 
   const server = new McpServer(
-    { name: "dewey-mcp", version: "1.1.0" },
+    { name: "dewey-mcp", version: "1.1.1" },
     { instructions: INSTRUCTIONS },
   );
 

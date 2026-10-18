@@ -227,11 +227,12 @@ Each class becomes a normal folder you can open in Finder or File Explorer:
 Everything the extension does, rebuilt for your phone:
 
 - **To Do** grouped by class, with a week strip (late work plus the next 7 days, tap a day to filter) and one-tap **Done** / **Turn in**.
-- **Grades** with comments and rubrics, a grade-over-time graph you can drag, and **what-if** scores on every row, including made-up assignments.
+- **Grades** with comments and rubrics, a grade-over-time graph you can drag, and **what-if** scores on every row, including made-up assignments. Hide a class you don't need (like study hall) with a long press.
 - **Classes and Materials** that open right in the app (PDFs, Google Docs, class websites), plus a search across every class.
-- **Inbox** for announcements and school messages, with new ones at the top.
+- **Inbox** for announcements, school messages and updates from your school's groups (like a class hub), with new ones at the top.
 - **Reminders**, home-screen widgets, and a countdown to your next test (a Live Activity on iPhone, a notification on Android).
-- **Themes** with a soft dark mode, and full Schoology one tab away when you need it.
+- **A guided tour** on first launch: Dewey walks you through a pretend week (mark work done, submit, what-if, your shelf, Settings) without touching your real Schoology. Take it again from Settings → Help.
+- **Light and dark mode** (iPhone: the Dew look with a System / Light / Dark switch; Android: six themes), and full Schoology one tab away when you need it.
 
 Neither app is in a store yet. **Want one now? You can build it yourself.** Both only read Schoology; anything that changes it (like submitting) happens in Schoology's own page inside the app. Sign in with your school's normal Schoology login.
 
@@ -604,15 +605,15 @@ The extension and the MCP server each have their own [semantic version](https://
 
 | Component | Version lives in | Tag |
 |---|---|---|
-| Extension | `extension/manifest.json` | `ext-v1.12.0` |
-| MCP server | `mcp/package.json` | `mcp-v1.1.0` |
+| Extension | `extension/manifest.json` | `ext-v1.13.0` |
+| MCP server | `mcp/package.json` | `mcp-v1.1.1` |
 
 If a change touches the bridge contract ([`docs/mcp/MCP-BRIDGE.md`](docs/mcp/MCP-BRIDGE.md)), bump both.
 
 **To release:** bump the version, add a [`CHANGELOG.md`](CHANGELOG.md) entry, run both test suites, commit, then tag and push:
 
 ```bash
-git tag -a ext-v1.13.0 -m "Extension 1.13.0"
+git tag -a ext-v1.14.0 -m "Extension 1.14.0"
 ```
 
 ```bash

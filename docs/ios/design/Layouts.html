@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dewey layouts</title>
+<style>
+/* Dew theme, light (Palette "dew" in Theme.swift). */
+:root{
+  --bg:#EEF6F2; --card:#FFFFFF; --border:#CFE3DA; --divider:#E0EDE7;
+  --text:#0E2A24; --secondary:#3F5A53; --tertiary:#52685F;
+  --late:#A63A0B; --lateSoft:#FBEDE5; --good:#426E10; --goodSoft:#E9F2DC; --tagSoft:#E1F0E9;
+  --accent:#0F6E56; --accentSoft:rgba(15,110,86,.11); --ripple:#5DCAA5; --spray:#9FE1CB; --mist:#E1F5EE;
+  --c1:#1D5EA8; --c2:#23794A; --c3:#6A4BA8; --c4:#A8324A; --c5:#9A5B0C; --c6:#16707A;
+  --sans:-apple-system,"SF Pro Text",system-ui,"Helvetica Neue",sans-serif;
+  --serif:"New York",ui-serif,"Iowan Old Style",Georgia,serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#DCE6E1;color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+.page{max-width:1700px;margin:0 auto;padding:32px 16px 64px}
+.intro{max-width:760px;margin:0 0 28px}
+.intro h1{font-family:var(--serif);font-size:34px;margin:0 0 8px}
+.intro p{font-size:15px;line-height:1.5;color:var(--secondary);margin:6px 0}
+.grid{display:flex;flex-wrap:wrap;gap:36px 28px}
+figure{margin:0;width:390px;max-width:100%}
+figcaption{padding:14px 2px 0;font-size:14px;line-height:1.45;color:var(--secondary)}
+figcaption>b:first-child{color:var(--text);font-size:15px;display:block;margin-bottom:3px}
+.phone{width:390px;height:844px;background:var(--bg);border-radius:44px;overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px #10201C,0 20px 50px rgba(0,0,0,.25);display:flex;flex-direction:column;transform-origin:top left}
+@media (max-width:430px){.phone{transform:scale(.86);margin-bottom:-118px}}
+.status{height:50px;flex:none;display:flex;justify-content:space-between;align-items:flex-end;padding:0 30px 6px;font-size:15px;font-weight:600}
+.scroll{flex:1;overflow:hidden;padding:0 16px}
+.tabs{flex:none;height:82px;border-top:1px solid var(--divider);background:rgba(255,255,255,.85);display:flex;padding-top:8px}
+.tabs div{flex:1;text-align:center;font-size:10px;font-weight:500;color:var(--tertiary)}
+.tabs div i{display:block;width:24px;height:24px;margin:0 auto 3px;border-radius:7px;background:var(--divider)}
+.tabs div.on{color:var(--accent)} .tabs div.on i{background:var(--accent)}
+.kicker{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tertiary)}
+.display{font-family:var(--serif);font-weight:700;font-size:34px;line-height:1.1;letter-spacing:-.01em}
+.displaySmall{font-family:var(--serif);font-weight:700;font-size:22px;line-height:1.2}
+.title{font-size:22px;font-weight:700}
+.headline{font-size:17px;font-weight:600}
+.body{font-size:17px}
+.subhead{font-size:15px}
+.foot{font-size:13px}
+.cap{font-size:12px}
+.num{font-variant-numeric:tabular-nums}
+.sec{color:var(--secondary)} .ter{color:var(--tertiary)} .acc{color:var(--accent)} .late{color:var(--late)} .good{color:var(--good)}
+.row{display:flex;align-items:center;gap:12px}
+.hair{border-top:1px solid var(--divider)}
+.newtag{font-size:11px;font-weight:700;color:#fff;background:var(--accent);border-radius:99px;padding:1px 6px}
+svg{display:block}
+.note{font-size:12px;color:var(--tertiary)}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="intro">
+  <h1>Dewey layouts</h1>
+  <p>Six options for making the iPhone app feel designed, all in the <b>Dew</b> theme (the new default). Each screen gets <b>one hero</b>, fewer bordered boxes, and its own density: Grades is dense, the Assignment page is airy. The library idea (Dewey Decimal, the librarian) shows up as a shape or a layout, never as a texture or a hand-drawn font; New York serif is only for titles and grade letters.</p>
+  <p>Pick any mix: e.g. "G1 + C1 + A1 + T1". Options with the same letter replace each other.</p>
+</div>
+
+<div class="grid">
+
+<!-- ───────────────────────── G1 · Grades, report-card row ───────────────────────── -->
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●●</span></div>
+  <div class="scroll">
+    <div style="padding:6px 0 2px" class="kicker">26-27 T1</div>
+    <div class="display">Grades</div>
+
+    <!-- Hero: every class's letter in one row -->
+    <div style="margin:18px -16px 0;padding:16px 16px 14px;background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);text-align:center">
+        <div><div class="display" style="color:var(--c1)">B+</div><div class="cap sec" style="font-weight:600;margin-top:4px">ALG 2</div></div>
+        <div style="position:relative"><div class="display" style="color:var(--c2)">A</div><div class="cap sec" style="font-weight:600;margin-top:4px">AP BIO</div><span style="position:absolute;top:2px;right:12px;width:8px;height:8px;border-radius:50%;background:var(--accent)"></span></div>
+        <div><div class="display" style="color:var(--c3)">A</div><div class="cap sec" style="font-weight:600;margin-top:4px">ENG 10</div></div>
+        <div><div class="display" style="color:var(--c4)">A−</div><div class="cap sec" style="font-weight:600;margin-top:4px">SPAN 2</div></div>
+        <div><div class="display" style="color:var(--c5)">B</div><div class="cap sec" style="font-weight:600;margin-top:4px">CHEM H</div></div>
+        <div><div class="display" style="color:var(--c6)">A</div><div class="cap sec" style="font-weight:600;margin-top:4px">US HIST</div></div>
+      </div>
+    </div>
+
+    <!-- New grades, no card -->
+    <div class="row" style="margin-top:22px">
+      <span class="headline">New</span><span class="newtag">2</span><span style="flex:1"></span><span class="subhead acc" style="font-weight:600">Mark all seen</span>
+    </div>
+    <div style="margin-top:6px">
+      <div class="row" style="padding:10px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Unit 2 Test</div><div class="foot sec">AP Biology · Nice work on the FRQ.</div></div><div style="text-align:right"><div class="subhead num" style="font-weight:600">47 / 50</div><div class="cap num good">+0.6</div></div></div>
+      <div class="row hair" style="padding:10px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Quiz 4.2</div><div class="foot sec">Algebra 2</div></div><div style="text-align:right"><div class="subhead num" style="font-weight:600">18 / 20</div><div class="cap num good">+0.2</div></div></div>
+    </div>
+
+    <!-- Classes: compact rows, sparklines as today -->
+    <div class="headline" style="margin-top:22px">Classes</div>
+    <div style="margin-top:4px">
+      <!-- row template: color tick · name/period · sparkline · % and distance -->
+      <div class="row" style="padding:10px 0">
+        <span style="width:4px;height:30px;border-radius:2px;background:var(--c1)"></span>
+        <div style="flex:1;min-width:0"><div class="subhead" style="font-weight:600">Algebra 2</div><div class="foot late num" style="font-weight:600">3.4 under A <span class="ter" style="font-weight:400">· P1</span></div></div>
+        <svg width="80" height="24"><path d="M0 14 L16 10 L32 16 L48 13 L64 9 L80 11" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 6H80" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg>
+        <div class="subhead num" style="width:52px;text-align:right;font-weight:600">89.6%</div>
+      </div>
+      <div class="row hair" style="padding:10px 0">
+        <span style="width:4px;height:30px;border-radius:2px;background:var(--c2)"></span>
+        <div style="flex:1"><div class="subhead" style="font-weight:600">AP Biology <span class="newtag" style="margin-left:4px">1 new</span></div><div class="foot good num" style="font-weight:600">+1.5 over A <span class="ter" style="font-weight:400">· P2</span></div></div>
+        <svg width="80" height="24"><path d="M0 12 L16 9 L32 11 L48 7 L64 8 L80 5" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 9H80" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg>
+        <div class="subhead num" style="width:52px;text-align:right;font-weight:600">94.5%</div>
+      </div>
+      <div class="row hair" style="padding:10px 0">
+        <span style="width:4px;height:30px;border-radius:2px;background:var(--c3)"></span>
+        <div style="flex:1"><div class="subhead" style="font-weight:600">English 10</div><div class="foot good num" style="font-weight:600">+0.4 over A <span class="ter" style="font-weight:400">· P3</span></div></div>
+        <svg width="80" height="24"><path d="M0 8 L20 12 L40 10 L60 11 L80 9" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 10H80" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg>
+        <div class="subhead num" style="width:52px;text-align:right;font-weight:600">93.4%</div>
+      </div>
+      <div class="row hair" style="padding:10px 0">
+        <span style="width:4px;height:30px;border-radius:2px;background:var(--c4)"></span>
+        <div style="flex:1"><div class="subhead" style="font-weight:600">Spanish 2</div><div class="foot late num" style="font-weight:600">2.1 under A <span class="ter" style="font-weight:400">· P4</span></div></div>
+        <svg width="80" height="24"><path d="M0 9 L26 13 L53 12 L80 14" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 8H80" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg>
+        <div class="subhead num" style="width:52px;text-align:right;font-weight:600">90.9%</div>
+      </div>
+      <div class="row hair" style="padding:10px 0">
+        <span style="width:4px;height:30px;border-radius:2px;background:var(--c5)"></span>
+        <div style="flex:1"><div class="subhead" style="font-weight:600">Chemistry H</div><div class="foot late num" style="font-weight:600">7.6 under A <span class="ter" style="font-weight:400">· P5</span></div></div>
+        <svg width="80" height="24"><path d="M0 6 L20 12 L40 15 L60 18 L80 17" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 4H80" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg>
+        <div class="subhead num" style="width:52px;text-align:right;font-weight:600">85.4%</div>
+      </div>
+    </div>
+  </div>
+  <div class="tabs"><div><i></i>To Do</div><div class="on"><i></i>Grades</div><div><i></i>Inbox</div><div><i></i>Classes</div><div><i></i>Schoology</div></div>
+</div>
+<figcaption><b>G1 · Grades: report-card row</b>The hero is every letter in one row, in New York and the class colour; a dot marks a class with new grades. Below it nothing is boxed: compact rows on the background with hairlines, the same sparklines and "over / under A" as today. The letter isn't repeated on the rows, so each row is half today's height and all six classes fit above the fold. Largest text sizes: the row becomes 3 × 2.</figcaption>
+</figure>
+
+<!-- ───────────────────────── G2 · Grades, ruled report card ───────────────────────── -->
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●●</span></div>
+  <div class="scroll">
+    <div class="display" style="padding-top:6px">Grades</div>
+    <div class="row" style="margin-top:14px;padding-bottom:8px;border-bottom:2px solid var(--text)">
+      <span class="kicker" style="flex:1;color:var(--text)">Report card · 26-27 T1</span><span class="kicker">Mark</span>
+    </div>
+    <!-- ruled lines, letter on the right like a printed report card -->
+    <div>
+      <div class="row" style="padding:12px 0;border-bottom:1px solid var(--divider)">
+        <div style="flex:1"><div class="headline">Algebra 2</div><div class="foot sec num">P1 · Chen · 89.6% · <span class="late" style="font-weight:600">3.4 under A</span></div></div>
+        <svg width="64" height="22"><path d="M0 13 L13 9 L26 15 L39 12 L52 8 L64 10" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 5H64" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg>
+        <div class="display" style="width:48px;text-align:right">B+</div>
+      </div>
+      <div class="row" style="padding:12px 0;border-bottom:1px solid var(--divider)">
+        <div style="flex:1"><div class="headline">AP Biology <span class="newtag">1 new</span></div><div class="foot sec num">P2 · Rivera · 94.5% · <span class="good" style="font-weight:600">+1.5</span></div></div>
+        <svg width="64" height="22"><path d="M0 12 L13 9 L26 11 L39 7 L52 8 L64 5" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 9H64" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg>
+        <div class="display" style="width:48px;text-align:right">A</div>
+      </div>
+      <div class="row" style="padding:12px 0;border-bottom:1px solid var(--divider)">
+        <div style="flex:1"><div class="headline">English 10</div><div class="foot sec num">P3 · Patel · 93.4% · <span class="good" style="font-weight:600">+0.4</span></div></div>
+        <svg width="64" height="22"><path d="M0 8 L16 12 L32 10 L48 11 L64 9" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 10H64" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg>
+        <div class="display" style="width:48px;text-align:right">A</div>
+      </div>
+      <div class="row" style="padding:12px 0;border-bottom:1px solid var(--divider)">
+        <div style="flex:1"><div class="headline">Spanish 2</div><div class="foot sec num">P4 · Garcia · 90.9% · <span class="late" style="font-weight:600">2.1 under A</span></div></div>
+        <svg width="64" height="22"><path d="M0 9 L21 13 L42 12 L64 14" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 8H64" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg>
+        <div class="display" style="width:48px;text-align:right">A−</div>
+      </div>
+      <div class="row" style="padding:12px 0;border-bottom:1px solid var(--divider)">
+        <div style="flex:1"><div class="headline">Chemistry H</div><div class="foot sec num">P5 · Nguyen · 85.4% · <span class="late" style="font-weight:600">7.6 under A</span></div></div>
+        <svg width="64" height="22"><path d="M0 6 L16 12 L32 15 L48 18 L64 17" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 4H64" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg>
+        <div class="display" style="width:48px;text-align:right">B</div>
+      </div>
+      <div class="row" style="padding:12px 0;border-bottom:2px solid var(--text)">
+        <div style="flex:1"><div class="headline">US History</div><div class="foot sec num">P7 · Brooks · 97.1% · <span class="good" style="font-weight:600">+4.1</span></div></div>
+        <svg width="64" height="22"><path d="M0 9 L21 7 L42 6 L64 5" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 11H64" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg>
+        <div class="display" style="width:48px;text-align:right">A</div>
+      </div>
+    </div>
+    <div class="headline" style="margin-top:22px">Recently graded</div>
+    <div class="row" style="padding:10px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Unit 2 Test <span class="newtag">NEW</span></div><div class="foot sec">AP Biology</div></div><div class="subhead num" style="font-weight:600">47 / 50</div></div>
+  </div>
+  <div class="tabs"><div><i></i>To Do</div><div class="on"><i></i>Grades</div><div><i></i>Inbox</div><div><i></i>Classes</div><div><i></i>Schoology</div></div>
+</div>
+<figcaption><b>G2 · Grades: a ruled report card</b>Same facts, laid out like the paper report card: a heavy rule top and bottom, hairlines between classes, the letter set big in the right-hand "Mark" column. Calmer than G1 (one column to scan) but taller per class. New grades move into "Recently graded" with their NEW tag instead of a section of their own.</figcaption>
+</figure>
+
+<!-- ───────────────────────── C1 · Classes, shelf ───────────────────────── -->
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●●</span></div>
+  <div class="scroll">
+    <div class="display" style="padding-top:6px">Classes</div>
+    <div style="margin-top:12px;height:36px;border-radius:10px;background:var(--tagSoft);display:flex;align-items:center;padding:0 10px" class="subhead ter">⌕&nbsp; Search every class's materials</div>
+
+    <!-- The shelf -->
+    <div style="margin-top:22px;display:flex;align-items:flex-end;gap:5px;height:236px;padding:0 4px">
+      <!-- spine: class colour, title up the spine, a white call-number label with period + letter -->
+      <div style="flex:1;height:212px;background:var(--c1);border-radius:4px 4px 2px 2px;position:relative;color:#fff">
+        <div style="position:absolute;left:50%;top:14px;transform:translateX(-50%) rotate(180deg);writing-mode:vertical-rl;font-size:15px;font-weight:600;white-space:nowrap">Algebra 2</div>
+        <div style="position:absolute;left:5px;right:5px;bottom:8px;background:#fff;color:var(--text);border-radius:3px;text-align:center;padding:4px 0 3px"><div class="cap" style="font-weight:700">P1</div><div class="displaySmall">B+</div></div>
+      </div>
+      <div style="flex:1.15;height:232px;background:var(--c2);border-radius:4px 4px 2px 2px;position:relative;color:#fff">
+        <div style="position:absolute;left:50%;top:14px;transform:translateX(-50%) rotate(180deg);writing-mode:vertical-rl;font-size:15px;font-weight:600;white-space:nowrap">AP Biology</div>
+        <div style="position:absolute;top:-1px;right:8px;width:10px;height:26px;background:var(--ripple);clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%)" title="ribbon = due today"></div>
+        <div style="position:absolute;left:5px;right:5px;bottom:8px;background:#fff;color:var(--text);border-radius:3px;text-align:center;padding:4px 0 3px"><div class="cap" style="font-weight:700">P2</div><div class="displaySmall">A</div></div>
+      </div>
+      <div style="flex:1;height:200px;background:var(--c3);border-radius:4px 4px 2px 2px;position:relative;color:#fff">
+        <div style="position:absolute;left:50%;top:14px;transform:translateX(-50%) rotate(180deg);writing-mode:vertical-rl;font-size:15px;font-weight:600;white-space:nowrap">English 10</div>
+        <div style="position:absolute;left:5px;right:5px;bottom:8px;background:#fff;color:var(--text);border-radius:3px;text-align:center;padding:4px 0 3px"><div class="cap" style="font-weight:700">P3</div><div class="displaySmall">A</div></div>
+      </div>
+      <div style="flex:.95;height:218px;background:var(--c4);border-radius:4px 4px 2px 2px;position:relative;color:#fff">
+        <div style="position:absolute;left:50%;top:14px;transform:translateX(-50%) rotate(180deg);writing-mode:vertical-rl;font-size:15px;font-weight:600;white-space:nowrap">Spanish 2</div>
+        <div style="position:absolute;left:5px;right:5px;bottom:8px;background:#fff;color:var(--text);border-radius:3px;text-align:center;padding:4px 0 3px"><div class="cap" style="font-weight:700">P4</div><div class="displaySmall">A−</div></div>
+      </div>
+      <div style="flex:1.1;height:226px;background:var(--c5);border-radius:4px 4px 2px 2px;position:relative;color:#fff">
+        <div style="position:absolute;left:50%;top:14px;transform:translateX(-50%) rotate(180deg);writing-mode:vertical-rl;font-size:15px;font-weight:600;white-space:nowrap">Chemistry H</div>
+        <div style="position:absolute;top:-1px;right:8px;width:10px;height:26px;background:var(--spray);clip-path:polygon(0 0,100% 0,100% 100%,50% 78%,0 100%)"></div>
+        <div style="position:absolute;left:5px;right:5px;bottom:8px;background:#fff;color:var(--text);border-radius:3px;text-align:center;padding:4px 0 3px"><div class="cap" style="font-weight:700">P5</div><div class="displaySmall">B</div></div>
+      </div>
+      <div style="flex:1;height:206px;background:var(--c6);border-radius:4px 4px 2px 2px;position:relative;color:#fff">
+        <div style="position:absolute;left:50%;top:14px;transform:translateX(-50%) rotate(180deg);writing-mode:vertical-rl;font-size:15px;font-weight:600;white-space:nowrap">US History</div>
+        <div style="position:absolute;left:5px;right:5px;bottom:8px;background:#fff;color:var(--text);border-radius:3px;text-align:center;padding:4px 0 3px"><div class="cap" style="font-weight:700">P7</div><div class="displaySmall">A</div></div>
+      </div>
+    </div>
+    <div style="height:8px;margin:0 -4px;background:var(--border);border-radius:2px"></div>
+    <div class="foot ter" style="margin-top:8px">Ribbon = work due today · <span style="display:inline-block;width:8px;height:8px;background:var(--spray);border-radius:2px"></span> tomorrow</div>
+
+    <!-- Hub sits flat on the shelf, like a book lying down -->
+    <div class="row" style="margin-top:16px;padding:10px 12px;background:var(--card);border-radius:4px;border-left:6px solid #5E6670"><span class="subhead" style="font-weight:600;flex:1">Gr10 Hub</span><span class="foot ter">Class of 2029</span></div>
+
+    <div class="headline" style="margin-top:22px">Recently opened</div>
+    <div class="row" style="padding:10px 0"><span class="cap" style="font-weight:700;color:#fff;background:var(--late);border-radius:4px;padding:2px 5px">PDF</span><div style="flex:1"><div class="subhead">Unit 3 Slides.pdf</div><div class="foot sec">AP Biology</div></div><span class="ter">›</span></div>
+  </div>
+  <div class="tabs"><div><i></i>To Do</div><div><i></i>Grades</div><div><i></i>Inbox</div><div class="on"><i></i>Classes</div><div><i></i>Schoology</div></div>
+</div>
+<figcaption><b>C1 · Classes: a shelf of spines</b>Each class is a book in its colour, title up the spine, and a white call-number label with the period and the letter grade. A ribbon hangs off the top when work is due today (lighter: tomorrow). Heights vary a little for a real-shelf look (stable per class, they don't mean anything). Hubs lie flat. Largest text sizes: the books lie flat in a stack, one per line.</figcaption>
+</figure>
+
+<!-- ───────────────────────── C2 · Classes, one leads ───────────────────────── -->
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●●</span></div>
+  <div class="scroll">
+    <div class="display" style="padding-top:6px">Classes</div>
+    <div style="margin-top:12px;height:36px;border-radius:10px;background:var(--tagSoft);display:flex;align-items:center;padding:0 10px" class="subhead ter">⌕&nbsp; Search every class's materials</div>
+
+    <!-- The lead: the class with the next thing due -->
+    <div style="margin-top:20px;background:var(--c2);color:#fff;border-radius:22px;padding:18px 18px 16px;position:relative;overflow:hidden">
+      <svg width="200" height="200" style="position:absolute;right:-60px;top:-60px;opacity:.18"><circle cx="100" cy="100" r="40" fill="none" stroke="#fff" stroke-width="3"/><circle cx="100" cy="100" r="66" fill="none" stroke="#fff" stroke-width="3"/><circle cx="100" cy="100" r="94" fill="none" stroke="#fff" stroke-width="3"/></svg>
+      <div class="kicker" style="color:rgba(255,255,255,.85)">Next up · P2</div>
+      <div class="displaySmall" style="margin-top:4px">AP Biology</div>
+      <div class="subhead" style="margin-top:12px;font-weight:600">Lab 2.2 Cell Size and Diffusion</div>
+      <div class="foot" style="opacity:.9">Due today 11:59 pm · not submitted</div>
+      <div class="row" style="margin-top:14px;gap:8px">
+        <span class="foot" style="font-weight:600;background:#fff;color:var(--c2);border-radius:99px;padding:6px 12px">Materials ›</span>
+        <span class="foot" style="font-weight:600;background:rgba(255,255,255,.2);border-radius:99px;padding:6px 12px">3 open</span>
+        <span style="flex:1"></span><span class="displaySmall">A</span>
+      </div>
+    </div>
+
+    <!-- Everyone else: a compact list, no tiles -->
+    <div style="margin-top:18px">
+      <div class="row" style="padding:11px 0"><span style="width:10px;height:10px;border-radius:50%;background:var(--c5)"></span><div style="flex:1"><div class="subhead" style="font-weight:600">Chemistry H</div><div class="foot sec">Tomorrow 8:30 am · Stoichiometry Worksheet</div></div><span class="displaySmall">B</span></div>
+      <div class="row hair" style="padding:11px 0"><span style="width:10px;height:10px;border-radius:50%;background:var(--c3)"></span><div style="flex:1"><div class="subhead" style="font-weight:600">English 10</div><div class="foot sec">Tue · Essay Draft · submitted</div></div><span class="displaySmall">A</span></div>
+      <div class="row hair" style="padding:11px 0"><span style="width:10px;height:10px;border-radius:50%;background:var(--c1)"></span><div style="flex:1"><div class="subhead" style="font-weight:600">Algebra 2</div><div class="foot sec">Wed · Unit 4 Test</div></div><span class="displaySmall">B+</span></div>
+      <div class="row hair" style="padding:11px 0"><span style="width:10px;height:10px;border-radius:50%;background:var(--c6)"></span><div style="flex:1"><div class="subhead" style="font-weight:600">US History</div><div class="foot sec">Thu · DBQ Outline</div></div><span class="displaySmall">A</span></div>
+      <div class="row hair" style="padding:11px 0"><span style="width:10px;height:10px;border-radius:50%;background:var(--c4)"></span><div style="flex:1"><div class="subhead" style="font-weight:600">Spanish 2</div><div class="foot late">1 late · Vocabulario 2.3</div></div><span class="displaySmall">A−</span></div>
+      <div class="row hair" style="padding:11px 0"><span style="width:10px;height:10px;border-radius:50%;background:#5E6670"></span><div style="flex:1"><div class="subhead" style="font-weight:600">Gr10 Hub</div><div class="foot sec">Class of 2029</div></div></div>
+    </div>
+  </div>
+  <div class="tabs"><div><i></i>To Do</div><div><i></i>Grades</div><div><i></i>Inbox</div><div class="on"><i></i>Classes</div><div><i></i>Schoology</div></div>
+</div>
+<figcaption><b>C2 · Classes: one class leads</b>The class with the next thing due gets a big card in its own colour, with the logo's ripple rings faint in the corner. Everything else is a plain list sorted by what's due next, each line saying what that is. Less playful than C1, more useful between periods. Order follows due dates, not the Course Dashboard (a change from SCREENS.md).</figcaption>
+</figure>
+
+<!-- ───────────────────────── A1 · Assignment, checkout card ───────────────────────── -->
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●●</span></div>
+  <div style="flex:none;display:flex;justify-content:space-between;padding:4px 16px 0" class="headline acc"><span>‹ To Do</span><span>◎</span></div>
+  <div class="scroll" style="padding-top:14px">
+    <div class="kicker" style="color:var(--c2)">AP BIO · P2 · 26-27 T1 · Labs &amp; Homework</div>
+    <div class="displaySmall" style="margin-top:6px;font-size:26px">Lab 2.2 Cell Size and Diffusion</div>
+
+    <!-- The checkout card -->
+    <div style="margin-top:40px;position:relative;background:#FFFDF7;border-radius:6px;box-shadow:0 1px 0 var(--border),0 6px 18px rgba(14,42,36,.08);padding:14px 16px 6px;border-top:5px solid var(--c2)">
+      <div class="row" style="padding-bottom:6px;border-bottom:1.5px solid var(--text)">
+        <span class="kicker" style="flex:1;color:var(--text)">Date due</span><span class="kicker" style="width:120px;color:var(--text)">Turn in</span>
+      </div>
+      <div class="row" style="padding:10px 0;border-bottom:1px solid #E7DFCC">
+        <span class="subhead num" style="flex:1;font-weight:600">Today, 11:59 pm</span><span class="subhead" style="width:120px">Dropbox</span>
+      </div>
+      <div class="row" style="padding:10px 0;border-bottom:1px solid #E7DFCC">
+        <span class="subhead num sec" style="flex:1">20 points</span><span class="subhead late" style="width:120px;font-weight:600">Not submitted</span>
+      </div>
+      <div class="row" style="padding:10px 0">
+        <span class="foot ter" style="flex:1">Checked 2 min ago</span><span class="foot acc" style="width:120px;font-weight:600">Mark turned in</span>
+      </div>
+      <!-- the stamp -->
+      <div style="position:absolute;right:6px;top:-48px;transform:rotate(-7deg);border:2.5px solid var(--late);color:var(--late);border-radius:8px;padding:4px 10px 3px;text-align:center;background:rgba(251,237,229,.92)">
+        <div style="font-size:11px;font-weight:800;letter-spacing:.14em">DUE</div>
+        <div style="font-size:20px;font-weight:800;letter-spacing:.04em" class="num">OCT 18</div>
+      </div>
+    </div>
+
+    <!-- Instructions: no box, generous space -->
+    <div class="headline" style="margin-top:30px">Instructions</div>
+    <p class="body" style="line-height:1.45;margin:8px 0 0">Model cells as agar cubes of three sizes. Record how far the dye spreads in 10 minutes, then compute surface area to volume for each.</p>
+    <div class="row" style="margin-top:16px;padding:10px 0" ><span class="cap" style="font-weight:700;color:#fff;background:var(--late);border-radius:4px;padding:2px 5px">PDF</span><span class="subhead" style="flex:1">Lab 2.2 handout.pdf</span><span class="ter">›</span></div>
+    <div class="row hair" style="padding:10px 0"><span class="cap" style="font-weight:700;color:#fff;background:var(--c1);border-radius:4px;padding:2px 5px">LINK</span><span class="subhead" style="flex:1">Lab site</span><span class="ter">↗</span></div>
+  </div>
+  <div style="flex:none;padding:10px 16px 30px;display:flex;gap:10px;border-top:1px solid var(--divider);background:var(--bg)">
+    <span class="headline" style="flex:1;height:48px;border-radius:99px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--accent)">Done</span>
+    <span class="headline" style="flex:1.6;height:48px;border-radius:99px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center">Submit on Schoology ↗</span>
+  </div>
+</div>
+<figcaption><b>A1 · Assignment: the checkout card</b>A catalog line in the class colour (class · period · term · category), the title in New York, then the Submission card as a library date-due card: ruled columns, a cream card stock (a colour, not a texture). The stamp says the one fact that matters and changes with it: <span class="late">DUE OCT 18</span>, <span class="good">SUBMITTED OCT 17</span> in green, <span class="late">2 DAYS LATE</span>. Instructions get room and no box. Stamp is clean bold type, slightly rotated; VoiceOver reads it as "Due October 18".</figcaption>
+</figure>
+
+<!-- ───────────────────────── T1 · To Do, drop + ripple ───────────────────────── -->
+<figure>
+<div class="phone">
+  <div class="status"><span>9:41</span><span>●●●</span></div>
+  <div class="scroll">
+    <div class="row" style="padding-top:6px;align-items:flex-end">
+      <div style="flex:1"><div class="kicker">Sunday, Oct 18</div><div class="display">To Do</div></div>
+      <!-- ripple progress: a ring per item due today, filled as they're done -->
+      <div class="row" style="gap:8px;padding-bottom:4px">
+        <svg width="44" height="44" viewBox="0 0 44 44" aria-label="1 of 3 done today">
+          <circle cx="22" cy="22" r="20" fill="none" stroke="var(--divider)" stroke-width="2.5"/>
+          <circle cx="22" cy="22" r="14" fill="none" stroke="var(--divider)" stroke-width="2.5"/>
+          <circle cx="22" cy="22" r="8" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+          <path d="M22 18.2c-1.6 2-2.6 3.3-2.6 4.6a2.6 2.6 0 0 0 5.2 0c0-1.3-1-2.6-2.6-4.6z" fill="var(--accent)"/>
+        </svg>
+        <div class="foot" style="line-height:1.2"><b class="num">1 of 3</b><br><span class="sec">done today</span></div>
+      </div>
+    </div>
+
+    <!-- Week strip, no boxes; selected day is a drop -->
+    <div style="margin-top:18px;display:grid;grid-template-columns:repeat(8,1fr);text-align:center">
+      <div><div class="cap late" style="font-weight:600">Late</div><div class="subhead late num" style="font-weight:700;margin-top:6px;height:30px;line-height:30px">1</div><div style="height:6px"></div></div>
+      <div style="position:relative">
+        <div class="cap acc" style="font-weight:600">Today</div>
+        <div style="position:relative;height:30px;margin-top:6px;display:flex;align-items:center;justify-content:center">
+          <svg width="30" height="34" viewBox="0 0 30 34" style="position:absolute;top:-6px;left:50%;transform:translateX(-50%)"><path d="M15 1C10 8 3 14 3 21a12 12 0 0 0 24 0c0-7-7-13-12-20z" fill="var(--accent)"/></svg>
+          <span class="subhead num" style="position:relative;color:#fff;font-weight:700;padding-top:6px">18</span>
+        </div>
+        <div style="display:flex;gap:3px;justify-content:center;margin-top:4px"><i style="width:6px;height:6px;border-radius:50%;background:var(--tertiary);opacity:.45"></i><i style="width:6px;height:6px;border-radius:50%;background:var(--tertiary);opacity:.45"></i></div>
+      </div>
+      <div><div class="cap sec" style="font-weight:600">Mon</div><div class="subhead num" style="font-weight:600;margin-top:6px;height:30px;line-height:30px">19</div><div style="display:flex;gap:3px;justify-content:center"><i style="width:6px;height:6px;border-radius:50%;background:var(--tertiary);opacity:.45"></i><i style="width:6px;height:6px;border-radius:50%;background:var(--text)"></i></div></div>
+      <div><div class="cap sec" style="font-weight:600">Tue</div><div class="subhead num" style="font-weight:600;margin-top:6px;height:30px;line-height:30px">20</div><div style="display:flex;gap:3px;justify-content:center"><i style="width:6px;height:6px;border-radius:50%;background:var(--tertiary);opacity:.45"></i><i style="width:6px;height:6px;border-radius:50%;background:var(--text)"></i></div></div>
+      <div><div class="cap sec" style="font-weight:600">Wed</div><div class="subhead num" style="font-weight:600;margin-top:6px;height:30px;line-height:30px">21</div><div style="display:flex;gap:3px;justify-content:center"><i style="width:6px;height:6px;border-radius:50%;background:var(--text)"></i></div></div>
+      <div><div class="cap sec" style="font-weight:600">Thu</div><div class="subhead num" style="font-weight:600;margin-top:6px;height:30px;line-height:30px">22</div><div style="display:flex;gap:3px;justify-content:center"><i style="width:6px;height:6px;border-radius:50%;background:var(--tertiary);opacity:.45"></i></div></div>
+      <div><div class="cap sec" style="font-weight:600">Fri</div><div class="subhead num ter" style="font-weight:600;margin-top:6px;height:30px;line-height:30px">23</div></div>
+      <div><div class="cap sec" style="font-weight:600">Sat</div><div class="subhead num" style="font-weight:600;margin-top:6px;height:30px;line-height:30px">24</div><div style="display:flex;gap:3px;justify-content:center"><i style="width:6px;height:6px;border-radius:50%;background:var(--tertiary);opacity:.45"></i></div></div>
+    </div>
+    <div class="hair" style="margin-top:12px"></div>
+
+    <!-- List grouped by class, whitespace instead of cards -->
+    <div class="row" style="margin-top:18px;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--c2)"></span><span class="headline">AP Biology</span><span class="foot ter">P2</span></div>
+    <div class="row" style="padding:12px 0 10px;align-items:flex-start">
+      <span style="width:24px;height:24px;border-radius:50%;border:2px solid var(--tertiary);flex:none;margin-top:2px"></span>
+      <div style="flex:1"><div class="body">Lab 2.2 Cell Size and Diffusion</div><div class="foot sec num">11:59 pm · HW · not submitted</div></div>
+      <span class="foot acc" style="font-weight:600;background:var(--accentSoft);border-radius:99px;padding:6px 12px">Submit ↗</span>
+    </div>
+    <div class="row hair" style="padding:12px 0 10px;align-items:flex-start;margin-left:36px">
+      <span style="width:24px;height:24px;border-radius:50%;background:var(--good);color:#fff;flex:none;margin:2px 0 0 -36px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700">✓</span>
+      <div style="flex:1"><div class="body sec">Read Ch. 5: Membranes</div><div class="foot good">Turned in · not on Schoology</div></div>
+    </div>
+
+    <div class="row" style="margin-top:20px;gap:8px"><span style="width:10px;height:10px;border-radius:50%;background:var(--c4)"></span><span class="headline">Spanish 2</span><span class="foot ter">P4</span></div>
+    <div class="row" style="padding:12px 0 10px;align-items:flex-start">
+      <span style="width:24px;height:24px;border-radius:50%;border:2px solid var(--late);flex:none;margin-top:2px"></span>
+      <div style="flex:1"><div class="body">Vocabulario 2.3 Practice</div><div class="foot late num" style="font-weight:600">2 d late · Fri 6:00 pm</div></div>
+    </div>
+  </div>
+  <div class="tabs"><div class="on"><i></i>To Do</div><div><i></i>Grades</div><div><i></i>Inbox</div><div><i></i>Classes</div><div><i></i>Schoology</div></div>
+</div>
+<figcaption><b>T1 · To Do: the drop and the ripple</b>The logo's two shapes, used where they mean something. The selected day in the week strip sits in a <b>drop</b> instead of a box; days are bare type. Next to the title, <b>ripples</b>: one ring per thing due today, filling from the centre as you finish them (this is also where the ripple-on-done animation can land). Classes are grouped by a colour dot and a heading, not a card. Works with either To Do view (week strip or urgent-first).</figcaption>
+</figure>
+
+</div>
+</div>
+</body>
+</html>

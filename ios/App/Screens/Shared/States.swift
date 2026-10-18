@@ -84,6 +84,14 @@ struct ErrorState: View {
     }
 }
 
+/// Dewey the drop: asset names for the few moments he shows up (brand/README.md).
+/// Placeholder art; brand/sync-mascot.sh copies a redraw into the asset catalog.
+enum Mascot {
+    static let hello = "DeweyHello"         // Sign in
+    static let caughtUp = "DeweyCaughtUp"   // empty To Do
+    static let uhOh = "DeweyUhOh"           // an overdue assignment's Submission card
+}
+
 struct EmptyState: View {
     let icon: String
     let title: String

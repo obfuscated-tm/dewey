@@ -10,6 +10,7 @@
 // nags. Everything here is also in Settings.
 
 import { el, onClick } from './ui.js';
+import { mascot } from './mascot.js';
 import { createDialog, neoplanFrame, folderInfo, folderText, pickFolder, useDownloads, onFolderChange, DOWNLOADS_TEXT } from './dialog.js';
 
 export const INTRO_KEY = 'introSeen';
@@ -18,6 +19,8 @@ const CSS = `
 .step { display: flex; flex-direction: column; gap: 12px; }
 .step h3 { margin: 0; font-size: 17px; line-height: 22px; font-weight: 600; }
 .step p { margin: 0; font-size: 13px; color: var(--ink); }
+.hello { display: flex; align-items: center; gap: 12px; }
+.hello .mascot { flex: none; }
 .step p.dim { color: var(--dim); font-size: 12px; }
 .tour { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .tour li { display: grid; grid-template-columns: 92px 1fr; gap: 10px; font-size: 13px; }
@@ -47,8 +50,10 @@ export function start({ doc = document, storage = globalThis.chrome?.storage?.lo
 
   // 1 · What it adds
   const s1 = el('div', 'step');
+  const hello = el('div', 'hello');
+  hello.append(mascot('hello', { size: 56, doc }), el('h3', null, 'Schoology, a little easier'));
   s1.append(
-    el('h3', null, 'Schoology, a little easier'),
+    hello,
     el('p', null, 'Dewey adds a To Do list with Done and Turn in, grades you can play what-if with, and an archiver that saves your classes before they disappear.'),
   );
   const tour = el('ul', 'tour');

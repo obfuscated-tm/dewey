@@ -11,6 +11,7 @@
 
 import { createHost, el, onClick } from './ui.js';
 import { onFolderChange } from './dialog.js';
+import { mascot } from './mascot.js';
 import { OPTION_KEYS, DEFAULT_OPTIONS } from '../outputs/archive/state.js';
 
 const OPTIONS_KEY = 'archiverOptions';
@@ -104,6 +105,9 @@ fieldset input[type="checkbox"] { width: 16px; height: 16px; min-width: 16px; ma
   .progress .fill { animation: none; left: 0; width: 100%; opacity: .35; }
 }
 @keyframes np-arc-indeterminate { 0% { left: -40%; } 100% { left: 100%; } }
+.running { display: flex; align-items: center; gap: 12px; }
+.running .mascot { flex: none; }
+.running .status { flex: 1; min-width: 0; }
 .statusRow { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 8px; }
 .statusRow strong { font-size: 13px; }
 .statusRow .counts { color: var(--dim); font-size: 12px; white-space: nowrap; }
@@ -244,7 +248,7 @@ export function start({
   const resultMeta = el('span', 'meta');
   resultBlock.append(resultText, resultMeta);
 
-  const statusSection = el('div');
+  const statusSection = el('div', 'running');
   statusSection.hidden = true;
   const progress = el('div', 'progress');
   progress.append(el('div', 'fill'));
@@ -253,7 +257,9 @@ export function start({
   statusText.setAttribute('role', 'status');
   const counts = el('span', 'counts');
   statusRow.append(statusText, counts);
-  statusSection.append(progress, statusRow);
+  const statusBody = el('div', 'status');
+  statusBody.append(progress, statusRow);
+  statusSection.append(mascot('archiving', { size: 44, doc }), statusBody);
 
   const log = el('pre', 'log');
   log.hidden = true;

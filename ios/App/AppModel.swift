@@ -59,6 +59,7 @@ final class AppModel {
     /// On launch: try the course list; `login` → Sign in, anything else → in (offline uses saved copies).
     func boot() async {
         if Demo.on, courses.isEmpty { Demo.seed(self) }
+        if let id = Demo.openAssignment { deepLinkAssignment = id }
         engine.start()
         // Saved copies and no sign-out on record: show them now instead of a
         // spinner; a `login` below still sends the app to Sign in.
@@ -172,7 +173,12 @@ final class AppModel {
     /// Open (not finished) overdue work: the tab badge.
     func overdueCount() -> Int {
         let now = Date()
-        return todoItems().filter { ($0.due ?? .distantFuture) < now && !isFinished($0) && !TodoLogic.isOlder(due: $0.due) }.count
+        return todoItems().filter { isOverdue($0, now: now) }.count
+    }
+
+    /// Past due, not finished, and not old enough to sit in the Older group.
+    func isOverdue(_ it: ItemState, now: Date = Date()) -> Bool {
+        (it.due ?? .distantFuture) < now && !isFinished(it) && !TodoLogic.isOlder(due: it.due, now: now)
     }
 
     func isFinished(_ it: ItemState) -> Bool {

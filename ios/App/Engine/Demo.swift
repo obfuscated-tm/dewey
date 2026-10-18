@@ -23,6 +23,9 @@ enum Demo {
         let k = UserDefaults.standard.integer(forKey: "DeweyDay")
         return k < 0 ? .late : .day(k)
     }
+    /// `-DeweyOpen 9402` with `-DeweyDemo`: open that assignment on launch, for a
+    /// screenshot without tapping (same path as a widget's deep link).
+    static var openAssignment: String? { on ? UserDefaults.standard.string(forKey: "DeweyOpen") : nil }
 
     /// Ops that only do math in engine.js; everything else is answered here.
     static let pureOps: Set<String> = ["courseGrade", "planTest", "annotate", "math"]

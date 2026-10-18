@@ -176,6 +176,7 @@ struct AssignmentView: View {
             .padding(.vertical, 10)
             .overlay(alignment: .bottom) { Theme.divider.frame(height: 1) }
             .accessibilityElement(children: .combine)
+            HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 6) {
                 switch k {
                 case .dropbox(let done):
@@ -202,9 +203,14 @@ struct AssignmentView: View {
                     Label("Checking Schoology…", systemImage: "hourglass").font(Theme.body.weight(.semibold)).foregroundStyle(Theme.secondary)
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            // Dewey, a little worried: only here, on the one overdue thing you opened.
+            if let it, model.isOverdue(it) {
+                Image(Mascot.uhOh).resizable().scaledToFit().frame(width: 44, height: 44).accessibilityHidden(true)
+            }
+            }
             .padding(.top, 10)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .padding(.top, 4)
         .card()

@@ -220,6 +220,7 @@ private func classLabel(_ c: Course, _ g: CourseGrade?, _ due: Shelf.Due?, _ ope
 
 /// Settings → Classes on the shelf: which classes stand on the Classes shelf.
 struct ShelfSettings: View {
+    var title = "Classes on the shelf"
     @Environment(AppModel.self) private var model
     @AppStorage(Shelf.offKey) private var offRaw = ""
 
@@ -237,10 +238,10 @@ struct ShelfSettings: View {
                     .tint(Theme.accent)
                 }
             } footer: {
-                Text("Classes off the shelf lie flat under it. You can also use the gear on the Classes tab, or long-press a class there.")
+                Text("Classes off the shelf lie flat under it. You can also long-press a class on the shelf.")
             }
         }
-        .navigationTitle("Classes on the shelf")
+        .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }
 }

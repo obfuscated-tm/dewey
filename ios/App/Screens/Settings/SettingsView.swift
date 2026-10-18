@@ -1,158 +1,63 @@
 import SwiftUI
 import UserNotifications
 
-/// 4b · Account, help (statuses, neo-plan), reminders, look, login
-/// compatibility, this build's expiry, and the Developer screen.
+/// A page in Settings. The gear on To Do, Grades and Classes opens Settings on its own page.
+enum SettingsPage: Hashable {
+    case schoology, notifications, look, todo, grades, classes, inbox, help, about
+}
+
+/// 4b · A short list of pages: Schoology, Notifications, Look, one page per tab
+/// (To Do, Grades, Classes, Inbox), Help and About. Each row shows its current value.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
+    @State private var path: [SettingsPage]
     @State private var connected = NeoPlanClient().connected
-    @AppStorage(Reminders.enabledKey) private var reminders = false
-    @AppStorage(Reminders.hourKey) private var hour = 19
-    @AppStorage(Reminders.soonKey) private var dueSoon = true
-    @AppStorage(Reminders.testNightKey) private var testNight = true
-    @AppStorage(Reminders.morningKey) private var morning = false
-    @AppStorage(Reminders.morningHourKey) private var morningHour = 7
-    @AppStorage(Reminders.gradesKey) private var gradeAlerts = true
-    @AppStorage(Reminders.signedOutKey) private var signedOutAlert = true
-    @AppStorage(Reminders.messagesKey) private var messageAlerts = true
-    @AppStorage(Reminders.materialsKey) private var materialAlerts = true
-    @AppStorage(Inbox.markReadKey) private var markRead = true
+    @State private var confirmSignOut = false
     private let theme = ThemeStore.shared
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
     @AppStorage(ToDoLayout.key) private var todoLayout = ToDoLayout.week.rawValue
     @AppStorage(GradesLook.reportCardKey) private var reportCard = true
-    @AppStorage(WebConfig.compatKey) private var compat = false
-    @State private var confirmSignOut = false
+    @AppStorage(Shelf.offKey) private var offShelf = ""
+    @AppStorage(Reminders.enabledKey) private var reminders = false
+    @AppStorage(Reminders.soonKey) private var dueSoon = true
+    @AppStorage(Reminders.testNightKey) private var testNight = true
+    @AppStorage(Reminders.morningKey) private var morning = false
+    @AppStorage(Reminders.gradesKey) private var gradeAlerts = true
+    @AppStorage(Reminders.signedOutKey) private var signedOutAlert = true
+    @AppStorage(Reminders.messagesKey) private var messageAlerts = true
+    @AppStorage(Reminders.materialsKey) private var materialAlerts = true
+
+    init(start: SettingsPage? = nil) {
+        _path = State(initialValue: start.map { [$0] } ?? [])
+    }
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             Form {
-                Section("Schoology") {
-                    LabeledContent("Signed in to", value: Engine.host)
-                    Button("Sign out", role: .destructive) { confirmSignOut = true }
-                }
-
                 Section {
-                    NavigationLink("How statuses work") { StatusGuideView() }
-                    NavigationLink { NeoPlanView(connected: $connected) } label: {
-                        LabeledContent("neo-plan", value: connected ? "Connected" : "Not connected")
-                    }
-                } header: { Text("Help") } footer: {
-                    Text(connected ? NeoPlanView.statusText() : "neo-plan is an optional planner board. Most people don't need it.")
+                    row(.schoology, "graduationcap", 5, "Schoology", subtitle: Engine.host)
                 }
-
                 Section {
-                    Toggle("2 hours before, if not submitted", isOn: $dueSoon)
-                        .onChange(of: dueSoon) { _, on in dueChanged(on) }
-                    Toggle("Night before a test", isOn: $testNight)
-                        .onChange(of: testNight) { _, on in dueChanged(on) }
-                    Toggle("Homework the evening before", isOn: $reminders)
-                        .onChange(of: reminders) { _, on in dueChanged(on) }
-                    if reminders || testNight {
-                        Picker("Evening time", selection: $hour) {
-                            ForEach(15..<23) { h in Text(hourText(h)).tag(h) }
-                        }
-                        .onChange(of: hour) { _, _ in dueChanged(false) }
-                    }
-                    Toggle("Morning summary", isOn: $morning)
-                        .onChange(of: morning) { _, on in dueChanged(on) }
-                    if morning {
-                        Picker("Morning time", selection: $morningHour) {
-                            ForEach(5..<11) { h in Text(hourText(h)).tag(h) }
-                        }
-                        .onChange(of: morningHour) { _, _ in dueChanged(false) }
-                    }
-                } header: { Text("Due reminders") } footer: {
-                    Text("A test reminder stops once you mark it Studied; the others stop once it's submitted, turned in or done. The 2-hour one is for Schoology dropboxes only and still comes if you marked it done but haven't submitted.")
+                    row(.notifications, "bell", 3, "Notifications", value: notificationsOn ? "On" : "Off")
+                    row(.look, "paintpalette", 2, "Look", value: theme.palette.name)
                 }
-
                 Section {
-                    Toggle("New grades", isOn: $gradeAlerts)
-                        .onChange(of: gradeAlerts) { _, on in askIfOn(on) }
-                    Toggle("Messages from teachers", isOn: $messageAlerts)
-                        .onChange(of: messageAlerts) { _, on in askIfOn(on) }
-                    Toggle("New materials in your classes", isOn: $materialAlerts)
-                        .onChange(of: materialAlerts) { _, on in askIfOn(on) }
-                    Toggle("Signed out of Schoology", isOn: $signedOutAlert)
-                        .onChange(of: signedOutAlert) { _, on in askIfOn(on) }
-                } header: { Text("Notifications") } footer: {
-                    Text("Grade, message, material and signed-out alerts come when the app refreshes in the background, so they can be late. Schoology signs you out about once a day.")
+                    row(.todo, "checklist", 1, "To Do", value: (ToDoLayout(rawValue: todoLayout) ?? .week).title)
+                    row(.grades, "chart.bar", 0, "Grades", value: reportCard ? "Letters" : "List")
+                    row(.classes, "books.vertical", 4, "Classes", value: "\(onShelf) on shelf")
+                    row(.inbox, "envelope", 7, "Inbox")
                 }
-
                 Section {
-                    Toggle("Mark messages read when opened", isOn: $markRead)
-                } header: { Text("Inbox") } footer: {
-                    Text(markRead ? "Opening a message in the app marks it read on Schoology, like opening it there."
-                                  : "Messages show their preview only, so they stay unread on Schoology until you open them there.")
-                }
-
-                Section {
-                    Picker("View", selection: $todoLayout) {
-                        ForEach(ToDoLayout.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
-                    }
-                    NavigationLink("Call numbers") { CallNumberSettings() }
-                } header: { Text("To Do") } footer: {
-                    Text(todoLayout == ToDoLayout.urgent.rawValue
-                         ? "One list, late and due today at the top, each row with its class."
-                         : "Work grouped by class, under a strip of days you can tap to filter.")
-                }
-
-                Section {
-                    Toggle("Letters across the top", isOn: $reportCard)
-                    NavigationLink("Classes on the shelf") { ShelfSettings() }
-                } header: { Text("Grades and Classes") } footer: {
-                    Text(reportCard ? "Grades starts with every class's letter in one row, like a report card."
-                                    : "Grades starts straight with the list; each class shows its letter.")
-                }
-
-                Section("Look") {
-                    Picker("Appearance", selection: $appearance) {
-                        Text("System").tag("system")
-                        Text("Light").tag("light")
-                        Text("Dark").tag("dark")
-                    }
-                    .pickerStyle(.segmented)
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack(spacing: Theme.Space.m) {
-                            ForEach(Palette.all) { p in
-                                PaletteTile(palette: p, selected: theme.paletteID == p.id)
-                                    .onTapGesture { theme.paletteID = p.id; WidgetBridge.publish(model) }
-                            }
-                        }
-                        .padding(.vertical, Theme.Space.xs)
-                    }
-                    if theme.palette.accent == nil {
-                        HStack(spacing: 14) {
-                            ForEach(Theme.accentOptions, id: \.self) { hex in
-                                Circle().fill(Color(hex: hex)).frame(width: 30, height: 30)
-                                    .overlay(Circle().stroke(Theme.text, lineWidth: theme.accentHex == hex ? 2 : 0).padding(-3))
-                                    .onTapGesture { theme.accentHex = hex; WidgetBridge.publish(model) }
-                                    .accessibilityLabel(["Blue", "Green", "Purple", "Red"][Theme.accentOptions.firstIndex(of: hex) ?? 0])
-                                    .accessibilityAddTraits(theme.accentHex == hex ? [.isButton, .isSelected] : .isButton)
-                            }
-                        }
-                        .padding(.vertical, 4)
-                    }
-                }
-
-                Section {
-                    Toggle("Login compatibility mode", isOn: $compat)
-                        .onChange(of: compat) { _, _ in model.engine.reload() }
-                } footer: {
-                    Text("Signs in with Safari's user agent. Turns on by itself if Google refuses the app's web view.")
-                }
-
-                Section("This build") {
-                    LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")
-                    LabeledContent("Expires", value: BuildInfo.expiryText)
-                    NavigationLink("Developer") { DeveloperView() }
+                    row(.help, "questionmark", 6, "Help", value: connected ? "neo-plan on" : nil)
+                    row(.about, "info", 6, "About", value: BuildInfo.daysLeftText)
                 }
             }
+            .navigationDestination(for: SettingsPage.self) { page($0) }
             .preferredColorScheme(Theme.colorScheme(appearance))
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar { done }
             .confirmationDialog("Sign out of Schoology?", isPresented: $confirmSignOut, titleVisibility: .visible) {
                 Button("Sign out", role: .destructive) {
                     dismiss()
@@ -164,20 +69,305 @@ struct SettingsView: View {
         }
     }
 
-    private func hourText(_ h: Int) -> String {
+    private var done: some ToolbarContent {
+        ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } }
+    }
+
+    @ViewBuilder
+    private func page(_ p: SettingsPage) -> some View {
+        Group {
+            switch p {
+            case .schoology: SchoologySettings(confirmSignOut: $confirmSignOut)
+            case .notifications: NotificationSettings()
+            case .look: LookSettings()
+            case .todo: ToDoSettings()
+            case .grades: GradesSettings()
+            case .classes: ShelfSettings(title: "Classes")
+            case .inbox: InboxSettings()
+            case .help: HelpSettings(connected: $connected)
+            case .about: AboutSettings()
+            }
+        }
+        .toolbar { done }
+    }
+
+    /// An iOS Settings-style row: a white symbol on a class-colour square, the title, and its value.
+    private func row(_ p: SettingsPage, _ symbol: String, _ color: Int, _ title: String,
+                     value: String? = nil, subtitle: String? = nil) -> some View {
+        NavigationLink(value: p) {
+            HStack(spacing: Theme.Space.m) {
+                Image(systemName: symbol)
+                    .font(Theme.footnote.weight(.semibold)).foregroundStyle(.white)
+                    .frame(width: 29, height: 29)
+                    .background(Theme.classColor(color), in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                    if let subtitle { Text(subtitle).font(Theme.caption).foregroundStyle(Theme.secondary) }
+                }
+                Spacer()
+                if let value { Text(value).foregroundStyle(Theme.secondary) }
+            }
+        }
+    }
+
+    private var notificationsOn: Bool {
+        [reminders, dueSoon, testNight, morning, gradeAlerts, signedOutAlert, messageAlerts, materialAlerts].contains(true)
+    }
+
+    private var onShelf: Int {
+        let off = Shelf.off(offShelf)
+        return model.classes.filter { !off.contains($0.sectionId) }.count
+    }
+}
+
+/// Reminder switches shared by Settings → Notifications and Settings → To Do.
+@MainActor
+enum ReminderSettings {
+    static func hourText(_ h: Int) -> String {
         Fmt.time.string(from: Calendar.current.date(bySettingHour: h, minute: 0, second: 0, of: Date())!)
     }
 
     /// A due-reminder switch or time changed: ask for permission when turning one on, then reschedule.
-    private func dueChanged(_ on: Bool) {
+    static func dueChanged(_ model: AppModel, _ on: Bool) {
         Task {
             if on { _ = await Reminders.shared.requestPermission() }
             Reminders.shared.schedule(items: model.todoItems(), courses: model.courses)
         }
     }
 
-    private func askIfOn(_ on: Bool) {
+    static func askIfOn(_ on: Bool) {
         if on { Task { _ = await Reminders.shared.requestPermission() } }
+    }
+}
+
+private struct SchoologySettings: View {
+    @Environment(AppModel.self) private var model
+    @Binding var confirmSignOut: Bool
+    @AppStorage(WebConfig.compatKey) private var compat = false
+
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Signed in to", value: Engine.host)
+                Button("Sign out", role: .destructive) { confirmSignOut = true }
+            }
+            Section {
+                Toggle("Login compatibility mode", isOn: $compat)
+                    .onChange(of: compat) { _, _ in model.engine.reload() }
+            } footer: {
+                Text("Signs in with Safari's user agent. Turns on by itself if Google refuses the app's web view.")
+            }
+        }
+        .navigationTitle("Schoology")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct NotificationSettings: View {
+    @Environment(AppModel.self) private var model
+    @AppStorage(Reminders.enabledKey) private var reminders = false
+    @AppStorage(Reminders.hourKey) private var hour = 19
+    @AppStorage(Reminders.soonKey) private var dueSoon = true
+    @AppStorage(Reminders.testNightKey) private var testNight = true
+    @AppStorage(Reminders.morningKey) private var morning = false
+    @AppStorage(Reminders.morningHourKey) private var morningHour = 7
+    @AppStorage(Reminders.gradesKey) private var gradeAlerts = true
+    @AppStorage(Reminders.signedOutKey) private var signedOutAlert = true
+    @AppStorage(Reminders.messagesKey) private var messageAlerts = true
+    @AppStorage(Reminders.materialsKey) private var materialAlerts = true
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("2 hours before, if not submitted", isOn: $dueSoon)
+                    .onChange(of: dueSoon) { _, on in ReminderSettings.dueChanged(model, on) }
+                Toggle("Night before a test", isOn: $testNight)
+                    .onChange(of: testNight) { _, on in ReminderSettings.dueChanged(model, on) }
+                Toggle("Homework the evening before", isOn: $reminders)
+                    .onChange(of: reminders) { _, on in ReminderSettings.dueChanged(model, on) }
+                if reminders || testNight {
+                    Picker("Evening time", selection: $hour) {
+                        ForEach(15..<23) { h in Text(ReminderSettings.hourText(h)).tag(h) }
+                    }
+                    .onChange(of: hour) { _, _ in ReminderSettings.dueChanged(model, false) }
+                }
+                Toggle("Morning summary", isOn: $morning)
+                    .onChange(of: morning) { _, on in ReminderSettings.dueChanged(model, on) }
+                if morning {
+                    Picker("Morning time", selection: $morningHour) {
+                        ForEach(5..<11) { h in Text(ReminderSettings.hourText(h)).tag(h) }
+                    }
+                    .onChange(of: morningHour) { _, _ in ReminderSettings.dueChanged(model, false) }
+                }
+            } header: { Text("Due work") } footer: {
+                Text("Each stops once the work is done, turned in or (for a test) studied.")
+            }
+
+            Section {
+                Toggle("New grades", isOn: $gradeAlerts)
+                    .onChange(of: gradeAlerts) { _, on in ReminderSettings.askIfOn(on) }
+                Toggle("Messages from teachers", isOn: $messageAlerts)
+                    .onChange(of: messageAlerts) { _, on in ReminderSettings.askIfOn(on) }
+                Toggle("New materials in your classes", isOn: $materialAlerts)
+                    .onChange(of: materialAlerts) { _, on in ReminderSettings.askIfOn(on) }
+                Toggle("Signed out of Schoology", isOn: $signedOutAlert)
+                    .onChange(of: signedOutAlert) { _, on in ReminderSettings.askIfOn(on) }
+            } header: { Text("Alerts") } footer: {
+                Text("These come when the app refreshes in the background, so they can be late.")
+            }
+        }
+        .navigationTitle("Notifications")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct LookSettings: View {
+    @Environment(AppModel.self) private var model
+    private let theme = ThemeStore.shared
+    @AppStorage(Theme.appearanceKey) private var appearance = "system"
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("Appearance", selection: $appearance) {
+                    Text("System").tag("system")
+                    Text("Light").tag("light")
+                    Text("Dark").tag("dark")
+                }
+                .pickerStyle(.segmented)
+            }
+            Section("Theme") {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: Theme.Space.m) {
+                        ForEach(Palette.all) { p in
+                            PaletteTile(palette: p, selected: theme.paletteID == p.id)
+                                .onTapGesture { theme.paletteID = p.id; WidgetBridge.publish(model) }
+                        }
+                    }
+                    .padding(.vertical, Theme.Space.xs)
+                }
+                if theme.palette.accent == nil {
+                    HStack(spacing: 14) {
+                        ForEach(Theme.accentOptions, id: \.self) { hex in
+                            Circle().fill(Color(hex: hex)).frame(width: 30, height: 30)
+                                .overlay(Circle().stroke(Theme.text, lineWidth: theme.accentHex == hex ? 2 : 0).padding(-3))
+                                .onTapGesture { theme.accentHex = hex; WidgetBridge.publish(model) }
+                                .accessibilityLabel(["Blue", "Green", "Purple", "Red"][Theme.accentOptions.firstIndex(of: hex) ?? 0])
+                                .accessibilityAddTraits(theme.accentHex == hex ? [.isButton, .isSelected] : .isButton)
+                        }
+                    }
+                    .padding(.vertical, 4)
+                }
+            }
+        }
+        .navigationTitle("Look")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// The To Do gear lands here: view, call numbers, and the two reminders about due work.
+private struct ToDoSettings: View {
+    @Environment(AppModel.self) private var model
+    @AppStorage(ToDoLayout.key) private var todoLayout = ToDoLayout.week.rawValue
+    @AppStorage(Reminders.soonKey) private var dueSoon = true
+    @AppStorage(Reminders.testNightKey) private var testNight = true
+
+    var body: some View {
+        Form {
+            Section {
+                Picker("View", selection: $todoLayout) {
+                    ForEach(ToDoLayout.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
+                }
+                .pickerStyle(.segmented)
+                NavigationLink("Call numbers") { CallNumberSettings() }
+            } footer: {
+                Text(todoLayout == ToDoLayout.urgent.rawValue
+                     ? "One list, late and due today at the top."
+                     : "Work grouped by class, under a strip of days.")
+            }
+            Section {
+                Toggle("2 hours before, if not submitted", isOn: $dueSoon)
+                    .onChange(of: dueSoon) { _, on in ReminderSettings.dueChanged(model, on) }
+                Toggle("Night before a test", isOn: $testNight)
+                    .onChange(of: testNight) { _, on in ReminderSettings.dueChanged(model, on) }
+            } header: { Text("Reminders") } footer: {
+                Text("More in Settings › Notifications.")
+            }
+        }
+        .navigationTitle("To Do")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct GradesSettings: View {
+    @AppStorage(GradesLook.reportCardKey) private var reportCard = true
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Letters across the top", isOn: $reportCard)
+            } footer: {
+                Text(reportCard ? "Grades starts with every class's letter in one row, like a report card."
+                                : "Grades starts straight with the list; each class shows its letter.")
+            }
+        }
+        .navigationTitle("Grades")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct InboxSettings: View {
+    @AppStorage(Inbox.markReadKey) private var markRead = true
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Mark messages read when opened", isOn: $markRead)
+            } footer: {
+                Text(markRead ? "Opening a message here marks it read on Schoology."
+                              : "Messages stay unread on Schoology until you open them there.")
+            }
+        }
+        .navigationTitle("Inbox")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct HelpSettings: View {
+    @Binding var connected: Bool
+
+    var body: some View {
+        Form {
+            Section {
+                NavigationLink("How statuses work") { StatusGuideView() }
+                NavigationLink { NeoPlanView(connected: $connected) } label: {
+                    LabeledContent("neo-plan", value: connected ? "Connected" : "Not connected")
+                }
+            } footer: {
+                Text(connected ? NeoPlanView.statusText() : "neo-plan is an optional planner board. Most people don't need it.")
+            }
+        }
+        .navigationTitle("Help")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+private struct AboutSettings: View {
+    var body: some View {
+        Form {
+            Section {
+                LabeledContent("Version", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "")
+                LabeledContent("Expires", value: BuildInfo.expiryText)
+            } footer: {
+                Text("A free-account build stops opening on this date; build it again from Xcode.")
+            }
+            Section {
+                NavigationLink("Developer") { DeveloperView() }
+            }
+        }
+        .navigationTitle("About")
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
 
@@ -197,6 +387,13 @@ enum BuildInfo {
         guard let d = expiry else { return "No profile (Simulator)" }
         let days = Calendar.current.dateComponents([.day], from: Date(), to: d).day ?? 0
         return "\(Fmt.short.string(from: d)) (\(days) day\(days == 1 ? "" : "s"))"
+    }
+
+    /// "5 days" for the About row; nothing in the Simulator.
+    static var daysLeftText: String? {
+        guard let d = expiry else { return nil }
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: d).day ?? 0
+        return "\(days) day\(days == 1 ? "" : "s")"
     }
 }
 

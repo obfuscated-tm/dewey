@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// Settings → To Do → Call numbers (also the To Do gear menu): each class's Dewey
+/// Settings → To Do → Call numbers (the To Do gear lands on that page): each class's Dewey
 /// number on its catalog card. Automatic shows the guess (or that there isn't one).
 struct CallNumberSettings: View {
     @Environment(AppModel.self) private var model

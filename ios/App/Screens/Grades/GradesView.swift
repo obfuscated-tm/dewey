@@ -14,10 +14,7 @@ struct GradesView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
                     ScreenHeader(kicker: model.classes.lazy.compactMap { model.grades[$0.sectionId]?.period }.first, title: "Grades") {
-                        // The same switch as Settings → Grades and Classes.
-                        ScreenOptions {
-                            Toggle("Letters across the top", isOn: $reportCard)
-                        }
+                        ScreenOptions(page: .grades)
                     }
                         .padding(.top, Theme.Space.s)
                     if model.classes.isEmpty {

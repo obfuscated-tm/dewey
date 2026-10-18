@@ -115,22 +115,18 @@ struct EmptyState: View {
 }
 
 /// The large-title header used by the tab screens: date line + title + trailing buttons.
-/// The one options button on To Do, Grades and Classes: the same gear on every
-/// screen, a menu with that screen's own options, then Settings.
-struct ScreenOptions<Content: View>: View {
-    @ViewBuilder var content: Content
+/// The one gear on To Do, Grades and Classes: opens Settings on that screen's own page,
+/// with Settings' full list one tap back.
+struct ScreenOptions: View {
+    let page: SettingsPage
     @State private var showSettings = false
     var body: some View {
-        Menu {
-            content
-            Divider()
-            Button("Settings", systemImage: "gearshape") { showSettings = true }
-        } label: {
+        Button { showSettings = true } label: {
             Image(systemName: "gearshape").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
                 .frame(width: 44, height: 44)
         }
-        .accessibilityLabel("Options")
-        .sheet(isPresented: $showSettings) { SettingsView() }
+        .accessibilityLabel("Settings")
+        .sheet(isPresented: $showSettings) { SettingsView(start: page) }
     }
 }
 

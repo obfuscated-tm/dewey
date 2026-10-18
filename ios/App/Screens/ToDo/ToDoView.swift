@@ -25,7 +25,6 @@ struct ToDoView: View {
     @AppStorage("statusTipKind") private var tipKind = StatusTip.Kind.done.rawValue
     @State private var showGuide = false
     @AppStorage(CallNumber.key) private var callRaw = ""
-    @State private var showCallNumbers = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -49,7 +48,6 @@ struct ToDoView: View {
             .refreshable { await model.refreshTodo() }
             .navigationDestination(for: AssignmentRoute.self) { r in AssignmentView(id: r.id) }
             .navigationDestination(isPresented: $showGuide) { StatusGuideView() }
-            .navigationDestination(isPresented: $showCallNumbers) { CallNumberSettings() }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $sheet) { SchoologySheet(target: $0) }
         }
@@ -74,12 +72,7 @@ struct ToDoView: View {
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do") {
                 if !typeSize.isAccessibilitySize, let ripple { ripple.padding(.bottom, Theme.Space.xs) }
-                ScreenOptions {
-                    Picker("View", selection: $layoutID) {
-                        ForEach(ToDoLayout.allCases, id: \.self) { Label($0.title, systemImage: $0.icon).tag($0.rawValue) }
-                    }
-                    Button("Call numbers", systemImage: "number") { showCallNumbers = true }
-                }
+                ScreenOptions(page: .todo)
             }
             if typeSize.isAccessibilitySize, let ripple { ripple.padding(.horizontal, Theme.Space.xs) }
             // Late, today and the next six days, a dot per item still to do; tap one to show only it.

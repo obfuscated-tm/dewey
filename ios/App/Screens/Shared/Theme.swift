@@ -155,6 +155,9 @@ enum Theme {
         guard let d = base.fontDescriptor.withDesign(.serif)?.withSymbolicTraits(.traitBold) else { return }
         UINavigationBar.appearance().largeTitleTextAttributes = [.font: UIFont(descriptor: d, size: 0)]
     }
+    /// 10 heavy · the word on a shelf book's bookmark ribbon only (like the type bar's
+    /// label: a fixed size so the ribbon stays thinner than the spine's name).
+    static let ribbon = Font.system(size: 10, weight: .heavy)
     /// Settings → Developer only: raw engine JSON. Never in the student-facing UI.
     static let code = Font.system(.caption, design: .monospaced)
 

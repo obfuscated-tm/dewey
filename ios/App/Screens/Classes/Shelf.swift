@@ -81,19 +81,21 @@ struct Shelf: View {
 /// like the spine's name: filled for late and today, outlined for tomorrow.
 struct DueRibbon: View {
     let due: Shelf.Due
-    static let width: CGFloat = 18
+    static let width: CGFloat = 13
     var body: some View {
         let color = due == .late ? Theme.late : Theme.accent
-        let ribbon = RibbonShape(notch: 7)
+        let ribbon = RibbonShape(notch: 6)
         Text(due.label)
-            .font(Theme.caption.weight(.heavy)).tracking(0.4)
+            .font(Theme.ribbon).tracking(0.4)
             .lineLimit(1).fixedSize()
             .rotationEffect(.degrees(-90))
-            .frame(width: Self.width, height: 52)
-            .padding(.top, 3).padding(.bottom, 9)
+            .frame(width: Self.width, height: 44)
+            .padding(.top, 3).padding(.bottom, 8)
             .foregroundStyle(due == .tomorrow ? color : due == .late ? Theme.card : Theme.onAccent)
             .background(due == .tomorrow ? Theme.card : color, in: ribbon)
             .overlay(ribbon.stroke(color, lineWidth: due == .tomorrow ? 1.5 : 0))
+            // A white edge, so the ribbon reads on any spine colour (spines are dark in both modes).
+            .overlay(ribbon.stroke(.white, lineWidth: due == .tomorrow ? 0 : 1.5))
             .accessibilityHidden(true)
     }
 }
@@ -152,8 +154,6 @@ struct BookSpine: View {
                 .rotationEffect(.degrees(-90))
                 .frame(width: 30, height: height - labelH - 28)
                 .padding(.top, 14)
-                // Clear of the ribbon on the right edge.
-                .offset(x: due == nil ? 0 : -DueRibbon.width / 3)
             Spacer(minLength: 0)
             VStack(spacing: 0) {
                 Text(course.periodLabel.count <= 3 ? course.periodLabel : "").font(Theme.caption.weight(.bold))
@@ -167,7 +167,7 @@ struct BookSpine: View {
         .frame(maxWidth: .infinity)
         .frame(height: height)
         .background(model.spineColor(course.sectionId), in: RoundedRectangle(cornerRadius: Theme.Radius.tag / 1.5, style: .continuous))
-        .overlay(alignment: .topTrailing) { if let due { DueRibbon(due: due).padding(.trailing, 5) } }
+        .overlay(alignment: .topTrailing) { if let due { DueRibbon(due: due).padding(.trailing, 3) } }
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(classLabel(course, g, due, openCount))

@@ -14,7 +14,7 @@ enum ToDoLayout: String, CaseIterable {
 struct ToDoView: View {
     @Environment(AppModel.self) private var model
     @AppStorage(ToDoLayout.key) private var layoutID = ToDoLayout.week.rawValue
-    @State private var filter: DayFilter?
+    @State private var filter: DayFilter? = Demo.startDay
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showOlder = false
     @State private var sheet: SheetTarget?
@@ -59,8 +59,11 @@ struct ToDoView: View {
     @ViewBuilder
     private func header(items: [ItemState], now: Date) -> some View {
         let open = items.filter { !model.isFinished($0) }
+        let today = items.filter { TodoLogic.bucket(due: $0.due, now: now) == .today }
+        let ripple = today.isEmpty ? nil : RippleProgress(done: today.filter { model.isFinished($0) }.count, total: today.count)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do") {
+                if !typeSize.isAccessibilitySize, let ripple { ripple.padding(.bottom, Theme.Space.xs) }
                 Menu {
                     Picker("View", selection: $layoutID) {
                         ForEach(ToDoLayout.allCases, id: \.self) { Label($0.title, systemImage: $0.icon).tag($0.rawValue) }
@@ -77,6 +80,7 @@ struct ToDoView: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Settings")
             }
+            if typeSize.isAccessibilitySize, let ripple { ripple.padding(.horizontal, Theme.Space.xs) }
             // Late, today and the next six days, a dot per item still to do; tap one to show only it.
             if layout == .week { WeekStrip(items: open, now: now, selected: $filter) }
             if let f = filter {
@@ -140,7 +144,7 @@ struct ToDoView: View {
                 Section {
                     ForEach(g.items, id: \.schoologyId) { it in row(it, now: now) }
                 } header: {
-                    groupHeader(g.title, g.items, now: now)
+                    groupHeader(g.title, g.items, now: now, sectionId: g.key)
                 }
             }
             if !older.isEmpty {
@@ -201,11 +205,12 @@ struct ToDoView: View {
         }
     }
 
-    private func groupHeader(_ title: String, _ items: [ItemState], now: Date) -> some View {
+    private func groupHeader(_ title: String, _ items: [ItemState], now: Date, sectionId: String) -> some View {
         let open = items.filter { !model.isFinished($0) }
         // Urgent first already has a Today section.
         let dueToday = layout == .week && open.contains { TodoLogic.bucket(due: $0.due, now: now) == .today }
         return HStack(spacing: 8) {
+            if let course = model.course(sectionId) { Circle().fill(model.classColor(course.sectionId)).frame(width: 10, height: 10) }
             Text(title).font(Theme.headline).foregroundStyle(Theme.text)
             if dueToday {
                 Text("Due today").font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.accent)
@@ -228,6 +233,9 @@ struct ToDoView: View {
                 onOpen: { path.append(AssignmentRoute(id: it.schoologyId)) })
             // Every separator starts under the checkbox, whatever the row holds.
             .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
+            // Grouped by whitespace and the class heading, not a white card.
+            .listRowBackground(Color.clear)
+            .listRowSeparatorTint(Theme.divider)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if it.turnedIn {
                     Button { model.setTurnedIn(it, false) } label: { Label("Not turned in", systemImage: "arrow.uturn.backward") }

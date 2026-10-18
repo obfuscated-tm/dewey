@@ -13,6 +13,17 @@ enum Demo {
     static let on = false
     #endif
 
+    /// Screenshots of other screens without tapping: `-DeweyTab 3` opens Classes,
+    /// `-DeweyDay 1` selects tomorrow in the week strip (-1 = Late), `-DeweyAssignment 9206`
+    /// opens that assignment.
+    static var startTab: Int { on ? UserDefaults.standard.integer(forKey: "DeweyTab") : 0 }
+    static var startAssignment: String? { on ? UserDefaults.standard.string(forKey: "DeweyAssignment") : nil }
+    static var startDay: DayFilter? {
+        guard on, UserDefaults.standard.object(forKey: "DeweyDay") != nil else { return nil }
+        let k = UserDefaults.standard.integer(forKey: "DeweyDay")
+        return k < 0 ? .late : .day(k)
+    }
+
     /// Ops that only do math in engine.js; everything else is answered here.
     static let pureOps: Set<String> = ["courseGrade", "planTest", "annotate", "math"]
 

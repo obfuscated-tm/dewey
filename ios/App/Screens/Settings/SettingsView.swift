@@ -23,6 +23,7 @@ struct SettingsView: View {
     private let theme = ThemeStore.shared
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
     @AppStorage(ToDoLayout.key) private var todoLayout = ToDoLayout.week.rawValue
+    @AppStorage(GradesLook.reportCardKey) private var reportCard = true
     @AppStorage(WebConfig.compatKey) private var compat = false
     @State private var confirmSignOut = false
 
@@ -116,6 +117,14 @@ struct SettingsView: View {
                     Text(todoLayout == ToDoLayout.urgent.rawValue
                          ? "One list, late and due today at the top, each row with its class."
                          : "Work grouped by class, under a strip of days you can tap to filter.")
+                }
+
+                Section {
+                    Toggle("Letters across the top", isOn: $reportCard)
+                    NavigationLink("Classes on the shelf") { ShelfSettings() }
+                } header: { Text("Grades and Classes") } footer: {
+                    Text(reportCard ? "Grades starts with every class's letter in one row, like a report card."
+                                    : "Grades starts straight with the list; each class shows its letter.")
                 }
 
                 Section("Look") {

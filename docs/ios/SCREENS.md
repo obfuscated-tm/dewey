@@ -4,6 +4,7 @@ What every screen shows, where its data comes from, and what each tap does. Buil
 
 ## Mockups
 
+- Layout direction (2026-10-18, Owen's picks from [design/Layouts.html](design/Layouts.html)): G1 report-card row, C1 shelf, A1 checkout card, T1 drop and ripple, Dew as the default theme. Where the older per-screen mockups differ, Layouts.html and this file win.
 - Static copies in this repo: [design/](design/). One file per screen (`Main.dc.html` = To Do, etc.), 390×844 pt. Open one in a browser to see it; the `{{accent}}` placeholders are `#1D5EA8`. `design/canvas.json` holds the notes that sat under each screen (the same text as below).
 - Live canvas: https://claude.ai/artifact/GSX8QmamsY6nkjpdjckhue (private to Owen; read it with the Artifact tool if you have access, else use the copies).
 - The mockups are the **look**; this file is the **behaviour**. Where they differ, this file wins. Copy in `[brackets]` in a mockup is placeholder text.
@@ -40,20 +41,20 @@ Arrows: `›` opens a native screen; `↗` opens Schoology or a website (sheet o
 | fonts | SF Pro, seven styles in `Theme` (all Dynamic Type): largeTitle 34 bold · title 22 bold · headline 17 semibold · body 17 · subhead 15 · footnote 13 · caption 12. Plus New York (system serif) for character in two places only: `display` 34 bold for screen titles and the big grade letter, `displaySmall` 22 bold for the letter on a Grades card. Numbers add `.monospacedDigit()`; no code font in the UI. ThemeTests fails on a raw point size. |
 | shapes | `Theme.Radius`: 6 for tags and type bars, 14 (continuous) for every card; buttons are capsules, checkboxes circles. Spacing 4 / 8 / 12 / 16 / 24 (`Theme.Space`). Touch targets 44 pt; pill buttons 30 pt tall inside a 44 pt row. |
 
-These are the mockups' values. The app's colours live in `Palette.all` (`Theme.swift`). Settings → Look picks a theme, and each theme has light and dark values: **Standard** (dark mode is soft graphite), **Midnight** (Standard with true-black dark), **Dew** (brand teal), **Frost** (cool blue-grey), **Pastel** (soft lavender) and **Paper** (warm sepia). Standard and Midnight use the accent dots; the other themes bring their own accent. ThemeTests checks contrast in every theme.
+These are the mockups' values. The app's colours live in `Palette.all` (`Theme.swift`). Settings → Look picks a theme (new installs start on **Dew**, listed first), and each theme has light and dark values: **Standard** (dark mode is soft graphite), **Midnight** (Standard with true-black dark), **Dew** (brand teal), **Frost** (cool blue-grey), **Pastel** (soft lavender) and **Paper** (warm sepia). Standard and Midnight use the accent dots; the other themes bring their own accent. ThemeTests checks contrast in every theme.
 
 Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red badge with the overdue count.
 
 ## 1 · To Do and turning in
 
 ### 1a To Do (tab 1) — build first · `design/Main.dc.html`
-- **Shows:** everything due, grouped by class in Course Dashboard order (`courses()` order). Header: date, "To Do", gear (→ 4b). Three count buttons: Overdue (red), Due today (accent), This week; tapping one filters the list. **View** (menu beside the gear, also Settings → To Do, remembered): **Week** (default: by class under the week strip) or **Urgent first** (no strip; one list in Late · Today · Next 7 days · Later · Done sections, each row with its class above the title).
+- **Shows:** everything due, grouped by class in Course Dashboard order (`courses()` order). Header: date, "To Do", ripple progress (a ring per item due today, filling as they're done), gear (→ 4b). The week strip is bare type; the selected day sits in a drop. Class groups have a colour dot and no card. Three count buttons: Overdue (red), Due today (accent), This week; tapping one filters the list. **View** (menu beside the gear, also Settings → To Do, remembered): **Week** (default: by class under the week strip) or **Urgent first** (no strip; one list in Late · Today · Next 7 days · Later · Done sections, each row with its class above the title).
 - **Row:** check mark (see table above), title, type tag (HW / TEST / TASK / CW), due time in mono (red with "N d late" when overdue), a status line ("Done · not submitted yet", "Submitted on Schoology · 9:40 pm", "Not studied", "Turned in · not on Schoology"), and on dropbox work a **Submit ↗** pill.
 - **Data:** `todo()` (upcoming + overdue + events) merged with the app's own saved list (paper work that Schoology dropped from overdue stays until ticked). Per-row `status({id})` only for rows that might have a dropbox. Type: TEST if the gradebook category says Test/Quiz/Exam/Summative or the title says Exam/Quiz/Interro, else HW; neo-plan's type wins when connected. Overdue > 60 days → collapsed "Older" group.
 - **Taps:** circle = Done toggle (square = Studied toggle). Submit ↗ only on dropbox work → 1c. Swipe left → "Mark turned in" + the class's real turn-in place ("Turn in on lab site ↗" for AP Bio, "Submit ↗" for dropbox, nothing extra for paper). Row → 1b. Pull → refresh.
 
 ### 1b Assignment · `design/Assignment.dc.html`
-- **Shows:** class + folder, title, due + points; Submission card; Instructions (text + attachments, each with where it opens); "In neo-plan as" HW / Test / Task / CW switch; a dashed "What if I get __ / 20?" button. Bottom bar: Done + the main action. Globe button top right = this page in the Schoology sheet.
+- **Shows:** a catalog line in the class colour (class · period · term · category), the title in New York, then the Submission card as a library date-due card (ruled Date due / Turn in columns, a class-colour band, and a stamp: DUE OCT 18, N DAYS LATE, SUBMITTED, or TURNED IN); instructions unboxed; Instructions (text + attachments, each with where it opens); "In neo-plan as" HW / Test / Task / CW switch; a dashed "What if I get __ / 20?" button. Bottom bar: Done + the main action. Globe button top right = this page in the Schoology sheet.
 - **Data:** `assignment({id})` + `status({id})` + gradebook row (category, score, comment).
 - **Submission card, exactly one of:**
   - Dropbox the class uses → "Submitted on Schoology" (green) / "Not submitted on Schoology" (red) + "Checked N min ago". Main action: **Submit on Schoology ↗**.
@@ -71,7 +72,8 @@ Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red bad
 ## 2 · Grades: the facts first, what-if second
 
 ### 2a Grades (tab 2) · `design/Grades.dc.html`
-- **Card per class**, under a "Classes" heading (with a gap above it when New grades shows): letter + %, small history graph (`history`), distance to the A line, latest score and its +/- effect (`impact`). Tap → 2b.
+- **Report card row** (Settings → Grades and Classes → Letters across the top, on by default): every class's letter in New York, in its class colour, with a short name; a dot marks new grades. Below it nothing is boxed.
+- **Row per class** (was a card), under a "Classes" heading with a bigger gap above it when New grades shows: letter + % (the letter only when the row above is hidden), small history graph (`history`), distance to the A line, latest score and its +/- effect (`impact`). Tap → 2b.
 - **New grades** (top, only when there are some): scores that changed since the last saved gradebook, newest first, with "Mark all seen". Seen = opened, its class opened, or a week old. Class cards show "N new"; the tab shows the count.
 - **Recently graded:** newest scores across all classes, ordered by when the score appeared, then due date; unseen ones keep a NEW tag.
 - **Data:** `gradebook({sectionId})` per class (cached ≤ 30 min) → `periodsFromRows` → `currentPeriod` → `grade`.
@@ -90,7 +92,7 @@ Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red bad
 ## 3 · Classes, materials, files, full Schoology
 
 ### 3a Classes (tab 3) · `design/Classes.dc.html`
-- Tiles in Course Dashboard order: grade + open-work count (`matstate`). Colours are the app's own; period label from the section title.
+- A shelf of book spines in Course Dashboard order, each in its class colour (`Theme.classColors`, white text ≥ 4.5:1), name up the spine, a white call-number label with the period and letter. A LATE / TODAY / TMRW tag sits on top of a book with work in that state. Long-press (or Settings → Classes on the shelf) takes a class off the shelf; it then lies flat under it. At the accessibility text sizes every class lies flat.
 - Search: every class's materials by name, from a cached index (build it like the MCP's `find_material`: walk each Materials tree, cache, refresh in the background).
 - Updates tile → feed (screen not designed; v1 can open the course feed in the Schoology sheet). Recently opened = local history.
 

@@ -295,6 +295,21 @@ final class ThemeTests: XCTestCase {
         }
     }
 
+    /// White class names read on every class colour (the Classes shelf), and the
+    /// colour itself reads as text (Grades letters, the catalog line) on every theme's cards.
+    func testClassColors() {
+        for hex in Theme.classColors {
+            XCTAssertGreaterThanOrEqual(ratio(ui(hex), .white), 4.5, hex)
+            for p in Palette.all {
+                let card = p.hex["card"]!, bg = p.hex["background"]!
+                XCTAssertGreaterThanOrEqual(ratio(ui(hex), ui(card.light)), 4.5, "\(hex) on \(p.id) card")
+                XCTAssertGreaterThanOrEqual(ratio(ui(hex), ui(bg.light)), 4.5, "\(hex) on \(p.id) background")
+                XCTAssertGreaterThanOrEqual(ratio(Accent.dark(ui(hex)), ui(card.dark)), 4.5, "\(hex) on \(p.id) dark card")
+                XCTAssertGreaterThanOrEqual(ratio(Accent.dark(ui(hex)), ui(bg.dark)), 4.5, "\(hex) on \(p.id) dark background")
+            }
+        }
+    }
+
     /// Screens use the seven text styles in Theme, never a point size or a code
     /// font: one stray `.system(size: 12.5)` is how the type scale drifts again.
     func testScreensUseTheTypeScale() throws {

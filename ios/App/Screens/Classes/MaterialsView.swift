@@ -92,7 +92,7 @@ struct MaterialsView: View {
     }
 
     private var classColor: Color {
-        ClassTile.color(model.classes.firstIndex { $0.sectionId == sectionId } ?? 0)
+        model.classColor(sectionId)
     }
 
     private func load() async {

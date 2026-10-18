@@ -8,6 +8,7 @@
 // "+N more" cap are home.js-only concerns and stay in todo.js.
 
 import { el } from './ui.js';
+import { TIP_KEY, TIP_CSS, tipNode } from './statusguide.js';
 
 // The pure parts live in todologic.js (the iOS app's engine imports them
 // without ui.js); re-exported so every importer of this file is unchanged.
@@ -58,7 +59,7 @@ a.title.exam { font-weight: 700; }
 .due { white-space: nowrap; }
 .due.over { color: var(--bad); }
 .status { grid-column: 2; grid-row: 3; min-width: 0; font-size: 12px; }
-.status[hidden] { display: none; }
+${TIP_CSS}.status[hidden] { display: none; }
 .mark-col { grid-column: 3; grid-row: 1 / span 3; align-self: center; padding-left: 8px; }
 .mark-col:empty, .mark-col[hidden] { display: none; }
 .more { display: block; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; margin-top: 4px; font-size: 12px; }
@@ -85,7 +86,12 @@ export function buildRow(item) {
   // column at the row's right (marks.js, marker.js's `actions`).
   const statusSlot = el('div', 'status');
   const markSlot = el('div', 'mark-col');
-  rowEl.append(tag, wrap, sub, statusSlot, markSlot);
+  // The status tip (statusguide.js): once ever, under the first row marked
+  // Done / Studied / Turn in, until closed.
+  const tipSlot = el('div', 'tip');
+  tipSlot.hidden = true;
+  rowEl.append(tag, wrap, sub, statusSlot, markSlot, tipSlot);
+  const onTick = (kind) => showTip(tipSlot, kind);
   const onState = (state, planItem) => {
     const { text, cls } = tagFor(planItem);
     tag.className = `tag ${cls}`.trim();
@@ -96,9 +102,27 @@ export function buildRow(item) {
     statusSlot.hidden = markSlot.hidden = state.kind === 'unknown';
   };
   return {
-    el: rowEl, titleEl: a, markSlot, statusSlot, onState,
+    el: rowEl, titleEl: a, markSlot, statusSlot, onState, onTick,
     schoology_id: item.schoology_id, title: item.title, section_id: item.section_id || null, graded: item.graded,
     due: item.due || null, type: typeFor(item), autoAdd: autoAddable(item),
     turnIn: true, // the sidebars' rows: icon buttons for done / Turn in / its undo (marks.js)
   };
+}
+
+/** The first tick ever: the tip goes in this row's slot. */
+async function showTip(slot, kind, storage = globalThis.chrome?.storage?.local) {
+  try {
+    if (!storage || (await storage.get(TIP_KEY))?.[TIP_KEY]) return;
+    await storage.set({ [TIP_KEY]: true });
+  } catch { return; }
+  const tip = tipNode(kind, {
+    onGuide: async () => {
+      const { start } = await import('./settings.js');
+      start().open('Statuses');
+    },
+    onClose: () => { slot.hidden = true; },
+  });
+  slot.replaceChildren(...tip.childNodes);
+  slot.setAttribute('role', 'note');
+  slot.hidden = false;
 }

@@ -1,13 +1,11 @@
 import SwiftUI
 import UserNotifications
 
-/// 4b · Account, neo-plan, reminders, look, login
+/// 4b · Account, help (statuses, neo-plan), reminders, look, login
 /// compatibility, this build's expiry, and the Developer screen.
 struct SettingsView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
-    @State private var tokenField = ""
-    @State private var tokenError: String?
     @State private var connected = NeoPlanClient().connected
     @AppStorage(Reminders.enabledKey) private var reminders = false
     @AppStorage(Reminders.hourKey) private var hour = 19
@@ -36,32 +34,12 @@ struct SettingsView: View {
                 }
 
                 Section {
-                    if connected {
-                        LabeledContent("Token", value: NeoPlanClient.mask(model.neoPlan.token))
-                        Button("Sync now") { Task { await model.syncNeoPlan() } }
-                        Button("Disconnect", role: .destructive) {
-                            model.neoPlan.setToken(nil)
-                            connected = false
-                        }
-                    } else {
-                        SecureField("np_…", text: $tokenField)
-                            .textInputAutocapitalization(.never).autocorrectionDisabled()
-                            .font(Theme.subhead.monospacedDigit())
-                        if let tokenError { Text(tokenError).font(.footnote).foregroundStyle(Theme.late) }
-                        Button("Connect") {
-                            let t = tokenField.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard NeoPlanClient.validToken(t) else { tokenError = "That doesn't look like a neo-plan token (np_…)."; return }
-                            model.neoPlan.setToken(t)
-                            tokenField = ""
-                            tokenError = nil
-                            connected = true
-                            Task { await model.syncNeoPlan() }
-                        }
-                        .disabled(tokenField.isEmpty)
+                    NavigationLink("How statuses work") { StatusGuideView() }
+                    NavigationLink { NeoPlanView(connected: $connected) } label: {
+                        LabeledContent("neo-plan", value: connected ? "Connected" : "Not connected")
                     }
-                } header: { Text("neo-plan") } footer: {
-                    Text(connected ? "Done, turned in and type changes are shared with neo-plan; the newer edit wins."
-                                   : "Optional. Copy the token from neo-plan's extension settings. Kept in the Keychain.")
+                } header: { Text("Help") } footer: {
+                    Text(connected ? NeoPlanView.statusText() : "neo-plan is an optional planner board. Most people don't need it.")
                 }
 
                 Section {

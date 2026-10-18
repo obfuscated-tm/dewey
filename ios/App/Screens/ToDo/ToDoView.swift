@@ -20,6 +20,11 @@ struct ToDoView: View {
     @State private var sheet: SheetTarget?
     @State private var showSettings = false
     @State private var path: [AssignmentRoute] = []
+    // The status tip: shown once, under the first row the student ticks, until closed.
+    @AppStorage("statusTipShown") private var tipShown = false
+    @AppStorage("statusTipRow") private var tipRow = ""
+    @AppStorage("statusTipKind") private var tipKind = StatusTip.Kind.done.rawValue
+    @State private var showGuide = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -39,6 +44,7 @@ struct ToDoView: View {
             .background(Theme.background)
             .refreshable { await model.refreshTodo() }
             .navigationDestination(for: AssignmentRoute.self) { r in AssignmentView(id: r.id) }
+            .navigationDestination(isPresented: $showGuide) { StatusGuideView() }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $sheet) { SchoologySheet(target: $0) }
             .sheet(isPresented: $showSettings) { SettingsView() }
@@ -142,7 +148,10 @@ struct ToDoView: View {
             }
             ForEach(groups, id: \.key) { g in
                 Section {
-                    ForEach(g.items, id: \.schoologyId) { it in row(it, now: now) }
+                    ForEach(g.items, id: \.schoologyId) { it in
+                        row(it, now: now)
+                        if tipRow == it.schoologyId { tip }
+                    }
                 } header: {
                     groupHeader(g.title, g.items, now: now, sectionId: g.key)
                 }
@@ -150,7 +159,10 @@ struct ToDoView: View {
             if !older.isEmpty {
                 Section {
                     if showOlder {
-                        ForEach(sortItems(older), id: \.schoologyId) { it in row(it, now: now) }
+                        ForEach(sortItems(older), id: \.schoologyId) { it in
+                            row(it, now: now)
+                            if tipRow == it.schoologyId { tip }
+                        }
                     }
                 } header: {
                     Button { withAnimation { showOlder.toggle() } } label: {
@@ -228,7 +240,7 @@ struct ToDoView: View {
         TodoRow(item: it, now: now,
                 // Urgent first mixes classes, so each row says its own.
                 course: layout == .urgent ? model.courses.first { $0.sectionId == it.sectionId }?.shortTitle : nil,
-                onSet: { model.setProgress(it, $0) },
+                onSet: { set(it, $0) },
                 onSubmit: { sheet = SheetTarget(url: submitURL(it), assignmentId: it.schoologyId) },
                 onOpen: { path.append(AssignmentRoute(id: it.schoologyId)) })
             // Every separator starts under the checkbox, whatever the row holds.
@@ -241,7 +253,7 @@ struct ToDoView: View {
                     Button { model.setTurnedIn(it, false) } label: { Label("Not turned in", systemImage: "arrow.uturn.backward") }
                         .tint(Theme.secondary)
                 } else {
-                    Button { model.setTurnedIn(it, true) } label: { Label("Mark turned in", systemImage: "checkmark.circle") }
+                    Button { model.setTurnedIn(it, true); firstTick(it, .turnedIn) } label: { Label("Mark turned in", systemImage: "checkmark.circle") }
                         .tint(Theme.good)
                 }
                 if let lab = it.labURL.flatMap(URL.init(string:)) {
@@ -255,7 +267,7 @@ struct ToDoView: View {
                 }
             }
             .swipeActions(edge: .leading) {
-                Button { model.setProgress(it, model.progress(it) == .todo ? .done : .todo) } label: {
+                Button { set(it, model.progress(it) == .todo ? .done : .todo) } label: {
                     Label(it.type == .exam ? (it.studied ? "Not studied" : "Studied") : (it.done ? "Not done" : "Done"),
                           systemImage: "checkmark")
                 }
@@ -263,7 +275,7 @@ struct ToDoView: View {
             }
             .contextMenu {
                 ForEach(AppModel.Progress.allCases, id: \.self) { p in
-                    Button { model.setProgress(it, p) } label: {
+                    Button { set(it, p) } label: {
                         Label(it.type == .exam && p == .done ? "Studied" : p.label,
                               systemImage: model.progress(it) == p ? "checkmark" : "circle")
                     }
@@ -276,6 +288,27 @@ struct ToDoView: View {
                     Button(role: .destructive) { model.dismiss(it) } label: { Label("Remove from my list", systemImage: "trash") }
                 }
             }
+    }
+
+    private func set(_ it: ItemState, _ p: AppModel.Progress) {
+        model.setProgress(it, p)
+        firstTick(it, p)
+    }
+
+    /// The first time anything is ticked, the tip goes under that row.
+    private func firstTick(_ it: ItemState, _ p: AppModel.Progress) {
+        guard !tipShown, p != .todo else { return }
+        tipShown = true
+        tipRow = it.schoologyId
+        tipKind = (p == .turnedIn ? StatusTip.Kind.turnedIn : it.type == .exam ? .studied : .done).rawValue
+    }
+
+    private var tip: some View {
+        StatusTip(kind: StatusTip.Kind(rawValue: tipKind) ?? .done,
+                  onGuide: { showGuide = true },
+                  onClose: { withAnimation { tipRow = "" } })
+            .listRowInsets(EdgeInsets(top: 0, leading: Theme.Space.m, bottom: Theme.Space.m, trailing: Theme.Space.m))
+            .listRowSeparator(.hidden)
     }
 
     private func assignmentURL(_ it: ItemState) -> URL {

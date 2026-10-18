@@ -52,6 +52,7 @@ Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red bad
 - **Row:** check mark (see table above), title, type tag (HW / TEST / TASK / CW), due time in mono (red with "N d late" when overdue), a status line ("Done · not submitted yet", "Submitted on Schoology · 9:40 pm", "Not studied", "Turned in · not on Schoology"), and on dropbox work a **Submit ↗** pill.
 - **Data:** `todo()` (upcoming + overdue + events) merged with the app's own saved list (paper work that Schoology dropped from overdue stays until ticked). Per-row `status({id})` only for rows that might have a dropbox. Type: TEST if the gradebook category says Test/Quiz/Exam/Summative or the title says Exam/Quiz/Interro, else HW; neo-plan's type wins when connected. Overdue > 60 days → collapsed "Older" group.
 - **Taps:** circle = Done toggle (square = Studied toggle). Submit ↗ only on dropbox work → 1c. Swipe left → "Mark turned in" + the class's real turn-in place ("Turn in on lab site ↗" for AP Bio, "Submit ↗" for dropbox, nothing extra for paper). Row → 1b. Pull → refresh.
+- **Status tip** (`design/Tutorial.options.html`, option C): the first time anything is ticked (Done, Studied or Turn in), a tip goes under that row with the next step and **How statuses work** (the full guide, also in Settings → Help). Once ever; stays until its × is tapped.
 
 ### 1b Assignment · `design/Assignment.dc.html`
 - **Shows:** a catalog line in the class colour (class · period · term · category), the title in New York, then the Submission card as a library date-due card (ruled Date due / Turn in columns, a class-colour band, and a stamp: DUE OCT 18, N DAYS LATE, SUBMITTED, or TURNED IN); instructions unboxed; Instructions (text + attachments, each with where it opens); "In neo-plan as" HW / Test / Task / CW switch; a dashed "What if I get __ / 20?" button. Bottom bar: Done + the main action. Globe button top right = this page in the Schoology sheet.
@@ -120,11 +121,12 @@ Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red bad
 
 ### 4a First launch · `design/SignIn.dc.html`
 1. Sign in (required): fuhsd.schoology.com in a web view → Google SSO, with the automatic Safari-UA fallback ([FINDINGS.md](FINDINGS.md#login-tested-with-a-throwaway-app)).
-2. neo-plan (optional): paste the `np_…` token (or scan a QR from the extension). Keychain.
-3. Reminders (optional): notification permission.
+2. Reminders (optional): notification permission.
+
+neo-plan isn't mentioned here: it stays out of sight until connected, and is explained in Settings → Help → neo-plan.
 
 ### 4b Settings · `design/Settings.dc.html`
-Schoology account + sign out (clear the data store). neo-plan: status, token (masked like `maskToken`), class matching. Reminders: evening-before time, new grades (best effort). Accent colour. Login compatibility mode. This build's expiry date (free account: 7 days from install).
+Schoology account + sign out (clear the data store). Help: **How statuses work** (the full status guide) and **neo-plan** ("Not connected" / "Connected"), a page that explains what it is, who it's for and what syncs, then connects (token field, Keychain) or shows the masked token, Sync now and Disconnect (`design/Tutorial.options.html`, layout 1). Reminders: evening-before time, new grades (best effort). Accent colour. Login compatibility mode. This build's expiry date (free account: 7 days from install).
 
 ### 4c Shared states · `design/States.dc.html` — every screen needs all of these
 First load (skeleton rows) · Offline: last saved copy + "as of N min ago" · Signed out by Schoology (engine `error: 'login'`) → Sign in · Couldn't read the page (engine `error: 'parse'`) → "Open this page in Schoology ↗", never a blank screen · neo-plan not connected · Nothing due.

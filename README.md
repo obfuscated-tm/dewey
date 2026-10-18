@@ -512,7 +512,7 @@ If a category shows no weight, type it next to the category name on the Grades p
 [neo-plan](https://neo-plan.vercel.app) is a separate planner app built alongside this extension. Skip this unless you have an account.
 
 1. In neo-plan, go to **Settings** and make an extension token (starts with `np_`).
-2. On any Schoology page, open Settings (the gear, bottom left) → **neo-plan**, paste it and click **Connect**. (The Welcome card asks for it the first time, too.)
+2. On any Schoology page, open Settings (the gear, bottom left) → **neo-plan**, paste it and click **Connect**.
 
 The extension then reads Schoology (GET only) every 15 minutes, when a Schoology page loads (at most every 5 minutes), and on **Check now**. neo-plan files work into columns, clears what you've submitted, and flags what's Missing. This background read is also the MCP server's **snapshot** source.
 

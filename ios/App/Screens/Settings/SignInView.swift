@@ -22,8 +22,7 @@ struct SignInView: View {
                     .foregroundStyle(Theme.secondary)
                 VStack(alignment: .leading, spacing: 10) {
                     step("1", "Sign in to fuhsd.schoology.com", "Required")
-                    step("2", "Connect neo-plan", "Optional · in Settings")
-                    step("3", "Turn on reminders", "Optional · in Settings")
+                    step("2", "Turn on reminders", "Optional · in Settings")
                 }
                 .padding(16)
                 .card()

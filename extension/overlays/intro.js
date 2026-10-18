@@ -1,17 +1,18 @@
 // The Welcome card: shown once, the first time the overlay appears on a
 // Schoology page (overlays/switch.js), and again from Settings → "Show
-// welcome again". Three short steps, the last two optional:
+// welcome again". Two short steps, the second optional:
 //
 //   1  What Dewey adds, and where its buttons are
 //   2  Where archives are saved (Downloads, or a folder you choose)
-//   3  Connect neo-plan (a token, in the framed panel/neoplan.html)
+//
+// neo-plan isn't here: it's optional, and explained in Settings → neo-plan.
 //
 // Closing it any way (Skip setup, ×, Esc, Done) counts as seen: it never
 // nags. Everything here is also in Settings.
 
 import { el, onClick } from './ui.js';
 import { mascot } from './mascot.js';
-import { createDialog, neoplanFrame, folderInfo, folderText, pickFolder, useDownloads, onFolderChange, DOWNLOADS_TEXT } from './dialog.js';
+import { createDialog, folderInfo, folderText, pickFolder, useDownloads, onFolderChange, DOWNLOADS_TEXT } from './dialog.js';
 
 export const INTRO_KEY = 'introSeen';
 
@@ -54,13 +55,13 @@ export function start({ doc = document, storage = globalThis.chrome?.storage?.lo
   hello.append(mascot('hello', { size: 56, doc }), el('h3', null, 'Schoology, a little easier'));
   s1.append(
     hello,
-    el('p', null, 'Dewey adds a To Do list with Done and Turn in, grades you can play what-if with, and an archiver that saves your classes before they disappear.'),
+    el('p', null, 'Dewey adds a To Do list grouped by class, grades you can play what-if with, and an archiver that saves your classes before they disappear.'),
   );
   const tour = el('ul', 'tour');
   for (const [name, text] of [
     ['Overlay', 'Bottom left. Turns Dewey off to see plain Schoology (Alt+S).'],
     ['Archive', 'The box beside it. Saves a course’s files, work and grades.'],
-    ['Settings', 'The gear. Theme, grades, archive folder and\u00a0neo\u2011plan.'],
+    ['Settings', 'The gear. Theme, grades, archive folder and how statuses work.'],
   ]) {
     const li = el('li');
     li.append(el('b', null, name), el('span', null, text));
@@ -95,14 +96,7 @@ export function start({ doc = document, storage = globalThis.chrome?.storage?.lo
   onClick(reset, async () => { await useDownloads(); drawFolder(); });
   onFolderChange(() => { if (d.isOpen) drawFolder(); });
 
-  // 3 · neo-plan
-  const s3 = el('div', 'step');
-  const h3 = el('h3', null, 'Connect neo-plan');
-  h3.append(el('span', 'optional', 'Optional'));
-  s3.append(h3, el('p', null, 'If you plan in neo-plan, Dewey keeps it in step with Schoology: new work, what you turned in, and what’s missing. Make a token in neo-plan’s Settings and paste it here.'));
-  let frame = null;
-
-  const steps = [s1, s2, s3];
+  const steps = [s1, s2];
   let at = 0;
   d.body.append(...steps);
 
@@ -125,7 +119,6 @@ export function start({ doc = document, storage = globalThis.chrome?.storage?.lo
     next.textContent = at === 0 ? 'Get started' : at === steps.length - 1 ? 'Done' : 'Next';
     d.setSub(`Step ${at + 1} of ${steps.length}`);
     if (at === 1) drawFolder();
-    if (at === 2 && !frame) { frame = neoplanFrame('connect', { doc }); s3.append(frame); }
   }
   onClick(back, () => show(at - 1));
   onClick(skip, () => d.close());

@@ -6,7 +6,9 @@
 //   Appearance  the THEMES swatch grid (theme.js) and "Percent beside scores",
 //               bound to ui.js's setSetting
 //   Archive     where archives are saved: Downloads or a chosen folder
-//   neo-plan    token, the Schoology line, Courses and Advanced, framed from
+//   Statuses    how the To Do words work (overlays/statusguide.js)
+//   neo-plan    what it is, who wants it, what syncs; then the token, the
+//               Schoology line, Courses and Advanced, framed from
 //               panel/neoplan.html so a Schoology page never sees the token
 // Each page is a title, one line on what it's for, then grouped rows: a
 // title and description on the left, the control on the right. Only the
@@ -17,6 +19,7 @@
 import { el, onClick, getSettings, onSettings, setSetting } from './ui.js';
 import { THEMES, headerBackground, paint } from './theme.js';
 import { createDialog, neoplanFrame, folderInfo, folderText, pickFolder, useDownloads, onFolderChange } from './dialog.js';
+import { GUIDE_CSS, guideNodes } from './statusguide.js';
 
 const CSS = `
 .card { width: min(600px, calc(100vw - 32px)); height: min(540px, calc(100vh - 64px)); }
@@ -79,6 +82,11 @@ const CSS = `
 .toggle:checked { background: var(--accent); }
 .toggle:checked::after { left: 16px; }
 
+/* neo-plan: the explainer above the token frame. */
+.explain p { margin: 0 0 6px; font-size: 13px; line-height: 18px; }
+.explain ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 19px; }
+.explain li.never { color: var(--dim); }
+${GUIDE_CSS}
 @media (max-width: 600px) {
   .body { flex-direction: column; }
   .nav { width: auto; flex-direction: row; padding: 6px; border-right: 0; border-bottom: 1px solid var(--line); overflow-x: auto; }
@@ -185,12 +193,35 @@ export function start({ doc = document } = {}) {
   onClick(downloads, async () => { await useDownloads(); drawFolder(); });
   onFolderChange(() => { if (d.isOpen) drawFolder(); });
 
-  // ── neo-plan: the frame is built the first time this page shows ──
-  const neoplan = page('neo-plan', 'Optional. Keeps your neo-plan in step with Schoology: new work, what you turned in, and what’s missing.');
+  // ── Statuses ──
+  const statuses = page('How statuses work', 'What the words on your To Do mean. In the extension, Done and Turn in need neo-plan connected.');
+  statuses.append(guideNodes());
+
+  // ── neo-plan: the explainer, then the frame, built the first time this page shows ──
+  const neoplan = page('neo-plan', 'Optional. Dewey works fully without it.');
+  const explain = (heading, ...kids) => {
+    const b = el('div', 'explain');
+    b.append(el('h4', null, heading), ...kids);
+    return b;
+  };
+  const syncs = el('ul');
+  for (const [text, cls] of [
+    ['New work from your To Do goes onto the board.'],
+    ['Done, Studied and Turned in, both ways (with the iPhone app too).'],
+    ['Submitted on Schoology clears it from the board, and neo-plan flags what’s Missing.'],
+    ['Type: HW, Test, Task or Classwork.'],
+    ['Never your Schoology password, grades or messages.', 'never'],
+  ]) syncs.append(el('li', cls, text));
+  neoplan.append(
+    explain('What it is', el('p', null, 'A planner website (neo-plan.vercel.app) that lays your week out as a board, one column per class. Dewey fills it from Schoology for you.')),
+    explain('Who it’s for', el('p', null, 'People who already plan in neo-plan, or want one board shared between this computer and the Dewey iPhone app. It also turns on Done and Turn in on the To Do list here. No account? Skip this.')),
+    explain('What Dewey syncs', syncs),
+    explain('Connect', el('p', null, 'Sign in at neo-plan.vercel.app, open its Settings and make an extension token (it starts with np_). Paste it below.')),
+  );
   let frame = null;
 
   // ── Sidebar ──
-  const pages = [['Appearance', appearance], ['Archive', archive], ['neo-plan', neoplan]];
+  const pages = [['Appearance', appearance], ['Archive', archive], ['Statuses', statuses], ['neo-plan', neoplan]];
   const nav = el('nav', 'nav');
   nav.setAttribute('role', 'tablist');
   nav.setAttribute('aria-orientation', 'vertical');
@@ -243,8 +274,10 @@ export function start({ doc = document } = {}) {
   drawSettings(getSettings());
   onSettings(drawSettings);
 
-  function open() {
-    show(current);
+  /** name: a sidebar page to open on ('Statuses'); otherwise the last one shown. */
+  function open(name) {
+    const at = pages.findIndex(([n]) => n === name);
+    show(at >= 0 ? at : current);
     d.open();
   }
 

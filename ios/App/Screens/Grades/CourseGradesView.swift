@@ -94,7 +94,9 @@ struct CourseGradesView: View {
         }
         .scrollDismissesKeyboard(.interactively)
         .background(Theme.background)
-        .safeAreaInset(edge: .top, spacing: 0) { if whatIfOn { whatIfBar } }
+        .safeAreaInset(edge: .top, spacing: 0) { if whatIfOn { whatIfBar.coachTarget("grades.whatifbar") } }
+        // The tour waits for a typed score.
+        .onChange(of: changeCount) { _, n in if model.practice && n > 0 { Coach.shared.note("whatif") } }
         .navigationTitle(course.shortTitle)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -152,6 +154,7 @@ struct CourseGradesView: View {
                 }
                 if !whatIfOn, real?.pct != nil {
                     PillButton(title: "Try what-if scores") { setWhatIf(true) }
+                        .coachTarget("grades.whatif")
                         .padding(.top, 4)
                 }
             }
@@ -355,6 +358,7 @@ struct CourseGradesView: View {
                 scoreBox(id: it.id, placeholder: it.earned.map { Fmt.num($0) } ?? "—", changed: typed != nil,
                          text: Binding(get: { whatIf[it.id] ?? "" }, set: { whatIf[it.id] = $0; recompute() }),
                          label: "What-if score for \(it.title), out of \(Fmt.num(possible))")
+                    .coachTarget("grades.score.\(it.id)")
                 if it.possible != nil {
                     Text("/ \(Fmt.num(possible))").font(Theme.subhead.monospacedDigit()).foregroundStyle(Theme.secondary)
                 } else {

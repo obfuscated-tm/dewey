@@ -36,6 +36,7 @@ Every file has a `-dark` version for dark backgrounds (except the small glyph). 
 - `caught-up`: the iOS empty To Do
 - `archiving`: the extension's Archive card while a run is going
 - `uh-oh`: the Submission card of an overdue iOS assignment you open (past due, not marked done or turned in, not in Older). Never on lists or badges.
+- The iOS tour's guided practice is the one exception to "rarely": `hello` guides each step there, beside a speech bubble. Pointing poses would help when he's redrawn.
 
 The apps use copies: after a redraw, replace the files here (same names) and run `brand/sync-mascot.sh`. It copies them into the iOS asset catalog (`Dewey{Hello,CaughtUp,Archiving,UhOh}`, light + dark) and `extension/overlays/mascot/`; `extension/test/mascot.test.js` fails while a copy is stale. Redraw him with the logo (to-do above); the glasses are the part to keep.
 

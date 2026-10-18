@@ -33,6 +33,8 @@ final class Reminders {
     /// Every due reminder, worked out from the To Do list and replaced as a set
     /// (fixed ids, so a reschedule never doubles one). Debounced: saves call it often.
     func schedule(items: [ItemState], courses: [Course]) {
+        // The tour's pretend week never schedules anything.
+        guard !Practice.active else { return }
         let inputs = items.map { it in
             DueInput(id: it.schoologyId, title: it.title,
                      course: courses.first { $0.sectionId == it.sectionId }?.shortTitle ?? it.courseName ?? "",
@@ -179,6 +181,7 @@ final class Reminders {
     }
 
     func newGrades(course: String, items: [CourseGrade.Item], from: Double?, to: Double?) {
+        guard !Practice.active else { return }
         guard gradeAlerts else { return }
         let c = UNMutableNotificationContent()
         c.title = "New grade in \(course)"

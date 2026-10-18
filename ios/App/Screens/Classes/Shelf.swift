@@ -42,6 +42,7 @@ struct Shelf: View {
                                 BookSpine(course: c, due: due(c, open, now), openCount: open.filter { $0.sectionId == c.sectionId }.count)
                             }
                             .buttonStyle(.plain)
+                            .coachTarget("shelf.book.\(c.sectionId)")
                             .contextMenu { Button("Take off the shelf", systemImage: "arrow.down.to.line") { offRaw = Self.toggled(offRaw, c.sectionId) } }
                         }
                     }
@@ -58,6 +59,7 @@ struct Shelf: View {
                     FlatBook(course: c, due: due(c, open, now), openCount: open.filter { $0.sectionId == c.sectionId }.count)
                 }
                 .buttonStyle(.plain)
+                .coachTarget("shelf.flat.\(c.sectionId)")
                 .contextMenu {
                     if !flatAll { Button("Put on the shelf", systemImage: "arrow.up.to.line") { offRaw = Self.toggled(offRaw, c.sectionId) } }
                 }
@@ -241,6 +243,7 @@ struct ShelfSettings: View {
                 Text("Classes off the shelf lie flat under it. You can also long-press a class on the shelf.")
             }
         }
+        .coachTarget("settings.page.classes")
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }

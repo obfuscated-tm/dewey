@@ -55,7 +55,7 @@ struct StatusGuideView: View {
 }
 
 /// The To Do row's marks (CheckMark), drawn without an item.
-private struct GuideMark: View {
+struct GuideMark: View {
     enum Kind { case todo, done, turnedIn, studied, undo }
     let kind: Kind
 

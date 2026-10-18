@@ -38,6 +38,7 @@ struct SettingsView: View {
                 }
                 Section {
                     row(.notifications, "bell", 3, "Notifications", value: notificationsOn ? "On" : "Off")
+                        .coachTarget("settings.notifications")
                     Picker(selection: $appearance) {
                         Text("System").tag("system")
                         Text("Light").tag("light")
@@ -49,6 +50,7 @@ struct SettingsView: View {
                         }
                     }
                     .tint(Theme.secondary)
+                    .coachTarget("settings.appearance")
                 }
                 Section {
                     row(.todo, "checklist", 1, "To Do", value: (ToDoLayout(rawValue: todoLayout) ?? .week).title)
@@ -304,10 +306,15 @@ private struct InboxSettings: View {
 
 private struct HelpSettings: View {
     @Binding var connected: Bool
+    @State private var tour: TourView.Mode?
 
     var body: some View {
         DewForm {
             Section {
+                Button("Take the tour") { tour = .tour }
+                    .foregroundStyle(Theme.text)
+                Button("Tour cards") { tour = .cards }
+                    .foregroundStyle(Theme.text)
                 NavigationLink("How statuses work") { StatusGuideView() }
                 NavigationLink { NeoPlanView(connected: $connected) } label: {
                     LabeledContent("neo-plan", value: connected ? "Connected" : "Not connected")
@@ -318,6 +325,7 @@ private struct HelpSettings: View {
         }
         .navigationTitle("Help")
         .navigationBarTitleDisplayMode(.inline)
+        .fullScreenCover(item: $tour, onDismiss: { connected = NeoPlanClient().connected }) { TourView(mode: $0) }
     }
 }
 

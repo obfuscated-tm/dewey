@@ -63,7 +63,11 @@ final class Engine: NSObject {
     /// Called when Schoology's session is gone (a load ended on sign-in, or an op said `login`).
     var onSignedOut: (() -> Void)?
 
-    override init() {
+    /// The tour's pretend week: every op is answered by `Practice`, never Schoology.
+    let practice: Bool
+
+    init(practice: Bool = false) {
+        self.practice = practice
         if let url = Bundle.main.url(forResource: "engine", withExtension: "js"),
            let s = try? String(contentsOf: url, encoding: .utf8) {
             script = s
@@ -92,6 +96,14 @@ final class Engine: NSObject {
         reload()
     }
 
+    /// Takes the hidden page out of the window (the tour's pretend engine, when practice ends).
+    func stop() {
+        webView?.removeFromSuperview()
+        webView = nil
+        ready = false
+        loading = false
+    }
+
     /// Reloads the engine page (after sign-in, a crash, or a sign-out).
     func reload() {
         guard let webView else { return start() }
@@ -99,7 +111,7 @@ final class Engine: NSObject {
         loading = true
         webView.customUserAgent = WebConfig.userAgent
         // Screenshot mode: a blank page on the Schoology origin, for engine.js's math only.
-        if Demo.on { webView.loadHTMLString("<!doctype html><title>Dewey demo</title>", baseURL: Self.origin); return }
+        if Demo.on || practice { webView.loadHTMLString("<!doctype html><title>Dewey demo</title>", baseURL: Self.origin); return }
         webView.load(URLRequest(url: Self.homePage))
     }
 
@@ -144,7 +156,7 @@ final class Engine: NSObject {
 
     /// Runs one op; returns the JSON of its `data`. Throws `EngineError`.
     func callRaw(_ op: String, _ args: [String: Any] = [:]) async throws -> Data {
-        if Demo.on, let data = try Demo.answer(op, args) {
+        if practice || Demo.on, let data = try practice ? Practice.answer(op, args) : Demo.answer(op, args) {
             return try JSONSerialization.data(withJSONObject: data, options: [.fragmentsAllowed])
         }
         try await waitReady()

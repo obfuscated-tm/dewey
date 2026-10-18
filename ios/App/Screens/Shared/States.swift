@@ -127,6 +127,7 @@ struct ScreenOptions: View {
                 .frame(width: 44, height: 44)
         }
         .accessibilityLabel("Settings")
+        .coachTarget("gear.\(page)")
         .sheet(isPresented: $showSettings) { SettingsView(path: $path) }
     }
 }

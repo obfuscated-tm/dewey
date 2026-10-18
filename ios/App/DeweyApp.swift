@@ -92,6 +92,8 @@ struct MainTabs: View {
     @Environment(AppModel.self) private var model
     @State private var tab = Demo.startTab
     @State private var schoologyURL: URL?
+    @AppStorage(TourView.shownKey) private var tourShown = false
+    @State private var showTour = false
 
     var body: some View {
         TabView(selection: $tab) {
@@ -119,7 +121,9 @@ struct MainTabs: View {
             tab = 0
             if let id = AppLink.assignmentId(url) { model.deepLinkAssignment = id }
         }
+        .fullScreenCover(isPresented: $showTour) { TourView() }
         .task {
+            if !tourShown && Demo.showTour && !model.practice { showTour = true }
             if let id = Demo.startAssignment { model.deepLinkAssignment = id }
             if model.todoAsOf == nil || Date().timeIntervalSince(model.todoAsOf!) > 120 {
                 await model.refreshTodo()

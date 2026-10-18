@@ -35,7 +35,8 @@ struct NeoPlanClient {
     static let server = URL(string: "https://neo-plan.vercel.app")!
 
     var token: String? { Keychain.get("neoplanToken") }
-    var connected: Bool { token != nil }
+    /// Off during the tour's pretend week, so nothing pretend reaches the board.
+    var connected: Bool { !Practice.active && token != nil }
 
     static func validToken(_ t: String) -> Bool { t.firstMatch(of: /^np_\S{8,}$/) != nil }
 

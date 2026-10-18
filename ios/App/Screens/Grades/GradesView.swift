@@ -53,6 +53,7 @@ struct GradesView: View {
                 ForEach(Array(model.classes.enumerated()), id: \.element.sectionId) { i, c in
                     NavigationLink(value: c) { ClassGradeRow(course: c, showLetter: !reportCard) }
                         .buttonStyle(.plain)
+                        .coachTarget("grades.class.\(c.sectionId)")
                         .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
                 }
             }

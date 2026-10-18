@@ -16,6 +16,10 @@ enum Demo {
     /// Screenshots of other screens without tapping: `-DeweyTab 3` opens Classes,
     /// `-DeweyDay 1` selects tomorrow in the week strip (-1 = Late), `-DeweyAssignment 9206`
     /// opens that assignment.
+    /// The tour shows once after sign-in; demo mode skips it unless `-DeweyTour` is passed too.
+    static var showTour: Bool { !on || ProcessInfo.processInfo.arguments.contains("-DeweyTour") }
+    /// `-DeweyTourStep 14` with `-DeweyDemo`: practice starts at that step (to check later steps).
+    static var tourStep: Int { on ? UserDefaults.standard.integer(forKey: "DeweyTourStep") : 0 }
     static var startTab: Int { on ? UserDefaults.standard.integer(forKey: "DeweyTab") : 0 }
     static var startAssignment: String? { on ? UserDefaults.standard.string(forKey: "DeweyAssignment") : nil }
     static var startDay: DayFilter? {

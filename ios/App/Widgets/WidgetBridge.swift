@@ -11,6 +11,8 @@ enum WidgetBridge {
 
     /// Coalesces bursts of saves into one write and one reload.
     static func publish(_ m: AppModel) {
+        // The tour's pretend week never reaches the widgets (or takes their marks).
+        guard !m.practice else { return }
         pending?.cancel()
         pending = Task {
             try? await Task.sleep(for: .milliseconds(400))
@@ -23,6 +25,7 @@ enum WidgetBridge {
 
     /// Writes now: a background refresh may be suspended before a debounced write runs.
     static func publishNow(_ m: AppModel) async {
+        guard !m.practice else { return }
         pending?.cancel()
         m.applyWidgetMarks()
         write(m)

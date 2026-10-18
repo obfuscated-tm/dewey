@@ -13,7 +13,9 @@ final class AppModel {
         // The Lock Screen widgets say "Open Dewey to sign in" while signed out.
         didSet { if session != oldValue, session != .checking { WidgetBridge.publish(self) } }
     }
-    let engine = Engine()
+    let engine: Engine
+    /// The tour's pretend week (Practice): in memory, answered locally, no side effects.
+    let practice: Bool
     let container: ModelContainer
     var context: ModelContext { container.mainContext }
     let neoPlan = NeoPlanClient()
@@ -39,8 +41,10 @@ final class AppModel {
     var gradesAsOf: [String: Date] = [:]
     var gradeErrors: [String: EngineError] = [:]
 
-    init(inMemory: Bool = Demo.on) {
-        let config = ModelConfiguration(isStoredInMemoryOnly: inMemory)
+    init(inMemory: Bool = Demo.on, practice: Bool = false) {
+        self.practice = practice
+        engine = Engine(practice: practice)
+        let config = ModelConfiguration(isStoredInMemoryOnly: inMemory || practice)
         container = try! ModelContainer(for: ItemState.self, CourseState.self, configurations: config)
         if let c = Cache.load("courses", as: [Course].self) {
             courses = c.value
@@ -48,7 +52,7 @@ final class AppModel {
         }
         if let t = Cache.load("todoAsOf", as: Date.self) { todoAsOf = t.value }
         engine.onSignedOut = { [weak self] in
-            guard let self, self.session != .signedOut else { return }
+            guard let self, !self.practice, self.session != .signedOut else { return }
             self.session = .signedOut
             Reminders.shared.sessionDidEnd(notify: true)
         }
@@ -58,6 +62,12 @@ final class AppModel {
 
     /// On launch: try the course list; `login` → Sign in, anything else → in (offline uses saved copies).
     func boot() async {
+        if practice {
+            engine.start()
+            try? await loadCourses()
+            session = .signedIn
+            return
+        }
         if Demo.on, courses.isEmpty { Demo.seed(self) }
         if let id = Demo.openAssignment { deepLinkAssignment = id }
         engine.start()

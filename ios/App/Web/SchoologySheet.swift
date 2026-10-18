@@ -13,7 +13,18 @@ struct SheetTarget: Identifiable, Equatable {
 /// 1c · Schoology's real page in a sheet, on the same cookie store. Submit,
 /// quizzes, discussions, Google Assignments and outside pages all happen here,
 /// by the student. On close, the assignment's status is checked again.
+/// In the tour's pretend week it's a pretend dropbox instead: the real page
+/// (and the student's real session) is never loaded there.
 struct SchoologySheet: View {
+    @Environment(AppModel.self) private var model
+    let target: SheetTarget
+
+    var body: some View {
+        if model.practice { PracticeDropbox(target: target) } else { SchoologyWebSheet(target: target) }
+    }
+}
+
+private struct SchoologyWebSheet: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let target: SheetTarget

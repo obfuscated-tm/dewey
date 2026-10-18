@@ -122,8 +122,13 @@ Tabs: **To Do · Grades · Classes · Schoology**. To Do, Grades and Classes eac
 ### 4a First launch · `design/SignIn.dc.html`
 1. Sign in (required): fuhsd.schoology.com in a web view → Google SSO, with the automatic Safari-UA fallback ([FINDINGS.md](FINDINGS.md#login-tested-with-a-throwaway-app)).
 2. Reminders (optional): notification permission.
+3. **Tour** (`TourView`, full screen, Skip any time): shown once after sign-in, and once to anyone already signed in when it shipped (`tourShown`); again from Settings → Help → Take the tour. A welcome card, then **guided practice** (`PracticeView`), then **Using neo-plan?** (for people who also use the desktop extension: what syncs, Connect neo-plan → the Help page; Done skips it). Demo mode skips the tour unless `-DeweyTour` is passed.
+   - **Practice** is a pretend week in the real screens: a second `AppModel(practice: true)` (in memory, engine answered by `Practice`, its own `cache-practice` folder, emptied at start and end). While `Practice.active`, nothing reaches reminders, widgets, neo-plan or the real saved copies, the Schoology sheet is a pretend dropbox (`PracticeDropbox`; the real page and session are never loaded), and the first-tick status tip is left alone.
+   - **Coach** (`Coach`): its own window above the app and its sheets. It dims everything except a hole around one target and swallows taps outside the hole (not with VoiceOver on). Dewey (`DeweyHello`) bobs beside a bubble with the step and Skip. Screens mark targets with `.coachTarget(key)` (practice only); `tab.N` is found in UIKit. A step moves on when the practice model, a target appearing or disappearing, or a screen's `Coach.note` shows it happened. A "free" step (press-and-hold menus, the back button) drops the dim and lets every tap through, with the bubble at the bottom. `-DeweyDemo -DeweyTourStep N` starts practice at step N.
+   - **Steps:** *To Do:* hello → tap the lab's circle (Done) → Submit ↗ → pretend dropbox Submit → Done (Dewey checks again; the row turns green) → the green seal explained → the paper worksheet: Turn in or swipe left → Mark turned in → the quiz: Studied → recap. *Grades:* Grades tab → Chemistry → Try what-if scores → type 20 on the Flame Test lab → the real → what-if bar, preview only. *Classes:* Classes tab → hold English 10 → Take off the shelf → it lies flat (hold to put back). *Settings:* the gear (opens on Classes) → back to the list → Appearance → Notifications → Finish. Practice's shelf and opened-category settings are removed when it ends.
+   - **Tour cards** (Help): reference cards: where everything is, marking work, turning in, grades and what-if, Settings.
 
-neo-plan isn't mentioned here: it stays out of sight until connected, and is explained in Settings → Help → neo-plan.
+Apart from the tour's last card, neo-plan stays out of sight until connected; it's explained in Settings → Help → neo-plan.
 
 ### 4b Settings · `design/Settings.dc.html`
 A short list of rows, each with a class-colour icon square and its current value on the right, each opening a page (`SettingsPage`):
@@ -134,7 +139,7 @@ A short list of rows, each with a class-colour icon square and its current value
 - **Grades** (Letters / List): Letters across the top.
 - **Classes** (N on shelf): which classes stand on the shelf.
 - **Inbox**: Mark messages read when opened.
-- **Help** ("neo-plan on" when connected): **How statuses work** (the full status guide) and **neo-plan** ("Not connected" / "Connected"), a page that explains what it is, who it's for and what syncs, then connects (token field, Keychain) or shows the masked token, Sync now and Disconnect (`design/Tutorial.options.html`, layout 1).
+- **Help** ("neo-plan on" when connected): **Take the tour** and **Tour cards** (4a), **How statuses work** (the full status guide) and **neo-plan** ("Not connected" / "Connected"), a page that explains what it is, who it's for and what syncs, then connects (token field, Keychain) or shows the masked token, Sync now and Disconnect (`design/Tutorial.options.html`, layout 1).
 - **About** (days left): version, this build's expiry date (free account: 7 days from install), Developer.
 
 The gear on To Do, Grades and Classes opens Settings already on that page. Footers are one line.

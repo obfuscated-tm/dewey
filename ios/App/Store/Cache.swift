@@ -8,12 +8,22 @@ enum Cache {
         var value: T
     }
 
-    private static let dir: URL = {
+    private static let realDir = folder(Demo.on ? "cache-demo" : "cache")
+    /// The tour's pretend week keeps its own copies, emptied when it starts and ends.
+    private static let practiceDir = folder("cache-practice")
+    private static var dir: URL { Practice.active ? practiceDir : realDir }
+
+    private static func folder(_ name: String) -> URL {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
-        let d = base.appendingPathComponent(Demo.on ? "cache-demo" : "cache", isDirectory: true)
+        let d = base.appendingPathComponent(name, isDirectory: true)
         try? FileManager.default.createDirectory(at: d, withIntermediateDirectories: true)
         return d
-    }()
+    }
+
+    static func clearPractice() {
+        try? FileManager.default.removeItem(at: practiceDir)
+        try? FileManager.default.createDirectory(at: practiceDir, withIntermediateDirectories: true)
+    }
 
     private static func file(_ key: String) -> URL {
         dir.appendingPathComponent(key.replacingOccurrences(of: "/", with: "_") + ".json")

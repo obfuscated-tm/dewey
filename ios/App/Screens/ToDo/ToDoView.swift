@@ -260,6 +260,7 @@ struct ToDoView: View {
                 onSet: { set(it, $0) },
                 onSubmit: { sheet = SheetTarget(url: submitURL(it), assignmentId: it.schoologyId) },
                 onOpen: { path.append(AssignmentRoute(id: it.schoologyId)) })
+            .coachTarget("todo.row.\(it.schoologyId)")
             // Every separator starts under the checkbox, whatever the row holds.
             .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
             // A line on the class's catalog card.
@@ -314,7 +315,8 @@ struct ToDoView: View {
 
     /// The first time anything is ticked, the tip goes under that row.
     private func firstTick(_ it: ItemState, _ p: AppModel.Progress) {
-        guard !tipShown, p != .todo else { return }
+        // The tour's pretend week leaves the real one-time tip alone.
+        guard !tipShown, p != .todo, !model.practice else { return }
         tipShown = true
         tipRow = it.schoologyId
         tipKind = (p == .turnedIn ? StatusTip.Kind.turnedIn : it.type == .exam ? .studied : .done).rawValue
@@ -456,6 +458,7 @@ struct TodoRow: View {
                         .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .coachTarget("todo.check.\(item.schoologyId)")
                 .padding(-10)
                 .sensoryFeedback(.success, trigger: progress)
                 .accessibilityLabel("Status: \(item.submitted ? "Submitted on Schoology" : label(progress))")
@@ -470,8 +473,10 @@ struct TodoRow: View {
 
     private var hasAction: Bool { !item.submitted && (item.turnedIn || item.hasDropbox || item.type != .exam) }
 
+    private var action: some View { actionButton.coachTarget("todo.action.\(item.schoologyId)") }
+
     @ViewBuilder
-    private var action: some View {
+    private var actionButton: some View {
         if item.submitted {
             EmptyView()
         } else if item.turnedIn {

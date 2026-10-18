@@ -235,8 +235,10 @@ struct ToDoView: View {
             Text([course?.periodLabel.count ?? 9 <= 3 ? course?.periodLabel : nil, "\(open.count) open"].compactMap { $0 }.joined(separator: " · "))
                 .font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
         }
-        .padding(.top, Theme.Space.xs).padding(.bottom, Theme.Space.s)
+        .padding(.bottom, Theme.Space.s)
         .overlay(alignment: .bottom) { Theme.catalogRule.frame(height: 1.5) }
+        // The rule sits on the row's bottom edge, so the first task starts right under it.
+        .listRowInsets(EdgeInsets(top: Theme.Space.m, leading: Theme.Space.l, bottom: 0, trailing: Theme.Space.l))
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(.isHeader)
         .listRowBackground(Theme.card)

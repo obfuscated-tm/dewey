@@ -3,6 +3,7 @@ package com.owenleung.dewey
 import com.owenleung.dewey.engine.Course
 import com.owenleung.dewey.engine.CourseGrade
 import com.owenleung.dewey.engine.EngineJson
+import com.owenleung.dewey.store.Fmt
 import com.owenleung.dewey.store.Inbox
 import com.owenleung.dewey.store.ItemType
 import com.owenleung.dewey.store.Reminders
@@ -27,6 +28,16 @@ class LogicTest {
         assertEquals(ItemType.EXAM, TodoLogic.guessType("Anything", null, true))
         assertEquals(ItemType.ASSIGNMENT, TodoLogic.guessType("Lab 4 writeup", "Labs", false))
         assertEquals(ItemType.ASSIGNMENT, TodoLogic.guessType("Contest entry", null, false))
+    }
+
+    @Test fun signedImpact() {
+        assertEquals("+0.24%", Fmt.signed(0.2449))
+        assertEquals("−1.10%", Fmt.signed(-1.1))
+        // A change that rounds to nothing is "+0.00%", never "−0.00%".
+        assertEquals("+0.00%", Fmt.signed(-0.004))
+        assertEquals("+0.00%", Fmt.signed(0.0))
+        assertTrue(Fmt.unmoved(-0.004))
+        assertFalse(Fmt.unmoved(0.006))
     }
 
     @Test fun visibility() {

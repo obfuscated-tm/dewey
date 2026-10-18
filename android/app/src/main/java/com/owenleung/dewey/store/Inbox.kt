@@ -6,6 +6,8 @@ import androidx.compose.runtime.setValue
 import com.owenleung.dewey.AppModel
 import com.owenleung.dewey.engine.Course
 import com.owenleung.dewey.engine.EngineError
+import com.owenleung.dewey.engine.FeedPost
+import com.owenleung.dewey.engine.GroupPost
 import com.owenleung.dewey.engine.MessageList
 import com.owenleung.dewey.engine.MessageThread
 import com.owenleung.dewey.engine.Notice
@@ -58,6 +60,8 @@ class Inbox {
 
     var threads by mutableStateOf<List<MessageThread>>(emptyList())
     var notices by mutableStateOf<List<Notice>>(emptyList())
+    /** Updates posted in the student's groups (hubs, counseling, advisory), newest first. */
+    var posts by mutableStateOf<List<GroupPost>>(emptyList())
     var asOf by mutableStateOf<Date?>(null)
     var error by mutableStateOf<EngineError?>(null)
     var loading by mutableStateOf(false)
@@ -75,6 +79,7 @@ class Inbox {
     init {
         Cache.load("inbox-messages", ListSerializer(MessageThread.serializer()))?.let { threads = it.first; asOf = it.second }
         Cache.load("inbox-notices", ListSerializer(Notice.serializer()))?.let { notices = it.first }
+        Cache.load("inbox-posts", ListSerializer(GroupPost.serializer()))?.let { posts = it.first }
     }
 
     fun teacherThreads(classes: List<Course>) = threads.filter { kind(it.group, classes) == Kind.TEACHER }
@@ -134,6 +139,7 @@ class Inbox {
             error = null
             Cache.save("inbox-messages", ListSerializer(MessageThread.serializer()), threads)
             Cache.save("inbox-notices", ListSerializer(Notice.serializer()), notices)
+            refreshPosts(m)
             val classes = m.classes
             val newMessages = unknown(teacherThreads(classes).map { it.id }, KNOWN_MESSAGES_KEY)
             val newNotices = unknown(classNotices(classes).filter { it.type == "material" }.map { it.key }, KNOWN_NOTICES_KEY)
@@ -148,6 +154,24 @@ class Inbox {
         } finally {
             loading = false
         }
+    }
+
+    /**
+     * The first page of each group's updates (a group that fails keeps its last posts).
+     * Hub posts never reach /home/notifications or the messages list, so they're read here.
+     */
+    private suspend fun refreshPosts(m: AppModel) {
+        val classIds = m.courses.filter { it.isClass }.map { it.sectionId }.toSet()
+        val groups = m.courses.filter { it.sectionId !in classIds }
+        val got = posts.groupBy { it.sectionId }.toMutableMap()
+        // A few groups: one at a time, so a slow hub never holds up the messages.
+        for (g in groups) {
+            val list = runCatching { m.engine.call<List<FeedPost>>("feed", mapOf("sectionId" to g.sectionId, "page" to 0)) }.getOrNull() ?: continue
+            got[g.sectionId] = list.map { GroupPost(g.shortTitle, g.sectionId, it) }
+        }
+        val ids = groups.map { it.sectionId }.toSet()
+        posts = got.filterKeys { it in ids }.values.flatten().sortedByDescending { it.`when`?.time ?: Long.MIN_VALUE }
+        Cache.save("inbox-posts", ListSerializer(GroupPost.serializer()), posts)
     }
 
     /**
@@ -198,6 +222,7 @@ class Inbox {
     fun clear() {
         threads = emptyList()
         notices = emptyList()
+        posts = emptyList()
         asOf = null
         messagePage = 0
         noticePage = 0

@@ -180,6 +180,23 @@ data class Material(
     val links: List<FileLink> = emptyList(),
 )
 
+/** feed({ sectionId, page }): one post in a course's or group's updates. */
+@Serializable
+data class FeedPost(
+    val id: String? = null,
+    val author: String? = null,
+    val date: String? = null,
+    val time: String? = null,
+    val bodyMd: String? = null,
+)
+
+/** One update from a group's feed (a hub, counseling, advisory), with the group it came from. */
+@Serializable
+data class GroupPost(val group: String, val sectionId: String, val post: FeedPost) {
+    val id: String get() = "$sectionId-${post.id ?: post.date ?: post.bodyMd ?: ""}"
+    val `when`: Date? get() = Fmt.date(post.time)
+}
+
 // ── Inbox (reader/parse/inbox.js) ────────────────────────────────────────
 
 @Serializable

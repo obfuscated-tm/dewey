@@ -248,6 +248,10 @@ fun WideButton(title: String, icon: ImageVector? = null, filled: Boolean = true,
     }
 }
 
+/** A score's effect on the grade: red down, green up, grey when it didn't move ("+0.00%"). */
+@Composable
+fun impactColor(d: Double): Color = if (Fmt.unmoved(d)) C.tertiary else if (d < 0) C.late else C.good
+
 /** The small "NEW" capsule on a score the student hasn't looked at. */
 @Composable
 fun NewTag() {

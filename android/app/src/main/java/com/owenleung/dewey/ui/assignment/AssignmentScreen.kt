@@ -374,7 +374,7 @@ private fun GradeCard(g: CourseGrade.Item, sectionId: String) {
                 Text(g.grade, style = Theme.body.copy(fontWeight = FontWeight.SemiBold), color = C.text)
                 if (g.comment.isNotEmpty()) Text(g.comment, style = Theme.footnote, color = C.secondary, maxLines = 2)
             }
-            g.impact?.takeIf { abs(it) >= 0.005 }?.let { i -> Text(Fmt.signed(i), style = Theme.footnote, color = if (i < 0) C.late else C.good) }
+            g.impact?.let { i -> Text(Fmt.signed(i), style = Theme.footnote, color = com.owenleung.dewey.ui.impactColor(i)) }
             Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = C.tertiary)
         }
     }

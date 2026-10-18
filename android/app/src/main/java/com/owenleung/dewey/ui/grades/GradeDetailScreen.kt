@@ -148,7 +148,7 @@ private fun ScoreCard(it: CourseGrade.Item) {
             it.pct?.let { p -> Spacer(Modifier.width(10.dp)); Text(Fmt.pct(p), style = Theme.body, color = C.secondary, modifier = Modifier.padding(bottom = 6.dp)) }
         }
         it.impact?.let { i ->
-            Text(if (abs(i) < 0.005) "Didn't move your course grade" else "Moved your course grade ${Fmt.signed(i)} points",
+            Text(if (abs(i) < 0.005) "Didn't move your course grade" else "Moved your course grade ${Fmt.signed(i)}",
                 style = Theme.subhead.copy(fontWeight = FontWeight.Medium), color = if (abs(i) < 0.005) C.secondary else if (i < 0) C.late else C.good)
         }
         Fmt.wallDate(it.due)?.let { d -> Text("Due ${Fmt.dayTime(d)}", style = Theme.footnote, color = C.secondary) }

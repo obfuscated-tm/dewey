@@ -325,7 +325,7 @@ private fun ItemRow(it: CourseGrade.Item, isNew: Boolean, open: () -> Unit) {
             Text(scoreText(it), style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = if (it.earned == null) C.tertiary else C.text)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 it.pct?.let { p -> Text(Fmt.pct(p, 0), style = Theme.caption, color = C.secondary) }
-                it.impact?.takeIf { abs(it) >= 0.005 }?.let { i -> Text(Fmt.signed(i), style = Theme.caption, color = if (i < 0) C.late else C.good) }
+                it.impact?.let { i -> Text(Fmt.signed(i), style = Theme.caption, color = com.owenleung.dewey.ui.impactColor(i)) }
             }
         }
     }

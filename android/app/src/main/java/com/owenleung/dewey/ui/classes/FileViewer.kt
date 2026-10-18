@@ -136,7 +136,8 @@ fun AttachmentRow(title: String, url: String, modifier: Modifier = Modifier, ope
 @Composable
 fun FileViewer(target: FileTarget, onClose: () -> Unit) {
     val ctx = LocalContext.current
-    val state by produceState<Result<File>?>(null, target) { value = runCatching { FileStore.fetch(ctx, target) } }
+    val model = com.owenleung.dewey.ui.model
+    val state by produceState<Result<File>?>(null, target) { value = runCatching { FileStore.fetch(ctx, realFile(model, target)) } }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         BackHandler(onBack = onClose)
         Column(Modifier.fillMaxSize().background(C.background).statusBarsPadding().navigationBarsPadding()) {
@@ -249,8 +250,21 @@ private fun PdfView(f: File) {
     }
 }
 
+/**
+ * A course's file row points at Schoology's viewer page (/materials/gp/ID), not the
+ * file: read that page (engine `material`) for the real /attachment/…/source/… link.
+ */
+private suspend fun realFile(model: com.owenleung.dewey.AppModel, t: FileTarget): FileTarget {
+    val u = Uri.parse(t.url)
+    if (u.host != Engine.HOST || !(u.path ?: "").contains("/materials/gp/")) return t
+    val m: com.owenleung.dewey.engine.Material = model.engine.call("material", mapOf("path" to u.path))
+    val file = m.files.map { WebConfig.abs(it.url) }.firstOrNull { Uri.parse(it).host == Engine.HOST } ?: throw FileStore.NoFile()
+    return FileTarget(file, t.title)
+}
+
 object FileStore {
     class NotAFile : Exception("Schoology sent a web page instead of the file. You may need to sign in again.")
+    class NoFile : Exception("This page has no file to download. Open it in Schoology instead.")
 
     fun dir(ctx: Context) = File(ctx.cacheDir, "files").apply { mkdirs() }
 

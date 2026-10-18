@@ -41,6 +41,7 @@ import com.owenleung.dewey.ui.Route
 import com.owenleung.dewey.ui.ScreenHeader
 import com.owenleung.dewey.ui.ScrollPage
 import com.owenleung.dewey.ui.SkeletonRows
+import com.owenleung.dewey.ui.impactColor
 import com.owenleung.dewey.ui.model
 import com.owenleung.dewey.ui.nav
 import com.owenleung.dewey.ui.theme.C
@@ -106,7 +107,7 @@ private fun GradeList(rows: List<Pair<Course, CourseGrade.Item>>, showNew: Boole
                 }
                 Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
                     Text(scoreText(it), style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text)
-                    it.impact?.takeIf { abs(it) >= 0.005 }?.let { d -> Text(Fmt.signed(d), style = Theme.caption, color = if (d < 0) C.late else C.good) }
+                    it.impact?.let { d -> Text(Fmt.signed(d), style = Theme.caption, color = impactColor(d)) }
                 }
             }
         }
@@ -162,8 +163,8 @@ private fun GradeCard(course: Course) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(last.title, style = Theme.footnote, color = C.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                     Text(scoreText(last), style = Theme.footnote, color = C.secondary)
-                    last.impact?.takeIf { abs(it) >= 0.005 }?.let { i ->
-                        Text(Fmt.signed(i), style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = if (i < 0) C.late else C.good)
+                    last.impact?.let { i ->
+                        Text(Fmt.signed(i), style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = impactColor(i))
                     }
                 }
             }

@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.AttachFile
+import androidx.compose.material.icons.outlined.Campaign
 import androidx.compose.material.icons.outlined.EditNote
 import androidx.compose.material.icons.outlined.ExpandLess
 import androidx.compose.material.icons.outlined.ExpandMore
@@ -47,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import com.owenleung.dewey.engine.Course
 import com.owenleung.dewey.engine.Engine
 import com.owenleung.dewey.engine.EngineError
+import com.owenleung.dewey.engine.GroupPost
 import com.owenleung.dewey.engine.MessageDetail
 import com.owenleung.dewey.engine.MessageThread
 import com.owenleung.dewey.engine.Notice
@@ -59,6 +61,7 @@ import com.owenleung.dewey.ui.DetailScaffold
 import com.owenleung.dewey.ui.Divider
 import com.owenleung.dewey.ui.ErrorState
 import com.owenleung.dewey.ui.MarkdownText
+import com.owenleung.dewey.ui.markdown
 import com.owenleung.dewey.ui.Route
 import com.owenleung.dewey.ui.ScreenHeader
 import com.owenleung.dewey.ui.ScrollPage
@@ -112,6 +115,7 @@ fun InboxScreen() {
         InboxBox("classes", "New in your classes", shown, empty = "Nothing new", sources = setOf(Source.NOTICES)) {
             it.classNotices(classes).map(InboxRow::Notice)
         }
+        if (inbox.posts.isNotEmpty()) InboxBox("updates", "School updates", shown, sources = emptySet()) { it.posts.map(InboxRow::Post) }
         InboxBox("school", "School", shown, empty = "Nothing from school", sources = setOf(Source.MESSAGES, Source.NOTICES)) { i ->
             i.schoolThreads(classes).filter { !i.isNew(it) }.map(InboxRow::Thread) + i.otherNotices(classes).map(InboxRow::Notice)
         }
@@ -123,6 +127,7 @@ fun InboxScreen() {
 private sealed class InboxRow {
     data class Thread(val t: MessageThread) : InboxRow()
     data class Notice(val n: com.owenleung.dewey.engine.Notice) : InboxRow()
+    data class Post(val p: GroupPost) : InboxRow()
 }
 
 /** The Schoology lists a box's rows come from; "Show older" loads their next page. */
@@ -190,6 +195,7 @@ private fun InboxBox(id: String, title: String, shown: MutableMap<String, Int>, 
                 when (row) {
                     is InboxRow.Thread -> ThreadRow(row.t, inbox.isNew(row.t))
                     is InboxRow.Notice -> NoticeRow(row.n)
+                    is InboxRow.Post -> PostRow(row.p)
                 }
             }
             if (all.size > limit || hasOlder(inbox, sources)) {
@@ -252,6 +258,29 @@ private fun NoticeRow(n: Notice) {
             }
             if (n.items.size > 4) Text("+${n.items.size - 4} more", style = Theme.footnote, color = C.tertiary)
             if (n.items.isEmpty()) Text(n.text, style = Theme.footnote, color = C.secondary)
+        }
+    }
+}
+
+/** A hub or group update: who posted where and when, the text folded to five lines (tap for all of it). */
+@Composable
+private fun PostRow(p: GroupPost) {
+    val nav = nav
+    val ctx = LocalContext.current
+    var open by remember { mutableStateOf(false) }
+    Row(Modifier.fillMaxWidth().clickable(onClickLabel = if (open) "Show less" else "Show the whole update") { open = !open }.padding(14.dp),
+        verticalAlignment = Alignment.Top) {
+        Icon(Icons.Outlined.Campaign, null, tint = C.accent, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(10.dp))
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(p.group, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                p.`when`?.let { Text(Fmt.ago(it), style = Theme.footnote, color = C.tertiary) }
+            }
+            p.post.author?.let { Text(it, style = Theme.footnote, color = C.secondary) }
+            Text(markdown(p.post.bodyMd ?: "", C.accent) { u -> nav.openLink(ctx, u) }, style = Theme.subhead, color = C.text,
+                maxLines = if (open) Int.MAX_VALUE else 5, overflow = TextOverflow.Ellipsis)
         }
     }
 }

@@ -84,8 +84,12 @@ object Fmt {
         return String.format(Locale.US, "%.2f", n).trimEnd('0').trimEnd('.')
     }
 
+    /** A grade change: "+0.24%", "−1.10%". Under half a hundredth rounds to nothing: "+0.00%", never "−0.00%". */
     fun signed(d: Double?): String {
         if (d == null) return ""
-        return (if (d < 0) "−" else "+") + String.format(Locale.US, "%.2f", abs(d))
+        return (if (d <= -0.005) "−" else "+") + String.format(Locale.US, "%.2f%%", abs(d))
     }
+
+    /** A score's effect on the grade didn't move it (shown grey, not red or green). */
+    fun unmoved(d: Double) = abs(d) < 0.005
 }

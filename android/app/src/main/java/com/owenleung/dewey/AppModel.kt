@@ -19,6 +19,7 @@ import com.owenleung.dewey.engine.TodoLists
 import com.owenleung.dewey.neoplan.NeoPlanClient
 import com.owenleung.dewey.store.Cache
 import com.owenleung.dewey.store.Fmt
+import com.owenleung.dewey.store.GradesLook
 import com.owenleung.dewey.store.Inbox
 import com.owenleung.dewey.store.ItemState
 import com.owenleung.dewey.store.ItemStore
@@ -487,14 +488,27 @@ class AppModel private constructor(val context: Context) {
 
     fun isNewGrade(id: String) = gradeLog[id]?.let { isNew(it) } ?: false
 
+    /** The classes Grades shows: every class but the ones hidden there (Settings → Grades). */
+    val gradeClasses: List<Course>
+        get() {
+            Prefs.revision.intValue
+            val hidden = GradesLook.hidden()
+            return classes.filter { it.sectionId !in hidden }
+        }
+
     /** Unseen new scores, newest first. */
     fun newGrades(): List<Pair<Course, CourseGrade.Item>> =
-        classes.flatMap { c -> (grades[c.sectionId]?.items ?: emptyList()).filter { isNewGrade(it.id) }.map { c to it } }
+        gradeClasses.flatMap { c -> (grades[c.sectionId]?.items ?: emptyList()).filter { isNewGrade(it.id) }.map { c to it } }
             .sortedWith { a, b -> gradedOrder(a.second, b.second) }
 
     /** Unseen new scores in one class, or everywhere (from the saved log, right before any gradebook loads). */
     fun newGradeCount(sectionId: String? = null): Int {
-        if (sectionId == null) return gradeLog.keys.count(::isNewGrade)
+        if (sectionId == null) {
+            // Hidden classes don't count (their items are known once a gradebook is saved).
+            Prefs.revision.intValue
+            val skip = GradesLook.hidden().flatMap { s -> (grades[s]?.items ?: emptyList()).map { it.id } }.toSet()
+            return gradeLog.keys.count { isNewGrade(it) && it !in skip }
+        }
         return (grades[sectionId]?.items ?: emptyList()).count { isNewGrade(it.id) }
     }
 
@@ -524,7 +538,7 @@ class AppModel private constructor(val context: Context) {
         gradeLog.putAll(log)
         Cache.save("gradeLog", logSerializer, gradeLog.toMap())
         val c = course(sectionId)
-        if (fresh.isNotEmpty() && c != null) Reminders.newGrades(c.shortTitle, fresh, old?.pct, new.pct)
+        if (fresh.isNotEmpty() && c != null && sectionId !in GradesLook.hidden()) Reminders.newGrades(c.shortTitle, fresh, old?.pct, new.pct)
     }
 
     /** Background refresh: a few gradebooks per run, in turn, so new-grade alerts come without opening the app. */

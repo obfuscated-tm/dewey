@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The top of Classes: each class is a book on a shelf, in its own colour, its
 /// name up the spine and a call-number label with the period and the letter.
-/// A tag on top says when work is late, due today or due tomorrow. Classes taken
+/// A bookmark ribbon at the top says when work is late, due today or due tomorrow. Classes taken
 /// off the shelf (long-press, or Settings → Classes on the shelf) lie flat under
 /// it; at the accessibility text sizes every class lies flat.
 struct Shelf: View {
@@ -77,7 +77,43 @@ struct Shelf: View {
     }
 }
 
-/// The LATE / TODAY / TMRW tag: filled for late and today, outlined for tomorrow.
+/// A bookmark ribbon hanging from the top of a standing book, words running up it
+/// like the spine's name: filled for late and today, outlined for tomorrow.
+struct DueRibbon: View {
+    let due: Shelf.Due
+    static let width: CGFloat = 18
+    var body: some View {
+        let color = due == .late ? Theme.late : Theme.accent
+        let ribbon = RibbonShape(notch: 7)
+        Text(due.label)
+            .font(Theme.caption.weight(.heavy)).tracking(0.4)
+            .lineLimit(1).fixedSize()
+            .rotationEffect(.degrees(-90))
+            .frame(width: Self.width, height: 52)
+            .padding(.top, 3).padding(.bottom, 9)
+            .foregroundStyle(due == .tomorrow ? color : due == .late ? Theme.card : Theme.onAccent)
+            .background(due == .tomorrow ? Theme.card : color, in: ribbon)
+            .overlay(ribbon.stroke(color, lineWidth: due == .tomorrow ? 1.5 : 0))
+            .accessibilityHidden(true)
+    }
+}
+
+/// A ribbon's outline: square top, a V notch cut into the bottom end.
+struct RibbonShape: Shape {
+    var notch: CGFloat
+    func path(in r: CGRect) -> Path {
+        Path { p in
+            p.move(to: CGPoint(x: r.minX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+            p.addLine(to: CGPoint(x: r.midX, y: r.maxY - notch))
+            p.addLine(to: CGPoint(x: r.minX, y: r.maxY))
+            p.closeSubpath()
+        }
+    }
+}
+
+/// The LATE / TODAY / TMRW tag on a book lying flat: filled for late and today, outlined for tomorrow.
 struct DueTag: View {
     let due: Shelf.Due
     var body: some View {
@@ -116,6 +152,8 @@ struct BookSpine: View {
                 .rotationEffect(.degrees(-90))
                 .frame(width: 30, height: height - labelH - 28)
                 .padding(.top, 14)
+                // Clear of the ribbon on the right edge.
+                .offset(x: due == nil ? 0 : -DueRibbon.width / 3)
             Spacer(minLength: 0)
             VStack(spacing: 0) {
                 Text(course.periodLabel.count <= 3 ? course.periodLabel : "").font(Theme.caption.weight(.bold))
@@ -129,7 +167,7 @@ struct BookSpine: View {
         .frame(maxWidth: .infinity)
         .frame(height: height)
         .background(model.spineColor(course.sectionId), in: RoundedRectangle(cornerRadius: Theme.Radius.tag / 1.5, style: .continuous))
-        .overlay(alignment: .top) { if let due { DueTag(due: due).offset(y: -10).padding(.horizontal, 2) } }
+        .overlay(alignment: .topTrailing) { if let due { DueRibbon(due: due).padding(.trailing, 5) } }
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(classLabel(course, g, due, openCount))

@@ -93,7 +93,7 @@ Tabs: **To Do · Grades · Classes · Schoology**. To Do, Grades and Classes eac
 ## 3 · Classes, materials, files, full Schoology
 
 ### 3a Classes (tab 3) · `design/Classes.dc.html`
-- A shelf of book spines in Course Dashboard order, each in its class colour (`Theme.classColors`, white text ≥ 4.5:1), name up the spine, a white call-number label with the period and letter. A LATE / TODAY / TMRW tag sits on top of a book with work in that state. Long-press (or Settings → Classes on the shelf) takes a class off the shelf; it then lies flat under it. At the accessibility text sizes every class lies flat.
+- A shelf of book spines in Course Dashboard order, each in its class colour (`Theme.classColors`, white text ≥ 4.5:1), name up the spine, a white call-number label with the period and letter. A bookmark ribbon (notched end, words running up it: LATE / TODAY / TMRW) hangs from the top right of a book with work in that state; a book lying flat shows the same word as a small tag. Long-press (or Settings → Classes on the shelf) takes a class off the shelf; it then lies flat under it. At the accessibility text sizes every class lies flat.
 - Search: every class's materials by name, from a cached index (build it like the MCP's `find_material`: walk each Materials tree, cache, refresh in the background).
 - Updates tile → feed (screen not designed; v1 can open the course feed in the Schoology sheet). Recently opened = local history.
 

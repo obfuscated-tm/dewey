@@ -42,6 +42,8 @@ struct ToDoView: View {
             }
             .listStyle(.insetGrouped)
             .listSectionSpacing(Theme.Space.l)
+            // No list margin above the header, so the title sits where Grades' and Classes' do.
+            .contentMargins(.top, 0, for: .scrollContent)
             .scrollContentBackground(.hidden)
             .background(Theme.background)
             .refreshable { await model.refreshTodo() }

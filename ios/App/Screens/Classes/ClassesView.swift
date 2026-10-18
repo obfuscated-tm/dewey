@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// 3a · A tile per class (grade + open work), search across every class's
+/// 3a · A shelf of classes (grade + what's due, see Shelf), search across every class's
 /// materials, and recently opened materials.
 struct ClassesView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.dynamicTypeSize) private var typeSize
     @State private var query = ""
     @State private var index = MaterialIndex.shared
 
@@ -32,15 +31,7 @@ struct ClassesView: View {
         }
     }
 
-    private var tiles: some View {
-        // Two columns; one at the accessibility text sizes so class names fit.
-        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: typeSize.isAccessibilitySize ? 1 : 2), spacing: 12) {
-            ForEach(Array(model.classes.enumerated()), id: \.element.sectionId) { i, c in
-                NavigationLink(value: c) { ClassTile(course: c, colorIndex: i) }
-                    .buttonStyle(.plain)
-            }
-        }
-    }
+    private var tiles: some View { Shelf() }
 
     @ViewBuilder
     private var recent: some View {
@@ -79,47 +70,6 @@ struct ClassesView: View {
             }
             .card()
         }
-    }
-}
-
-struct ClassTile: View {
-    @Environment(AppModel.self) private var model
-    let course: Course
-    let colorIndex: Int
-    static let colors = ["#1D5EA8", "#23794A", "#6A4BA8", "#A8324A", "#B86E0F", "#16707A", "#5E6670", "#8A4B1D"]
-    static func color(_ i: Int) -> Color { Color(hex: colors[i % colors.count]) }
-
-    var body: some View {
-        let open = model.todoItems().filter { $0.sectionId == course.sectionId && !model.isFinished($0) }.count
-        let g = model.grades[course.sectionId]
-        // Every tile the same height: the name reserves two lines, the grade row sits at the bottom.
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Capsule().fill(Self.color(colorIndex)).frame(width: 24, height: 4)
-                Spacer(minLength: Theme.Space.s)
-                Text(course.periodLabel).font(Theme.footnote).foregroundStyle(Theme.tertiary).oneLine()
-            }
-            Text(course.shortTitle).font(Theme.headline).foregroundStyle(Theme.text)
-                .multilineTextAlignment(.leading)
-                .lineLimit(2, reservesSpace: true)
-                .padding(.top, Theme.Space.s)
-            Spacer(minLength: Theme.Space.s)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(g?.letter ?? "–").font(Theme.body.weight(.bold))
-                Text(g?.pct.map { Fmt.pct($0) } ?? "No grade").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
-                Spacer(minLength: 0)
-                if open > 0 {
-                    Text("\(open) open").font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.accent)
-                }
-            }
-        }
-        .padding(Theme.Space.m)
-        .frame(maxWidth: .infinity, minHeight: 128, alignment: .topLeading)
-        .card()
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel([course.shortTitle, course.periodLabel, g?.letter.map { "grade \($0)" }, open > 0 ? "\(open) open" : nil]
-            .compactMap { $0 }.joined(separator: ", "))
-        .accessibilityHint("Opens this class's materials")
     }
 }
 

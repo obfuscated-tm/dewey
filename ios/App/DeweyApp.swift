@@ -7,6 +7,7 @@ struct DeweyApp: App {
     @Environment(\.scenePhase) private var phase
 
     init() {
+        Theme.styleNavigationBars()
         BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.refreshTask, using: nil) { task in
             Task { @MainActor in
                 Self.scheduleRefresh()
@@ -89,7 +90,7 @@ struct RootView: View {
 
 struct MainTabs: View {
     @Environment(AppModel.self) private var model
-    @State private var tab = 0
+    @State private var tab = Demo.startTab
     @State private var schoologyURL: URL?
 
     var body: some View {
@@ -119,6 +120,7 @@ struct MainTabs: View {
             if let id = AppLink.assignmentId(url) { model.deepLinkAssignment = id }
         }
         .task {
+            if let id = Demo.startAssignment { model.deepLinkAssignment = id }
             if model.todoAsOf == nil || Date().timeIntervalSince(model.todoAsOf!) > 120 {
                 await model.refreshTodo()
             }

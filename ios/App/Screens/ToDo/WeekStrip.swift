@@ -19,9 +19,10 @@ enum DayFilter: Hashable {
     }
 }
 
-/// The To Do header: a Late tile, then today and the next six days. Each item
-/// still to do is a dot in its type's colour (black = test, grey = the rest,
-/// like the type bar on each row); tap a tile to show only it.
+/// The To Do header: Late, then today and the next six days, as bare type (no
+/// boxes). Each item still to do is a dot in its type's colour (black = test,
+/// grey = the rest, like the type bar on each row); tap a day to show only it,
+/// and it sits in a drop.
 struct WeekStrip: View {
     let items: [ItemState]     // open items only
     let now: Date
@@ -62,18 +63,21 @@ struct WeekStrip: View {
             withAnimation(.snappy(duration: 0.2)) { selected = on ? nil : f }
         } label: {
             VStack(spacing: 3) {
-                Text(label).font(Theme.caption.weight(.semibold)).foregroundStyle(labelColor)
+                Text(label).font(Theme.caption.weight(.semibold)).foregroundStyle(isLate ? Theme.late : isToday ? Theme.accent : Theme.secondary)
                     .lineLimit(1).minimumScaleFactor(0.7)
+                // Bare type; the chosen day sits in a drop, the logo's shape.
                 Text(sub).font(Theme.subhead.weight(.semibold).monospacedDigit())
                     .foregroundStyle(on ? Theme.onAccent : isLate ? Theme.late : Theme.text)
-                dots(its, on: on)
+                    .frame(minWidth: 32, minHeight: 30)
+                    .padding(.top, 6)
+                    .background {
+                        if on { DropShape().fill(isLate ? Theme.late : Theme.accent).padding(.horizontal, 1) }
+                    }
+                dots(its, on: false)
             }
-            .padding(.vertical, 7)
+            .padding(.vertical, 4)
             .frame(maxWidth: .infinity)
-            .background(on ? Theme.accent : isLate && !its.isEmpty ? Theme.lateSoft : Theme.card,
-                        in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
-                .stroke(on ? .clear : isToday ? Theme.accent : Theme.border, lineWidth: isToday ? 1.5 : 1))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(a11y(f, label: label, its))

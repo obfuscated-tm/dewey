@@ -22,6 +22,7 @@ struct SettingsView: View {
     @AppStorage(Inbox.markReadKey) private var markRead = true
     private let theme = ThemeStore.shared
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
+    @AppStorage(GradesLook.reportCardKey) private var reportCard = true
     @AppStorage(WebConfig.compatKey) private var compat = false
     @State private var confirmSignOut = false
 
@@ -105,6 +106,14 @@ struct SettingsView: View {
                 } header: { Text("Inbox") } footer: {
                     Text(markRead ? "Opening a message in the app marks it read on Schoology, like opening it there."
                                   : "Messages show their preview only, so they stay unread on Schoology until you open them there.")
+                }
+
+                Section {
+                    Toggle("Letters across the top", isOn: $reportCard)
+                    NavigationLink("Classes on the shelf") { ShelfSettings() }
+                } header: { Text("Grades and Classes") } footer: {
+                    Text(reportCard ? "Grades starts with every class's letter in one row, like a report card."
+                                    : "Grades starts straight with the list; each class shows its letter.")
                 }
 
                 Section("Look") {

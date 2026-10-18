@@ -28,17 +28,17 @@ struct Palette: Identifiable {
     private static let standardLight = "#F2F3F5 #FFFFFF #D9DDE2 #E4E7EB #15191D #4F5761 #5F6771 #A63A0B #FBEDE5 #1C6B3F #E5F2EA #E9ECF0"
 
     static let all: [Palette] = [
+        // Dewey's brand teal: the default (first in Settings → Look).
+        Palette("dew", "Dew",
+                light: "#EEF6F2 #FFFFFF #CFE3DA #E0EDE7 #0E2A24 #3F5A53 #52685F #A63A0B #FBEDE5 #426E10 #E9F2DC #E1F0E9",
+                dark: "#0F1A18 #172623 #27403A #1F332E #E1F5EE #A9C7BD #8FB0A5 #FF9466 #3A2219 #B5DB6E #2B3A17 #21352F",
+                accent: ("#0F6E56", "#5DCAA5")),
         // Light as before; dark is soft graphite instead of pure black.
         Palette("standard", "Standard", light: standardLight,
                 dark: "#16171A #212327 #34373D #2C2E33 #ECEDEF #B9BDC4 #9DA2AA #FF9466 #3A2219 #6BD497 #1A3325 #2D3035"),
         // Standard with a true-black dark mode (saves battery on OLED screens).
         Palette("midnight", "Midnight", light: standardLight,
                 dark: "#000000 #1C1C1E #38383A #2C2C2E #F2F2F7 #C1C5CC #A3A8B0 #FF8A5C #3A1E12 #5FD08D #14301F #2C2C2E"),
-        // Dewey's brand teal.
-        Palette("dew", "Dew",
-                light: "#EEF6F2 #FFFFFF #CFE3DA #E0EDE7 #0E2A24 #3F5A53 #52685F #A63A0B #FBEDE5 #426E10 #E9F2DC #E1F0E9",
-                dark: "#0F1A18 #172623 #27403A #1F332E #E1F5EE #A9C7BD #8FB0A5 #FF9466 #3A2219 #B5DB6E #2B3A17 #21352F",
-                accent: ("#0F6E56", "#5DCAA5")),
         // Cool blue-grey, after Nord.
         Palette("frost", "Frost",
                 light: "#ECEFF4 #FFFFFF #D3D9E3 #E2E6ED #2E3440 #4C566A #5A6478 #A5402D #F8E9E5 #3B6E3B #E6F0E2 #E5E9F0",
@@ -56,7 +56,10 @@ struct Palette: Identifiable {
                 accent: ("#9A5B13", "#E0A458")),
     ]
 
-    static func named(_ id: String) -> Palette { all.first { $0.id == id } ?? all[0] }
+    /// The theme a new install starts with.
+    static let defaultID = "dew"
+
+    static func named(_ id: String) -> Palette { all.first { $0.id == id } ?? all.first { $0.id == defaultID }! }
 }
 
 /// The chosen palette and accent. Observable, so every view that reads a `Theme`
@@ -74,7 +77,8 @@ struct Palette: Identifiable {
     var palette: Palette { Palette.named(paletteID) }
 
     private init() {
-        paletteID = UserDefaults.standard.string(forKey: Theme.paletteKey) ?? Palette.all[0].id
+        // Dew (the brand teal) for new installs; a theme picked in Settings stays.
+        paletteID = UserDefaults.standard.string(forKey: Theme.paletteKey) ?? Palette.defaultID
         accentHex = UserDefaults.standard.string(forKey: Theme.accentKey) ?? Theme.accentOptions[0]
         build()
     }
@@ -123,6 +127,13 @@ enum Theme {
     // Seven styles, all SF Pro on Apple's text styles, so they follow Dynamic
     // Type. Screens pick one of these and never a point size (ThemeTests checks).
     // Numbers add `.monospacedDigit()` so digits line up without a code font.
+    // Plus two display styles in New York (the system serif), the one place the
+    // type has character: big screen titles and the big grade letter, nothing else.
+
+    /// 34 bold New York · screen titles (ScreenHeader, large nav titles), the big grade letter.
+    static let display = Font.system(.largeTitle, design: .serif, weight: .bold)
+    /// 22 bold New York · the grade letter on a Grades card.
+    static let displaySmall = Font.system(.title2, design: .serif, weight: .bold)
 
     /// 34 bold · screen titles.
     static let largeTitle = Font.system(.largeTitle, weight: .bold)
@@ -138,6 +149,12 @@ enum Theme {
     static let footnote = Font.system(.footnote)
     /// 12 · tags and kickers only.
     static let caption = Font.system(.caption)
+    /// Large navigation-bar titles (Classes) in `display`, set once at launch.
+    static func styleNavigationBars() {
+        let base = UIFont.preferredFont(forTextStyle: .largeTitle)
+        guard let d = base.fontDescriptor.withDesign(.serif)?.withSymbolicTraits(.traitBold) else { return }
+        UINavigationBar.appearance().largeTitleTextAttributes = [.font: UIFont(descriptor: d, size: 0)]
+    }
     /// Settings → Developer only: raw engine JSON. Never in the student-facing UI.
     static let code = Font.system(.caption, design: .monospaced)
 
@@ -151,6 +168,14 @@ enum Theme {
     enum Space {
         static let xs: CGFloat = 4, s: CGFloat = 8, m: CGFloat = 12, l: CGFloat = 16, xl: CGFloat = 24
     }
+
+    /// Each class's own colour, in Course Dashboard order: the Classes shelf, the
+    /// Grades letters, the catalog line. White text reads on every one (ThemeTests).
+    static let classColors = ["#1D5EA8", "#23794A", "#6A4BA8", "#A8324A", "#9A5B0C", "#16707A", "#5E6670", "#8A4B1D"]
+    /// For text and marks: lightened in dark mode, like the accent.
+    static func classColor(_ i: Int) -> Color { Accent.color(hex: classColors[i % classColors.count]) }
+    /// For a book spine under white text: the same in light and dark.
+    static func spineColor(_ i: Int) -> Color { Color(hex: classColors[i % classColors.count]) }
 
     /// Text on a filled accent button: white in light mode, near-black in dark (accent is light there).
     static let onAccent = Color(light: "#FFFFFF", dark: "#101418")

@@ -114,6 +114,12 @@ final class AppModel {
         return c.isEmpty ? courses : c
     }
 
+    /// The class's colour (Theme.classColors), by its place in the class list.
+    func classColor(_ sectionId: String?) -> Color { Theme.classColor(classIndex(sectionId)) }
+    /// The same colour, unchanged in dark mode: a book spine on the Classes shelf.
+    func spineColor(_ sectionId: String?) -> Color { Theme.spineColor(classIndex(sectionId)) }
+    private func classIndex(_ sectionId: String?) -> Int { classes.firstIndex { $0.sectionId == sectionId } ?? 0 }
+
     func course(_ sectionId: String?) -> Course? {
         guard let sectionId else { return nil }
         return courses.first { $0.sectionId == sectionId }

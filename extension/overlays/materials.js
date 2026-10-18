@@ -35,7 +35,7 @@ const STRIP_CSS = `
 }
 label { display: inline-flex; align-items: center; gap: 6px; color: var(--ink); cursor: pointer; }
 input { accent-color: var(--accent); margin: 0; }
-.num { font-family: var(--mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.num { font-family: var(--sans); font-variant-numeric: tabular-nums; color: var(--ink); }
 .sp { margin-left: auto; }
 .linkbtn { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 @media (max-width: 760px) { .sp { margin-left: 0; } }

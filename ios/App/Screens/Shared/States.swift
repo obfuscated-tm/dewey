@@ -117,7 +117,7 @@ struct ScreenHeader<Trailing: View>: View {
                 if let kicker {
                     Text(kicker.uppercased()).font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.secondary)
                 }
-                Text(title).font(Theme.largeTitle)
+                Text(title).font(Theme.display)
             }
             Spacer()
             trailing

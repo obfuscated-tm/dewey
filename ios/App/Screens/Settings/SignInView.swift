@@ -16,7 +16,7 @@ struct SignInView: View {
                     .frame(width: 60, height: 60)
                     .accessibilityHidden(true)
                 Text("Dewey")
-                    .font(Theme.largeTitle)
+                    .font(Theme.display)
                 Text("Your Schoology To Do, grades and materials, made for your phone. Sign in with your school Google account, the same way you do on Schoology.")
                     .font(Theme.body)
                     .foregroundStyle(Theme.secondary)

@@ -44,18 +44,18 @@ const EPS = 0.005;
 const CSS = `
 .imp {
   display: inline-block; min-width: 44px; padding: 0 5px; border-radius: 3px; text-align: center;
-  font: 500 11px/16px var(--mono); font-variant-numeric: tabular-nums;
+  font: 500 11px/16px var(--sans); font-variant-numeric: tabular-nums;
 }
 .imp.pos { color: var(--good); background: var(--good-soft); }
 .imp.neg { color: var(--bad); background: var(--bad-soft); }
-.pct { font-family: var(--mono); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
+.pct { font-family: var(--sans); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
 .acc { color: var(--accent); }
 .note { font-size: 12px; color: var(--accent); white-space: nowrap; }
 .note.warn { color: var(--bad); }
-.num { font-family: var(--mono); font-variant-numeric: tabular-nums; font-weight: 500; }
+.num { font-family: var(--sans); font-variant-numeric: tabular-nums; font-weight: 500; }
 .linkbtn { color: var(--accent); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
 input {
-  font: 12px/16px var(--mono); font-variant-numeric: tabular-nums; color: var(--ink);
+  font: 12px/16px var(--sans); font-variant-numeric: tabular-nums; color: var(--ink);
   padding: 1px 5px; margin: 0; border: 1px dashed var(--accent); border-radius: 4px;
   background: var(--surface); text-align: right;
 }
@@ -98,7 +98,7 @@ const ROW_CSS = CSS + `
 .hypo { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; font-size: 12px; color: var(--dim); }
 .hypo input[type=text] { width: 160px; text-align: left; font-family: var(--sans); }
 .hypo input[type=number] { width: 56px; }
-.need b { font-family: var(--mono); font-weight: 500; }
+.need b { font-weight: 500; font-variant-numeric: tabular-nums; }
 .chart { position: relative; max-width: 640px; }
 .chart svg { display: block; width: 100%; height: auto; overflow: visible; }
 .chart-note { display: flex; flex-wrap: wrap; gap: 4px 20px; font-size: 12px; color: var(--dim); margin-top: 8px; }
@@ -107,14 +107,14 @@ const ROW_CSS = CSS + `
   background: var(--ink); color: #fff; font-size: 12px; line-height: 1.4; padding: 6px 8px;
   border-radius: 4px; white-space: nowrap;
 }
-.tip b { font-family: var(--mono); font-weight: 500; }
+.tip b { font-weight: 500; font-variant-numeric: tabular-nums; }
 .tip .s { opacity: .7; }
 `;
 
 // ── Small helpers ────────────────────────────────────────────────────────
 
 const fmt = (v, d = 2) => (v == null ? '' : v.toFixed(d));
-const signed = (d) => (d < 0 ? '−' : '+') + Math.abs(d).toFixed(2);
+const signed = (d) => (d < 0 ? '−' : '+') + Math.abs(d).toFixed(2) + '%';
 const num = (v) => { const n = parseFloat(v); return Number.isFinite(n) ? n : null; };
 const dayNum = (day) => Date.UTC(+day.slice(0, 4), +day.slice(5, 7) - 1, +day.slice(8, 10)) / 864e5;
 const dayLabel = (day) => new Date(dayNum(day) * 864e5).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -208,19 +208,19 @@ function drawChart(box, pts, proj) {
   const ymax = Math.max(100, Math.ceil(Math.max(...vals)));
   const X = (n) => m.l + ((n - x0) / (x1 - x0)) * (w - m.l - m.r);
   const Y = (v) => m.t + ((ymax - v) / (ymax - ymin)) * (h - m.t - m.b);
-  const mono = 'font-family="ov JetBrains Mono, JetBrains Mono, monospace"';
+  const numFont = 'font-family="ov Instrument Sans, Instrument Sans, sans-serif" style="font-variant-numeric: tabular-nums"';
   const sans = 'font-family="ov Instrument Sans, Instrument Sans, sans-serif"';
 
   let g = '';
   const range = ymax - ymin, step = range <= 12 ? 2 : range <= 30 ? 5 : 10;
   for (let v = Math.ceil(ymin / step) * step; v <= ymax; v += step) {
-    g += `<line x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--sunk)"/><text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--faint)" ${mono}>${v}</text>`;
+    g += `<line x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--sunk)"/><text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--faint)" ${numFont}>${v}</text>`;
   }
   g += `<line x1="${m.l}" x2="${w - m.r}" y1="${Y(A_CUTOFF)}" y2="${Y(A_CUTOFF)}" stroke="var(--dim)" stroke-dasharray="3 3"/><text x="${w - m.r + 6}" y="${Y(A_CUTOFF) + 4}" font-size="11" fill="var(--dim)" ${sans}>A cutoff</text>`;
   for (let i = 0; i < 4; i++) {
     const n = Math.round(x0 + ((xEnd - x0) * i) / 3);
     const label = new Date(n * 864e5).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
-    g += `<text x="${X(n)}" y="${h - 6}" text-anchor="middle" font-size="11" fill="var(--faint)" ${mono}>${label}</text>`;
+    g += `<text x="${X(n)}" y="${h - 6}" text-anchor="middle" font-size="11" fill="var(--faint)" ${numFont}>${label}</text>`;
     if (xEnd === x0) break;
   }
   let path = `M${X(dayNum(pts[0].day))},${Y(pts[0].pct)}`;
@@ -228,9 +228,9 @@ function drawChart(box, pts, proj) {
   const lastX = X(xEnd), lp = pts[pts.length - 1];
   path += ` H${lastX}`;
   g += `<path d="${path} V${h - m.b} H${X(x0)} Z" fill="var(--accent)" fill-opacity=".07"/><path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
-  g += `<circle cx="${lastX}" cy="${Y(lp.pct)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/><text x="${lastX + 8}" y="${Y(lp.pct) + (proj != null && proj > lp.pct ? 14 : -6)}" font-size="11" fill="var(--ink)" ${mono}>${fmt(lp.pct)}</text>`;
+  g += `<circle cx="${lastX}" cy="${Y(lp.pct)}" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2"/><text x="${lastX + 8}" y="${Y(lp.pct) + (proj != null && proj > lp.pct ? 14 : -6)}" font-size="11" fill="var(--ink)" ${numFont}>${fmt(lp.pct)}</text>`;
   if (proj != null) {
-    g += `<line x1="${lastX}" y1="${Y(lp.pct)}" x2="${X(x1)}" y2="${Y(proj)}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"/><circle cx="${X(x1)}" cy="${Y(proj)}" r="4" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/><text x="${X(x1) + 8}" y="${Y(proj) + 4}" font-size="11" fill="var(--accent)" ${mono}>${fmt(proj)}</text>`;
+    g += `<line x1="${lastX}" y1="${Y(lp.pct)}" x2="${X(x1)}" y2="${Y(proj)}" stroke="var(--accent)" stroke-width="2" stroke-dasharray="4 3"/><circle cx="${X(x1)}" cy="${Y(proj)}" r="4" fill="var(--surface)" stroke="var(--accent)" stroke-width="2"/><text x="${X(x1) + 8}" y="${Y(proj) + 4}" font-size="11" fill="var(--accent)" ${numFont}>${fmt(proj)}</text>`;
   }
   g += `<line class="xh" y1="${m.t}" y2="${h - m.b}" stroke="var(--dim)" visibility="hidden"/><circle class="xd" r="4" fill="var(--accent)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/><rect class="hit" x="${m.l}" y="0" width="${Math.max(lastX - m.l, 1)}" height="${h}" fill="transparent"/>`;
 
@@ -450,7 +450,7 @@ async function mountCourse({ doc, root: scope, courseId }) {
       if (!projHost.hidden) {
         const out = el('span', 'acc', '→ ');
         out.append(el('span', 'num', `${letter(now)} ${fmt(now)}%`));
-        proj.replaceChildren(proj.firstChild, out, impTag(now - base, 'What-if course grade minus the real one') || el('span', 'mono dim', '±0.00'), reset);
+        proj.replaceChildren(proj.firstChild, out, impTag(now - base, 'What-if course grade minus the real one') || el('span', 'tnum dim', '±0.00%'), reset);
       }
       if (base == null) return cell(tr);
       if (shown && Math.abs(base - shown.pct) > shown.tol + 1e-9) {
@@ -519,7 +519,7 @@ async function mountCourse({ doc, root: scope, courseId }) {
         const dropBtn = el('button', 'linkbtn reveal', 'drop');
         const score = input('number', 'wi-score', `What-if score for ${it.title}`, 'what if');
         const editWrap = el('span', 'wrap');
-        editWrap.append(score, '/', el('span', 'mono', String(it.possible)));
+        editWrap.append(score, '/', el('span', 'tnum', String(it.possible)));
         root.append(pctSpan, editBtn, dropBtn, editWrap);
 
         let editing = false;
@@ -577,7 +577,7 @@ async function mountCourse({ doc, root: scope, courseId }) {
       const wrap = el('span', 'wrap');
       wrap.append(score, '/');
       let pts = null;
-      if (it.possible != null) wrap.append(el('span', 'mono', String(it.possible)));
+      if (it.possible != null) wrap.append(el('span', 'tnum', String(it.possible)));
       else { pts = input('number', 'wi-pts', `Points ${it.title} is out of`, 'pts'); wrap.append(pts); }
       root.append(btn, wrap);
       let editing = false;

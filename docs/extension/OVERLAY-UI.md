@@ -37,7 +37,7 @@ instructions).
 | `--bad` / `--bad-soft` | `#B8430F` / `#FBEDE5` | Missing, negative impact |
 | `--good` / `--good-soft` | `#23794A` / `#E6F3EC` | Submitted, positive impact |
 
-Type: Instrument Sans for text, JetBrains Mono for every number (tabular-nums).
+Type: Instrument Sans for text and numbers; numbers use tabular digits (`font-variant-numeric: tabular-nums`) so columns line up. No monospace in the UI (it reads as a dev tool); JetBrains Mono is bundled only for the archive log.
 Bundle both as local `.woff2` (400/500/600), not a Google Fonts link. 6px radius. No shadows.
 
 Only `--accent` and `--accent-soft` change with the theme (`overlays/theme.js`); everything
@@ -269,7 +269,7 @@ what-if marks its row with a thin bar instead of a fill.
   X/pts for an A" (or "any score keeps an A" / "out of reach with this alone")
   editor as before, but it exists only while planning is open — Remove closes
   it again rather than just clearing its score.
-- **Graded item rows:** a small percent beside Schoology's own score (mono,
+- **Graded item rows:** a small percent beside Schoology's own score (tabular digits,
   faint; Settings → "Percent beside scores" hides it). Hovering or focusing the
   row reveals two faint text buttons beside the percent:
   - **edit** — Schoology Plus lets you edit any grade, so the overlay does too.
@@ -303,7 +303,7 @@ what-if marks its row with a thin bar instead of a fill.
   course", and on the right "Archive saved <when> · Sync now".
 - **Folder rows**, right side: a short status ("1 missing · 1 to turn in · 1 to do",
   or "All turned in"), then the folder's scored % (points earned / graded points in
-  it) in mono. Folders keep opening the Schoology way (their own page).
+  it) in tabular digits. Folders keep opening the Schoology way (their own page).
 - **Assignment rows**, right side (one marker, replaces today's ○ ✓ × markers):
   - graded → score `10 / 10`
   - submitted, not graded → "Submitted"

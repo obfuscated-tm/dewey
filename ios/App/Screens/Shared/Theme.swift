@@ -123,6 +123,13 @@ enum Theme {
     // Seven styles, all SF Pro on Apple's text styles, so they follow Dynamic
     // Type. Screens pick one of these and never a point size (ThemeTests checks).
     // Numbers add `.monospacedDigit()` so digits line up without a code font.
+    // Plus two display styles in New York (the system serif), the one place the
+    // type has character: big screen titles and the big grade letter, nothing else.
+
+    /// 34 bold New York · screen titles (ScreenHeader, large nav titles), the big grade letter.
+    static let display = Font.system(.largeTitle, design: .serif, weight: .bold)
+    /// 22 bold New York · the grade letter on a Grades card.
+    static let displaySmall = Font.system(.title2, design: .serif, weight: .bold)
 
     /// 34 bold · screen titles.
     static let largeTitle = Font.system(.largeTitle, weight: .bold)
@@ -138,6 +145,12 @@ enum Theme {
     static let footnote = Font.system(.footnote)
     /// 12 · tags and kickers only.
     static let caption = Font.system(.caption)
+    /// Large navigation-bar titles (Classes) in `display`, set once at launch.
+    static func styleNavigationBars() {
+        let base = UIFont.preferredFont(forTextStyle: .largeTitle)
+        guard let d = base.fontDescriptor.withDesign(.serif)?.withSymbolicTraits(.traitBold) else { return }
+        UINavigationBar.appearance().largeTitleTextAttributes = [.font: UIFont(descriptor: d, size: 0)]
+    }
     /// Settings → Developer only: raw engine JSON. Never in the student-facing UI.
     static let code = Font.system(.caption, design: .monospaced)
 

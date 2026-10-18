@@ -22,6 +22,7 @@ struct SettingsView: View {
     @AppStorage(Inbox.markReadKey) private var markRead = true
     private let theme = ThemeStore.shared
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
+    @AppStorage(ToDoLayout.key) private var todoLayout = ToDoLayout.week.rawValue
     @AppStorage(WebConfig.compatKey) private var compat = false
     @State private var confirmSignOut = false
 
@@ -105,6 +106,16 @@ struct SettingsView: View {
                 } header: { Text("Inbox") } footer: {
                     Text(markRead ? "Opening a message in the app marks it read on Schoology, like opening it there."
                                   : "Messages show their preview only, so they stay unread on Schoology until you open them there.")
+                }
+
+                Section {
+                    Picker("View", selection: $todoLayout) {
+                        ForEach(ToDoLayout.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
+                    }
+                } header: { Text("To Do") } footer: {
+                    Text(todoLayout == ToDoLayout.urgent.rawValue
+                         ? "One list, late and due today at the top, each row with its class."
+                         : "Work grouped by class, under a strip of days you can tap to filter.")
                 }
 
                 Section("Look") {

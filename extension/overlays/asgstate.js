@@ -33,8 +33,8 @@ export function findItem(periods, id) {
   return null;
 }
 
-/** "−1.26" / "+0.40": the signed two-decimal delta the overlay uses everywhere. */
-export const signed = (d) => (d < 0 ? '−' : '+') + Math.abs(d).toFixed(2);
+/** "−1.26%" / "+0.40%": the signed two-decimal delta (percentage points) the overlay uses everywhere. */
+export const signed = (d) => (d < 0 ? '−' : '+') + Math.abs(d).toFixed(2) + '%';
 
 /** Course % if this item scored 0 − course % now (ungraded items only). null when it can't be said. */
 export function zeroCost(course, id, possible, weights) {

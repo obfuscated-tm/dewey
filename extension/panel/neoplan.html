@@ -23,14 +23,14 @@
         <div class="row" id="npTokenSet" hidden>
           <div class="text">
             <div class="title ok">Connected</div>
-            <div class="desc mono" id="npTokenMasked"></div>
+            <div class="desc tnum" id="npTokenMasked"></div>
           </div>
           <button id="npTokenRemove" class="link">Disconnect</button>
         </div>
         <div class="row" id="npSyncRow" hidden>
           <div class="text">
             <div class="title">Schoology</div>
-            <div class="desc">Last read <span id="npSyncTime" class="mono"></span></div>
+            <div class="desc">Last read <span id="npSyncTime" class="tnum"></span></div>
             <p class="desc" id="npSyncHint" role="status" hidden></p>
           </div>
           <button id="npSyncNow" class="link">Check now</button>
@@ -40,7 +40,7 @@
 
     <section id="npCourses" hidden>
       <h4>Courses</h4>
-      <p class="lede">The neo-plan column each class files into. <span class="mono">auto</span> means neo-plan matched it by name.</p>
+      <p class="lede">The neo-plan column each class files into. <span class="tnum">auto</span> means neo-plan matched it by name.</p>
       <div class="group">
         <ul id="npCourseList" class="courses"></ul>
       </div>
@@ -56,7 +56,7 @@
         </div>
         <div class="row">
           <div class="text"><div class="title">Claude</div><div class="desc">The local MCP server for Claude Desktop</div></div>
-          <span id="npMcpStatus" class="mono dim"></span>
+          <span id="npMcpStatus" class="tnum dim"></span>
         </div>
       </details>
     </section>

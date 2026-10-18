@@ -1282,7 +1282,7 @@ ${t.trim()}
     }
     return null;
   }
-  var signed = (d) => (d < 0 ? "\u2212" : "+") + Math.abs(d).toFixed(2);
+  var signed = (d) => (d < 0 ? "\u2212" : "+") + Math.abs(d).toFixed(2) + "%";
   function zeroCost(course, id, possible, weights) {
     if (!possible) return null;
     return impact(course, id, { weights, whatIf: { [id]: { earned: 0, possible } } });

@@ -7,6 +7,7 @@ struct DeweyApp: App {
     @Environment(\.scenePhase) private var phase
 
     init() {
+        Theme.styleNavigationBars()
         BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.refreshTask, using: nil) { task in
             Task { @MainActor in
                 Self.scheduleRefresh()

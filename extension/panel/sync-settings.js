@@ -121,7 +121,7 @@ export function createSyncSettings({ doc = document, np = defaultNp, send = (m) 
       sel.append(o);
     }
     sel.value = c.class_id || '';
-    const auto = el('span', 'mono auto', 'auto');
+    const auto = el('span', 'tnum auto', 'auto');
     auto.hidden = !(c.auto && c.class_id);
     sel.addEventListener('change', async () => {
       const before = c.class_id || '';

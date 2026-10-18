@@ -14,6 +14,9 @@ struct GradesView: View {
                     ScreenHeader(title: "Grades") { EmptyView() }
                         .padding(.top, Theme.Space.s)
                     newCard
+                    // Its own heading and a gap, so the classes never read as more new grades.
+                    Text("Classes").font(Theme.title)
+                        .padding(.top, model.newGrades().isEmpty ? 0 : Theme.Space.l)
                     if model.classes.isEmpty {
                         SkeletonRows(count: 4)
                     }
@@ -65,7 +68,7 @@ struct GradesView: View {
         }
         .sorted { model.gradedFirst($0.1, $1.1) }
         if !rows.isEmpty {
-            Text("Recently graded").font(Theme.title).padding(.top, 10)
+            Text("Recently graded").font(Theme.title).padding(.top, Theme.Space.l)
             gradeList(Array(rows.prefix(8)), showNew: true)
         }
     }
@@ -161,7 +164,7 @@ struct GradeCard: View {
                         .accessibilityHidden(true)
                     }
                     VStack(alignment: .trailing, spacing: 0) {
-                        Text(g.letter ?? "").font(Theme.title)
+                        Text(g.letter ?? "").font(Theme.displaySmall)
                         Text(Fmt.pct(g.pct)).font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
                     }
                     // Same width on every card, so the trend lines line up down the screen.

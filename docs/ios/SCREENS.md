@@ -37,7 +37,7 @@ Arrows: `›` opens a native screen; `↗` opens Schoology or a website (sheet o
 | overdue / late | `#B8430F` on `#FBEDE5` |
 | submitted / turned in | `#23794A` |
 | HW tag | `#5E6670` on `#EEF0F3`; TEST tag white on `#1F2429` |
-| fonts | SF Pro only, seven styles in `Theme` (all Dynamic Type): largeTitle 34 bold · title 22 bold · headline 17 semibold · body 17 · subhead 15 · footnote 13 · caption 12. Numbers add `.monospacedDigit()`; no code font in the UI. ThemeTests fails on a raw point size. |
+| fonts | SF Pro, seven styles in `Theme` (all Dynamic Type): largeTitle 34 bold · title 22 bold · headline 17 semibold · body 17 · subhead 15 · footnote 13 · caption 12. Plus New York (system serif) for character in two places only: `display` 34 bold for screen titles and the big grade letter, `displaySmall` 22 bold for the letter on a Grades card. Numbers add `.monospacedDigit()`; no code font in the UI. ThemeTests fails on a raw point size. |
 | shapes | `Theme.Radius`: 6 for tags and type bars, 14 (continuous) for every card; buttons are capsules, checkboxes circles. Spacing 4 / 8 / 12 / 16 / 24 (`Theme.Space`). Touch targets 44 pt; pill buttons 30 pt tall inside a 44 pt row. |
 
 These are the mockups' values. The app's colours live in `Palette.all` (`Theme.swift`). Settings → Look picks a theme, and each theme has light and dark values: **Standard** (dark mode is soft graphite), **Midnight** (Standard with true-black dark), **Dew** (brand teal), **Frost** (cool blue-grey), **Pastel** (soft lavender) and **Paper** (warm sepia). Standard and Midnight use the accent dots; the other themes bring their own accent. ThemeTests checks contrast in every theme.
@@ -47,7 +47,7 @@ Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red bad
 ## 1 · To Do and turning in
 
 ### 1a To Do (tab 1) — build first · `design/Main.dc.html`
-- **Shows:** everything due, grouped by class in Course Dashboard order (`courses()` order). Header: date, "To Do", gear (→ 4b). Three count buttons: Overdue (red), Due today (accent), This week; tapping one filters the list.
+- **Shows:** everything due, grouped by class in Course Dashboard order (`courses()` order). Header: date, "To Do", gear (→ 4b). Three count buttons: Overdue (red), Due today (accent), This week; tapping one filters the list. **View** (menu beside the gear, also Settings → To Do, remembered): **Week** (default: by class under the week strip) or **Urgent first** (no strip; one list in Late · Today · Next 7 days · Later · Done sections, each row with its class above the title).
 - **Row:** check mark (see table above), title, type tag (HW / TEST / TASK / CW), due time in mono (red with "N d late" when overdue), a status line ("Done · not submitted yet", "Submitted on Schoology · 9:40 pm", "Not studied", "Turned in · not on Schoology"), and on dropbox work a **Submit ↗** pill.
 - **Data:** `todo()` (upcoming + overdue + events) merged with the app's own saved list (paper work that Schoology dropped from overdue stays until ticked). Per-row `status({id})` only for rows that might have a dropbox. Type: TEST if the gradebook category says Test/Quiz/Exam/Summative or the title says Exam/Quiz/Interro, else HW; neo-plan's type wins when connected. Overdue > 60 days → collapsed "Older" group.
 - **Taps:** circle = Done toggle (square = Studied toggle). Submit ↗ only on dropbox work → 1c. Swipe left → "Mark turned in" + the class's real turn-in place ("Turn in on lab site ↗" for AP Bio, "Submit ↗" for dropbox, nothing extra for paper). Row → 1b. Pull → refresh.
@@ -71,7 +71,7 @@ Tabs: **To Do · Grades · Classes · Schoology**. The To Do tab shows a red bad
 ## 2 · Grades: the facts first, what-if second
 
 ### 2a Grades (tab 2) · `design/Grades.dc.html`
-- **Card per class:** letter + %, small history graph (`history`), distance to the A line, latest score and its +/- effect (`impact`). Tap → 2b.
+- **Card per class**, under a "Classes" heading (with a gap above it when New grades shows): letter + %, small history graph (`history`), distance to the A line, latest score and its +/- effect (`impact`). Tap → 2b.
 - **New grades** (top, only when there are some): scores that changed since the last saved gradebook, newest first, with "Mark all seen". Seen = opened, its class opened, or a week old. Class cards show "N new"; the tab shows the count.
 - **Recently graded:** newest scores across all classes, ordered by when the score appeared, then due date; unseen ones keep a NEW tag.
 - **Data:** `gradebook({sectionId})` per class (cached ≤ 30 min) → `periodsFromRows` → `currentPeriod` → `grade`.

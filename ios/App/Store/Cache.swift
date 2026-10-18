@@ -123,6 +123,6 @@ enum Fmt {
 
     static func signed(_ d: Double?) -> String {
         guard let d else { return "" }
-        return (d < 0 ? "−" : "+") + String(format: "%.2f", abs(d))
+        return (d < 0 ? "−" : "+") + String(format: "%.2f%%", abs(d))
     }
 }

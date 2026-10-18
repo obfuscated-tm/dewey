@@ -12,7 +12,7 @@ import { scoreText, shortDue } from './matstate.js';
 //   red    Missing                              faint Removed
 // Tests get a square, as in neo-plan; everything else a circle.
 export const MARK_CSS = `
-.num { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.num { font-family: var(--sans); font-variant-numeric: tabular-nums; }
 .score { color: var(--ink); }
 .pill {
   padding: 0 6px; border-radius: var(--radius);

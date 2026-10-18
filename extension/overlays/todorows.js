@@ -37,7 +37,7 @@ export const ROW_CSS = `
   grid-row: 1 / span 3; grid-column: 1;
   writing-mode: vertical-rl; transform: rotate(180deg);
   display: flex; align-items: center; justify-content: center;
-  width: 14px; font-family: var(--mono); font-size: 9px; font-weight: 600; letter-spacing: .04em;
+  width: 14px; font-family: var(--sans); font-size: 9px; font-weight: 600; letter-spacing: .04em;
   border-radius: 3px; white-space: nowrap;
 }
 .tag-solid { background: var(--ink); color: #fff; }

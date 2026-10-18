@@ -142,7 +142,7 @@ struct CourseGradesView: View {
                 Text([course.periodLabel, real?.period ?? "Current period"].filter { !$0.isEmpty }.joined(separator: " · "))
                     .font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary)
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text(real?.letter ?? "—").font(Theme.largeTitle)
+                    Text(real?.letter ?? "—").font(Theme.display)
                     Text(Fmt.pct(real?.pct, digits: 2)).font(Theme.title.weight(.medium).monospacedDigit())
                 }
                 .accessibilityElement(children: .ignore)

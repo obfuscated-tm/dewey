@@ -1,6 +1,7 @@
 // Shared by the overlays: a shadow-rooted host of our own in the overlay's
-// look (docs/extension/OVERLAY-UI.md: one 6px radius, no shadows, Instrument Sans +
-// JetBrains Mono bundled here — themeable, see "Themes and settings"), the
+// look (docs/extension/OVERLAY-UI.md: one 6px radius, no shadows, Instrument Sans
+// bundled here with tabular digits for numbers; JetBrains Mono only for the
+// archive log — themeable, see "Themes and settings"), the
 // Overlay on/off switch every host obeys, and the message to the service
 // worker. Content scripts never see the neo-plan token.
 
@@ -75,7 +76,7 @@ button {
 }
 button:disabled { cursor: default; color: var(--dim); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.mono { font-family: var(--mono); font-size: 12px; line-height: 16px; font-variant-numeric: tabular-nums; }
+.tnum { font-variant-numeric: tabular-nums; }
 .dim { color: var(--dim); }
 .bad { color: var(--bad); }
 .good { color: var(--good); }

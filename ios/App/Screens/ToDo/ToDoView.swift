@@ -1,8 +1,19 @@
 import SwiftUI
 
-/// 1a · To Do: everything due, grouped by class in Course Dashboard order.
+/// Settings → To Do (also the header's view menu): by class under the week strip
+/// (the default), or one list with the most urgent first. Remembered between launches.
+enum ToDoLayout: String, CaseIterable {
+    case week, urgent
+    static let key = "todoLayout"
+    var title: String { self == .week ? "Week" : "Urgent first" }
+    var icon: String { self == .week ? "calendar" : "flag" }
+}
+
+/// 1a · To Do: everything due, grouped by class in Course Dashboard order,
+/// or (Urgent first) by how soon it's due.
 struct ToDoView: View {
     @Environment(AppModel.self) private var model
+    @AppStorage(ToDoLayout.key) private var layoutID = ToDoLayout.week.rawValue
     @State private var filter: DayFilter?
     @Environment(\.dynamicTypeSize) private var typeSize
     @State private var showOlder = false
@@ -37,7 +48,11 @@ struct ToDoView: View {
             path = [AssignmentRoute(id: id)]
             model.deepLinkAssignment = nil
         }
+        // The day filter belongs to the week strip.
+        .onChange(of: layoutID) { filter = nil }
     }
+
+    private var layout: ToDoLayout { ToDoLayout(rawValue: layoutID) ?? .week }
 
     // ── Header: date, title, gear, week strip ───────────────────
 
@@ -46,6 +61,15 @@ struct ToDoView: View {
         let open = items.filter { !model.isFinished($0) }
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do") {
+                Menu {
+                    Picker("View", selection: $layoutID) {
+                        ForEach(ToDoLayout.allCases, id: \.self) { Label($0.title, systemImage: $0.icon).tag($0.rawValue) }
+                    }
+                } label: {
+                    Image(systemName: layout.icon).font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
+                        .frame(width: 44, height: 44)
+                }
+                .accessibilityLabel("View: \(layout.title)")
                 Button { showSettings = true } label: {
                     Image(systemName: "gearshape").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
                         .frame(width: 44, height: 44)
@@ -54,7 +78,7 @@ struct ToDoView: View {
                 .accessibilityLabel("Settings")
             }
             // Late, today and the next six days, a dot per item still to do; tap one to show only it.
-            WeekStrip(items: open, now: now, selected: $filter)
+            if layout == .week { WeekStrip(items: open, now: now, selected: $filter) }
             if let f = filter {
                 HStack(spacing: Theme.Space.s) {
                     Text(filterTitle(f, now: now)).font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary)
@@ -103,7 +127,7 @@ struct ToDoView: View {
             }
             let older = filtered.filter { TodoLogic.isOlder(due: $0.due, now: now) && !model.isFinished($0) }
             let current = filtered.filter { !older.contains($0) }
-            let groups = grouped(current)
+            let groups = layout == .urgent ? urgentGroups(current, now: now) : grouped(current)
             if groups.isEmpty && older.isEmpty {
                 Section {
                     EmptyState(icon: "checkmark.circle", title: filter == nil ? "Nothing due" : "Nothing here",
@@ -156,6 +180,18 @@ struct ToDoView: View {
         return out
     }
 
+    /// Urgent first: Late, Today, Next 7 days, Later, then everything done (sorted last, as in Week).
+    private func urgentGroups(_ items: [ItemState], now: Date) -> [Group] {
+        let open = Dictionary(grouping: items.filter { !model.isFinished($0) }) { TodoLogic.bucket(due: $0.due, now: now) }
+        var out: [Group] = []
+        for (b, title) in [(TodoLogic.Bucket.overdue, "Late"), (.today, "Today"), (.week, "Next 7 days"), (.later, "Later")] {
+            if let list = open[b], !list.isEmpty { out.append(Group(key: "\(b)", title: title, items: sortItems(list))) }
+        }
+        let finished = items.filter { model.isFinished($0) }
+        if !finished.isEmpty { out.append(Group(key: "finished", title: "Done", items: sortItems(finished))) }
+        return out
+    }
+
     /// Unfinished first, then by due date (overdue oldest first, upcoming soonest first).
     private func sortItems(_ items: [ItemState]) -> [ItemState] {
         items.sorted { a, b in
@@ -167,7 +203,8 @@ struct ToDoView: View {
 
     private func groupHeader(_ title: String, _ items: [ItemState], now: Date) -> some View {
         let open = items.filter { !model.isFinished($0) }
-        let dueToday = open.contains { TodoLogic.bucket(due: $0.due, now: now) == .today }
+        // Urgent first already has a Today section.
+        let dueToday = layout == .week && open.contains { TodoLogic.bucket(due: $0.due, now: now) == .today }
         return HStack(spacing: 8) {
             Text(title).font(Theme.headline).foregroundStyle(Theme.text)
             if dueToday {
@@ -184,6 +221,8 @@ struct ToDoView: View {
 
     private func row(_ it: ItemState, now: Date) -> some View {
         TodoRow(item: it, now: now,
+                // Urgent first mixes classes, so each row says its own.
+                course: layout == .urgent ? model.courses.first { $0.sectionId == it.sectionId }?.shortTitle : nil,
                 onSet: { model.setProgress(it, $0) },
                 onSubmit: { sheet = SheetTarget(url: submitURL(it), assignmentId: it.schoologyId) },
                 onOpen: { path.append(AssignmentRoute(id: it.schoologyId)) })
@@ -297,6 +336,8 @@ struct ProgressChips: View {
 struct TodoRow: View {
     let item: ItemState
     let now: Date
+    /// The class, above the title (Urgent first only).
+    var course: String?
     let onSet: (AppModel.Progress) -> Void
     let onSubmit: () -> Void
     /// Only the text opens the assignment, so the status buttons never navigate
@@ -314,6 +355,10 @@ struct TodoRow: View {
             // the left column (below) fills it.
             Color.clear.frame(width: 24, height: 24 + 4 + TypeBar.minHeight)
             VStack(alignment: .leading, spacing: 6) {
+                if let course {
+                    Text(course).font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.secondary).oneLine()
+                        .padding(.bottom, -4)
+                }
                 Text(item.title)
                     .font(Theme.body)
                     .foregroundStyle(Theme.text)

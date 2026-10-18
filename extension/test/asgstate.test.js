@@ -54,8 +54,8 @@ test('a zero on an ungraded lab, and a what-if', () => {
   assert.ok(w.delta > 0);
   assert.equal(whatIfGrade(COURSE, 'l3', null, 10), null);
   assert.equal(whatIfGrade(COURSE, 'l3', 5, null), null);
-  assert.equal(signed(-7.5), '−7.50');
-  assert.equal(signed(0.4), '+0.40');
+  assert.equal(signed(-7.5), '−7.50%');
+  assert.equal(signed(0.4), '+0.40%');
 });
 
 test('rank in a category, lowest first; ties share', () => {

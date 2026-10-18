@@ -20,7 +20,7 @@ const CSS = `
   font-weight: 600;
 }
 .open:hover { border-color: var(--ink); }
-.open .mono { font-weight: 400; color: var(--dim); }
+.open .tnum { font-weight: 400; color: var(--dim); }
 .dim-page {
   position: fixed; inset: 0; z-index: 2147483001;
   background: rgba(31, 36, 41, 0.4);
@@ -51,7 +51,7 @@ export function start({ doc = document, send = (m) => chrome.runtime.sendMessage
   const b = el('button', 'open', 'neo-plan');
   b.setAttribute('aria-label', 'Open neo-plan');
   b.title = 'Open neo-plan';
-  b.append(el('span', 'mono', '↗'));
+  b.append(el('span', 'tnum', '↗'));
 
   const shade = el('div', 'dim-page');
   shade.hidden = true;
@@ -59,7 +59,7 @@ export function start({ doc = document, send = (m) => chrome.runtime.sendMessage
   card.hidden = true;
   card.setAttribute('role', 'dialog');
   card.setAttribute('aria-label', 'neo-plan');
-  const tab = el('a', 'mono', 'Open in a tab');
+  const tab = el('a', 'tnum', 'Open in a tab');
   tab.target = '_blank';
   tab.rel = 'noopener';
   const close = el('button', 'close', '×');

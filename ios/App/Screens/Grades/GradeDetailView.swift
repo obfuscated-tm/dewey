@@ -89,7 +89,7 @@ struct GradeDetailView: View {
                 if let p = it.pct { Text(Fmt.pct(p)).font(Theme.body.monospacedDigit()).foregroundStyle(Theme.secondary) }
             }
             if let i = it.impact {
-                Text(abs(i) < 0.005 ? "Didn't move your course grade" : "Moved your course grade \(Fmt.signed(i)) points")
+                Text(abs(i) < 0.005 ? "Didn't move your course grade" : "Moved your course grade \(Fmt.signed(i))")
                     .font(Theme.subhead.weight(.medium))
                     .foregroundStyle(abs(i) < 0.005 ? Theme.secondary : i < 0 ? Theme.late : Theme.good)
             }
@@ -254,7 +254,7 @@ struct WhatIfSheet: View {
     private func gradeColumn(_ label: String, _ letter: String?, _ pct: Double?, color: Color, delta: Double? = nil) -> some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(label).font(Theme.caption.weight(.bold)).foregroundStyle(color)
-            Text(letter ?? "—").font(Theme.largeTitle).foregroundStyle(pct == nil ? Theme.tertiary : Theme.text)
+            Text(letter ?? "—").font(Theme.display).foregroundStyle(pct == nil ? Theme.tertiary : Theme.text)
             HStack(spacing: 6) {
                 Text(Fmt.pct(pct, digits: 2)).font(Theme.subhead.monospacedDigit()).foregroundStyle(Theme.secondary)
                 if let d = delta, abs(d) >= 0.005 {

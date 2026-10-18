@@ -13,7 +13,16 @@ struct GradesView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: Theme.Space.m) {
-                    ScreenHeader(kicker: model.classes.lazy.compactMap { model.grades[$0.sectionId]?.period }.first, title: "Grades") { EmptyView() }
+                    ScreenHeader(kicker: model.classes.lazy.compactMap { model.grades[$0.sectionId]?.period }.first, title: "Grades") {
+                        // The same switch as Settings → Grades and Classes.
+                        Menu {
+                            Toggle("Letters across the top", isOn: $reportCard)
+                        } label: {
+                            Image(systemName: "slider.horizontal.3").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("Grades layout")
+                    }
                         .padding(.top, Theme.Space.s)
                     if model.classes.isEmpty {
                         SkeletonRows(count: 4)

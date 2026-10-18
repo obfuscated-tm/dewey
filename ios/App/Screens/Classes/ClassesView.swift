@@ -6,6 +6,7 @@ struct ClassesView: View {
     @Environment(AppModel.self) private var model
     @State private var query = ""
     @State private var index = MaterialIndex.shared
+    @State private var editShelf = false
 
     var body: some View {
         NavigationStack {
@@ -28,6 +29,18 @@ struct ClassesView: View {
             .navigationDestination(for: Course.self) { MaterialsView(sectionId: $0.sectionId, folderId: nil, title: $0.shortTitle, trail: []) }
             .navigationDestination(for: AssignmentRoute.self) { AssignmentView(id: $0.id) }
             .refreshable { try? await model.loadCourses() }
+            // The same list as Settings → Grades and Classes → Classes on the shelf.
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button("Edit shelf") { editShelf = true }
+                }
+            }
+            .sheet(isPresented: $editShelf) {
+                NavigationStack {
+                    ShelfSettings()
+                        .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { editShelf = false } } }
+                }
+            }
         }
     }
 

@@ -199,7 +199,7 @@ struct ShelfSettings: View {
                     .tint(Theme.accent)
                 }
             } footer: {
-                Text("Classes off the shelf lie flat under it. You can also long-press a class on the Classes tab.")
+                Text("Classes off the shelf lie flat under it. You can also tap Edit shelf on the Classes tab, or long-press a class there.")
             }
         }
         .navigationTitle("Classes on the shelf")

@@ -80,6 +80,14 @@ android/
 
 Deep links: `dewey://todo`, `dewey://grades`, `dewey://inbox`, `dewey://assignment/{id}`, `dewey://message/{id}`.
 
+## Done ripple (to port)
+
+Dewey's one signature motion, on iOS (`ios/App/Screens/Shared/DoneRipple.swift`) and in the extension (`extension/overlays/ripple.js`): when a To Do checkbox turns on (Done, or Studied for a test), two thin rings in the theme accent spread out from it, like the ripples around the logo's drop. Not built on Android yet (the checkbox is `CheckMark` in `ui/todo/ToDoScreen.kt`). To match:
+
+- An outer ring grows from the checkbox's size to about 2.15×, its opacity 0.55 → 0 and stroke 2 → 1 dp; an inner ring starts 22% later and grows to about 1.7×, 0.4 → 0. About 420 ms in all, ease-out.
+- Plays only when the box turns on, never on undo, never when a list first loads (key it on the change, e.g. `LaunchedEffect` on a counter bumped in the tap handler that sets done). Drawn behind the checkbox (`Modifier.drawBehind` + one `Animatable`), not clipped by the row.
+- Off when the system has animations turned off (`Settings.Global.ANIMATOR_DURATION_SCALE == 0`, Android's Reduce Motion).
+
 ## Android-only facts
 
 - **Google refuses sign-in in a WebView whose user agent has `; wv` or `Version/x.y`.** Login compatibility mode (Settings → Sign-in) removes both and is **on by default** on Android. The `X-Requested-With` header is also stripped (androidx.webkit allow-list) where the WebView supports it. On the emulator (API 36), Google's sign-in page loads with this user agent. Nobody has finished a sign-in yet.

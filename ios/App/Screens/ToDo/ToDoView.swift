@@ -402,7 +402,8 @@ struct TodoRow: View {
                 Button {
                     onSet(progress == .todo ? .done : progress == .done ? .todo : .done)
                 } label: {
-                    CheckMark(item: item).frame(width: 44, height: 44).contentShape(Rectangle())
+                    CheckMark(item: item).doneRipple(progress != .todo)
+                        .frame(width: 44, height: 44).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .padding(-10)

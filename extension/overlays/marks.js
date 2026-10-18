@@ -16,6 +16,7 @@
 import { np, createHost, el, debounce, failText, keepEvents } from './ui.js';
 import { rowState } from './matstate.js';
 import { MARK_CSS, markerFor } from './marker.js';
+import { rippleFrom } from './ripple.js';
 
 // /home's rows are flex rows (title block, then Schoology's status icon), as
 // is the title cell of a /home/assignments row: the marker is the last item. A course page's rows are plain blocks: the marker
@@ -82,7 +83,7 @@ export function startMarks({ rowsIn, doc = document, loc = location, call = np }
       busy: m.busy,
       onAdd: () => add(row),
       onRestore: () => restore(row),
-      onToggle: () => toggle(row),
+      onToggle: (e) => toggle(row, e?.currentTarget),
       actions: !!row.turnIn, // the sidebars: status words, plus buttons of their own
       onTurnIn: canTurnIn ? () => turnIn(row) : undefined,
       onPutBack: row.turnIn ? () => putBack(row) : undefined,
@@ -143,11 +144,13 @@ export function startMarks({ rowsIn, doc = document, loc = location, call = np }
   const putBack = (row) => change(row, () => call('putBack', { id: known.get(row.schoology_id)?.id }));
   // Studied/not studied, done/not done: flips instantly (the state known.get
   // already shows before the call answers), and rolls back on refusal.
-  function toggle(row) {
+  // Marking a To Do row done plays the done ripple from its button (ripple.js).
+  function toggle(row, button) {
     const it = known.get(row.schoology_id);
     if (!it) return;
     if ((marks.get(row.schoology_id) || []).some((x) => x.busy)) return; // change() would skip it, after the flip below
     const work = it.work === 'ready' ? 'todo' : 'ready';
+    if (work === 'ready' && row.turnIn) rippleFrom(button, row.el);
     known.set(row.schoology_id, { ...it, work });
     return change(row, async () => {
       const r = await call('work', { id: it.id, work });

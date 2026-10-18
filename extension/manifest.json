@@ -91,6 +91,7 @@
         "overlays/materials.js",
         "overlays/matstate.js",
         "overlays/quizpage.js",
+        "overlays/ripple.js",
         "overlays/settings.js",
         "overlays/switch.js",
         "overlays/theme.js",

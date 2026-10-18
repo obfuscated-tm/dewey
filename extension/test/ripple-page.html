@@ -1,0 +1,16 @@
+<!doctype html>
+<!-- Hand check for overlays/ripple.js: serve extension/ (python3 -m http.server)
+     and open /test/ripple-page.html; click Done. -->
+<meta charset="utf-8">
+<title>Done ripple</title>
+<body style="padding:40px;font:13px system-ui;--accent:#1D9E75">
+<div id="row" style="padding:20px;border:1px solid #ddd;width:240px">
+  <button id="b" style="display:inline-flex;gap:4px;align-items:center;height:22px;padding:0 8px 0 6px;border:1px solid #ccc;border-radius:6px;background:#fff;color:#555">
+    <svg viewBox="0 0 16 16" width="12" height="12" style="fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round"><path d="M3.5 8.5l3 3 6-7"/></svg><span>Done</span>
+  </button>
+</div>
+<script type="module">
+  import { rippleFrom } from '../overlays/ripple.js';
+  const b = document.getElementById('b');
+  b.addEventListener('click', () => rippleFrom(b, document.getElementById('row')));
+</script>

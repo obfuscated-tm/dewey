@@ -18,8 +18,12 @@ data class Course(val sectionId: String, val title: String, val sectionTitle: St
     val periodLabel: String
         get() = Regex("""(?i)\b(?:p(?:er(?:iod)?)?\.?\s*)(\d)\b""").find(sectionTitle)?.let { "P${it.groupValues[1]}" } ?: sectionTitle
 
-    /** A class, not a hub or advisory: "Name - 12345: …" (overlays/todo.js isClassCard). */
+    /** A class, not a hub or advisory: the student's choice in Settings, else the guess from the name. */
     val isClass: Boolean
+        get() = com.owenleung.dewey.store.CourseKinds.choice(sectionId) ?: looksLikeClass
+
+    /** The guess: "Name - 12345: …" (overlays/todo.js isClassCard). Other schools may name classes differently. */
+    val looksLikeClass: Boolean
         get() = Regex("""^.+ - \d{3,5}:""").containsMatchIn("$title: $sectionTitle") || Regex("""- \d{3,5}$""").containsMatchIn(title)
 
     companion object {

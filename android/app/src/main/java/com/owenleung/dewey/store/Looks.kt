@@ -37,6 +37,32 @@ enum class ToDoLayout(val raw: String, val title: String) {
 }
 
 /** The Classes shelf: section ids taken off it (they lie flat under it), comma-separated. */
+/**
+ * Class or group, when the student picked one (Settings → Classes and groups).
+ * A class gets a book and grades; a group's posts go to School updates.
+ */
+object CourseKinds {
+    const val CLASS_KEY = "courseKindClass"
+    const val GROUP_KEY = "courseKindGroup"
+
+    /** true: a class, false: a group, null: go by the name. */
+    fun choice(sectionId: String): Boolean? {
+        if (!Prefs.ready) return null
+        if (sectionId in IdSet.parse(Prefs.string(CLASS_KEY))) return true
+        if (sectionId in IdSet.parse(Prefs.string(GROUP_KEY))) return false
+        return null
+    }
+
+    /** Saves the choice; one that matches the name's guess isn't kept. */
+    fun set(c: com.owenleung.dewey.engine.Course, isClass: Boolean) {
+        val cls = IdSet.parse(Prefs.string(CLASS_KEY)) - c.sectionId
+        val grp = IdSet.parse(Prefs.string(GROUP_KEY)) - c.sectionId
+        val keep = isClass != c.looksLikeClass
+        Prefs.set(CLASS_KEY, (if (keep && isClass) cls + c.sectionId else cls).sorted().joinToString(","))
+        Prefs.set(GROUP_KEY, (if (keep && !isClass) grp + c.sectionId else grp).sorted().joinToString(","))
+    }
+}
+
 object ShelfLook {
     const val OFF_KEY = "offShelf"
     fun off(): Set<String> = IdSet.parse(Prefs.string(OFF_KEY))

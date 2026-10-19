@@ -213,7 +213,17 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     }
 
     val classes: List<Course>
-        get() = courses.filter { it.isClass }.ifEmpty { courses }
+        get() {
+            Prefs.revision.intValue  // a course switched between class and group (Settings)
+            return courses.filter { it.isClass }.ifEmpty { courses }
+        }
+
+    /** Class or group for one course (Settings); fetches a new group's updates. */
+    fun setKind(c: Course, isClass: Boolean) {
+        com.owenleung.dewey.store.CourseKinds.set(c, isClass)
+        revision.intValue++
+        if (!isClass) scope.launch { inbox.refresh(this@AppModel) }
+    }
 
     fun course(sectionId: String?): Course? = sectionId?.let { s -> courses.firstOrNull { it.sectionId == s } }
 

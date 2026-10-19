@@ -399,6 +399,39 @@ private fun ToDoSettings() {
     }
 }
 
+/**
+ * Every Schoology course, as a class or a group. Dewey guesses from the name
+ * (a class ends in "- 12345"); a school that names courses differently can fix it here.
+ */
+@Composable
+private fun CourseKindSection() {
+    val model = model
+    Prefs.revision.intValue
+    Section("Classes and groups", "Dewey guesses from the name. Classes get a book on the shelf and a place in Grades, and their messages count as from teachers. " +
+        "Groups, like a class hub or advisory, show their posts in Inbox under School updates.") {
+        model.courses.forEachIndexed { i, c ->
+            var open by remember { mutableStateOf(false) }
+            RowLine(i > 0) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(c.shortTitle, style = Theme.body, color = C.text)
+                        if (com.owenleung.dewey.store.CourseKinds.choice(c.sectionId) != null)
+                            Text("Changed from ${if (c.looksLikeClass) "Class" else "Group"}", style = Theme.caption, color = C.secondary)
+                    }
+                    Box {
+                        TextButton({ open = true }) { Text(if (c.isClass) "Class ▾" else "Group ▾", color = C.accent) }
+                        DropdownMenu(open, { open = false }) {
+                            for ((label, v) in listOf("Class" to true, "Group" to false)) DropdownMenuItem(
+                                text = { Text(label) }, leadingIcon = { if (c.isClass == v) Icon(Icons.Outlined.Check, null) },
+                                onClick = { model.setKind(c, v); open = false })
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** A switch per class, with its colour dot. */
 @Composable
 private fun ClassToggle(c: com.owenleung.dewey.engine.Course, on: Boolean, divider: Boolean, onToggle: () -> Unit) {
@@ -443,6 +476,7 @@ private fun ShelfSettings() {
                     model.classes.forEachIndexed { i, c -> ClassToggle(c, c.sectionId !in off, i > 0) { ShelfLook.toggle(c.sectionId) } }
                 }
             }
+            CourseKindSection()
         }
     }
 }
@@ -456,6 +490,7 @@ private fun InboxSettings() {
                 else "Messages stay unread on Schoology until you open them there.") {
                 Toggle("Mark messages read when opened", Inbox.MARK_READ_KEY, true, divider = false)
             }
+            CourseKindSection()
         }
     }
 }

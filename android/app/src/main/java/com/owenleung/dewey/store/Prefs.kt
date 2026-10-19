@@ -26,6 +26,8 @@ object Prefs {
     /** Bumped on every write so Compose screens reading settings recompose. */
     val revision = mutableIntStateOf(0)
 
+    val ready: Boolean get() = ::sp.isInitialized
+
     fun init(ctx: Context) {
         if (!::sp.isInitialized) sp = ctx.getSharedPreferences("dewey", Context.MODE_PRIVATE)
     }

@@ -25,9 +25,38 @@ struct Course: Codable, Hashable, Identifiable {
         return sectionTitle
     }
 
-    /// A class, not a hub or advisory: "Name - 12345: …" (overlays/todo.js isClassCard).
-    var isClass: Bool {
+    /// A class, not a hub or advisory: the student's choice in Settings, else the guess from the name.
+    var isClass: Bool { CourseKinds.choice(sectionId) ?? looksLikeClass }
+
+    /// The guess: "Name - 12345: …" (overlays/todo.js isClassCard). Other schools may name classes differently.
+    var looksLikeClass: Bool {
         "\(title): \(sectionTitle)".firstMatch(of: /^.+ - \d{3,5}:/) != nil || title.firstMatch(of: /- \d{3,5}$/) != nil
+    }
+}
+
+/// Class or group, when the student picked one (Settings → Classes and groups).
+/// A class gets a book, grades and To Do; a group's posts go to School updates.
+enum CourseKinds {
+    static let classKey = "courseKindClass", groupKey = "courseKindGroup"
+
+    static func ids(_ key: String) -> Set<String> {
+        Set((UserDefaults.standard.string(forKey: key) ?? "").split(separator: ",").map(String.init))
+    }
+
+    /// true: a class, false: a group, nil: go by the name.
+    static func choice(_ sectionId: String) -> Bool? {
+        if ids(classKey).contains(sectionId) { return true }
+        if ids(groupKey).contains(sectionId) { return false }
+        return nil
+    }
+
+    /// Saves the choice; one that matches the name's guess isn't kept.
+    static func set(_ c: Course, isClass: Bool) {
+        var cls = ids(classKey), grp = ids(groupKey)
+        cls.remove(c.sectionId); grp.remove(c.sectionId)
+        if isClass != c.looksLikeClass { if isClass { cls.insert(c.sectionId) } else { grp.insert(c.sectionId) } }
+        UserDefaults.standard.set(cls.sorted().joined(separator: ","), forKey: classKey)
+        UserDefaults.standard.set(grp.sorted().joined(separator: ","), forKey: groupKey)
     }
 }
 

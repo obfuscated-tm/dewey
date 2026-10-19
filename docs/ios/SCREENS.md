@@ -94,6 +94,7 @@ Tabs: **To Do · Grades · Classes · Schoology**. To Do, Grades and Classes eac
 
 ### 3a Classes (tab 3) · `design/Classes.dc.html`
 - A shelf of book spines in Course Dashboard order, each in its class colour (`Theme.classColors`, white text ≥ 4.5:1), name up the spine, a white call-number label with the period and letter. A bookmark ribbon (notched end, words running up it: LATE / TODAY / TMRW) hangs from the top right of a book with work in that state; a book lying flat shows the same word as a small tag. Long-press (or Settings → Classes, where the gear lands) takes a class off the shelf; it then lies flat under it. At the accessibility text sizes every class lies flat.
+- **Classes and groups** (Settings → Classes, and Settings → Inbox): every Schoology course as Class or Group. Dewey guesses from the name (`Course.looksLikeClass`: a class ends in "- 12345"); a choice is kept only when it differs from the guess (`CourseKinds`, "Changed from …"). Classes get a book and a place in Grades, and their messages count as from teachers; groups (hubs, counseling, advisory) feed Inbox → School updates (first feed page of each group).
 - Search: every class's materials by name, from a cached index (build it like the MCP's `find_material`: walk each Materials tree, cache, refresh in the background).
 - Updates tile → feed (screen not designed; v1 can open the course feed in the Schoology sheet). Recently opened = local history.
 

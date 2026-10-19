@@ -315,6 +315,7 @@ private struct InboxSettings: View {
                 Text(markRead ? "Opening a message here marks it read on Schoology."
                               : "Messages stay unread on Schoology until you open them there.")
             }
+            CourseKindSection()
         }
         .navigationTitle("Inbox")
         .navigationBarTitleDisplayMode(.inline)

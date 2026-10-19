@@ -243,9 +243,41 @@ struct ShelfSettings: View {
             } footer: {
                 Text("Classes off the shelf lie flat under it. You can also long-press a class on the shelf.")
             }
+            CourseKindSection()
         }
         .coachTarget("settings.page.classes")
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+/// Every Schoology course, as a class or a group. Dewey guesses from the name
+/// (a class ends in "- 12345"); a school that names courses differently can fix it here.
+struct CourseKindSection: View {
+    @Environment(AppModel.self) private var model
+
+    var body: some View {
+        let _ = model.kinds
+        Section {
+            ForEach(model.courses) { c in
+                Picker(selection: Binding(get: { c.isClass }, set: { model.setKind(c, isClass: $0) })) {
+                    Text("Class").tag(true)
+                    Text("Group").tag(false)
+                } label: {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(c.shortTitle)
+                        if CourseKinds.choice(c.sectionId) != nil {
+                            Text("Changed from \(c.looksLikeClass ? "Class" : "Group")").font(Theme.caption).foregroundStyle(Theme.secondary)
+                        }
+                    }
+                }
+                .pickerStyle(.menu)
+                .tint(Theme.accent)
+            }
+        } header: {
+            Text("Classes and groups")
+        } footer: {
+            Text("Dewey guesses from the name. Classes get a book on the shelf and a place in Grades, and their messages count as from teachers. Groups, like a class hub or advisory, show their posts in Inbox under School updates.")
+        }
     }
 }

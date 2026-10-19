@@ -50,9 +50,11 @@ struct InboxView: View {
                             rows: { i in i.teacherThreads(classes).map(Row.thread) })
                         box("classes", "New in your classes", empty: "Nothing new", sources: [.notices],
                             rows: { i in i.classNotices(classes).map(Row.notice) })
-                        if !inbox.posts.isEmpty {
+                        // Only groups: a course switched to a class in Settings drops out right away.
+                        let posts = inbox.posts.filter { p in !classes.contains { $0.sectionId == p.sectionId } }
+                        if !posts.isEmpty {
                             box("updates", "School updates", sources: [],
-                                rows: { i in i.posts.map(Row.post) })
+                                rows: { _ in posts.map(Row.post) })
                         }
                         box("school", "School", empty: "Nothing from school", sources: [.messages, .notices],
                             rows: { i in

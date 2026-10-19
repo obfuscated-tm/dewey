@@ -120,7 +120,20 @@ final class AppModel {
         Cache.save("courses", list)
     }
 
+    /// Class or group for one course (Settings); redraws everything that sorts by it,
+    /// and fetches a new group's updates.
+    func setKind(_ c: Course, isClass: Bool) {
+        CourseKinds.set(c, isClass: isClass)
+        kinds += 1
+        revision += 1
+        if !isClass { Task { await inbox.refresh(self) } }
+    }
+
+    /// Bumped when a course is switched between class and group (Settings).
+    var kinds = 0
+
     var classes: [Course] {
+        _ = kinds
         let c = courses.filter(\.isClass)
         return c.isEmpty ? courses : c
     }

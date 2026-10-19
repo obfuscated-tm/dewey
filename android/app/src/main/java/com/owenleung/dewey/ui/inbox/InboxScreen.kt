@@ -115,7 +115,9 @@ fun InboxScreen() {
         InboxBox("classes", "New in your classes", shown, empty = "Nothing new", sources = setOf(Source.NOTICES)) {
             it.classNotices(classes).map(InboxRow::Notice)
         }
-        if (inbox.posts.isNotEmpty()) InboxBox("updates", "School updates", shown, sources = emptySet()) { it.posts.map(InboxRow::Post) }
+        // Only groups: a course switched to a class in Settings drops out right away.
+        val posts = inbox.posts.filter { p -> classes.none { it.sectionId == p.sectionId } }
+        if (posts.isNotEmpty()) InboxBox("updates", "School updates", shown, sources = emptySet()) { posts.map(InboxRow::Post) }
         InboxBox("school", "School", shown, empty = "Nothing from school", sources = setOf(Source.MESSAGES, Source.NOTICES)) { i ->
             i.schoolThreads(classes).filter { !i.isNew(it) }.map(InboxRow::Thread) + i.otherNotices(classes).map(InboxRow::Notice)
         }

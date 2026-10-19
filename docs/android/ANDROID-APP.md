@@ -6,6 +6,8 @@ A native Kotlin + Jetpack Compose port of the iOS app (`ios/`). Same screens, sa
 
 **Caught up with iOS (2026-10-16):** the iOS changes up to `acd01cc` are ported: no sign-out on a single op's `login` (the engine asks `/iapi/course/active` first; a 403 shows "removed or made private" with "Remove from my list"), foldable Inbox boxes with "Show older", faster loading (saved copies on launch, dropbox checks and gradebooks 2 at a time, saved grade summaries per build, no re-adding an unchanged set of reminders), the six themes in Settings → Look, and the accent-ring done vs green-seal turned-in marks. They build and pass unit tests, but haven't been run on the emulator. iOS's Debug-only demo mode (`-DeweyDemo`) is not ported.
 
+**Caught up with design-refresh (2026-10-18):** the iOS changes since Android 0.2 are ported: the Dew palette (one theme, so the six themes are gone) with serif titles, a gear on each tab that opens that tab's Settings page, Settings as pages, the Grades report card, hidden classes in Grades (left out of new-grade counts and alerts), To Do as catalog cards with call numbers and the done ripple, the status tip and status guide, the Assignment checkout card, Classes as a shelf of books, Inbox "School updates", course PDFs resolved through the `material` op, "+0.00%" for a grade that doesn't move, and the guided tour (below). Unit tests pass. On the emulator, signed out, the whole tour was run start to finish; the rest was built but not run live.
+
 ## Rules (same as iOS)
 
 1. **Read-only on Schoology.** GET only. Never open quiz-taking pages. Never press Submit. Never enter or store Owen's passwords; he signs in himself.
@@ -57,7 +59,9 @@ android/
     store/                         ItemStore, Prefs/Cache/Secrets, Reminders, Inbox, Fmt
     neoplan/NeoPlanClient.kt       neo-plan API, token in Android Keystore
     widget/                        Glance widgets (To Do, Tests) + WidgetBridge + countdown notification
+    engine/Practice.kt             the tour's pretend week: courses, items, gradebooks, and an answer for every op
     ui/                            Compose screens, one package per tab (todo, assignment, grades, classes, inbox, schoology, settings)
+    ui/tour/                       TourScreen (cards), PracticeScreen (the pretend week + step script), Coach (overlay)
   app/src/test/                    JVM unit tests (TodoLogic, Reminders.plan, grade alert text, Inbox.kind, camelCase keys, user agent)
 ```
 
@@ -77,12 +81,13 @@ android/
 | Siri / App Shortcuts | static launcher shortcuts (To Do, Grades) + `dewey://` deep links |
 | QuickLook | built-in viewer: PdfRenderer for PDFs, images inline, "Open with…" and Share through a FileProvider |
 | Sheets | full-screen Compose dialogs (Schoology sheet, file viewer, what-if) |
+| PracticeView + Coach (tour) | `PracticeScreen` runs the real `MainScreen` on `AppModel.practice(ctx)`. Its `Engine(practice = true)` answers from `Practice`, and only the pure ops run engine.js, in its own web view on a blank page at the Schoology origin (no network, works signed out). `ItemStore.inMemory()`, `cache-practice`, and guards in Reminders, WidgetBridge, NeoPlanClient and RefreshWorker keep it off everything real. The coach overlay is in the same window as the screens: targets report `boundsInRoot` through `Modifier.coachTarget(key)`, and four blocker boxes swallow taps around the hole. So in practice the Schoology sheet is `PracticeDropbox`, drawn in the window rather than in a Dialog. |
 
 Deep links: `dewey://todo`, `dewey://grades`, `dewey://inbox`, `dewey://assignment/{id}`, `dewey://message/{id}`.
 
-## Done ripple (to port)
+## Done ripple
 
-Dewey's one signature motion, on iOS (`ios/App/Screens/Shared/DoneRipple.swift`) and in the extension (`extension/overlays/ripple.js`): when a To Do checkbox turns on (Done, or Studied for a test), two thin rings in the theme accent spread out from it, like the ripples around the logo's drop. Not built on Android yet (the checkbox is `CheckMark` in `ui/todo/ToDoScreen.kt`). To match:
+Dewey's one signature motion, on iOS (`ios/App/Screens/Shared/DoneRipple.swift`) and in the extension (`extension/overlays/ripple.js`): when a To Do checkbox turns on (Done, or Studied for a test), two thin rings in the theme accent spread out from it, like the ripples around the logo's drop. On Android it's `Modifier.doneRipple` in `ui/Drop.kt`, on the checkbox in `ui/todo/ToDoScreen.kt`:
 
 - An outer ring grows from the checkbox's size to about 2.15×, its opacity 0.55 → 0 and stroke 2 → 1 dp; an inner ring starts 22% later and grows to about 1.7×, 0.4 → 0. About 420 ms in all, ease-out.
 - Plays only when the box turns on, never on undo, never when a list first loads (key it on the change, e.g. `LaunchedEffect` on a counter bumped in the tap handler that sets done). Drawn behind the checkbox (`Modifier.drawBehind` + one `Animatable`), not clipped by the row.
@@ -96,6 +101,9 @@ Dewey's one signature motion, on iOS (`ios/App/Screens/Shared/DoneRipple.swift`)
 - On Owen's Mac the emulator window can go blank with the default GPU mode ("Failed to make display surface context current" in its log). Use `-gpu swiftshader_indirect`. Shut it down with `adb emu kill`, not by killing the process, so the WebView's cookies get written first.
 - `avdmanager` from Homebrew's commandlinetools warns "Could not load devices.xml" but still creates the AVD.
 - In the Claude Code sandbox, `adb` can't reach its daemon. Run adb commands outside the sandbox.
+- Debug builds open the tour from adb, signed in or not: `adb shell am start -n com.owenleung.dewey/.MainActivity --es tour tour` (or `cards`).
+- `ItemState` is mutable and passed around as the same instance. With Compose's strong skipping, a composable that takes one is skipped when its parent recomposes, so it must read `model.revision` to redraw after a mark.
+- Building inside `~/Documents` can fail at dex merging with "defined multiple times … 2.dex": iCloud makes " 2" copies of files in `app/build`. Build with the build directory outside Documents (a Gradle init script that sets `layout.buildDirectory`).
 
 ## Not verified yet (do these after Owen signs in on the emulator or a phone)
 
@@ -134,4 +142,6 @@ Still to check:
 | Schoology tab | done, not run live |
 | Settings, Developer, neo-plan | done, not run live |
 | Widgets, background refresh, reminders, countdown | done, checked on emulator |
-| Unit tests | 11 pass (ThemeTest checks contrast in every theme) |
+| Design refresh (Dew palette, settings pages, catalog cards, shelf, status guide) | done, seen in the tour on the emulator |
+| Guided tour, practice mode, tour cards | done, run start to finish on emulator (signed out) |
+| Unit tests | 17 pass (Dew contrast, call numbers, logic) |

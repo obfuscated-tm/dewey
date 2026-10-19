@@ -83,27 +83,73 @@ import com.owenleung.dewey.ui.model
 import com.owenleung.dewey.ui.nav
 import com.owenleung.dewey.ui.theme.C
 import com.owenleung.dewey.ui.theme.Theme
+import androidx.compose.runtime.key
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.text.style.TextOverflow
+import com.owenleung.dewey.store.CallNumber
+import com.owenleung.dewey.store.Prefs
+import com.owenleung.dewey.store.ToDoLayout
+import com.owenleung.dewey.ui.DropShape
+import com.owenleung.dewey.ui.RippleProgress
+import com.owenleung.dewey.ui.classColor
+import com.owenleung.dewey.ui.doneRipple
+import com.owenleung.dewey.ui.settings.CallNumberMenu
+import com.owenleung.dewey.ui.settings.StatusTip
+import com.owenleung.dewey.ui.settings.TipKind
+import com.owenleung.dewey.ui.tour.coachTarget
 import java.util.Date
 import kotlinx.coroutines.launch
 
-/** 1a · To Do: everything due, grouped by class in Course Dashboard order. */
+/** The status tip: shown once, under the first row the student ticks, until closed. */
+private const val TIP_SHOWN_KEY = "statusTipShown"
+private const val TIP_ROW_KEY = "statusTipRow"
+private const val TIP_KIND_KEY = "statusTipKind"
+
+/** The first time anything is ticked (Done, Studied or Turn in), the tip goes under that row. Never in the tour's pretend week. */
+fun firstTick(m: AppModel, it: ItemState, p: AppModel.Progress) {
+    if (Prefs.bool(TIP_SHOWN_KEY) || p == AppModel.Progress.TODO || m.practice) return
+    Prefs.set(TIP_SHOWN_KEY, true)
+    Prefs.set(TIP_ROW_KEY, it.schoologyId)
+    Prefs.set(TIP_KIND_KEY, (if (p == AppModel.Progress.TURNED_IN) TipKind.TURNED_IN else if (it.isExam) TipKind.STUDIED else TipKind.DONE).raw)
+}
+
+/** Sets the student's mark from a To Do control, and shows the first-tick tip. */
+fun setFromRow(m: AppModel, it: ItemState, p: AppModel.Progress) {
+    m.setProgress(it, p)
+    firstTick(m, it, p)
+}
+
+/**
+ * 1a · To Do: everything due, grouped by class in Course Dashboard order as
+ * library catalog cards, or (Urgent first) by how soon it's due.
+ */
 @Composable
 fun ToDoScreen() {
     val model = model
-    val nav = nav
-    var filter by remember { mutableStateOf<DayFilter?>(null) }
+    Prefs.revision.intValue
+    val layout = ToDoLayout.current
+    var filter by remember(layout) { mutableStateOf<DayFilter?>(null) }
     var showOlder by rememberSaveable { mutableStateOf(false) }
     val items = model.todoItems()
     val now = Date()
+    val big = LocalDensity.current.fontScale >= 1.6f
 
     ScrollPage(refresh = { model.refreshTodo() }, spacing = 12.dp) {
-        // Header: date, title, gear, week strip.
+        // Header: date, title, ripple progress, gear, week strip.
         val open = items.filter { !model.isFinished(it) }
+        val today = items.filter { TodoLogic.bucket(it.due, now) == TodoLogic.Bucket.TODAY }
+        val ripple: (@Composable () -> Unit)? = if (today.isEmpty()) null else { { RippleProgress(today.count { model.isFinished(it) }, today.size) } }
         ScreenHeader("To Do", kicker = Fmt.header(now)) {
+            if (!big && ripple != null) Box(Modifier.padding(bottom = Theme.Space.xs, end = Theme.Space.xs)) { ripple() }
             ScreenOptions(SettingsPage.TODO)
         }
+        if (big && ripple != null) Box(Modifier.padding(horizontal = Theme.Space.xs)) { ripple() }
         // Late, today and the next six days, a dot per item still to do; tap one to show only it.
-        WeekStrip(open, now, filter) { filter = it }
+        if (layout == ToDoLayout.WEEK) WeekStrip(open, now, filter) { filter = it }
         filter?.let { f ->
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(filterTitle(f, now), style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.secondary, modifier = Modifier.weight(1f))
@@ -128,16 +174,18 @@ fun ToDoScreen() {
         val filtered = items.filter { filter == null || (!model.isFinished(it) && filter!!.matches(it, now)) }
         val older = filtered.filter { TodoLogic.isOlder(it.due, now) && !model.isFinished(it) }
         val current = filtered.filter { it !in older }
-        val groups = grouped(model, current)
+        val groups = if (layout == ToDoLayout.URGENT) urgentGroups(model, current, now) else grouped(model, current)
         if (groups.isEmpty() && older.isEmpty()) {
             EmptyState(if (filter == null) "Nothing due" else "Nothing here",
                 if (filter == null) "Schoology lists nothing for you right now." else "Tap the day again to see everything.",
                 art = filter == null)
         }
-        for (g in groups) {
-            Column {
-                GroupHeader(g.title, g.items, now)
-                Card { g.items.forEachIndexed { i, it -> if (i > 0) Divider(); TodoRowItem(it, now) } }
+        // Each group is a library catalog card: its heading (Dewey number, class) over
+        // a red rule, then the work on pale blue ruled lines.
+        for (g in groups) key(g.key) {
+            Card {
+                CardHeading(g, now, layout)
+                RowList(g.items, now, layout)
             }
         }
         if (older.isNotEmpty()) {
@@ -147,10 +195,28 @@ fun ToDoScreen() {
                     Text("Older · ${older.size}", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text)
                     Spacer(Modifier.width(6.dp))
                     Text("over ${TodoLogic.OLDER_DAYS} days late", style = Theme.footnote, color = C.tertiary, modifier = Modifier.weight(1f))
-                    Icon(if (showOlder) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, tint = C.secondary)
+                    Icon(if (showOlder) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore, null, tint = C.tertiary)
                 }
-                if (showOlder) Card { sortItems(model, older).forEachIndexed { i, it -> if (i > 0) Divider(); TodoRowItem(it, now) } }
+                if (showOlder) Card { RowList(sortItems(model, older), now, layout) }
             }
+        }
+    }
+}
+
+/** A card's rows on pale blue ruled lines, with the status tip under the row it belongs to. */
+@Composable
+private fun RowList(items: List<ItemState>, now: Date, layout: ToDoLayout) {
+    val model = model
+    val nav = nav
+    val tipRow = Prefs.string(TIP_ROW_KEY)
+    items.forEachIndexed { i, it ->
+        key(it.schoologyId) {
+            if (i > 0) HorizontalDivider(color = C.catalogLine, thickness = 1.dp, modifier = Modifier.padding(start = 12.dp))
+            TodoRowItem(it, now, course = if (layout == ToDoLayout.URGENT) model.course(it.sectionId)?.shortTitle ?: it.courseName else null)
+            if (tipRow == it.schoologyId) StatusTip(TipKind.of(Prefs.string(TIP_KIND_KEY)),
+                onGuide = { nav.push(Route.SettingsPage(SettingsPage.STATUS_GUIDE)) },
+                onClose = { Prefs.set(TIP_ROW_KEY, "") },
+                modifier = Modifier.padding(start = Theme.Space.m, end = Theme.Space.m, bottom = Theme.Space.m))
         }
     }
 }
@@ -160,17 +226,31 @@ private fun filterTitle(f: DayFilter, now: Date) = when (f) {
     is DayFilter.Day -> when (f.k) { 0 -> "Today"; 1 -> "Tomorrow"; else -> Fmt.header(Fmt.addDays(Fmt.startOfDay(now), f.k)) }
 }
 
-private data class Group(val key: String, val title: String, val items: List<ItemState>)
+/** `sectionId` is set for a class's card (Week); Urgent first's sections have none. */
+private data class Group(val key: String, val title: String, val items: List<ItemState>, val sectionId: String? = null)
 
 private fun grouped(m: AppModel, items: List<ItemState>): List<Group> {
     val bySection = items.groupBy { it.sectionId ?: "" }.toMutableMap()
     val out = mutableListOf<Group>()
     for (c in m.courses) {
         val list = bySection.remove(c.sectionId)
-        if (!list.isNullOrEmpty()) out += Group(c.sectionId, c.shortTitle, sortItems(m, list))
+        if (!list.isNullOrEmpty()) out += Group(c.sectionId, c.shortTitle, sortItems(m, list), c.sectionId)
     }
     val rest = bySection.values.flatten()
     if (rest.isNotEmpty()) out += Group("other", "Other", sortItems(m, rest))
+    return out
+}
+
+/** Urgent first: Late, Today, Next 7 days, Later, then everything done (sorted last, as in Week). */
+private fun urgentGroups(m: AppModel, items: List<ItemState>, now: Date): List<Group> {
+    val open = items.filter { !m.isFinished(it) }.groupBy { TodoLogic.bucket(it.due, now) }
+    val out = mutableListOf<Group>()
+    for ((b, title) in listOf(TodoLogic.Bucket.OVERDUE to "Late", TodoLogic.Bucket.TODAY to "Today", TodoLogic.Bucket.WEEK to "Next 7 days", TodoLogic.Bucket.LATER to "Later")) {
+        val list = open[b]
+        if (!list.isNullOrEmpty()) out += Group(b.name, title, sortItems(m, list))
+    }
+    val finished = items.filter { m.isFinished(it) }
+    if (finished.isNotEmpty()) out += Group("finished", "Done", sortItems(m, finished))
     return out
 }
 
@@ -178,27 +258,49 @@ private fun grouped(m: AppModel, items: List<ItemState>): List<Group> {
 private fun sortItems(m: AppModel, items: List<ItemState>) =
     items.sortedWith(compareBy<ItemState> { m.isFinished(it) }.thenBy { it.dueAt ?: Long.MAX_VALUE })
 
+/**
+ * The top of a catalog card: the class's call number in its colour (none when Dewey
+ * can't tell, see CallNumber), the class, its period, a red rule under it. Press and
+ * hold to set the number.
+ */
 @Composable
-private fun GroupHeader(title: String, items: List<ItemState>, now: Date) {
+private fun CardHeading(g: Group, now: Date, layout: ToDoLayout) {
     val model = model
-    val open = items.filter { !model.isFinished(it) }
-    val dueToday = open.any { TodoLogic.bucket(it.due, now) == TodoLogic.Bucket.TODAY }
-    Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 4.dp, bottom = 6.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(title, style = Theme.headline, color = C.text)
-        if (dueToday) {
-            Spacer(Modifier.width(8.dp))
-            Text("Due today", style = Theme.caption.copy(fontWeight = FontWeight.SemiBold), color = C.accent,
+    val open = g.items.filter { !model.isFinished(it) }
+    val course = model.course(g.sectionId)
+    val number = course?.let { CallNumber.number(it, Prefs.string(CallNumber.KEY)) }
+    // Urgent first already has a Today section.
+    val dueToday = layout == ToDoLayout.WEEK && open.any { TodoLogic.bucket(it.due, now) == TodoLogic.Bucket.TODAY }
+    var menu by remember { mutableStateOf(false) }
+    val rule = C.catalogRule
+    val color = if (course != null) classColor(course.sectionId) else C.accent
+    Box {
+        Row(
+            Modifier.fillMaxWidth()
+                .then(if (course != null) Modifier.combinedClickable(onClick = {}, onLongClick = { menu = true }, onLongClickLabel = "Change call number") else Modifier)
+                .semantics(mergeDescendants = true) { heading() }
+                .padding(start = Theme.Space.l, end = Theme.Space.l, top = Theme.Space.m)
+                .drawBehind { drawLine(rule, Offset(0f, size.height), Offset(size.width, size.height), 1.5.dp.toPx()) }
+                .padding(bottom = Theme.Space.s),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Space.s),
+        ) {
+            if (number != null) Text(number, style = Theme.callNumber, color = color,
+                modifier = Modifier.semantics { contentDescription = "Call number $number" })
+            Text(g.title, style = Theme.headline, color = C.text, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+            if (dueToday) Text("Due today", style = Theme.caption.copy(fontWeight = FontWeight.SemiBold), color = C.accent,
                 modifier = Modifier.clip(CircleShape).background(C.accentSoft).padding(horizontal = 7.dp, vertical = 2.dp))
+            Spacer(Modifier.weight(1f))
+            val period = course?.periodLabel?.takeIf { it.length <= 3 }
+            Text(listOfNotNull(period, "${open.size} open").joinToString(" · "), style = Theme.footnote, color = C.secondary, maxLines = 1)
         }
-        Spacer(Modifier.weight(1f))
-        Text("${open.size}", style = Theme.footnote, color = C.secondary)
+        if (course != null) CallNumberMenu(course, menu) { menu = false }
     }
 }
 
 // ── One row ──────────────────────────────────────────────────────────────
 
 @Composable
-fun TodoRowItem(item: ItemState, now: Date) {
+fun TodoRowItem(item: ItemState, now: Date, course: String? = null) {
     val model = model
     val nav = nav
     var menu by remember { mutableStateOf(false) }
@@ -210,17 +312,18 @@ fun TodoRowItem(item: ItemState, now: Date) {
         // The text sets the row's height; the left column (checkbox, then the type bar filling the rest)
         // matches it. Not IntrinsicSize.Min: that asks the weighted title for its height first and gets a huge one.
         Box(
-            Modifier.fillMaxWidth()
+            Modifier.fillMaxWidth().coachTarget("todo.row.${item.schoologyId}")
                 .combinedClickable(onClick = { nav.push(Route.Assignment(item.schoologyId)) }, onLongClick = { menu = true })
                 .padding(start = 12.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
         ) {
             Column(Modifier.matchParentSize(), horizontalAlignment = Alignment.Start) {
               Column(Modifier.width(44.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
                 Box(
-                    Modifier.size(44.dp).clip(CircleShape).clickable(role = Role.Checkbox) {
+                    Modifier.size(44.dp).coachTarget("todo.check.${item.schoologyId}").doneRipple(progress != AppModel.Progress.TODO, C.accent)
+                        .clip(CircleShape).clickable(role = Role.Checkbox) {
                         // One tap: to do ↔ done (a turned-in row goes back to done), like the extension.
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
-                        model.setProgress(item, if (progress == AppModel.Progress.TODO) AppModel.Progress.DONE else if (progress == AppModel.Progress.DONE) AppModel.Progress.TODO else AppModel.Progress.DONE)
+                        setFromRow(model, item, if (progress == AppModel.Progress.TODO) AppModel.Progress.DONE else if (progress == AppModel.Progress.DONE) AppModel.Progress.TODO else AppModel.Progress.DONE)
                     }.semantics { contentDescription = "Status: ${if (item.submitted) "Submitted on Schoology" else label(item, progress)}" },
                     contentAlignment = Alignment.Center,
                 ) { CheckMark(item) }
@@ -228,6 +331,9 @@ fun TodoRowItem(item: ItemState, now: Date) {
               }
             }
             Column(Modifier.fillMaxWidth().heightIn(min = 84.dp).padding(start = 50.dp, top = 10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Urgent first mixes classes, so each row says its own.
+                if (course != null) Text(course, style = Theme.caption.copy(fontWeight = FontWeight.SemiBold), color = C.secondary, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis)
                 Text(item.title, style = Theme.body, color = C.text)
                 // The one-tap action (Submit / Turn in / Undo) sits at the right end of the due line.
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -245,7 +351,7 @@ fun TodoRowItem(item: ItemState, now: Date) {
                 DropdownMenuItem(
                     text = { Text(if (item.isExam && p == AppModel.Progress.DONE) "Studied" else p.label) },
                     leadingIcon = { if (progress == p) Icon(Icons.Outlined.Check, null) },
-                    onClick = { menu = false; model.setProgress(item, p) },
+                    onClick = { menu = false; setFromRow(model, item, p) },
                 )
             }
             HorizontalDivider()
@@ -266,11 +372,12 @@ private fun label(item: ItemState, p: AppModel.Progress) =
 private fun RowAction(item: ItemState, submitUrl: String) {
     val model = model
     val nav = nav
+    val m = Modifier.coachTarget("todo.action.${item.schoologyId}")
     when {
         item.submitted -> {}
-        item.turnedIn -> PillButton("Undo", color = C.secondary) { model.setProgress(item, AppModel.Progress.DONE) }
-        item.hasDropbox -> PillButton("Submit", external = true) { nav.openSheet(SheetTarget(submitUrl, item.schoologyId)) }
-        !item.isExam -> PillButton("Turn in", color = C.good) { model.setProgress(item, AppModel.Progress.TURNED_IN) }
+        item.turnedIn -> PillButton("Undo", color = C.secondary, modifier = m) { model.setProgress(item, AppModel.Progress.DONE) }
+        item.hasDropbox -> PillButton("Submit", external = true, modifier = m) { nav.openSheet(SheetTarget(submitUrl, item.schoologyId)) }
+        !item.isExam -> PillButton("Turn in", color = C.good, modifier = m) { setFromRow(model, item, AppModel.Progress.TURNED_IN) }
     }
 }
 
@@ -369,11 +476,16 @@ fun ProgressChips(current: AppModel.Progress, isExam: Boolean, onPick: (AppModel
 
 // ── The week strip ───────────────────────────────────────────────────────
 
-/** A Late tile, then today and the next six days, a dot per open item (black = test); tap a tile to show only it. */
+/**
+ * The To Do header: Late, then today and the next six days, as bare type (no
+ * boxes). Each item still to do is a dot in its type's colour (black = test,
+ * grey = the rest, like the type bar on each row); tap a day to show only it,
+ * and it sits in a drop.
+ */
 @Composable
 fun WeekStrip(items: List<ItemState>, now: Date, selected: DayFilter?, onSelect: (DayFilter?) -> Unit) {
     val tiles = listOf<DayFilter>(DayFilter.Late) + (0 until 7).map { DayFilter.Day(it) }
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         for (f in tiles) {
             val its = items.filter { f.matches(it, now) }.sortedBy { if (it.isExam) 0 else 1 }
             val on = selected == f
@@ -382,20 +494,23 @@ fun WeekStrip(items: List<ItemState>, now: Date, selected: DayFilter?, onSelect:
             val date = (f as? DayFilter.Day)?.let { Fmt.addDays(Fmt.startOfDay(now), it.k) }
             val label = when { isLate -> "Late"; isToday -> "Today"; else -> Fmt.weekday(date!!) }
             val sub = date?.let(Fmt::dayNumber) ?: "${its.size}"
-            val shape = androidx.compose.foundation.shape.RoundedCornerShape(Theme.Radius.card)
             Column(
-                Modifier.weight(1f).clip(shape)
-                    .background(if (on) C.accent else if (isLate && its.isNotEmpty()) C.lateSoft else C.card)
-                    .border(if (isToday) 1.5.dp else 1.dp, if (on) Color.Transparent else if (isToday) C.accent else C.border, shape)
+                Modifier.weight(1f).clip(androidx.compose.foundation.shape.RoundedCornerShape(Theme.Radius.card))
                     .clickable { onSelect(if (on) null else f) }
-                    .padding(vertical = 7.dp)
-                    .semantics { contentDescription = "$label, ${if (its.isEmpty()) "nothing due" else "${its.size} ${if (isLate) "overdue" else "due"}"}" },
+                    .padding(vertical = 4.dp)
+                    .semantics { contentDescription = "$label, ${if (its.isEmpty()) "nothing due" else "${its.size} ${if (isLate) "overdue" else "due"}"}"; this.selected = on },
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp),
             ) {
                 Text(label, style = Theme.caption.copy(fontWeight = FontWeight.SemiBold), maxLines = 1,
-                    color = if (on) C.onAccent else if (isLate) C.late else if (isToday) C.accent else C.secondary)
-                Text(sub, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = if (on) C.onAccent else if (isLate) C.late else C.text)
-                Dots(its, on)
+                    color = if (isLate) C.late else if (isToday) C.accent else C.secondary)
+                // Bare type; the chosen day sits in a drop, the logo's shape.
+                Box(Modifier.size(width = 34.dp, height = 36.dp)
+                    .then(if (on) Modifier.background(if (isLate) C.late else C.accent, DropShape) else Modifier),
+                    contentAlignment = Alignment.BottomCenter) {
+                    Text(sub, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = if (on) C.onAccent else if (isLate) C.late else C.text,
+                        modifier = Modifier.padding(bottom = 5.dp))
+                }
+                Dots(its, false)
             }
         }
     }

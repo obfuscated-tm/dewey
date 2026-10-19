@@ -78,7 +78,27 @@ import com.owenleung.dewey.ui.theme.Theme
 import com.owenleung.dewey.ui.todo.ProgressChips
 import com.owenleung.dewey.widget.WidgetBridge
 import java.util.Date
-import kotlin.math.abs
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.sp
+import com.owenleung.dewey.R
+import com.owenleung.dewey.store.GradesLook
+import com.owenleung.dewey.store.ItemState
+import com.owenleung.dewey.store.TodoLogic
+import com.owenleung.dewey.ui.Card
+import com.owenleung.dewey.ui.classColor
 
 /** The Submission card is exactly one of five. */
 private sealed class Kind {
@@ -184,18 +204,23 @@ fun AssignmentScreen(id: String) {
         ScrollPage(pad, refresh = { load() }, spacing = 16.dp) {
             // Header.
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                model.course(it?.sectionId)?.let { c -> Text(c.shortTitle, style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.accent) }
-                Text(a?.title ?: it?.title ?: "Assignment", style = Theme.title, color = C.text)
+                // A library catalog line: class · period · term · category, in the class colour.
+                model.course(it?.sectionId)?.let { c ->
+                    val line = listOfNotNull(GradesLook.abbreviation(c.shortTitle), c.periodLabel.takeIf { p -> p.length <= 3 },
+                        model.grades[c.sectionId]?.period, gradeItem?.category).filter { s -> s.isNotEmpty() }.joinToString(" · ").uppercase()
+                    Text(line, style = Theme.caption.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp), color = classColor(c.sectionId), maxLines = 2)
+                }
+                Text(a?.title ?: it?.title ?: "Assignment", style = Theme.displaySmall, color = C.text)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     if (it != null) TypeTag(it.type)
-                    val due = Fmt.date(a?.due) ?: it?.due
-                    Text(due?.let { "Due " + Fmt.dayTime(it) } ?: "No due date", style = Theme.footnote, color = C.secondary)
-                    gradeItem?.possible?.let { p -> Text("· ${Fmt.num(p)} pts", style = Theme.footnote, color = C.secondary) }
+                    // Once the assignment loads, the due date moves onto the checkout card.
+                    if (a == null) Text(it?.due?.let { d -> "Due " + Fmt.dayTime(d) } ?: "No due date", style = Theme.footnote, color = C.secondary)
+                    gradeItem?.possible?.let { p -> Text("${Fmt.num(p)} points", style = Theme.footnote, color = C.secondary) }
                 }
             }
             val asg = a
             if (asg != null && kind != null) {
-                SubmissionCard(kind, asg, status, checkedAt)
+                SubmissionCard(kind, asg, status, checkedAt, it)
                 if (it != null) ProgressCard(it.schoologyId)
                 gradeItem?.let { g -> GradeCard(g, it?.sectionId ?: "") }
                 Instructions(asg)
@@ -233,10 +258,73 @@ private fun StatusLine(icon: ImageVector, text: String, color: Color = C.text) {
     }
 }
 
+/** The rubber stamp on the checkout card: the one fact that matters (due, submitted, turned in, late). */
+private data class Stamp(val top: String, val main: String, val color: Color, val spoken: String)
+
 @Composable
-private fun SubmissionCard(kind: Kind, a: Assignment, status: SubmissionStatus?, checkedAt: Date?) {
-    LabeledCard("SUBMISSION") {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+private fun stamp(kind: Kind, a: Assignment, item: ItemState?, due: Date?): Stamp? {
+    val model = model
+    val submitted = (kind is Kind.Dropbox && kind.done) || (kind == Kind.Quiz && a.quiz?.state == "submitted")
+    if (submitted) return Stamp("SCHOOLOGY", "SUBMITTED", C.good, "Submitted on Schoology")
+    if (item?.turnedIn == true) return Stamp("MARKED", "TURNED IN", C.good, "Marked turned in")
+    due ?: return null
+    val finished = item?.let { model.isFinished(it) } ?: false
+    val n = TodoLogic.daysLate(due)
+    if (!finished && n != null) {
+        val main = if (n == 0) "LATE" else if (n == 1) "1 DAY LATE" else "$n DAYS LATE"
+        return Stamp("DUE " + Fmt.short(due).uppercase(), main, C.late, "Due ${Fmt.header(due)}, ${main.lowercase()}")
+    }
+    return Stamp("DUE", Fmt.short(due).uppercase(), C.accent, "Due ${Fmt.header(due)}")
+}
+
+@Composable
+private fun DueStamp(s: Stamp, tilt: Boolean, modifier: Modifier = Modifier) {
+    val shape = RoundedCornerShape(Theme.Radius.tag)
+    Column(modifier.rotate(if (tilt) -7f else 0f).clip(shape).background(C.card).background(s.color.copy(alpha = 0.08f))
+        .border(2.5.dp, s.color, shape).padding(horizontal = 10.dp, vertical = 4.dp)
+        .clearAndSetSemantics { contentDescription = s.spoken }, horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(s.top, style = Theme.caption.copy(fontWeight = FontWeight.Black, letterSpacing = 1.4.sp), color = s.color, maxLines = 1)
+        Text(s.main, style = Theme.title.copy(fontWeight = FontWeight.Black, letterSpacing = 0.4.sp), color = s.color, maxLines = 1)
+    }
+}
+
+/** Where it's turned in, in two words. */
+private fun place(k: Kind) = when (k) {
+    is Kind.Dropbox -> "Dropbox"
+    is Kind.Outside -> k.url?.let { Uri.parse(it).host?.removePrefix("www.") } ?: "Outside Schoology"
+    Kind.Quiz -> "On Schoology"
+    Kind.Google -> "Google"
+    Kind.Unknown -> "Checking…"
+}
+
+/**
+ * The Submission card as a library date-due card: ruled columns for the due date
+ * and where it's turned in, what Schoology says under them, and a stamp.
+ */
+@Composable
+private fun SubmissionCard(kind: Kind, a: Assignment, status: SubmissionStatus?, checkedAt: Date?, item: ItemState?) {
+    val model = model
+    val due = Fmt.date(a.due) ?: item?.due
+    val s = stamp(kind, a, item, due)
+    val big = LocalDensity.current.fontScale >= 1.6f
+    val band = if (item?.sectionId != null) classColor(item.sectionId) else null
+    val text = C.text
+    val divider = C.divider
+    Box(Modifier.fillMaxWidth().padding(top = if (big) 0.dp else 36.dp)) {
+      Card(padding = 16.dp) {
+        if (big && s != null) { DueStamp(s, tilt = false); Spacer(Modifier.height(Theme.Space.m)) }
+        Row(Modifier.fillMaxWidth().drawBehind { drawLine(text, Offset(0f, size.height), Offset(size.width, size.height), 1.5.dp.toPx()) }.padding(bottom = 6.dp)) {
+            val st = Theme.caption.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp)
+            Text("DATE DUE", style = st, color = C.text, modifier = Modifier.weight(1f))
+            if (!big) Text("TURN IN", style = st, color = C.text, modifier = Modifier.width(120.dp))
+        }
+        Row(Modifier.fillMaxWidth().drawBehind { drawLine(divider, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) }
+            .padding(vertical = 10.dp).semantics(mergeDescendants = true) {}) {
+            Text(Fmt.due(due), style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text, modifier = Modifier.weight(1f))
+            Text(place(kind), style = Theme.subhead, color = C.secondary, modifier = if (big) Modifier else Modifier.width(120.dp))
+        }
+        Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.Top) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             when (kind) {
                 is Kind.Dropbox -> {
                     StatusLine(if (kind.done) Icons.Outlined.CheckCircle else Icons.Outlined.HighlightOff,
@@ -261,6 +349,13 @@ private fun SubmissionCard(kind: Kind, a: Assignment, status: SubmissionStatus?,
                 Kind.Unknown -> StatusLine(Icons.Outlined.HourglassEmpty, "Checking Schoology…", C.secondary)
             }
         }
+        // Dewey, a little worried: only here, on the one overdue thing you opened.
+        if (item != null && model.isOverdue(item)) Image(painterResource(R.drawable.dewey_uh_oh), null, Modifier.size(44.dp))
+        }
+      }
+      // The class colour across the top edge, like the band on a library card.
+      if (band != null) Box(Modifier.fillMaxWidth().height(5.dp).clip(RoundedCornerShape(topStart = Theme.Radius.card, topEnd = Theme.Radius.card)).background(band))
+      if (!big && s != null) DueStamp(s, tilt = true, Modifier.align(Alignment.TopEnd).offset(x = (-4).dp, y = (-36).dp))
     }
 }
 
@@ -386,7 +481,9 @@ private fun Instructions(a: Assignment) {
     val ctx = LocalContext.current
     val md = (a.instructionsMd ?: "").trim()
     if (md.isEmpty() && a.attachments.isEmpty()) return
-    LabeledCard("INSTRUCTIONS") {
+    // No box: the reading text gets the room.
+    Column(Modifier.fillMaxWidth().padding(top = Theme.Space.s), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text("Instructions", style = Theme.headline, color = C.text, modifier = Modifier.semantics { heading() })
         if (md.isNotEmpty()) MarkdownText(md) { u -> nav.openLink(ctx, u) }
         for (att in a.attachments) {
             AttachmentRow(att.title, att.url) { t ->

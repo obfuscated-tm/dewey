@@ -223,8 +223,11 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     /** Open (not finished) overdue work: the tab badge. */
     fun overdueCount(): Int {
         val now = Date()
-        return todoItems().count { (it.due?.before(now) ?: false) && !isFinished(it) && !TodoLogic.isOlder(it.due, now) }
+        return todoItems().count { isOverdue(it, now) }
     }
+
+    /** Past due, not finished, and not old enough to sit in the Older group. */
+    fun isOverdue(it: ItemState, now: Date = Date()) = (it.due?.before(now) ?: false) && !isFinished(it) && !TodoLogic.isOlder(it.due, now)
 
     fun isFinished(it: ItemState) = it.submitted || it.turnedIn || (if (it.isExam) false else it.done)
 

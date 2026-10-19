@@ -122,4 +122,16 @@ class LogicTest {
         assertTrue(c.isClass)
         assertFalse(Course("2", "School Hub", "Gr10").isClass)
     }
+
+    @Test fun showsLate() {
+        fun late(t: ItemType, quiz: Boolean = false, done: Boolean = false, turnedIn: Boolean = false, submitted: Boolean = false) =
+            TodoLogic.showsLate(t, quiz, done, turnedIn, submitted)
+        assertTrue(late(ItemType.ASSIGNMENT))
+        assertFalse(late(ItemType.ASSIGNMENT, done = true))
+        assertFalse(late(ItemType.ASSIGNMENT, turnedIn = true))
+        assertFalse(late(ItemType.ASSIGNMENT, submitted = true))
+        assertFalse(late(ItemType.EXAM))                    // a test on paper: nothing to hand in after it
+        assertTrue(late(ItemType.EXAM, quiz = true))        // an online quiz not taken yet
+        assertFalse(late(ItemType.EXAM, quiz = true, submitted = true))
+    }
 }

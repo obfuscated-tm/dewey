@@ -16,6 +16,7 @@ Tag: `android-v0.3` (beta, sideloaded APK)
 - To Do rows are library catalog cards, with a ripple when you mark one done and a one-time tip after your first mark. Classes is a shelf of books.
 - Grades: a report card across the top; press and hold a class (or Settings → Grades) to hide it, and hidden classes don't count toward new-grade alerts. A grade change that rounds to nothing shows "+0.00%".
 - Inbox: **School updates** from groups such as a class hub. PDFs in a class's materials open.
+- "Late" only on work that's really still open: not on work marked Done, not on a past test, and not on an online quiz you already took (Dewey now reads the quiz's page to see that). Same fix on iPhone.
 
 ## 2026-10-18 — Extension 1.13.0 · MCP 1.1.1
 

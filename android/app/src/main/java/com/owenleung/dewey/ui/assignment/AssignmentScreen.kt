@@ -153,7 +153,12 @@ fun AssignmentScreen(id: String) {
                     item.statusLate = s.late
                     changed = true
                 }
-                if (s != null) item.statusCheckedAt = System.currentTimeMillis()
+                got.quiz?.let { q ->
+                    val before = item.statusState
+                    model.noteQuiz(item, q)
+                    changed = changed || item.statusState != before
+                }
+                if (s != null || got.quiz != null) item.statusCheckedAt = System.currentTimeMillis()
                 if (changed) model.save()
             }
             status = got.submission
@@ -268,7 +273,7 @@ private fun stamp(kind: Kind, a: Assignment, item: ItemState?, due: Date?): Stam
     if (submitted) return Stamp("SCHOOLOGY", "SUBMITTED", C.good, "Submitted on Schoology")
     if (item?.turnedIn == true) return Stamp("MARKED", "TURNED IN", C.good, "Marked turned in")
     due ?: return null
-    val finished = item?.let { model.isFinished(it) } ?: false
+    val finished = item?.let { !model.showsLate(it) } ?: false
     val n = TodoLogic.daysLate(due)
     if (!finished && n != null) {
         val main = if (n == 0) "LATE" else if (n == 1) "1 DAY LATE" else "$n DAYS LATE"

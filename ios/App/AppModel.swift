@@ -188,7 +188,12 @@ final class AppModel {
 
     /// Past due, not finished, and not old enough to sit in the Older group.
     func isOverdue(_ it: ItemState, now: Date = Date()) -> Bool {
-        (it.due ?? .distantFuture) < now && !isFinished(it) && !TodoLogic.isOlder(due: it.due, now: now)
+        (it.due ?? .distantFuture) < now && showsLate(it) && !TodoLogic.isOlder(due: it.due, now: now)
+    }
+
+    /// Past due counts as late (TodoLogic.showsLate).
+    func showsLate(_ it: ItemState) -> Bool {
+        TodoLogic.showsLate(type: it.type, isQuiz: it.isQuiz, done: it.done, turnedIn: it.turnedIn, submitted: it.submitted)
     }
 
     func isFinished(_ it: ItemState) -> Bool {
@@ -250,10 +255,12 @@ final class AppModel {
     }
 
     /// status({id}) for up to 10 rows that might have a dropbox, not checked in 30 min.
+    /// A quiz is checked on its landing page instead, until it says submitted.
     func checkStatuses(cap: Int = 10) async {
         let cutoff = Date().addingTimeInterval(-30 * 60)
         let candidates = todoItems()
-            .filter { !$0.isQuiz && !$0.external && $0.statusState != "no_dropbox" && ($0.statusCheckedAt ?? .distantPast) < cutoff }
+            .filter { !$0.external && $0.statusState != "no_dropbox" && ($0.statusCheckedAt ?? .distantPast) < cutoff }
+            .filter { !$0.isQuiz || !$0.submitted }
             .sorted { ($0.statusCheckedAt ?? .distantPast) < ($1.statusCheckedAt ?? .distantPast) }
             .prefix(cap)
         await twoAtATime(Array(candidates)) { await self.checkStatus($0) }
@@ -271,6 +278,7 @@ final class AppModel {
 
     @discardableResult
     func checkStatus(_ it: ItemState) async -> SubmissionStatus? {
+        if it.isQuiz { await checkQuiz(it); return nil }
         guard let s: SubmissionStatus = try? await engine.call("status", ["id": it.schoologyId]) else { return nil }
         let was = it.statusState
         it.statusState = s.quiz == true ? "unknown" : s.state
@@ -283,6 +291,28 @@ final class AppModel {
         revision += 1
         WidgetBridge.publish(self)
         return s
+    }
+
+    /// A quiz's own status op is refused (it redirects), but its landing page
+    /// says whether an attempt was handed in. Taken = submitted, so it isn't late.
+    func checkQuiz(_ it: ItemState) async {
+        guard let a: Assignment = try? await engine.call("assignment", ["id": it.schoologyId]) else { return }
+        it.statusCheckedAt = Date()
+        if let q = a.quiz { noteQuiz(it, q) }
+        try? context.save()
+    }
+
+    /// Records a quiz landing page's state on the row (submitted, or still to take).
+    func noteQuiz(_ it: ItemState, _ q: QuizInfo) {
+        let state = q.state == "submitted" ? "submitted" : "unknown"
+        guard state != it.statusState else { return }
+        let was = it.statusState
+        it.statusState = state
+        if state == "submitted" && was != "submitted", let np = it.neoPlanId {
+            Task { try? await neoPlan.turnIn(np) }
+        }
+        revision += 1
+        WidgetBridge.publish(self)
     }
 
     // ── The student's marks ──────────────────────────────────────────────

@@ -112,6 +112,14 @@ enum TodoLogic {
         return !(s.done || s.turnedIn || s.submitted)
     }
 
+    /// Whether a past-due row may say "late": not once it's handed in, marked
+    /// done, or a test that isn't an online quiz (nothing to hand in after it).
+    static func showsLate(type: ItemType, isQuiz: Bool, done: Bool, turnedIn: Bool, submitted: Bool) -> Bool {
+        if submitted || turnedIn { return false }
+        if type == .exam { return isQuiz }
+        return !done
+    }
+
     /// Calendar days late (≥ 0) or nil when not overdue.
     static func daysLate(due: Date?, now: Date = Date(), calendar: Calendar = .current) -> Int? {
         guard let due, due < now else { return nil }

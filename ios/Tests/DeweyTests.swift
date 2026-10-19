@@ -88,6 +88,19 @@ final class TodoLogicTests: XCTestCase {
         XCTAssertFalse(TodoLogic.isVisible(s))
     }
 
+    func testShowsLate() {
+        func late(_ t: ItemType, quiz: Bool = false, done: Bool = false, turnedIn: Bool = false, submitted: Bool = false) -> Bool {
+            TodoLogic.showsLate(type: t, isQuiz: quiz, done: done, turnedIn: turnedIn, submitted: submitted)
+        }
+        XCTAssertTrue(late(.assignment))
+        XCTAssertFalse(late(.assignment, done: true))
+        XCTAssertFalse(late(.assignment, turnedIn: true))
+        XCTAssertFalse(late(.assignment, submitted: true))
+        XCTAssertFalse(late(.exam))                       // a test on paper: nothing to hand in after it
+        XCTAssertTrue(late(.exam, quiz: true))            // an online quiz not taken yet
+        XCTAssertFalse(late(.exam, quiz: true, submitted: true))
+    }
+
     func testDaysLateAndBuckets() {
         let cal = Calendar(identifier: .gregorian)
         let now = cal.date(from: DateComponents(year: 2026, month: 10, day: 10, hour: 12))!

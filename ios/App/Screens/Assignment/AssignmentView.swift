@@ -88,7 +88,12 @@ struct AssignmentView: View {
                     it.statusLate = s.late
                     changed = true
                 }
-                if got.submission != nil { it.statusCheckedAt = Date() }
+                if let q = got.quiz {
+                    let before = it.statusState
+                    model.noteQuiz(it, q)
+                    changed = changed || it.statusState != before
+                }
+                if got.submission != nil || got.quiz != nil { it.statusCheckedAt = Date() }
                 if changed { model.save() }
             }
             status = got.submission
@@ -250,7 +255,7 @@ struct AssignmentView: View {
         if submitted { return .init(top: "SCHOOLOGY", main: "SUBMITTED", color: Theme.good, spoken: "Submitted on Schoology") }
         if let it, it.turnedIn { return .init(top: "MARKED", main: "TURNED IN", color: Theme.good, spoken: "Marked turned in") }
         guard let due else { return nil }
-        let finished = it.map { model.isFinished($0) } ?? false
+        let finished = it.map { !model.showsLate($0) } ?? false
         if !finished, let n = TodoLogic.daysLate(due: due) {
             let main = n == 0 ? "LATE" : n == 1 ? "1 DAY LATE" : "\(n) DAYS LATE"
             return .init(top: "DUE " + Fmt.short.string(from: due).uppercased(), main: main, color: Theme.late,

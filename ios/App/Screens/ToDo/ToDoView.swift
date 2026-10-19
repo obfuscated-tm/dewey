@@ -501,7 +501,7 @@ struct TodoRow: View {
     private func nb(_ s: String) -> String { s.replacingOccurrences(of: " ", with: "\u{00A0}") }
 
     private var dueText: Text {
-        let late = item.submitted || item.turnedIn ? nil : TodoLogic.daysLate(due: item.due, now: now)
+        let late = TodoLogic.showsLate(type: item.type, isQuiz: item.isQuiz, done: item.done, turnedIn: item.turnedIn, submitted: item.submitted) ? TodoLogic.daysLate(due: item.due, now: now) : nil
         var t = Text(nb(Fmt.due(item.due, now: now)))
         if let late, late > 0 { t = t + Text(" · " + nb("\(late) day\(late == 1 ? "" : "s") late")) } else if late == 0 { t = t + Text(" · late") }
         t = t.foregroundStyle(late != nil ? Theme.late : Theme.secondary)

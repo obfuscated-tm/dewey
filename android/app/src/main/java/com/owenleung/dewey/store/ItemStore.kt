@@ -150,6 +150,16 @@ object TodoLogic {
 
     fun isVisible(it: ItemState) = isVisible(Snapshot(it.inSchoology, it.done, it.turnedIn, it.submitted, it.graded, it.dismissed))
 
+    /**
+     * Whether a past-due row may say "late": not once it's handed in, marked
+     * done, or a test that isn't an online quiz (nothing to hand in after it).
+     */
+    fun showsLate(type: ItemType, isQuiz: Boolean, done: Boolean, turnedIn: Boolean, submitted: Boolean): Boolean {
+        if (submitted || turnedIn) return false
+        if (type == ItemType.EXAM) return isQuiz
+        return !done
+    }
+
     /** Calendar days late (≥ 0) or null when not overdue. */
     fun daysLate(due: Date?, now: Date = Date()): Int? {
         if (due == null || !due.before(now)) return null

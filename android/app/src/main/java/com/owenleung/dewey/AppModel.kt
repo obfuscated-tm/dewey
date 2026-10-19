@@ -8,12 +8,14 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.owenleung.dewey.engine.Assignment
 import com.owenleung.dewey.engine.Course
 import com.owenleung.dewey.engine.CourseGrade
 import com.owenleung.dewey.engine.Engine
 import com.owenleung.dewey.engine.EngineError
 import com.owenleung.dewey.engine.EngineJson
 import com.owenleung.dewey.engine.PlanResult
+import com.owenleung.dewey.engine.QuizInfo
 import com.owenleung.dewey.engine.SubmissionStatus
 import com.owenleung.dewey.engine.TodoLists
 import com.owenleung.dewey.neoplan.NeoPlanClient
@@ -237,7 +239,10 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     }
 
     /** Past due, not finished, and not old enough to sit in the Older group. */
-    fun isOverdue(it: ItemState, now: Date = Date()) = (it.due?.before(now) ?: false) && !isFinished(it) && !TodoLogic.isOlder(it.due, now)
+    fun isOverdue(it: ItemState, now: Date = Date()) = (it.due?.before(now) ?: false) && showsLate(it) && !TodoLogic.isOlder(it.due, now)
+
+    /** Past due counts as late (TodoLogic.showsLate). */
+    fun showsLate(it: ItemState) = TodoLogic.showsLate(it.type, it.isQuiz, it.done, it.turnedIn, it.submitted)
 
     fun isFinished(it: ItemState) = it.submitted || it.turnedIn || (if (it.isExam) false else it.done)
 
@@ -285,11 +290,12 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         store.save()
     }
 
-    /** status({id}) for up to 10 rows that might have a dropbox, not checked in 30 min. */
+    /** status({id}) for up to 10 rows that might have a dropbox, not checked in 30 min. A quiz is checked on its landing page instead, until it says submitted. */
     suspend fun checkStatuses(cap: Int = 10) {
         val cutoff = System.currentTimeMillis() - 30 * 60_000
         val candidates = todoItems()
-            .filter { !it.isQuiz && !it.external && it.statusState != "no_dropbox" && (it.statusCheckedAt ?: 0) < cutoff }
+            .filter { !it.external && it.statusState != "no_dropbox" && (it.statusCheckedAt ?: 0) < cutoff }
+            .filter { !it.isQuiz || !it.submitted }
             .sortedBy { it.statusCheckedAt ?: 0 }
             .take(cap)
         twoAtATime(candidates) { checkStatus(it) }
@@ -302,6 +308,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     }
 
     suspend fun checkStatus(it: ItemState): SubmissionStatus? {
+        if (it.isQuiz) { checkQuiz(it); return null }
         val s: SubmissionStatus = try { engine.call("status", mapOf("id" to it.schoologyId)) } catch (e: Exception) { return null }
         val was = it.statusState
         it.statusState = if (s.quiz == true) "unknown" else s.state
@@ -312,6 +319,25 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         revision.intValue++
         WidgetBridge.publish(this)
         return s
+    }
+
+    /** A quiz's own status op is refused (it redirects), but its landing page says whether an attempt was handed in. Taken = submitted, so it isn't late. */
+    suspend fun checkQuiz(it: ItemState) {
+        val a: Assignment = try { engine.call("assignment", mapOf("id" to it.schoologyId)) } catch (e: Exception) { return }
+        it.statusCheckedAt = System.currentTimeMillis()
+        a.quiz?.let { q -> noteQuiz(it, q) }
+        store.save()
+    }
+
+    /** Records a quiz landing page's state on the row (submitted, or still to take). */
+    fun noteQuiz(it: ItemState, q: QuizInfo) {
+        val state = if (q.state == "submitted") "submitted" else "unknown"
+        if (state == it.statusState) return
+        val was = it.statusState
+        it.statusState = state
+        if (state == "submitted" && was != "submitted") it.neoPlanId?.let { id -> scope.launch { runCatching { NeoPlanClient.turnIn(id) } } }
+        revision.intValue++
+        WidgetBridge.publish(this)
     }
 
     /** After the Schoology sheet closes: if Schoology now says submitted, say so and clear the row. */

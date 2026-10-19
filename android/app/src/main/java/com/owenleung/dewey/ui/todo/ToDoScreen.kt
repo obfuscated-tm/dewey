@@ -301,6 +301,8 @@ private fun CardHeading(g: Group, now: Date, layout: ToDoLayout) {
 
 @Composable
 fun TodoRowItem(item: ItemState, now: Date, course: String? = null) {
+    // ItemState is mutable and the same instance: read the revision so a mark redraws this.
+    model.revision.intValue
     val model = model
     val nav = nav
     var menu by remember { mutableStateOf(false) }
@@ -370,6 +372,8 @@ private fun label(item: ItemState, p: AppModel.Progress) =
 
 @Composable
 private fun RowAction(item: ItemState, submitUrl: String) {
+    // ItemState is mutable and the same instance: read the revision so a mark redraws this.
+    model.revision.intValue
     val model = model
     val nav = nav
     val m = Modifier.coachTarget("todo.action.${item.schoologyId}")
@@ -384,6 +388,8 @@ private fun RowAction(item: ItemState, submitUrl: String) {
 /** "Mon Oct 5, 11:59 pm · 7 days late"; a test adds its countdown and studied mark. */
 @Composable
 private fun DueText(item: ItemState, now: Date, modifier: Modifier) {
+    // ItemState is mutable and the same instance: read the revision so a mark redraws this.
+    model.revision.intValue
     val late = if (item.submitted || item.turnedIn) null else TodoLogic.daysLate(item.due, now)
     val dueColor = if (late != null) C.late else C.secondary
     val accent = C.accent
@@ -422,6 +428,8 @@ private fun statusNote(item: ItemState): Triple<String, Color, Boolean>? {
  */
 @Composable
 fun CheckMark(item: ItemState, size: androidx.compose.ui.unit.Dp = 24.dp) {
+    // ItemState is mutable and the same instance: read the revision so a mark redraws this.
+    model.revision.intValue
     val good = C.good
     val accent = C.accent
     val accentSoft = C.accentSoft

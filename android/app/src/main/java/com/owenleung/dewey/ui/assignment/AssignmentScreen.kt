@@ -303,6 +303,8 @@ private fun place(k: Kind) = when (k) {
  */
 @Composable
 private fun SubmissionCard(kind: Kind, a: Assignment, status: SubmissionStatus?, checkedAt: Date?, item: ItemState?) {
+    // ItemState is mutable and the same instance: read the revision so a mark redraws this.
+    model.revision.intValue
     val model = model
     val due = Fmt.date(a.due) ?: item?.due
     val s = stamp(kind, a, item, due)

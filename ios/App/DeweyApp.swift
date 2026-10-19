@@ -138,7 +138,8 @@ struct MainTabs: View {
         .task {
             if !tourShown && Demo.showTour && !model.practice { showTour = true }
             if let id = Demo.startAssignment { model.deepLinkAssignment = id }
-            if model.todoAsOf == nil || Date().timeIntervalSince(model.todoAsOf!) > 120 {
+            // Demo rows live only in memory, so a quick relaunch has none to show yet.
+            if Demo.on || model.todoAsOf == nil || Date().timeIntervalSince(model.todoAsOf!) > 120 {
                 await model.refreshTodo()
             }
         }

@@ -68,7 +68,8 @@ final class AppModel {
             session = .signedIn
             return
         }
-        if Demo.on, courses.isEmpty { Demo.seed(self) }
+        // Demo rows live only in memory (the saved courses don't), so seed on every launch.
+        if Demo.on, (try? context.fetchCount(FetchDescriptor<ItemState>())) == 0 { Demo.seed(self) }
         if let id = Demo.openAssignment { deepLinkAssignment = id }
         engine.start()
         // Saved copies and no sign-out on record: show them now instead of a

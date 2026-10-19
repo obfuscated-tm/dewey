@@ -1,10 +1,10 @@
 """Lays simulator screenshots side by side in phone frames: docs/images/ios-preview.png.
 
-    python3 docs/images/make/phones.py todo.png grades.png course.png classes.png
+    python3 docs/images/make/phones.py todo.png grades.png classes.png class.png
 
 Take the screenshots from a Debug build launched with -DeweyDemo (made-up
 student, see ios/App/Engine/Demo.swift) on an iPhone 17 Pro simulator:
-    xcrun simctl launch <device> com.owenleung.classwork -DeweyDemo
+    xcrun simctl launch <device> com.owenleung.classwork -DeweyDemo -DeweyTab 3   (0 To Do, 1 Grades, 3 Classes; tap a book for class.png)
     xcrun simctl io <device> screenshot todo.png
 """
 import sys

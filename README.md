@@ -218,23 +218,24 @@ Each class becomes a normal folder you can open in Finder or File Explorer:
 ## 📱 Dewey for iPhone and Android (beta)
 
 <div align="center">
-<img src="docs/images/ios-preview.png" alt="Dewey for iPhone: To Do, Grades, a class's grades, and Classes" width="100%">
+<img src="docs/images/ios-preview.png" alt="Dewey for iPhone: To Do, Grades, the Classes shelf with LATE / TODAY / TMRW ribbons, and a class's page starting with its open work" width="100%">
 <br>
-<sub>The iPhone app's To Do, Grades, class grades and Classes screens, with a made-up student. The Android app has the same screens.</sub>
+<sub>The iPhone app's To Do, Grades, Classes shelf and a class's page, with a made-up student. The Android app has the same screens.</sub>
 </div>
 <br>
 
 Everything the extension does, rebuilt for your phone:
 
-- **To Do** grouped by class, with a week strip (late work plus the next 7 days, tap a day to filter) and one-tap **Done** / **Turn in**.
+- **To Do** grouped by class, with a week strip (late work plus the next 7 days, tap a day to filter) and one-tap **Done** / **Turn in**. "Late" only means work Schoology still lists as overdue that you haven't finished, so paper work you've ticked off stops nagging.
 - **Grades** with comments and rubrics, a grade-over-time graph you can drag, and **what-if** scores on every row, including made-up assignments. Hide a class you don't need (like study hall) with a long press.
-- **Classes and Materials** that open right in the app (PDFs, Google Docs, class websites), plus a search across every class.
+- **Classes** as a shelf of books, each with a ribbon when work is late, due today or due tomorrow. Tap a book to see that class's open work first, then its **Materials**, which open right in the app (PDFs, Google Docs, class websites). Plus a search across every class.
 - **Inbox** for announcements, school messages and updates from your school's groups (like a class hub), with new ones at the top.
 - **Reminders**, home-screen widgets, and a countdown to your next test (a Live Activity on iPhone, a notification on Android).
 - **A guided tour** on first launch: Dewey walks you through a pretend week (mark work done, submit, what-if, your shelf, Settings) without touching your real Schoology. Take it again from Settings → Help.
 - **Light and dark mode**: the Dew look with a System / Light / Dark switch, and full Schoology one tab away when you need it.
+- **Works with your school's course names**: Dewey guesses which courses are classes and which are groups (a hub, counseling, advisory). If it guesses wrong, switch any course in Settings → Classes.
 
-Neither app is in a store yet. **Want one now? You can build it yourself.** Both only read Schoology; anything that changes it (like submitting) happens in Schoology's own page inside the app. Sign in with your school's normal Schoology login.
+Neither app is in a store yet. **On Android, [download the latest APK](https://github.com/obfuscated-tm/dewey/releases?q=android&expanded=true)** from Releases and open it on your phone. **On iPhone, you build it yourself** (below). Both only read Schoology; anything that changes it (like submitting) happens in Schoology's own page inside the app. Sign in with your school's normal Schoology login.
 
 <details>
 <summary><b>🍎 Build the iPhone app yourself</b></summary>

@@ -71,25 +71,34 @@ class ItemState(
 
 /**
  * Every ItemState and per-class setting, kept in memory and written to one
- * JSON file on save (SwiftData on iOS). Process-wide: the app, the widgets'
- * taps and the background refresh share it.
+ * JSON file on save (SwiftData on iOS). `real` is process-wide: the app, the
+ * widgets' taps and the background refresh share it. The tour's pretend week
+ * gets its own in-memory store that is never written.
  */
-object ItemStore {
-    private lateinit var file: File
-    private lateinit var courseFile: File
+class ItemStore private constructor(private val file: File?, private val courseFile: File?) {
     private val items = LinkedHashMap<String, ItemState>()
     /** Per class: the A line the student set (CourseState.aCutoff on iOS). */
     private val cutoffs = HashMap<String, Double>()
     private val lock = Any()
 
-    fun init(dir: File) {
-        if (::file.isInitialized) return
-        file = File(dir, "items.json")
-        courseFile = File(dir, "courses-state.json")
-        runCatching {
-            Cache.json.decodeFromString(ListSerializer(ItemState.serializer()), file.readText()).forEach { items[it.schoologyId] = it }
+    companion object {
+        lateinit var real: ItemStore
+            private set
+
+        fun init(dir: File) {
+            if (this::real.isInitialized) return
+            real = ItemStore(File(dir, "items.json"), File(dir, "courses-state.json")).also { it.load() }
         }
-        runCatching { cutoffs.putAll(Cache.json.decodeFromString(MapSerializer(String.serializer(), Double.serializer()), courseFile.readText())) }
+
+        /** The tour's pretend week: in memory only. */
+        fun inMemory() = ItemStore(null, null)
+    }
+
+    private fun load() {
+        runCatching {
+            Cache.json.decodeFromString(ListSerializer(ItemState.serializer()), file!!.readText()).forEach { items[it.schoologyId] = it }
+        }
+        runCatching { cutoffs.putAll(Cache.json.decodeFromString(MapSerializer(String.serializer(), Double.serializer()), courseFile!!.readText())) }
     }
 
     fun item(id: String): ItemState? = synchronized(lock) { items[id] }
@@ -100,13 +109,15 @@ object ItemStore {
     }
 
     fun save() = synchronized(lock) {
-        runCatching { Cache.atomicWrite(file, Cache.json.encodeToString(ListSerializer(ItemState.serializer()), items.values.toList())) }
+        val f = file ?: return@synchronized
+        runCatching { Cache.atomicWrite(f, Cache.json.encodeToString(ListSerializer(ItemState.serializer()), items.values.toList())) }
     }
 
     fun cutoff(sectionId: String): Double? = synchronized(lock) { cutoffs[sectionId] }
     fun setCutoff(sectionId: String, v: Double?) = synchronized(lock) {
         if (v == null) cutoffs.remove(sectionId) else cutoffs[sectionId] = v
-        runCatching { Cache.atomicWrite(courseFile, Cache.json.encodeToString(MapSerializer(String.serializer(), Double.serializer()), cutoffs)) }
+        val f = courseFile ?: return@synchronized
+        runCatching { Cache.atomicWrite(f, Cache.json.encodeToString(MapSerializer(String.serializer(), Double.serializer()), cutoffs)) }
     }
 }
 

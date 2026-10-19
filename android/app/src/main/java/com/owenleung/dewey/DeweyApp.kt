@@ -50,6 +50,8 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         // Signed out: nothing to fetch until the student signs in again.
         DeweyApp.setUp(applicationContext)
         if (Reminders.sessionEnded) return@withContext Result.success()
+        // The tour's pretend week has the saved copies switched over: wait for the next run.
+        if (com.owenleung.dewey.engine.Practice.active) return@withContext Result.success()
         val m = AppModel.get(applicationContext)
         val t0 = System.currentTimeMillis()
         m.boot()

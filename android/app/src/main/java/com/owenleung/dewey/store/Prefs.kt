@@ -64,12 +64,20 @@ object Cache {
     @Serializable
     data class Entry<T>(val savedAt: Long, val value: T)
 
-    lateinit var dir: File
-        private set
+    private lateinit var realDir: File
+    /** The tour's pretend week keeps its own copies, emptied when it starts and ends. */
+    private lateinit var practiceDir: File
+    val dir: File get() = if (com.owenleung.dewey.engine.Practice.active) practiceDir else realDir
     val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
     fun init(ctx: Context) {
-        dir = File(ctx.filesDir, "cache").apply { mkdirs() }
+        realDir = File(ctx.filesDir, "cache").apply { mkdirs() }
+        practiceDir = File(ctx.filesDir, "cache-practice").apply { mkdirs() }
+    }
+
+    fun clearPractice() {
+        practiceDir.deleteRecursively()
+        practiceDir.mkdirs()
     }
 
     private fun file(key: String) = File(dir, key.replace("/", "_") + ".json")

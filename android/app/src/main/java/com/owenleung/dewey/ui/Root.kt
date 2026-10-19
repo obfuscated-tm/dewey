@@ -65,6 +65,12 @@ import com.owenleung.dewey.ui.theme.DeweyTheme
 import com.owenleung.dewey.ui.theme.Theme
 import com.owenleung.dewey.ui.todo.ToDoScreen
 import com.owenleung.dewey.web.WebController
+import com.owenleung.dewey.ui.tour.PracticeDropbox
+import com.owenleung.dewey.ui.tour.PracticeSchoologyTab
+import com.owenleung.dewey.ui.tour.coachTarget
+import com.owenleung.dewey.ui.tour.Tour
+import com.owenleung.dewey.ui.tour.TourScreen
+import com.owenleung.dewey.store.Prefs
 
 @Composable
 fun RootView(model: AppModel) {
@@ -77,6 +83,7 @@ fun RootView(model: AppModel) {
                     AppModel.Session.SIGNED_OUT -> SignInScreen()
                     AppModel.Session.SIGNED_IN -> MainScreen()
                 }
+                Tour.mode?.let { TourScreen(model, nav, it) }
                 Toast(model.toast, Modifier.align(Alignment.BottomCenter))
             }
         }
@@ -110,10 +117,11 @@ fun MainScreen() {
     val ctx = LocalContext.current
     val holder = rememberSaveableStateHolder()
     // The Schoology tab keeps its page while the student uses other tabs.
-    val schoologyWeb = remember { WebController(ctx, "${Engine.ORIGIN}/home") }
+    // The pretend week never loads the real site.
+    val schoologyWeb = remember { if (model.practice) null else WebController(ctx, "${Engine.ORIGIN}/home") }
 
-    BackHandler(enabled = nav.stacks[nav.tab].isNotEmpty() || (nav.tab == Nav.SCHOOLOGY && schoologyWeb.canGoBack)) {
-        if (!nav.pop() && nav.tab == Nav.SCHOOLOGY) schoologyWeb.goBack()
+    BackHandler(enabled = nav.stacks[nav.tab].isNotEmpty() || (nav.tab == Nav.SCHOOLOGY && schoologyWeb?.canGoBack == true)) {
+        if (!nav.pop() && nav.tab == Nav.SCHOOLOGY) schoologyWeb?.goBack()
     }
 
     LaunchedEffect(model.deepLink) {
@@ -133,6 +141,7 @@ fun MainScreen() {
     }
 
     LaunchedEffect(Unit) {
+        if (!model.practice && !Prefs.bool(Tour.SHOWN_KEY)) Tour.mode = Tour.Mode.TOUR
         val at = model.todoAsOf
         if (at == null || System.currentTimeMillis() - at.time > 120_000) model.refreshTodo()
     }
@@ -150,6 +159,7 @@ fun MainScreen() {
                         else -> 0
                     }
                     NavigationBarItem(
+                        modifier = Modifier.coachTarget("tab.$i"),
                         selected = nav.tab == i,
                         onClick = { nav.select(i) },
                         icon = {
@@ -176,14 +186,17 @@ fun MainScreen() {
                         Nav.GRADES -> GradesScreen()
                         Nav.INBOX -> InboxScreen()
                         Nav.CLASSES -> ClassesScreen()
-                        else -> SchoologyTab(schoologyWeb)
+                        else -> schoologyWeb?.let { SchoologyTab(it) } ?: PracticeSchoologyTab()
                     }
                 }
             }
         }
     }
 
-    nav.sheet?.let { SchoologySheet(it) { nav.sheet = null } }
+    nav.sheet?.let {
+        if (model.practice) PracticeDropbox(it, model) { nav.sheet = null }
+        else SchoologySheet(it) { nav.sheet = null }
+    }
     nav.file?.let { FileViewer(it) { nav.file = null } }
     nav.whatIf?.let { (item, section) -> WhatIfSheet(item, section) { nav.whatIf = null } }
 }

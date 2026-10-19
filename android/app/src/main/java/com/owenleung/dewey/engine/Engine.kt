@@ -114,7 +114,15 @@ object EngineJson {
  * JavaScript interface (evaluateJavascript can't wait for a promise).
  */
 @SuppressLint("SetJavaScriptEnabled")
-class Engine(private val context: Context) {
+class Engine(
+    private val context: Context,
+    /**
+     * The tour's pretend week: ops are answered by `Practice`; only the pure ones
+     * (the grade math) run engine.js, in this engine's own web view on a blank
+     * page that never touches the network (Engine.swift does the same).
+     */
+    val practice: Boolean = false,
+) {
     companion object {
         const val HOST = "fuhsd.schoology.com"
         const val ORIGIN = "https://$HOST"
@@ -203,6 +211,10 @@ class Engine(private val context: Context) {
         ready = false
         loading = true
         triedFallback = false
+        if (practice) {
+            wv.loadDataWithBaseURL("$ORIGIN/", "<!doctype html><title>Dewey practice</title>", "text/html", "utf-8", null)
+            return
+        }
         wv.settings.userAgentString = WebConfig.userAgent(wv)
         wv.loadUrl(HOME_PAGE)
     }
@@ -228,6 +240,7 @@ class Engine(private val context: Context) {
 
     /** Runs one op; returns its `data` (camelCased later, on decode). Throws EngineError. */
     suspend fun callRaw(op: String, args: JsonObject = JsonObject(emptyMap())): JsonElement = withContext(Dispatchers.Main) {
+        if (practice) Practice.answer(op, args)?.let { return@withContext it }
         waitReady()
         val wv = webView ?: throw EngineError.NotReady
         val id = UUID.randomUUID().toString()
@@ -333,10 +346,18 @@ class Engine(private val context: Context) {
         "error: $e"
     }
 
+    /** Drops the web view (the tour's engine, when the pretend week ends). */
+    fun destroy() {
+        webView?.let { (it.parent as? ViewGroup)?.removeView(it); it.destroy() }
+        webView = null
+        ready = false
+        finishWaiters(EngineError.NotReady)
+    }
+
     private inner class Client : WebViewClient() {
         override fun onPageFinished(view: WebView, url: String) {
             Log.d(TAG, "page finished: ${android.net.Uri.parse(url).host}${android.net.Uri.parse(url).path}")
-            if (!WebConfig.isSignedInUrl(url)) {
+            if (!practice && !WebConfig.isSignedInUrl(url)) {
                 loading = false
                 ready = false
                 finishWaiters(EngineError.Login)
@@ -354,7 +375,7 @@ class Engine(private val context: Context) {
         }
 
         private fun done(view: WebView, ok: Boolean) {
-            if (!ok && !triedFallback) {
+            if (!ok && !triedFallback && !practice) {
                 // WebView didn't run scripts on the JSON page: use /home (ENGINE.md).
                 triedFallback = true
                 view.loadUrl(FALLBACK_PAGE)

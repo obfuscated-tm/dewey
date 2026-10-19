@@ -80,6 +80,8 @@ object WidgetBridge {
 
     /** Coalesces bursts of saves into one write and one widget update. */
     fun publish(m: AppModel) {
+        // The tour's pretend week never reaches the widgets (or takes their marks).
+        if (m.practice) return
         pending?.cancel()
         pending = m.scope.launch {
             delay(400)
@@ -88,6 +90,7 @@ object WidgetBridge {
     }
 
     suspend fun publishNow(m: AppModel) {
+        if (m.practice) return
         pending?.cancel()
         write(m)
         syncCountdowns(m)

@@ -98,6 +98,7 @@ import com.owenleung.dewey.ui.Route
 import com.owenleung.dewey.ui.SettingsPage
 import com.owenleung.dewey.ui.classColor
 import com.owenleung.dewey.ui.tour.coachTarget
+import com.owenleung.dewey.ui.tour.Tour
 import com.owenleung.dewey.ui.SheetTarget
 import com.owenleung.dewey.ui.ScrollPage
 import com.owenleung.dewey.ui.WideButton
@@ -437,8 +438,10 @@ private fun ShelfSettings() {
     val off = ShelfLook.off()
     DetailScaffold("Classes") { pad ->
         ScrollPage(pad, spacing = 22.dp) {
-            Section("On the shelf", "Classes off the shelf lie flat under it. You can also press and hold a class on the shelf.") {
-                model.classes.forEachIndexed { i, c -> ClassToggle(c, c.sectionId !in off, i > 0) { ShelfLook.toggle(c.sectionId) } }
+            Box(Modifier.coachTarget("settings.page.classes")) {
+                Section("On the shelf", "Classes off the shelf lie flat under it. You can also press and hold a class on the shelf.") {
+                    model.classes.forEachIndexed { i, c -> ClassToggle(c, c.sectionId !in off, i > 0) { ShelfLook.toggle(c.sectionId) } }
+                }
             }
         }
     }
@@ -465,16 +468,20 @@ private fun HelpSettings() {
         ScrollPage(pad, spacing = 22.dp) {
             Section("Help", if (connected) NeoPlanStatus.text() else "neo-plan is an optional planner board. Most people don't need it.") {
                 HelpTourRows()
-                LinkLine("How statuses work", divider = true) { nav.push(Route.SettingsPage(SettingsPage.STATUS_GUIDE)) }
+                LinkLine("How statuses work", divider = !model.practice) { nav.push(Route.SettingsPage(SettingsPage.STATUS_GUIDE)) }
                 LinkLine("neo-plan", if (connected) "Connected" else "Not connected") { nav.push(Route.SettingsPage(SettingsPage.NEOPLAN)) }
             }
         }
     }
 }
 
-/** Take the tour / Tour cards (the tour isn't ported yet: nothing to show). */
+/** Take the tour / Tour cards. Not inside the tour's own pretend week. */
 @Composable
-private fun HelpTourRows() {}
+private fun HelpTourRows() {
+    if (model.practice) return
+    LinkLine("Take the tour", divider = false) { Tour.mode = Tour.Mode.TOUR }
+    LinkLine("Tour cards") { Tour.mode = Tour.Mode.CARDS }
+}
 
 @Composable
 private fun AboutSettings() {

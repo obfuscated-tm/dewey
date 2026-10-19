@@ -66,6 +66,9 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
             }
         }
 
+        /** The tour's pretend week: a second model, in memory, its engine answered by Practice. Call Practice.begin() first. */
+        fun practice(ctx: Context): AppModel = AppModel(ctx.applicationContext, practice = true)
+
         /** "New" wears off after a week even if never opened. */
         const val NEW_GRADE_DAYS = 7.0
 
@@ -97,7 +100,9 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     data class GradeLogEntry(val earned: Double? = null, val at: Long? = null, val seen: Boolean = false)
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    val engine = Engine(context)
+    /** The student's marks: the real file, or memory only for the tour's pretend week. */
+    val store: ItemStore = if (practice) ItemStore.inMemory() else ItemStore.real
+    val engine: Engine = Engine(context, practice = practice)
     val inbox = Inbox()
 
     var session by mutableStateOf(Session.CHECKING)
@@ -107,7 +112,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         val was = session
         session = s
         // The widgets say "Open Dewey to sign in" while signed out.
-        if (s != was && s != Session.CHECKING) WidgetBridge.publish(this)
+        if (s != was && s != Session.CHECKING && !practice) WidgetBridge.publish(this)
     }
 
     var courses by mutableStateOf<List<Course>>(emptyList())
@@ -135,7 +140,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         todoAsOf = Cache.loadDate("todoAsOf")
         Cache.load("gradeLog", logSerializer)?.let { gradeLog.putAll(it.first) }
         engine.onSignedOut = {
-            if (session != Session.SIGNED_OUT) {
+            if (!practice && session != Session.SIGNED_OUT) {
                 moveTo(Session.SIGNED_OUT)
                 Reminders.sessionDidEnd(notify = true)
             }
@@ -150,6 +155,11 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     suspend fun boot() {
         if (booted && session != Session.CHECKING) return
         booted = true
+        if (practice) {
+            runCatching { loadCourses() }
+            moveTo(Session.SIGNED_IN)
+            return
+        }
         engine.start()
         // Saved copies and no sign-out on record: show them now instead of a
         // spinner; a `login` below still sends the app to Sign in.
@@ -205,19 +215,19 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
 
     fun course(sectionId: String?): Course? = sectionId?.let { s -> courses.firstOrNull { it.sectionId == s } }
 
-    fun cutoff(sectionId: String): Double = ItemStore.cutoff(sectionId) ?: 93.0
+    fun cutoff(sectionId: String): Double = store.cutoff(sectionId) ?: 93.0
 
     // ── To Do ────────────────────────────────────────────────────────────
 
     fun item(id: String): ItemState? {
         revision.intValue
-        return ItemStore.item(id)
+        return store.item(id)
     }
 
     /** The To Do list: visible items (TodoLogic.isVisible). */
     fun todoItems(): List<ItemState> {
         revision.intValue
-        return ItemStore.all().filter(TodoLogic::isVisible)
+        return store.all().filter(TodoLogic::isVisible)
     }
 
     /** Open (not finished) overdue work: the tab badge. */
@@ -261,7 +271,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         val seen = HashSet<String>()
         for (e in lists.overdue + lists.upcoming) {
             seen += e.schoologyId
-            val it = ItemStore.getOrCreate(e.schoologyId, e.title)
+            val it = store.getOrCreate(e.schoologyId, e.title)
             it.title = e.title
             it.sectionId = e.sectionId ?: it.sectionId
             it.courseName = e.course ?: it.courseName
@@ -271,8 +281,8 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
             it.inSchoology = true
             it.lastSeen = now.time
         }
-        for (it in ItemStore.all()) if (it.schoologyId !in seen) it.inSchoology = false
-        ItemStore.save()
+        for (it in store.all()) if (it.schoologyId !in seen) it.inSchoology = false
+        store.save()
     }
 
     /** status({id}) for up to 10 rows that might have a dropbox, not checked in 30 min. */
@@ -298,7 +308,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         it.statusLate = s.late
         it.statusCheckedAt = System.currentTimeMillis()
         if (s.state == "submitted" && was != "submitted") it.neoPlanId?.let { id -> runCatching { NeoPlanClient.turnIn(id) } }
-        ItemStore.save()
+        store.save()
         revision.intValue++
         WidgetBridge.publish(this)
         return s
@@ -307,7 +317,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     /** After the Schoology sheet closes: if Schoology now says submitted, say so and clear the row. */
     fun recheckAfterSheet(id: String) {
         scope.launch {
-            val it = ItemStore.item(id) ?: run { revision.intValue++; return@launch }
+            val it = store.item(id) ?: run { revision.intValue++; return@launch }
             val was = it.statusState
             it.statusCheckedAt = null
             val s = checkStatus(it)
@@ -364,7 +374,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     }
 
     fun save() {
-        ItemStore.save()
+        store.save()
         revision.intValue++
         WidgetBridge.publish(this)
         Reminders.schedule(todoItems(), courses)
@@ -385,7 +395,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     }
 
     private suspend fun neoPlanId(sid: String): String? {
-        val item = ItemStore.item(sid) ?: return null
+        val item = store.item(sid) ?: return null
         item.neoPlanId?.let { return it }
         runCatching { NeoPlanClient.items(listOf(sid)).firstOrNull()?.id }.getOrNull()?.let { found -> item.neoPlanId = found; return found }
         runCatching {
@@ -481,7 +491,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     /** The gradebook category gives an item its type. */
     private fun learnFromGrades(g: CourseGrade) {
         var changed = false
-        val byId = ItemStore.all().associateBy { it.schoologyId }
+        val byId = store.all().associateBy { it.schoologyId }
         for (gi in g.items) {
             val it = byId[gi.id] ?: continue
             if (it.categoryHint != gi.category) { it.categoryHint = gi.category; changed = true }

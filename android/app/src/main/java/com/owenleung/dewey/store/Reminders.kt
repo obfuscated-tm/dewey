@@ -204,6 +204,8 @@ object Reminders {
 
     /** Every due reminder, worked out from the To Do list and replaced as a set. Debounced: saves call it often. */
     fun schedule(items: List<ItemState>, courses: List<Course>) {
+        // The tour's pretend week never schedules anything.
+        if (com.owenleung.dewey.engine.Practice.active) return
         val inputs = items.map { it.toDueInput(courses) }
         val plan = plan(inputs, settings, Date())
         // Most saves change no reminder: skip setting the same set again.
@@ -284,6 +286,7 @@ object Reminders {
     }
 
     fun newGrades(course: String, items: List<CourseGrade.Item>, from: Double?, to: Double?) {
+        if (com.owenleung.dewey.engine.Practice.active) return
         if (!gradeAlerts) return
         post("grade-${System.nanoTime()}", CH_GRADES, "New grade in $course", gradeAlertBody(items, from, to), "dewey://grades")
     }

@@ -76,6 +76,8 @@ import com.owenleung.dewey.ui.theme.C
 import com.owenleung.dewey.ui.theme.Theme
 import kotlinx.coroutines.launch
 import java.util.UUID
+import com.owenleung.dewey.ui.tour.Coach
+import com.owenleung.dewey.ui.tour.coachTarget
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.roundToLong
@@ -151,6 +153,8 @@ fun CourseGradesScreen(sectionId: String) {
         model.markGradesSeen(fresh)
     }
     DisposableEffect(Unit) { onDispose { clearWhatIf() } }
+    // The tour waits for a typed score.
+    LaunchedEffect(changeCount) { if (model.practice && changeCount > 0) Coach.note("whatif") }
 
     val gradesUrl = "${Engine.ORIGIN}/course/$sectionId/student_grades"
     DetailScaffold(
@@ -160,7 +164,7 @@ fun CourseGradesScreen(sectionId: String) {
                 Text(if (whatIfOn) "Done" else "What-if", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.accent)
             }
         },
-        topExtra = { if (whatIfOn) WhatIfBar(real, if (changeCount > 0) preview else null, changeCount) { clearWhatIf() } },
+        topExtra = { if (whatIfOn) Box(Modifier.coachTarget("grades.whatifbar")) { WhatIfBar(real, if (changeCount > 0) preview else null, changeCount) { clearWhatIf() } } },
     ) { pad ->
         ScrollPage(pad, refresh = { model.loadGrades(sectionId, force = true) }) {
             if (!whatIfOn) Summary(sectionId, real) { whatIfOn = true }
@@ -237,7 +241,7 @@ private fun Summary(sectionId: String, real: CourseGrade?, startWhatIf: () -> Un
                     Text(Fmt.pct(real?.pct, 2), style = Theme.title.copy(fontWeight = FontWeight.Medium), color = C.text, modifier = Modifier.padding(bottom = 4.dp))
                 }
                 if (real != null) Text(if (real.mode == "weighted") "Weighted by category" else "Total points", style = Theme.footnote, color = C.tertiary)
-                if (real?.pct != null) PillButton("Try what-if scores", modifier = Modifier.padding(top = 4.dp), onClick = startWhatIf)
+                if (real?.pct != null) PillButton("Try what-if scores", modifier = Modifier.padding(top = 4.dp).coachTarget("grades.whatif"), onClick = startWhatIf)
             }
             model.gradesAsOf[sectionId]?.let { Text(Fmt.ago(it), style = Theme.caption, color = C.tertiary) }
         }
@@ -342,9 +346,9 @@ private fun Marker(icon: androidx.compose.ui.graphics.vector.ImageVector, text: 
 
 /** A score box: a small field with the accent outline when changed or focused. */
 @Composable
-fun ScoreBox(value: String, placeholder: String, changed: Boolean, width: Int = 58, onChange: (String) -> Unit) {
+fun ScoreBox(value: String, placeholder: String, changed: Boolean, width: Int = 58, modifier: Modifier = Modifier, onChange: (String) -> Unit) {
     val shape = RoundedCornerShape(Theme.Radius.tag)
-    Box(Modifier.width(width.dp).background(C.card, shape).border(if (changed) 1.5.dp else 1.dp, if (changed) C.accent else C.border, shape)
+    Box(modifier.width(width.dp).background(C.card, shape).border(if (changed) 1.5.dp else 1.dp, if (changed) C.accent else C.border, shape)
         .padding(vertical = 8.dp, horizontal = 4.dp), contentAlignment = Alignment.Center) {
         if (value.isEmpty()) Text(placeholder, style = Theme.body.copy(textAlign = TextAlign.Center), color = C.tertiary)
         BasicTextField(value, { onChange(it.filter { c -> c.isDigit() || c == '.' }) }, singleLine = true,
@@ -383,14 +387,14 @@ private fun WhatIfRow(it: CourseGrade.Item, possible: Double?, cutoff: Double, s
             Spacer(Modifier.width(4.dp))
             if (isDropped) PillButton("Count it") { onDrop(false) }
             else {
-                ScoreBox(score, it.earned?.let(Fmt::num) ?: "—", typed != null, onChange = onScore)
+                ScoreBox(score, it.earned?.let(Fmt::num) ?: "—", typed != null, modifier = Modifier.coachTarget("grades.score.${it.id}"), onChange = onScore)
                 Spacer(Modifier.width(4.dp))
                 if (it.possible != null) Text("/ ${Fmt.num(p)}", style = Theme.subhead, color = C.secondary)
                 else {
                     // Schoology doesn't show the points of ungraded work: the student types them.
                     Text("/", style = Theme.subhead, color = C.secondary)
                     Spacer(Modifier.width(4.dp))
-                    ScoreBox(outOf, "pts", false, 50, onOutOf)
+                    ScoreBox(outOf, "pts", false, 50, onChange = onOutOf)
                 }
             }
             Box {

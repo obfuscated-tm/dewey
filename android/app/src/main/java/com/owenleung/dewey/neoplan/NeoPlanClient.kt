@@ -53,7 +53,8 @@ object NeoPlanClient {
     const val SERVER = "https://neo-plan.vercel.app"
 
     val token: String? get() = Secrets.get("neoplanToken")
-    val connected: Boolean get() = token != null
+    /** Off during the tour's pretend week, so nothing pretend reaches the board. */
+    val connected: Boolean get() = !com.owenleung.dewey.engine.Practice.active && token != null
 
     fun validToken(t: String) = Regex("""^np_\S{8,}$""").matches(t)
 

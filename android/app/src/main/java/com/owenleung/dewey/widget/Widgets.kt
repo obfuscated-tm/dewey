@@ -118,7 +118,7 @@ class ToggleDoneAction : ActionCallback {
         val id = parameters[idKey] ?: return
         withContext(Dispatchers.Main) {
             val m = AppModel.get(context)
-            val it = ItemStore.item(id) ?: return@withContext
+            val it = ItemStore.real.item(id) ?: return@withContext
             if (it.turnedIn) return@withContext
             m.setProgress(it, if (m.progress(it) == AppModel.Progress.TODO) AppModel.Progress.DONE else AppModel.Progress.TODO)
             WidgetBridge.publishNow(m)

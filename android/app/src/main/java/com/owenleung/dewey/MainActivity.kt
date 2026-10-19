@@ -2,6 +2,7 @@ package com.owenleung.dewey
 
 import android.Manifest
 import android.content.Intent
+import com.owenleung.dewey.ui.tour.Tour
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -119,6 +120,13 @@ class MainActivity : ComponentActivity() {
 
     /** dewey://assignment/{id}, dewey://todo, dewey://grades, dewey://inbox, dewey://message/{id} */
     private fun handle(intent: Intent?, model: AppModel) {
+        // Debug builds: `adb shell am start -n … --es tour tour|cards` opens the tour (iOS's Demo launch arguments).
+        if (applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            when (intent?.getStringExtra("tour")) {
+                "tour" -> Tour.mode = Tour.Mode.TOUR
+                "cards" -> Tour.mode = Tour.Mode.CARDS
+            }
+        }
         val u = intent?.data ?: return
         if (u.scheme != "dewey") return
         model.deepLink = u.toString()

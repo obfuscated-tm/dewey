@@ -115,7 +115,7 @@ struct EmptyState: View {
 }
 
 /// The large-title header used by the tab screens: date line + title + trailing buttons.
-/// The one gear on To Do, Grades and Classes: opens Settings on that screen's own page,
+/// The one gear on To Do, Grades, Inbox and Classes: opens Settings on that screen's own page,
 /// with Settings' full list one tap back.
 struct ScreenOptions: View {
     let page: SettingsPage

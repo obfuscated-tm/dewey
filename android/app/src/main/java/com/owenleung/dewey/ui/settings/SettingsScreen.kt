@@ -286,7 +286,7 @@ fun SettingsScreen() {
     }
 }
 
-/** One Settings page; the gear on To Do, Grades and Classes lands on its own. */
+/** One Settings page; the gear on To Do, Grades, Inbox and Classes lands on its own. */
 @Composable
 fun SettingsPageScreen(page: SettingsPage) {
     when (page) {

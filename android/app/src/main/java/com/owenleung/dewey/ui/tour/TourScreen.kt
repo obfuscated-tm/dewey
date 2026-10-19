@@ -321,7 +321,7 @@ private fun GradesCard() = CardLayout("Grades and what-if", "Your real grade fir
 private fun SettingsCard(model: AppModel) {
     val scope = rememberCoroutineScope()
     var allowed by remember { mutableStateOf(Reminders.permitted()) }
-    CardLayout("Settings", "Set these two now, or later from the gear on To Do, Grades or Classes.", art = {
+    CardLayout("Settings", "Set these two now, or later from the gear on To Do, Grades, Inbox or Classes.", art = {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(Theme.Space.l)) {
             Column(verticalArrangement = Arrangement.spacedBy(Theme.Space.s)) {
                 Text("Appearance", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text)

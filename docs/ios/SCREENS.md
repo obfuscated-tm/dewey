@@ -43,7 +43,7 @@ Arrows: `›` opens a native screen; `↗` opens Schoology or a website (sheet o
 
 These are the mockups' values. The app has one palette, **Dew** (brand teal), in `Palette.dew` (`Theme.swift`), with a light and a dark value for every colour. Settings → Appearance picks System (the default), Light or Dark. No other themes or accent choices (2026-10-18: fewer palettes to keep readable). ThemeTests checks contrast in light and dark.
 
-Tabs: **To Do · Grades · Classes · Schoology**. To Do, Grades and Classes each have one gear beside the title (`ScreenOptions`). One tap opens Settings on that tab's own page (To Do, Grades or Classes), with the full Settings list one tap back. The To Do tab shows a red badge with the overdue count.
+Tabs: **To Do · Grades · Classes · Schoology**. To Do, Grades, Inbox and Classes each have one gear beside the title (`ScreenOptions`). One tap opens Settings on that tab's own page, with the full Settings list one tap back. The To Do tab shows a red badge with the overdue count.
 
 ## 1 · To Do and turning in
 
@@ -144,7 +144,7 @@ A short list of rows, each with a class-colour icon square and its current value
 - **Help** ("neo-plan on" when connected): **Take the tour** and **Tour cards** (4a), **How statuses work** (the full status guide) and **neo-plan** ("Not connected" / "Connected"), a page that explains what it is, who it's for and what syncs, then connects (token field, Keychain) or shows the masked token, Sync now and Disconnect (`design/Tutorial.options.html`, layout 1).
 - **About** (days left): version, this build's expiry date (free account: 7 days from install), Developer.
 
-The gear on To Do, Grades and Classes opens Settings already on that page. Footers are one line.
+The gear on To Do, Grades, Inbox and Classes opens Settings already on that page. Footers are one line.
 
 ### 4c Shared states · `design/States.dc.html` — every screen needs all of these
 First load (skeleton rows) · Offline: last saved copy + "as of N min ago" · Signed out by Schoology (engine `error: 'login'`) → Sign in · Couldn't read the page (engine `error: 'parse'`) → "Open this page in Schoology ↗", never a blank screen · neo-plan not connected · Nothing due.

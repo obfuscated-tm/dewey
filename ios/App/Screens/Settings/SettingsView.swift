@@ -1,7 +1,7 @@
 import SwiftUI
 import UserNotifications
 
-/// A page in Settings. The gear on To Do, Grades and Classes opens Settings on its own page.
+/// A page in Settings. The gear on To Do, Grades, Inbox and Classes opens Settings on its own page.
 enum SettingsPage: Hashable {
     case schoology, notifications, todo, grades, classes, inbox, help, about
 }

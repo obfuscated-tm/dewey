@@ -413,7 +413,7 @@ private struct SettingsCard: View {
 
     var body: some View {
         TourCard(title: "Settings",
-                 lede: "Set these two now, or later from the gear on To Do, Grades or Classes.") {
+                 lede: "Set these two now, or later from the gear on To Do, Grades, Inbox or Classes.") {
             VStack(alignment: .leading, spacing: Theme.Space.l) {
                 VStack(alignment: .leading, spacing: Theme.Space.s) {
                     Text("Appearance").font(Theme.subhead.weight(.semibold))

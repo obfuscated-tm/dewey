@@ -65,6 +65,8 @@ import com.owenleung.dewey.ui.markdown
 import com.owenleung.dewey.ui.Route
 import com.owenleung.dewey.ui.ScreenHeader
 import com.owenleung.dewey.ui.ScrollPage
+import com.owenleung.dewey.ui.ScreenOptions
+import com.owenleung.dewey.ui.SettingsPage
 import com.owenleung.dewey.ui.SheetTarget
 import com.owenleung.dewey.ui.SkeletonRows
 import com.owenleung.dewey.ui.model
@@ -99,6 +101,7 @@ fun InboxScreen() {
             IconButton(onClick = { nav.openSheet(SheetTarget("${Engine.ORIGIN}/messages/new")) }) {
                 Icon(Icons.Outlined.EditNote, "New message in Schoology", tint = C.secondary)
             }
+            ScreenOptions(SettingsPage.INBOX)
         }
         AsOfBanner(inbox.asOf, inbox.error)
         if (inbox.asOf == null) {

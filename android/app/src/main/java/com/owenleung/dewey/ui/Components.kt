@@ -166,7 +166,7 @@ fun ScreenHeader(title: String, kicker: String? = null, trailing: @Composable ()
     }
 }
 
-/** The one gear on To Do, Grades and Classes: opens Settings on that screen's own page, with Settings' full list one Back away. */
+/** The one gear on To Do, Grades, Inbox and Classes: opens Settings on that screen's own page, with Settings' full list one Back away. */
 @Composable
 fun ScreenOptions(page: SettingsPage, modifier: Modifier = Modifier) {
     val nav = nav

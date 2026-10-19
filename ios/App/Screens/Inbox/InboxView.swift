@@ -29,6 +29,7 @@ struct InboxView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("New message in Schoology")
+                        ScreenOptions(page: .inbox)
                     }
                     .padding(.top, 8)
                     AsOfBanner(date: inbox.asOf, error: inbox.error)

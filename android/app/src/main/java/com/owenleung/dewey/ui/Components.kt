@@ -68,6 +68,7 @@ import com.owenleung.dewey.store.Fmt
 import com.owenleung.dewey.store.ItemType
 import com.owenleung.dewey.ui.theme.C
 import com.owenleung.dewey.ui.theme.Theme
+import com.owenleung.dewey.ui.tour.coachTarget
 import java.util.Date
 
 // 4c · the states every screen needs, and the small parts every screen uses.
@@ -169,7 +170,7 @@ fun ScreenHeader(title: String, kicker: String? = null, trailing: @Composable ()
 @Composable
 fun ScreenOptions(page: SettingsPage, modifier: Modifier = Modifier) {
     val nav = nav
-    androidx.compose.material3.IconButton(onClick = { nav.openSettings(page) }, modifier = modifier) {
+    androidx.compose.material3.IconButton(onClick = { nav.openSettings(page) }, modifier = modifier.coachTarget("gear.${page.name.lowercase()}")) {
         Icon(androidx.compose.material.icons.Icons.Outlined.Settings, "Settings", tint = C.secondary, modifier = Modifier.size(26.dp))
     }
 }

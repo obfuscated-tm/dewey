@@ -58,6 +58,8 @@ import com.owenleung.dewey.ui.EmptyState
 import com.owenleung.dewey.ui.Nav
 import com.owenleung.dewey.ui.Route
 import com.owenleung.dewey.ui.ScreenHeader
+import com.owenleung.dewey.ui.ScreenOptions
+import com.owenleung.dewey.ui.SettingsPage
 import com.owenleung.dewey.ui.ScrollPage
 import com.owenleung.dewey.ui.SheetTarget
 import com.owenleung.dewey.ui.SkeletonRows
@@ -71,30 +73,19 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
 import java.util.Date
 
-/** The app's own class colours (Classes tiles, the dot on a folder). */
-val classColors = listOf("#1D5EA8", "#23794A", "#6A4BA8", "#A8324A", "#B86E0F", "#16707A", "#5E6670", "#8A4B1D")
-fun classColor(i: Int) = Color(android.graphics.Color.parseColor(classColors[i % classColors.size]))
-
-/** 3a · A tile per class (grade + open work), search across every class's materials, and recently opened materials. */
+/** 3a · A shelf of classes (grade + what's due, see Shelf), search across every class's materials, and recently opened materials. */
 @Composable
 fun ClassesScreen() {
     val model = model
     var query by rememberSaveable { mutableStateOf("") }
     ScrollPage(refresh = { runCatching { model.loadCourses() } }, spacing = 14.dp) {
-        ScreenHeader("Classes")
+        ScreenHeader("Classes") { ScreenOptions(SettingsPage.CLASSES) }
         SearchField(query) { q ->
             query = q
             if (q.isNotEmpty()) MaterialIndex.build(model)
         }
         if (query.isEmpty()) {
-            // Two columns of tiles.
-            model.classes.withIndex().chunked(2).forEach { pair ->
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    for ((i, c) in pair) ClassTile(c, i, Modifier.weight(1f))
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
-                }
-            }
-            if (model.classes.isEmpty()) SkeletonRows(4)
+            if (model.classes.isEmpty()) SkeletonRows(4) else Shelf()
             val recent = RecentMaterials.list()
             if (recent.isNotEmpty()) {
                 Text("Recently opened", style = Theme.title, color = C.text, modifier = Modifier.padding(top = 8.dp))
@@ -130,30 +121,6 @@ private fun SearchField(q: String, onChange: (String) -> Unit) {
                 modifier = Modifier.fillMaxWidth())
         }
         if (q.isNotEmpty()) Text("Cancel", style = Theme.subhead, color = C.accent, modifier = Modifier.clickable { onChange("") }.padding(start = 8.dp))
-    }
-}
-
-@Composable
-private fun ClassTile(course: Course, index: Int, modifier: Modifier) {
-    val model = model
-    val nav = nav
-    val open = model.todoItems().count { it.sectionId == course.sectionId && !model.isFinished(it) }
-    val g = model.grades[course.sectionId]
-    Card(modifier.clickable { nav.push(Route.Materials(course.sectionId, null, course.shortTitle, emptyList())) }, padding = 12.dp) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.width(24.dp).height(4.dp).clip(CircleShape).background(classColor(index)))
-            Spacer(Modifier.weight(1f))
-            Text(course.periodLabel, style = Theme.footnote, color = C.tertiary, maxLines = 1)
-        }
-        Text(course.shortTitle, style = Theme.headline, color = C.text, maxLines = 2, minLines = 2, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 8.dp))
-        Spacer(Modifier.height(8.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(g?.letter ?: "–", style = Theme.body.copy(fontWeight = FontWeight.Bold), color = C.text)
-            Spacer(Modifier.width(6.dp))
-            Text(g?.pct?.let { Fmt.pct(it) } ?: "No grade", style = Theme.footnote, color = C.secondary, modifier = Modifier.weight(1f))
-            if (open > 0) Text("$open open", style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.accent)
-        }
     }
 }
 

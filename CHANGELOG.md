@@ -4,6 +4,19 @@ The extension and the MCP server are versioned separately (see [Versioning and r
 
 Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git history. Apart from MCP 1.0.0 (tag `mcp-v1.0.0`), those versions were never tagged, so they're listed by date.
 
+## 2026-10-18 — Android 0.3
+
+Tag: `android-v0.3` (beta, sideloaded APK)
+
+### Android
+- Catches up with the iPhone app's design refresh.
+- Guided tour on first launch: Dewey walks you through a pretend week in the real screens, with everything but the next step dimmed. Nothing you tap touches your real Schoology. Settings → Help has the tour and reference cards.
+- One look, Dew, with a System / Light / Dark switch (the six themes are gone); serif screen titles.
+- A gear on each tab opens that tab's Settings page; Settings is split into pages, with How statuses work and a neo-plan page that explains it before connecting.
+- To Do rows are library catalog cards, with a ripple when you mark one done and a one-time tip after your first mark. Classes is a shelf of books.
+- Grades: a report card across the top; press and hold a class (or Settings → Grades) to hide it, and hidden classes don't count toward new-grade alerts. A grade change that rounds to nothing shows "+0.00%".
+- Inbox: **School updates** from groups such as a class hub. PDFs in a class's materials open.
+
 ## 2026-10-18 — Extension 1.13.0 · MCP 1.1.1
 
 Tags: `ext-v1.13.0`, `mcp-v1.1.1`

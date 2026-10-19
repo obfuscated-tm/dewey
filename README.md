@@ -232,7 +232,7 @@ Everything the extension does, rebuilt for your phone:
 - **Inbox** for announcements, school messages and updates from your school's groups (like a class hub), with new ones at the top.
 - **Reminders**, home-screen widgets, and a countdown to your next test (a Live Activity on iPhone, a notification on Android).
 - **A guided tour** on first launch: Dewey walks you through a pretend week (mark work done, submit, what-if, your shelf, Settings) without touching your real Schoology. Take it again from Settings → Help.
-- **Light and dark mode** (iPhone: the Dew look with a System / Light / Dark switch; Android: six themes), and full Schoology one tab away when you need it.
+- **Light and dark mode**: the Dew look with a System / Light / Dark switch, and full Schoology one tab away when you need it.
 
 Neither app is in a store yet. **Want one now? You can build it yourself.** Both only read Schoology; anything that changes it (like submitting) happens in Schoology's own page inside the app. Sign in with your school's normal Schoology login.
 

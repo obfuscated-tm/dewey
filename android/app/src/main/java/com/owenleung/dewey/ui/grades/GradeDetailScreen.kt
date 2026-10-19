@@ -285,7 +285,7 @@ fun WhatIfSheet(itemId: String, sectionId: String?, onClose: () -> Unit) {
 private fun GradeColumn(label: String, letter: String?, pct: Double?, color: Color, delta: Double?, modifier: Modifier) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(label, style = Theme.caption.copy(fontWeight = FontWeight.Bold), color = color)
-        Text(letter ?: "—", style = Theme.largeTitle, color = if (pct == null) C.tertiary else C.text)
+        Text(letter ?: "—", style = Theme.display, color = if (pct == null) C.tertiary else C.text)
         Row {
             Text(Fmt.pct(pct, 2), style = Theme.subhead, color = C.secondary)
             if (delta != null && abs(delta) >= 0.005) {

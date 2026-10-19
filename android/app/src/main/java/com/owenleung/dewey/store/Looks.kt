@@ -25,3 +25,20 @@ object GradesLook {
     fun abbreviation(name: String): String =
         name.split(" ").filter { it.isNotEmpty() }.joinToString(" ") { if (it.length > 4) it.take(4) else it }.uppercase()
 }
+
+/** Settings → To Do → View: by class under the week strip (the default), or one list with the most urgent first. */
+enum class ToDoLayout(val raw: String, val title: String) {
+    WEEK("week", "Week"), URGENT("urgent", "Urgent first");
+
+    companion object {
+        const val KEY = "todoLayout"
+        val current: ToDoLayout get() = entries.firstOrNull { it.raw == Prefs.string(KEY) } ?: WEEK
+    }
+}
+
+/** The Classes shelf: section ids taken off it (they lie flat under it), comma-separated. */
+object ShelfLook {
+    const val OFF_KEY = "offShelf"
+    fun off(): Set<String> = IdSet.parse(Prefs.string(OFF_KEY))
+    fun toggle(id: String) = Prefs.set(OFF_KEY, IdSet.toggled(Prefs.string(OFF_KEY), id))
+}

@@ -198,6 +198,7 @@ fun RouteScreen(r: Route) {
         is Route.MaterialPage -> MaterialPageScreen(r.row)
         is Route.Message -> MessageScreen(r.thread)
         Route.Settings -> SettingsScreen()
+        is Route.SettingsPage -> com.owenleung.dewey.ui.settings.SettingsPageScreen(r.page)
         Route.Developer -> DeveloperScreen()
     }
 }

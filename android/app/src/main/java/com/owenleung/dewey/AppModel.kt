@@ -51,7 +51,7 @@ import java.util.Date
  * process (ios/App/AppModel.swift); the UI, widgets and background refresh share it.
  */
 @SuppressLint("StaticFieldLeak") // holds the application context only
-class AppModel private constructor(val context: Context) {
+class AppModel internal constructor(val context: Context, /** The tour's pretend week (Practice): in memory, answered locally, no side effects. */ val practice: Boolean = false) {
     enum class Session { CHECKING, SIGNED_OUT, SIGNED_IN }
 
     companion object {

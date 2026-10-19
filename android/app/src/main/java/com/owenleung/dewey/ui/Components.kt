@@ -28,6 +28,7 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.FindInPage
 import androidx.compose.material.icons.outlined.HourglassEmpty
 import androidx.compose.material.icons.outlined.TaskAlt
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -158,11 +159,31 @@ fun ScreenHeader(title: String, kicker: String? = null, trailing: @Composable ()
     Row(Modifier.fillMaxWidth().padding(horizontal = Theme.Space.xs), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             if (kicker != null) Text(kicker.uppercase(), style = Theme.caption.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp), color = C.secondary)
-            Text(title, style = Theme.largeTitle, color = C.text)
+            Text(title, style = Theme.display, color = C.text)
         }
         trailing()
     }
 }
+
+/** The one gear on To Do, Grades and Classes: opens Settings on that screen's own page, with Settings' full list one Back away. */
+@Composable
+fun ScreenOptions(page: SettingsPage, modifier: Modifier = Modifier) {
+    val nav = nav
+    androidx.compose.material3.IconButton(onClick = { nav.openSettings(page) }, modifier = modifier) {
+        Icon(androidx.compose.material.icons.Icons.Outlined.Settings, "Settings", tint = C.secondary, modifier = Modifier.size(26.dp))
+    }
+}
+
+/** The class's colour (Theme.classColors), by its place in the class list; lighter in dark mode. */
+@Composable
+fun classColor(sectionId: String?): Color = Theme.classColor(classIndex(sectionId), C.dark)
+
+/** The same colour, unchanged in dark mode: a book spine on the Classes shelf. */
+@Composable
+fun spineColor(sectionId: String?): Color = Theme.spineColor(classIndex(sectionId))
+
+@Composable
+private fun classIndex(sectionId: String?): Int = model.classes.indexOfFirst { it.sectionId == sectionId }.coerceAtLeast(0)
 
 /** "SUBMISSION", "INSTRUCTIONS": the small label at the top of a card. */
 @Composable
@@ -319,3 +340,10 @@ private fun AnnotatedString.Builder.link(text: String, url: String, color: Color
 }
 
 val Zero = PaddingValues(0.dp)
+
+/** Reaches `by` past the page's side padding on both sides (edge-to-edge bands). */
+fun Modifier.bleed(by: Dp): Modifier = layout { m, c ->
+    val extra = (by * 2).roundToPx()
+    val p = m.measure(c.copy(minWidth = c.minWidth + extra, maxWidth = if (c.hasBoundedWidth) c.maxWidth + extra else c.maxWidth))
+    layout(p.width - extra, p.height) { p.place(-by.roundToPx(), 0) }
+}

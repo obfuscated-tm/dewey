@@ -26,8 +26,12 @@ sealed class Route {
     data class MaterialPage(val row: MaterialRow) : Route()
     data class Message(val thread: MessageThread) : Route()
     data object Settings : Route()
+    data class SettingsPage(val page: com.owenleung.dewey.ui.SettingsPage) : Route()
     data object Developer : Route()
 }
+
+/** A page in Settings. The gear on To Do, Grades and Classes opens Settings on its own page. */
+enum class SettingsPage { SCHOOLOGY, NOTIFICATIONS, TODO, GRADES, CLASSES, INBOX, HELP, ABOUT, CALL_NUMBERS, STATUS_GUIDE, NEOPLAN }
 
 /** What the Schoology sheet (1c) opens. `assignmentId`: re-check its dropbox on close. `google`: offer the full-screen frame. */
 data class SheetTarget(val url: String, val assignmentId: String? = null, val google: Boolean = false)
@@ -54,6 +58,12 @@ class Nav(val model: AppModel) {
     var whatIf by mutableStateOf<Pair<String, String?>?>(null)
 
     fun push(r: Route) { stacks[tab] += r }
+
+    /** The gear: Settings already on `page`, with the full list one Back away. */
+    fun openSettings(page: SettingsPage) {
+        stacks[tab] += Route.Settings
+        stacks[tab] += Route.SettingsPage(page)
+    }
     fun pop(): Boolean {
         val s = stacks[tab]
         if (s.isEmpty()) return false

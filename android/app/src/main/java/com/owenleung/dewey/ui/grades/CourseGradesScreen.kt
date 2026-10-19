@@ -232,7 +232,7 @@ private fun Summary(sectionId: String, real: CourseGrade?, startWhatIf: () -> Un
                 Text(listOfNotNull(course?.periodLabel, real?.period ?: "Current period").filter { it.isNotEmpty() }.joinToString(" · "),
                     style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.secondary)
                 Row(verticalAlignment = Alignment.Bottom) {
-                    Text(real?.letter ?: "—", style = Theme.largeTitle, color = C.text)
+                    Text(real?.letter ?: "—", style = Theme.display, color = C.text)
                     Spacer(Modifier.width(8.dp))
                     Text(Fmt.pct(real?.pct, 2), style = Theme.title.copy(fontWeight = FontWeight.Medium), color = C.text, modifier = Modifier.padding(bottom = 4.dp))
                 }
@@ -440,7 +440,9 @@ private fun Planner(sectionId: String, real: CourseGrade?, cutoff: Double) {
     val model = model
     val scope = rememberCoroutineScope()
     val cats = real?.categories?.map { it.title } ?: emptyList()
-    var category by remember { mutableStateOf(cats.firstOrNull { it.contains("test", true) } ?: cats.firstOrNull() ?: "") }
+    // The student's pick, else the first category about tests, else the first: never "" once the categories load.
+    var picked by remember { mutableStateOf("") }
+    val category = picked.takeIf { it in cats } ?: cats.firstOrNull { it.contains("test", true) } ?: cats.firstOrNull() ?: ""
     var points by remember { mutableStateOf("100") }
     var plan by remember { mutableStateOf<PlanResult?>(null) }
     var menu by remember { mutableStateOf(false) }
@@ -452,7 +454,7 @@ private fun Planner(sectionId: String, real: CourseGrade?, cutoff: Double) {
                 Text("Category: ", style = Theme.subhead, color = C.secondary)
                 Text(category, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.accent)
             }
-            DropdownMenu(menu, { menu = false }) { for (c in cats) DropdownMenuItem(text = { Text(c) }, onClick = { category = c; menu = false }) }
+            DropdownMenu(menu, { menu = false }) { for (c in cats) DropdownMenuItem(text = { Text(c) }, onClick = { picked = c; menu = false }) }
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Worth ", style = Theme.subhead, color = C.text)

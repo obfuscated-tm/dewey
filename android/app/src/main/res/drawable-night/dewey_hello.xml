@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- brand/mascot/dewey-hello-dark.svg, by hand as a vector drawable. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="72dp" android:height="72dp" android:viewportWidth="64" android:viewportHeight="64">
+    <path android:pathData="M32,4C32,4 12,28 12,40a20,20 0,0 0,40 0C52,28 32,4 32,4Z" android:fillColor="#1D9E75"
+        android:strokeColor="#E1F5EE" android:strokeWidth="2.6" android:strokeLineJoin="round" />
+    <path android:pathData="M19.6,29.6Q21.6,25.6 25.2,20.8" android:strokeColor="#FFFFFF" android:strokeWidth="3.2" android:strokeLineCap="round" />
+    <path android:pathData="M19,39a6,6 0,1 0,12 0a6,6 0,1 0,-12 0Z" android:fillColor="#E1F5EE" android:strokeColor="#04342C" android:strokeWidth="2.5" />
+    <path android:pathData="M33,39a6,6 0,1 0,12 0a6,6 0,1 0,-12 0Z" android:fillColor="#E1F5EE" android:strokeColor="#04342C" android:strokeWidth="2.5" />
+    <path android:pathData="M31,39h2" android:strokeColor="#04342C" android:strokeWidth="2.5" />
+    <path android:pathData="M23,39a2,2 0,1 0,4 0a2,2 0,1 0,-4 0Z" android:fillColor="#04342C" />
+    <path android:pathData="M37,39a2,2 0,1 0,4 0a2,2 0,1 0,-4 0Z" android:fillColor="#04342C" />
+    <path android:pathData="M27,51q5,4 10,0" android:strokeColor="#04342C" android:strokeWidth="2.5" android:strokeLineCap="round" />
+</vector>

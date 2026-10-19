@@ -73,6 +73,8 @@ import com.owenleung.dewey.ui.ErrorState
 import com.owenleung.dewey.ui.PillButton
 import com.owenleung.dewey.ui.Route
 import com.owenleung.dewey.ui.ScreenHeader
+import com.owenleung.dewey.ui.ScreenOptions
+import com.owenleung.dewey.ui.SettingsPage
 import com.owenleung.dewey.ui.ScrollPage
 import com.owenleung.dewey.ui.SheetTarget
 import com.owenleung.dewey.ui.SkeletonRows
@@ -98,7 +100,7 @@ fun ToDoScreen() {
         // Header: date, title, gear, week strip.
         val open = items.filter { !model.isFinished(it) }
         ScreenHeader("To Do", kicker = Fmt.header(now)) {
-            IconButton(onClick = { nav.push(Route.Settings) }) { Icon(Icons.Outlined.Settings, "Settings", tint = C.secondary) }
+            ScreenOptions(SettingsPage.TODO)
         }
         // Late, today and the next six days, a dot per item still to do; tap one to show only it.
         WeekStrip(open, now, filter) { filter = it }

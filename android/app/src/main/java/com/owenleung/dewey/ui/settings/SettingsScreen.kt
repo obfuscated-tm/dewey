@@ -28,7 +28,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.HelpOutline
+import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AccountCircle
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Checklist
+import androidx.compose.material.icons.outlined.Contrast
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.LibraryBooks
+import androidx.compose.material.icons.outlined.Notifications
+import androidx.compose.material.icons.outlined.School
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,7 +68,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -70,7 +83,11 @@ import com.owenleung.dewey.R
 import com.owenleung.dewey.engine.Engine
 import com.owenleung.dewey.engine.EngineJson
 import com.owenleung.dewey.neoplan.NeoPlanClient
+import com.owenleung.dewey.store.CallNumber
 import com.owenleung.dewey.store.Fmt
+import com.owenleung.dewey.store.GradesLook
+import com.owenleung.dewey.store.ShelfLook
+import com.owenleung.dewey.store.ToDoLayout
 import com.owenleung.dewey.store.Inbox
 import com.owenleung.dewey.store.Prefs
 import com.owenleung.dewey.store.Reminders
@@ -78,13 +95,15 @@ import com.owenleung.dewey.ui.Card
 import com.owenleung.dewey.ui.DetailScaffold
 import com.owenleung.dewey.ui.Divider
 import com.owenleung.dewey.ui.Route
+import com.owenleung.dewey.ui.SettingsPage
+import com.owenleung.dewey.ui.classColor
+import com.owenleung.dewey.ui.tour.coachTarget
 import com.owenleung.dewey.ui.SheetTarget
 import com.owenleung.dewey.ui.ScrollPage
 import com.owenleung.dewey.ui.WideButton
 import com.owenleung.dewey.ui.model
 import com.owenleung.dewey.ui.nav
 import com.owenleung.dewey.ui.theme.C
-import com.owenleung.dewey.ui.theme.Palette
 import com.owenleung.dewey.ui.theme.Theme
 import com.owenleung.dewey.web.WebConfig
 import com.owenleung.dewey.web.WebController
@@ -154,28 +173,168 @@ private fun HourPicker(label: String, key: String, def: Int, hours: IntRange, on
     }
 }
 
-/** 4b · Account, neo-plan, reminders, notifications, inbox, look, login compatibility, this build, Developer. */
+/** A due-reminder switch or time changed: ask for permission when turning one on, then reschedule. */
+private fun dueChanged(model: com.owenleung.dewey.AppModel, on: Boolean) {
+    model.scope.launch {
+        if (on) Reminders.requestPermission()
+        Reminders.schedule(model.todoItems(), model.courses)
+    }
+}
+
+private fun askIfOn(model: com.owenleung.dewey.AppModel, on: Boolean) { if (on) model.scope.launch { Reminders.requestPermission() } }
+
+/** A white symbol on a class-colour square (the spine colour, the same in dark mode, so the white stays readable). */
+@Composable
+private fun IconSquare(icon: ImageVector, color: Int) {
+    Box(Modifier.size(29.dp).clip(RoundedCornerShape(Theme.Radius.tag)).background(Theme.spineColor(color)), contentAlignment = Alignment.Center) {
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(17.dp))
+    }
+}
+
+/** An Android Settings-style row: the icon square, the title (and a subtitle), its value, and a chevron. */
+@Composable
+private fun PageRow(icon: ImageVector, color: Int, title: String, value: String? = null, subtitle: String? = null, divider: Boolean = true,
+                    modifier: Modifier = Modifier, onClick: () -> Unit) {
+    if (divider) Divider()
+    Row(modifier.fillMaxWidth().clickable(onClick = onClick).heightIn(min = 52.dp).padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        IconSquare(icon, color)
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = Theme.body, color = C.text)
+            if (subtitle != null) Text(subtitle, style = Theme.caption, color = C.secondary)
+        }
+        if (value != null) Text(value, style = Theme.body, color = C.secondary, maxLines = 1)
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = C.tertiary)
+    }
+}
+
+/** A row that opens another page inside a Settings page. */
+@Composable
+private fun LinkLine(label: String, value: String? = null, divider: Boolean = true, onClick: () -> Unit) {
+    if (divider) Divider()
+    Row(Modifier.fillMaxWidth().clickable(onClick = onClick).heightIn(min = 48.dp).padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = Theme.body, color = C.text, modifier = Modifier.weight(1f))
+        if (value != null) Text(value, style = Theme.body, color = C.secondary)
+        Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = C.tertiary)
+    }
+}
+
+/** System / Light / Dark. */
+@Composable
+fun AppearancePicker(modifier: Modifier = Modifier) {
+    Prefs.revision.intValue
+    val opts = listOf("system" to "System", "light" to "Light", "dark" to "Dark")
+    SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {
+        opts.forEachIndexed { i, (k, l) ->
+            SegmentedButton(Theme.appearance == k, { Prefs.set(Theme.APPEARANCE_KEY, k) }, SegmentedButtonDefaults.itemShape(i, opts.size),
+                colors = SegmentedButtonDefaults.colors(activeContainerColor = C.accentSoft, activeContentColor = C.accent)) { Text(l) }
+        }
+    }
+}
+
+private val notificationKeys = listOf(Reminders.ENABLED_KEY to false, Reminders.SOON_KEY to true, Reminders.TEST_NIGHT_KEY to true,
+    Reminders.MORNING_KEY to false, Reminders.GRADES_KEY to true, Reminders.SIGNED_OUT_KEY to true, Reminders.MESSAGES_KEY to true,
+    Reminders.MATERIALS_KEY to true)
+
+/**
+ * 4b · A short list of pages: Schoology, Notifications, Appearance (a picker right
+ * in the list), one page per tab (To Do, Grades, Classes, Inbox), Help and About.
+ * Each row shows its current value.
+ */
 @Composable
 fun SettingsScreen() {
     val model = model
     val nav = nav
-    val scope = rememberCoroutineScope()
-    var token by remember { mutableStateOf("") }
-    var tokenError by remember { mutableStateOf<String?>(null) }
-    var connected by remember { mutableStateOf(NeoPlanClient.connected) }
-    var confirmSignOut by remember { mutableStateOf(false) }
     Prefs.revision.intValue
-
-    /** A due-reminder switch or time changed: ask for permission when turning one on, then reschedule. */
-    fun dueChanged(on: Boolean) {
-        scope.launch {
-            if (on) Reminders.requestPermission()
-            Reminders.schedule(model.todoItems(), model.courses)
+    val notificationsOn = notificationKeys.any { (k, d) -> Prefs.bool(k, d) }
+    val onShelf = model.classes.count { it.sectionId !in ShelfLook.off() }
+    DetailScaffold("Settings") { pad ->
+        ScrollPage(pad, spacing = 22.dp) {
+            Card {
+                PageRow(Icons.Outlined.School, 5, "Schoology", subtitle = Engine.HOST, divider = false) { nav.push(Route.SettingsPage(SettingsPage.SCHOOLOGY)) }
+            }
+            Card {
+                PageRow(Icons.Outlined.Notifications, 3, "Notifications", if (notificationsOn) "On" else "Off", divider = false,
+                    modifier = Modifier.coachTarget("settings.notifications")) { nav.push(Route.SettingsPage(SettingsPage.NOTIFICATIONS)) }
+                Divider()
+                Column(Modifier.fillMaxWidth().coachTarget("settings.appearance").padding(horizontal = 16.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        IconSquare(Icons.Outlined.Contrast, 2)
+                        Spacer(Modifier.width(12.dp))
+                        Text("Appearance", style = Theme.body, color = C.text)
+                    }
+                    AppearancePicker()
+                }
+            }
+            Card {
+                PageRow(Icons.Outlined.Checklist, 1, "To Do", ToDoLayout.current.title, divider = false) { nav.push(Route.SettingsPage(SettingsPage.TODO)) }
+                PageRow(Icons.Outlined.BarChart, 0, "Grades", if (GradesLook.reportCard) "Letters" else "List") { nav.push(Route.SettingsPage(SettingsPage.GRADES)) }
+                PageRow(Icons.Outlined.LibraryBooks, 4, "Classes", "$onShelf on shelf") { nav.push(Route.SettingsPage(SettingsPage.CLASSES)) }
+                PageRow(Icons.Outlined.Email, 5, "Inbox") { nav.push(Route.SettingsPage(SettingsPage.INBOX)) }
+            }
+            Card {
+                PageRow(Icons.AutoMirrored.Outlined.HelpOutline, 7, "Help", if (NeoPlanClient.connected) "neo-plan on" else null, divider = false) {
+                    nav.push(Route.SettingsPage(SettingsPage.HELP))
+                }
+                PageRow(Icons.Outlined.Info, 6, "About", BuildConfigInfo.versionName(LocalContext.current)) { nav.push(Route.SettingsPage(SettingsPage.ABOUT)) }
+            }
         }
     }
-    fun askIfOn(on: Boolean) { if (on) scope.launch { Reminders.requestPermission() } }
+}
 
+/** One Settings page; the gear on To Do, Grades and Classes lands on its own. */
+@Composable
+fun SettingsPageScreen(page: SettingsPage) {
+    when (page) {
+        SettingsPage.SCHOOLOGY -> SchoologySettings()
+        SettingsPage.NOTIFICATIONS -> NotificationSettings()
+        SettingsPage.TODO -> ToDoSettings()
+        SettingsPage.GRADES -> GradesSettings()
+        SettingsPage.CLASSES -> ShelfSettings()
+        SettingsPage.INBOX -> InboxSettings()
+        SettingsPage.HELP -> HelpSettings()
+        SettingsPage.ABOUT -> AboutSettings()
+        SettingsPage.CALL_NUMBERS -> CallNumberSettings()
+        SettingsPage.STATUS_GUIDE -> StatusGuideScreen()
+        SettingsPage.NEOPLAN -> NeoPlanScreen()
+    }
+}
+
+@Composable
+private fun SchoologySettings() {
+    val model = model
+    val nav = nav
+    var confirmSignOut by remember { mutableStateOf(false) }
+    DetailScaffold("Schoology") { pad ->
+        ScrollPage(pad, spacing = 22.dp) {
+            Section("Account") {
+                Value("Signed in to", Engine.HOST, divider = false)
+                Action("Sign out", destructive = true) { confirmSignOut = true }
+            }
+            Section("Sign-in", "Signs in with Chrome's user agent instead of the app's web view's. Google refuses sign-in in a web view that says it is one, so this is on by default; it turns on by itself if Google refuses.") {
+                Toggle("Login compatibility mode", WebConfig.COMPAT_KEY, true, divider = false) { model.engine.reload() }
+            }
+        }
+    }
+    if (confirmSignOut) AlertDialog(
+        onDismissRequest = { confirmSignOut = false },
+        title = { Text("Sign out of Schoology?") },
+        text = { Text("Clears the Schoology session and saved pages. Your Done marks stay.") },
+        confirmButton = {
+            TextButton({ confirmSignOut = false; nav.stacks[nav.tab].clear(); model.scope.launch { model.signOut() } }) { Text("Sign out", color = C.late) }
+        },
+        dismissButton = { TextButton({ confirmSignOut = false }) { Text("Cancel") } },
+    )
+}
+
+@Composable
+private fun NotificationSettings() {
+    val model = model
     val ctx = LocalContext.current
+    Prefs.revision.intValue
     // Re-read when coming back from Android's "Alarms & reminders" page, and reschedule with exact times.
     var exact by remember { mutableStateOf(Reminders.exactAllowed) }
     val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -189,109 +348,192 @@ fun SettingsScreen() {
         lifecycle.lifecycle.addObserver(o)
         onDispose { lifecycle.lifecycle.removeObserver(o) }
     }
-
-    DetailScaffold("Settings") { pad ->
+    DetailScaffold("Notifications") { pad ->
         ScrollPage(pad, spacing = 22.dp) {
-            Section("Schoology") {
-                Value("Signed in to", Engine.HOST, divider = false)
-                Action("Sign out", destructive = true) { confirmSignOut = true }
-            }
-
-            Section("neo-plan", if (connected) "Done, turned in and type changes are shared with neo-plan; the newer edit wins."
-                else "Optional. Copy the token from neo-plan's extension settings. Kept encrypted on this phone.") {
-                if (connected) {
-                    Value("Token", NeoPlanClient.mask(NeoPlanClient.token), divider = false)
-                    Action("Sync now") { scope.launch { model.syncNeoPlan() } }
-                    Action("Disconnect", destructive = true) { NeoPlanClient.setToken(null); connected = false }
-                } else {
-                    RowLine(false) {
-                        Box(Modifier.fillMaxWidth()) {
-                            if (token.isEmpty()) Text("np_…", style = Theme.body, color = C.tertiary)
-                            BasicTextField(token, { token = it }, singleLine = true, textStyle = Theme.body.copy(color = C.text),
-                                visualTransformation = PasswordVisualTransformation(), cursorBrush = SolidColor(C.accent), modifier = Modifier.fillMaxWidth())
-                        }
-                    }
-                    tokenError?.let { Text(it, style = Theme.footnote, color = C.late, modifier = Modifier.padding(horizontal = 16.dp)) }
-                    Action("Connect") {
-                        val t = token.trim()
-                        if (!NeoPlanClient.validToken(t)) { tokenError = "That doesn't look like a neo-plan token (np_…)."; return@Action }
-                        NeoPlanClient.setToken(t)
-                        token = ""; tokenError = null; connected = true
-                        scope.launch { model.syncNeoPlan() }
-                    }
-                }
-            }
-
-            Section("Due reminders", "A test reminder stops once you mark it Studied; the others stop once it's submitted, turned in or done. " +
-                "The 2-hour one is for Schoology dropboxes only and still comes if you marked it done but haven't submitted." +
+            Section("Due work", "Each stops once the work is done, turned in or (for a test) studied. The 2-hour one is for Schoology dropboxes only." +
                 if (exact) "" else " Without exact times, Android may send each one up to 10 minutes late.") {
-                Toggle("2 hours before, if not submitted", Reminders.SOON_KEY, true, divider = false, onChange = ::dueChanged)
-                Toggle("Night before a test", Reminders.TEST_NIGHT_KEY, true, onChange = ::dueChanged)
-                Toggle("Homework the evening before", Reminders.ENABLED_KEY, false, onChange = ::dueChanged)
-                if (Reminders.enabled || Prefs.bool(Reminders.TEST_NIGHT_KEY, true)) HourPicker("Evening time", Reminders.HOUR_KEY, 19, 15..22) { dueChanged(false) }
-                Toggle("Morning summary", Reminders.MORNING_KEY, false, onChange = ::dueChanged)
-                if (Prefs.bool(Reminders.MORNING_KEY)) HourPicker("Morning time", Reminders.MORNING_HOUR_KEY, 7, 5..10) { dueChanged(false) }
+                Toggle("2 hours before, if not submitted", Reminders.SOON_KEY, true, divider = false) { dueChanged(model, it) }
+                Toggle("Night before a test", Reminders.TEST_NIGHT_KEY, true) { dueChanged(model, it) }
+                Toggle("Homework the evening before", Reminders.ENABLED_KEY, false) { dueChanged(model, it) }
+                if (Reminders.enabled || Prefs.bool(Reminders.TEST_NIGHT_KEY, true)) HourPicker("Evening time", Reminders.HOUR_KEY, 19, 15..22) { dueChanged(model, false) }
+                Toggle("Morning summary", Reminders.MORNING_KEY, false) { dueChanged(model, it) }
+                if (Prefs.bool(Reminders.MORNING_KEY)) HourPicker("Morning time", Reminders.MORNING_HOUR_KEY, 7, 5..10) { dueChanged(model, false) }
                 if (!exact) Action("Allow exact reminder times") { Reminders.openExactAlarmSettings(ctx) }
             }
-
-            Section("Notifications", "Grade, message, material and signed-out alerts come when the app refreshes in the background, so they can be late. Schoology signs you out about once a day.") {
-                Toggle("New grades", Reminders.GRADES_KEY, true, divider = false, onChange = ::askIfOn)
-                Toggle("Messages from teachers", Reminders.MESSAGES_KEY, true, onChange = ::askIfOn)
-                Toggle("New materials in your classes", Reminders.MATERIALS_KEY, true, onChange = ::askIfOn)
-                Toggle("Signed out of Schoology", Reminders.SIGNED_OUT_KEY, true, onChange = ::askIfOn)
-            }
-
-            Section("Inbox", if (Inbox.markRead) "Opening a message in the app marks it read on Schoology, like opening it there."
-                else "Messages show their preview only, so they stay unread on Schoology until you open them there.") {
-                Toggle("Mark messages read when opened", Inbox.MARK_READ_KEY, true, divider = false)
-            }
-
-            Section("Look") {
-                RowLine(false) {
-                    val opts = listOf("system" to "System", "light" to "Light", "dark" to "Dark")
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        opts.forEachIndexed { i, (k, l) ->
-                            SegmentedButton(Theme.appearance == k, { Prefs.set(Theme.APPEARANCE_KEY, k) }, SegmentedButtonDefaults.itemShape(i, opts.size),
-                                colors = SegmentedButtonDefaults.colors(activeContainerColor = C.accentSoft, activeContentColor = C.accent)) { Text(l) }
-                        }
-                    }
-                }
-                RowLine(true) {
-                    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(Theme.Space.m)) {
-                        for (p in Palette.all) PaletteTile(p, Theme.palette.id == p.id) {
-                            Prefs.set(Theme.PALETTE_KEY, p.id); com.owenleung.dewey.widget.WidgetBridge.publish(model)
-                        }
-                    }
-                }
-                if (Theme.palette.accent == null) RowLine(true) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Theme.accentOptions.forEachIndexed { i, hex ->
-                            val on = Theme.chosenAccentHex == hex
-                            Box(Modifier.size(36.dp).border(if (on) 2.dp else 0.dp, if (on) C.text else C.card, CircleShape).padding(3.dp)
-                                .clip(CircleShape).background(Theme.hex(hex)).clickable { Prefs.set(Theme.ACCENT_KEY, hex); com.owenleung.dewey.widget.WidgetBridge.publish(model) })
-                        }
-                    }
-                }
-            }
-
-            Section("Sign-in", "Signs in with Chrome's user agent instead of the app's web view's. Google refuses sign-in in a web view that says it is one, so this is on by default; it turns on by itself if Google refuses.") {
-                Toggle("Login compatibility mode", WebConfig.COMPAT_KEY, true, divider = false) { model.engine.reload() }
-            }
-
-            Section("This build") {
-                Value("Version", BuildConfigInfo.versionName(LocalContext.current), divider = false)
-                Action("Developer") { nav.push(Route.Developer) }
+            Section("Alerts", "These come when the app refreshes in the background, so they can be late. Schoology signs you out about once a day.") {
+                Toggle("New grades", Reminders.GRADES_KEY, true, divider = false) { askIfOn(model, it) }
+                Toggle("Messages from teachers", Reminders.MESSAGES_KEY, true) { askIfOn(model, it) }
+                Toggle("New materials in your classes", Reminders.MATERIALS_KEY, true) { askIfOn(model, it) }
+                Toggle("Signed out of Schoology", Reminders.SIGNED_OUT_KEY, true) { askIfOn(model, it) }
             }
         }
     }
+}
 
-    if (confirmSignOut) AlertDialog(
-        onDismissRequest = { confirmSignOut = false },
-        title = { Text("Sign out of Schoology?") },
-        text = { Text("Clears the Schoology session and saved pages. Your Done marks stay.") },
-        confirmButton = { TextButton({ confirmSignOut = false; nav.pop(); scope.launch { model.signOut() } }) { Text("Sign out", color = C.late) } },
-        dismissButton = { TextButton({ confirmSignOut = false }) { Text("Cancel") } },
-    )
+/** The To Do gear lands here: view, call numbers, and the two reminders about due work. */
+@Composable
+private fun ToDoSettings() {
+    val model = model
+    val nav = nav
+    Prefs.revision.intValue
+    val layout = ToDoLayout.current
+    DetailScaffold("To Do") { pad ->
+        ScrollPage(pad, spacing = 22.dp) {
+            Section("View", if (layout == ToDoLayout.URGENT) "One list, late and due today at the top." else "Work grouped by class, under a strip of days.") {
+                RowLine(false) {
+                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                        ToDoLayout.entries.forEachIndexed { i, l ->
+                            SegmentedButton(layout == l, { Prefs.set(ToDoLayout.KEY, l.raw) }, SegmentedButtonDefaults.itemShape(i, ToDoLayout.entries.size),
+                                colors = SegmentedButtonDefaults.colors(activeContainerColor = C.accentSoft, activeContentColor = C.accent)) { Text(l.title) }
+                        }
+                    }
+                }
+                LinkLine("Call numbers") { nav.push(Route.SettingsPage(SettingsPage.CALL_NUMBERS)) }
+            }
+            Section("Reminders", "More in Settings › Notifications.") {
+                Toggle("2 hours before, if not submitted", Reminders.SOON_KEY, true, divider = false) { dueChanged(model, it) }
+                Toggle("Night before a test", Reminders.TEST_NIGHT_KEY, true) { dueChanged(model, it) }
+            }
+        }
+    }
+}
+
+/** A switch per class, with its colour dot. */
+@Composable
+private fun ClassToggle(c: com.owenleung.dewey.engine.Course, on: Boolean, divider: Boolean, onToggle: () -> Unit) {
+    RowLine(divider) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(10.dp).clip(CircleShape).background(classColor(c.sectionId)))
+            Spacer(Modifier.width(8.dp))
+            Text(c.shortTitle, style = Theme.body, color = C.text, modifier = Modifier.weight(1f))
+            Switch(on, { onToggle() }, colors = SwitchDefaults.colors(checkedTrackColor = C.accent))
+        }
+    }
+}
+
+@Composable
+private fun GradesSettings() {
+    val model = model
+    Prefs.revision.intValue
+    val hidden = GradesLook.hidden()
+    DetailScaffold("Grades") { pad ->
+        ScrollPage(pad, spacing = 22.dp) {
+            Section("Look", if (GradesLook.reportCard) "Grades starts with every class's letter in one row, like a report card."
+                else "Grades starts straight with the list; each class shows its letter.") {
+                Toggle("Letters across the top", GradesLook.REPORT_CARD_KEY, true, divider = false)
+            }
+            Section("Classes in Grades", "A hidden class leaves the list, the letters, New and Recently graded, and sends no grade alerts. You can also press and hold a class in Grades.") {
+                model.classes.forEachIndexed { i, c -> ClassToggle(c, c.sectionId !in hidden, i > 0) { GradesLook.toggle(c.sectionId) } }
+            }
+        }
+    }
+}
+
+/** Settings → Classes: which classes stand on the Classes shelf. */
+@Composable
+private fun ShelfSettings() {
+    val model = model
+    Prefs.revision.intValue
+    val off = ShelfLook.off()
+    DetailScaffold("Classes") { pad ->
+        ScrollPage(pad, spacing = 22.dp) {
+            Section("On the shelf", "Classes off the shelf lie flat under it. You can also press and hold a class on the shelf.") {
+                model.classes.forEachIndexed { i, c -> ClassToggle(c, c.sectionId !in off, i > 0) { ShelfLook.toggle(c.sectionId) } }
+            }
+        }
+    }
+}
+
+@Composable
+private fun InboxSettings() {
+    Prefs.revision.intValue
+    DetailScaffold("Inbox") { pad ->
+        ScrollPage(pad, spacing = 22.dp) {
+            Section("Messages", if (Inbox.markRead) "Opening a message here marks it read on Schoology."
+                else "Messages stay unread on Schoology until you open them there.") {
+                Toggle("Mark messages read when opened", Inbox.MARK_READ_KEY, true, divider = false)
+            }
+        }
+    }
+}
+
+@Composable
+private fun HelpSettings() {
+    val nav = nav
+    val connected = NeoPlanClient.connected
+    DetailScaffold("Help") { pad ->
+        ScrollPage(pad, spacing = 22.dp) {
+            Section("Help", if (connected) NeoPlanStatus.text() else "neo-plan is an optional planner board. Most people don't need it.") {
+                HelpTourRows()
+                LinkLine("How statuses work", divider = true) { nav.push(Route.SettingsPage(SettingsPage.STATUS_GUIDE)) }
+                LinkLine("neo-plan", if (connected) "Connected" else "Not connected") { nav.push(Route.SettingsPage(SettingsPage.NEOPLAN)) }
+            }
+        }
+    }
+}
+
+/** Take the tour / Tour cards (the tour isn't ported yet: nothing to show). */
+@Composable
+private fun HelpTourRows() {}
+
+@Composable
+private fun AboutSettings() {
+    val nav = nav
+    DetailScaffold("About") { pad ->
+        ScrollPage(pad, spacing = 22.dp) {
+            Section("This build", "A sideloaded beta: install a newer APK over it to update.") {
+                Value("Version", BuildConfigInfo.versionName(LocalContext.current), divider = false)
+            }
+            Card { LinkLine("Developer", divider = false) { nav.push(Route.Developer) } }
+        }
+    }
+}
+
+/** Settings → To Do → Call numbers: each class's Dewey number on its catalog card. Automatic shows the guess (or that there isn't one). */
+@Composable
+private fun CallNumberSettings() {
+    val model = model
+    Prefs.revision.intValue
+    val raw = Prefs.string(CallNumber.KEY)
+    DetailScaffold("Call numbers") { pad ->
+        ScrollPage(pad, spacing = 22.dp) {
+            Section("Classes", "Each class's card on To Do carries its library call number. Dewey guesses from the class name and leaves it blank when it can't tell; pick one here if it's wrong or missing.") {
+                model.classes.forEachIndexed { i, c ->
+                    val o = CallNumber.overrides(raw)[c.sectionId]
+                    RowLine(i > 0) {
+                        Box {
+                            var open by remember { mutableStateOf(false) }
+                            Row(Modifier.fillMaxWidth().clickable { open = true }, verticalAlignment = Alignment.CenterVertically) {
+                                Box(Modifier.size(10.dp).clip(CircleShape).background(classColor(c.sectionId)))
+                                Spacer(Modifier.width(8.dp))
+                                Text(c.shortTitle, style = Theme.body, color = C.text, modifier = Modifier.weight(1f))
+                                Text(when (o) { null -> autoLabel(c); "" -> "None"; else -> o }, style = Theme.body, color = C.accent, maxLines = 1)
+                            }
+                            CallNumberMenu(c, open) { open = false }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun autoLabel(c: com.owenleung.dewey.engine.Course) = CallNumber.guess(c.shortTitle)?.let { "Automatic · $it" } ?: "Automatic · none"
+
+/** Automatic, None, or one of Dewey's ten main classes (also from a long press on a To Do card's heading). */
+@Composable
+fun CallNumberMenu(c: com.owenleung.dewey.engine.Course, open: Boolean, onDismiss: () -> Unit) {
+    val o = CallNumber.overrides(Prefs.string(CallNumber.KEY))[c.sectionId]
+    DropdownMenu(open, onDismiss) {
+        @Composable fun item(label: String, value: String?, on: Boolean) = DropdownMenuItem(
+            text = { Text(label) }, leadingIcon = { if (on) Icon(Icons.Outlined.Check, null) },
+            onClick = { CallNumber.set(c.sectionId, value); onDismiss() })
+        item(autoLabel(c), null, o == null)
+        item("None", "", o == "")
+        for ((n, name) in CallNumber.mains) item("$n · $name", n, o == n)
+        // A precise number set once stays listed.
+        if (!o.isNullOrEmpty() && CallNumber.mains.none { it.first == o }) item(o, o, true)
+    }
 }
 
 /** Run any engine op and see its JSON (M1/M2 checks), and what reminders are set. */
@@ -389,15 +631,14 @@ fun SignInScreen() {
     Column(Modifier.fillMaxSize().background(C.background).statusBarsPadding().navigationBarsPadding().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(18.dp)) {
         Spacer(Modifier.weight(1f))
-        Image(painterResource(R.drawable.dewey_mark), null, Modifier.size(60.dp))
-        Text("Dewey", style = Theme.largeTitle, color = C.text)
+        Image(painterResource(R.drawable.dewey_hello), null, Modifier.size(84.dp))
+        Text("Dewey", style = Theme.display, color = C.text)
         Text("Your Schoology To Do, grades and materials, made for your phone. Sign in with your school Google account, the same way you do on Schoology.",
             style = Theme.body, color = C.secondary)
         Card(padding = 16.dp) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Step("1", "Sign in to fuhsd.schoology.com", "Required")
-                Step("2", "Connect neo-plan", "Optional · in Settings")
-                Step("3", "Turn on reminders", "Optional · in Settings")
+                Step("2", "Turn on reminders", "Optional · in Settings")
             }
         }
         Spacer(Modifier.weight(1f))
@@ -445,34 +686,5 @@ private fun Step(n: String, title: String, sub: String) {
             Text(title, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text)
             Text(sub, style = Theme.footnote, color = C.secondary)
         }
-    }
-}
-
-/** A theme in Settings → Look: a tiny To Do card in its colours, following light or dark mode. */
-@Composable
-private fun PaletteTile(palette: Palette, selected: Boolean, onClick: () -> Unit) {
-    val dark = C.dark
-    fun col(n: String) = Theme.hex(palette.hex(n, dark))
-    val accent = palette.accent?.let { Theme.hex(if (dark) it.second else it.first) } ?: C.accent
-    Column(
-        Modifier.clickable(role = Role.Button, onClickLabel = "Use ${palette.name}", onClick = onClick)
-            .semantics(mergeDescendants = true) { contentDescription = palette.name + " theme"; this.selected = selected },
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(Theme.Space.xs),
-    ) {
-        Box(
-            Modifier.clip(RoundedCornerShape(Theme.Radius.card)).background(col("background"))
-                .border(if (selected) 2.dp else 1.dp, if (selected) C.accent else C.border, RoundedCornerShape(Theme.Radius.card))
-                .padding(Theme.Space.s)
-        ) {
-            Column(
-                Modifier.size(64.dp, 50.dp).clip(RoundedCornerShape(Theme.Radius.tag)).background(col("card")).padding(Theme.Space.s),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                Box(Modifier.size(34.dp, 5.dp).clip(CircleShape).background(col("text")))
-                Box(Modifier.size(22.dp, 4.dp).clip(CircleShape).background(col("tertiary")))
-                Box(Modifier.padding(top = 2.dp).size(40.dp, 9.dp).clip(CircleShape).background(accent))
-            }
-        }
-        Text(palette.name, style = Theme.caption, color = if (selected) C.text else C.secondary)
     }
 }

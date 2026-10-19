@@ -109,19 +109,19 @@ fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: 
         if (it.turnedIn) return "Turned in"
         return it.due?.let { "Due ${Fmt.due(it)}" }
     }
-    val colorIndex = model.classes.indexOfFirst { it.sectionId == sectionId }.coerceAtLeast(0)
+    val dot = com.owenleung.dewey.ui.classColor(sectionId)
 
     DetailScaffold("", actions = { IconButton(onClick = { nav.openSheet(SheetTarget(pageUrl)) }) { Icon(Icons.Outlined.Language, "Open in Schoology") } }) { pad ->
         ScrollPage(pad, refresh = { load() }, spacing = 12.dp) {
             // Where you are: the class dot and the path above this folder, then the folder's name in full.
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 if (trail.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(8.dp).clip(CircleShape).background(classColor(colorIndex)))
+                    Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
                     Spacer(Modifier.width(6.dp))
                     Text(trail.joinToString(" › "), style = Theme.footnote, color = C.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    if (trail.isEmpty()) { Box(Modifier.size(10.dp).clip(CircleShape).background(classColor(colorIndex))); Spacer(Modifier.width(8.dp)) }
+                    if (trail.isEmpty()) { Box(Modifier.size(10.dp).clip(CircleShape).background(dot)); Spacer(Modifier.width(8.dp)) }
                     Text(title, style = Theme.title, color = C.text)
                 }
             }

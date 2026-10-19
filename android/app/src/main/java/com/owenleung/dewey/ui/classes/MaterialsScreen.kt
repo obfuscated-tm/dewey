@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,8 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.OpenInBrowser
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
@@ -41,6 +40,7 @@ import com.owenleung.dewey.engine.Material
 import com.owenleung.dewey.engine.MaterialRow
 import com.owenleung.dewey.store.Cache
 import com.owenleung.dewey.store.Fmt
+import com.owenleung.dewey.store.TodoLogic
 import com.owenleung.dewey.ui.AsOfBanner
 import com.owenleung.dewey.ui.Card
 import com.owenleung.dewey.ui.DetailScaffold
@@ -65,9 +65,9 @@ import kotlinx.serialization.builtins.ListSerializer
 import java.util.Date
 
 /**
- * 3b · One Materials folder. Every row says where it opens. "Only open work"
- * keeps folders and assignments still on the To Do list. The class switch
- * (Materials / Grades / Updates) sits at the top of the class's root.
+ * 3b · One Materials folder. Every row says where it opens. The class's root
+ * starts with its open work (what the book's LATE / TODAY / TMRW ribbon is
+ * about), then the class switch (Materials / Grades / Updates).
  */
 @Composable
 fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: List<String>) {
@@ -79,7 +79,6 @@ fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: 
     var rows by remember { mutableStateOf<List<MaterialRow>?>(Cache.load(cacheKey, s)?.first) }
     var asOf by remember { mutableStateOf<Date?>(Cache.load(cacheKey, s)?.second) }
     var error by remember { mutableStateOf<EngineError?>(null) }
-    var onlyOpen by remember { mutableStateOf(false) }
     val pageUrl = "${Engine.ORIGIN}/course/$sectionId/materials${folderId?.let { "?f=$it" } ?: ""}"
 
     suspend fun load() {
@@ -95,11 +94,6 @@ fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: 
 
     /** The To Do row for an assignment, if there is one. */
     fun todo(r: MaterialRow) = if (r.kind == "assignment" && r.id != null) model.item(r.id) else null
-    fun isOpen(r: MaterialRow): Boolean {
-        if (r.kind == "folder") return true
-        val it = todo(r) ?: return false
-        return !model.isFinished(it) && !it.graded
-    }
     fun subtitle(r: MaterialRow): String? {
         if (r.id != null && r.kind == "assignment") {
             model.grades[sectionId]?.items?.firstOrNull { it.id == r.id && it.earned != null }?.let { return scoreText(it) }
@@ -125,6 +119,7 @@ fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: 
                     Text(title, style = Theme.title, color = C.text)
                 }
             }
+            if (folderId == null) ClassOpenWork(sectionId)
             if (folderId == null) model.course(sectionId)?.let {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     PillButton("Materials", filled = true) {}
@@ -132,16 +127,12 @@ fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: 
                     PillButton("Updates", external = true) { nav.openSheet(SheetTarget("${Engine.ORIGIN}/course/$sectionId/updates")) }
                 }
             }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) { AsOfBanner(asOf, error) }
-                FilterChip(onlyOpen, { onlyOpen = !onlyOpen }, label = { Text("Only open work", style = Theme.footnote.copy(fontWeight = FontWeight.Medium)) },
-                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = C.accentSoft, selectedLabelColor = C.accent))
-            }
+            AsOfBanner(asOf, error)
             val r = rows
             when {
                 r != null -> {
-                    val shown = if (onlyOpen) r.filter(::isOpen) else r
-                    if (shown.isEmpty()) EmptyState(if (onlyOpen) "No open work here" else "Empty folder", icon = Icons.Outlined.Folder)
+                    val shown = r
+                    if (shown.isEmpty()) EmptyState("Empty folder", icon = Icons.Outlined.Folder)
                     else Card { shown.forEachIndexed { i, row -> if (i > 0) Divider(); MaterialLink(sectionId, row, subtitle(row), trail + title) } }
                 }
                 error != null -> ErrorState(error!!, pageUrl, retry = { scope.launch { load() } }, open = { nav.openSheet(SheetTarget(it)) })
@@ -149,6 +140,47 @@ fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: 
             }
         }
     }
+}
+
+/** A class's open work at the top of its page: late first, then by due date. The same rules as To Do and the shelf's ribbon, so the ribbon is explained here. */
+@Composable
+private fun ClassOpenWork(sectionId: String) {
+    val model = model
+    val nav = nav
+    model.revision.intValue
+    val now = Date()
+    val items = model.openWork(sectionId, now)
+    if (items.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Open work", style = Theme.headline, color = C.text)
+        Card {
+            items.forEachIndexed { i, it ->
+                if (i > 0) Divider()
+                val late = model.isOverdue(it, now)
+                Row(Modifier.fillMaxWidth().clickable { nav.push(Route.Assignment(it.schoologyId)) }.heightIn(min = 44.dp)
+                    .padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(it.title, style = Theme.body, color = C.text)
+                        Text(openWorkWhen(it.due, late, now), style = Theme.footnote.copy(fontWeight = if (late) FontWeight.SemiBold else FontWeight.Normal),
+                            color = if (late) C.late else C.secondary)
+                    }
+                    if (if (it.isExam) it.studied else it.done) {
+                        Text(if (it.isExam) "Studied" else "Done", style = Theme.footnote, color = C.accent)
+                        Spacer(Modifier.width(8.dp))
+                    }
+                    Text("›", color = C.tertiary)
+                }
+            }
+        }
+    }
+}
+
+/** "Late · Fri Oct 16, 6:59 pm · 2 days", or the due words ("Today, 11:59 pm"). */
+internal fun openWorkWhen(due: Date?, late: Boolean, now: Date): String {
+    val words = Fmt.due(due, now)
+    val n = if (late) TodoLogic.daysLate(due, now) else null
+    n ?: return words
+    return "Late · $words" + if (n > 0) " · $n day${if (n == 1) "" else "s"}" else ""
 }
 
 /** A Schoology page / link material, read through the engine: its text, files and links. */

@@ -11,6 +11,7 @@ enum DayFilter: Hashable {
         switch self {
         case .late:
             return b == .overdue && !TodoLogic.isOlder(due: it.due, now: now)
+                && TodoLogic.showsLate(type: it.type, isQuiz: it.isQuiz, done: it.type == .exam ? it.studied : it.done, turnedIn: it.turnedIn, submitted: it.submitted, inSchoology: it.inSchoology)
         case .day(let k):
             guard let due = it.due, b != .overdue,
                   let d = calendar.date(byAdding: .day, value: k, to: calendar.startOfDay(for: now)) else { return false }

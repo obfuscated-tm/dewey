@@ -16,7 +16,8 @@ Tag: `android-v0.3` (beta, sideloaded APK)
 - To Do rows are library catalog cards, with a ripple when you mark one done and a one-time tip after your first mark. Classes is a shelf of books.
 - Grades: a report card across the top; press and hold a class (or Settings → Grades) to hide it, and hidden classes don't count toward new-grade alerts. A grade change that rounds to nothing shows "+0.00%".
 - Inbox: **School updates** from groups such as a class hub. PDFs in a class's materials open.
-- "Late" only on work that's really still open: not on work marked Done, not on a past test, and not on an online quiz you already took (Dewey now reads the quiz's page to see that). Same fix on iPhone.
+- "Late" means what Schoology still lists as overdue and you haven't finished: not work marked Done or Turned in, not a past test you marked Studied, not an online quiz you already took (Dewey now reads the quiz's page), and not paper or lab-site work Schoology dropped after its due date. The shelf's LATE ribbon, the tab badge and To Do all use this rule, so the iPhone and Android agree. Same fix on iPhone.
+- Tapping a book starts its page with **Open work**: that class's late work and everything due, so you can see what a LATE / TODAY / TMRW ribbon means. It replaces the **Only open work** switch, which kept every folder.
 
 ## 2026-10-18 — Extension 1.13.0 · MCP 1.1.1
 

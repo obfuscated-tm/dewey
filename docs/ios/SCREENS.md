@@ -98,7 +98,8 @@ Tabs: **To Do · Grades · Classes · Schoology**. To Do, Grades and Classes eac
 - Updates tile → feed (screen not designed; v1 can open the course feed in the Schoology sheet). Recently opened = local history.
 
 ### 3b Materials · `design/Materials.dc.html`
-- Folders with open-work status and score (`rowState`, `folderTotals`). "Only open work" toggle. Materials / Grades / Updates switch for the class.
+- Folders with open-work status and score (`rowState`, `folderTotals`). At the class's root, "Open work" first: the class's late work and everything still due, soonest first, each opening its Assignment (it's what the book's LATE / TODAY / TMRW ribbon is about). Then the Materials / Grades / Updates switch for the class.
+- **Late** (To Do, the shelf ribbon, the tab badge, Open work): past due, still on Schoology's overdue list, and not submitted, turned in or marked Done. A test is late only as an online quiz not marked Studied (in-class quizzes stay on Schoology's overdue list as "not started"). Quizzes are checked on their landing page (`assignment` op → `quiz.state`). Work Schoology dropped after its due date (no dropbox: paper, a lab site) shows its date, not "late".
 - **Every item says where it opens:**
 
 | Item | Opens |

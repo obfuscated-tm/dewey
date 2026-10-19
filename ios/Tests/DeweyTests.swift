@@ -89,15 +89,17 @@ final class TodoLogicTests: XCTestCase {
     }
 
     func testShowsLate() {
-        func late(_ t: ItemType, quiz: Bool = false, done: Bool = false, turnedIn: Bool = false, submitted: Bool = false) -> Bool {
-            TodoLogic.showsLate(type: t, isQuiz: quiz, done: done, turnedIn: turnedIn, submitted: submitted)
+        func late(_ t: ItemType, quiz: Bool = false, done: Bool = false, turnedIn: Bool = false, submitted: Bool = false, listed: Bool = true) -> Bool {
+            TodoLogic.showsLate(type: t, isQuiz: quiz, done: done, turnedIn: turnedIn, submitted: submitted, inSchoology: listed)
         }
+        XCTAssertFalse(late(.assignment, listed: false))  // Schoology dropped it: maybe handed in elsewhere
         XCTAssertTrue(late(.assignment))
         XCTAssertFalse(late(.assignment, done: true))
         XCTAssertFalse(late(.assignment, turnedIn: true))
         XCTAssertFalse(late(.assignment, submitted: true))
         XCTAssertFalse(late(.exam))                       // a test on paper: nothing to hand in after it
         XCTAssertTrue(late(.exam, quiz: true))            // an online quiz not taken yet
+        XCTAssertFalse(late(.exam, quiz: true, done: true)) // studied: given in class and taken
         XCTAssertFalse(late(.exam, quiz: true, submitted: true))
     }
 

@@ -241,8 +241,15 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     /** Past due, not finished, and not old enough to sit in the Older group. */
     fun isOverdue(it: ItemState, now: Date = Date()) = (it.due?.before(now) ?: false) && showsLate(it) && !TodoLogic.isOlder(it.due, now)
 
+    /** A class's work still to do: late work (as on To Do), then everything due later that isn't finished, soonest first. Past tests and Older work are left out. */
+    fun openWork(sectionId: String, now: Date = Date()): List<ItemState> =
+        todoItems()
+            .filter { it.sectionId == sectionId }
+            .filter { if (it.due?.before(now) == true) isOverdue(it, now) else !isFinished(it) }
+            .sortedBy { it.dueAt ?: Long.MAX_VALUE }
+
     /** Past due counts as late (TodoLogic.showsLate). */
-    fun showsLate(it: ItemState) = TodoLogic.showsLate(it.type, it.isQuiz, it.done, it.turnedIn, it.submitted)
+    fun showsLate(it: ItemState) = TodoLogic.showsLate(it.type, it.isQuiz, if (it.isExam) it.studied else it.done, it.turnedIn, it.submitted, it.inSchoology)
 
     fun isFinished(it: ItemState) = it.submitted || it.turnedIn || (if (it.isExam) false else it.done)
 

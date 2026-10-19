@@ -112,11 +112,14 @@ enum TodoLogic {
         return !(s.done || s.turnedIn || s.submitted)
     }
 
-    /// Whether a past-due row may say "late": not once it's handed in, marked
-    /// done, or a test that isn't an online quiz (nothing to hand in after it).
-    static func showsLate(type: ItemType, isQuiz: Bool, done: Bool, turnedIn: Bool, submitted: Bool) -> Bool {
-        if submitted || turnedIn { return false }
-        if type == .exam { return isQuiz }
+    /// Whether a past-due row may say "late": only while Schoology still lists it
+    /// as overdue (work it dropped, like paper or lab-site work, may well be
+    /// handed in), and not once it's handed in or marked done. A test is late only
+    /// as an online quiz not marked studied: Schoology keeps quizzes given in class
+    /// on its overdue list, and a past test you studied for is one you took.
+    static func showsLate(type: ItemType, isQuiz: Bool, done: Bool, turnedIn: Bool, submitted: Bool, inSchoology: Bool = true) -> Bool {
+        if submitted || turnedIn || !inSchoology { return false }
+        if type == .exam { return isQuiz && !done }
         return !done
     }
 

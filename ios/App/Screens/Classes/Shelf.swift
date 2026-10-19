@@ -32,7 +32,7 @@ struct Shelf: View {
         let standing = flatAll ? [] : model.classes.filter { !off.contains($0.sectionId) }
         let lying = flatAll ? model.classes : model.classes.filter { off.contains($0.sectionId) }
         let now = Date()
-        let open = model.todoItems().filter { !model.isFinished($0) }
+        let open = model.classes.flatMap { model.openWork($0.sectionId, now: now) }
         VStack(alignment: .leading, spacing: Theme.Space.s) {
             if !standing.isEmpty {
                 VStack(spacing: 0) {
@@ -73,7 +73,7 @@ struct Shelf: View {
 
     private func due(_ c: Course, _ open: [ItemState], _ now: Date) -> Due? {
         let mine = open.filter { $0.sectionId == c.sectionId }
-        if mine.contains(where: { TodoLogic.bucket(due: $0.due, now: now) == .overdue && !TodoLogic.isOlder(due: $0.due, now: now) }) { return .late }
+        if mine.contains(where: { model.isOverdue($0, now: now) }) { return .late }
         if mine.contains(where: { TodoLogic.bucket(due: $0.due, now: now) == .today }) { return .today }
         if mine.contains(where: { $0.due.map { Calendar.current.isDateInTomorrow($0) } ?? false }) { return .tomorrow }
         return nil

@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// 3b · One Materials folder. Every row says where it opens. "Only open work"
-/// keeps folders and assignments still on the To Do list. The class switch
-/// (Materials / Grades / Updates) sits at the top of the class's root.
+/// 3b · One Materials folder. Every row says where it opens. The class's root
+/// starts with its open work (what the book's LATE / TODAY / TMRW ribbon is
+/// about), then the class switch (Materials / Grades / Updates).
 struct MaterialsView: View {
     @Environment(AppModel.self) private var model
     let sectionId: String
@@ -13,7 +13,6 @@ struct MaterialsView: View {
     @State private var rows: [MaterialRow]?
     @State private var error: EngineError?
     @State private var asOf: Date?
-    @State private var onlyOpen = false
     @State private var sheet: SheetTarget?
 
     private var cacheKey: String { "materials-\(sectionId)-\(folderId ?? "root")" }
@@ -25,16 +24,13 @@ struct MaterialsView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: Theme.Space.m) {
                 heading
+                if folderId == nil { ClassOpenWork(sectionId: sectionId) }
                 if folderId == nil, let c = model.course(sectionId) { classSwitch(c) }
-                HStack {
-                    AsOfBanner(date: asOf, error: error)
-                    Spacer()
-                    Toggle("Only open work", isOn: $onlyOpen).toggleStyle(.button).font(Theme.footnote.weight(.medium))
-                }
+                AsOfBanner(date: asOf, error: error)
                 if let rows {
-                    let shown = onlyOpen ? rows.filter(isOpen) : rows
+                    let shown = rows
                     if shown.isEmpty {
-                        EmptyState(icon: "folder", title: onlyOpen ? "No open work here" : "Empty folder")
+                        EmptyState(icon: "folder", title: "Empty folder")
                     } else {
                         VStack(spacing: 0) {
                             ForEach(Array(shown.enumerated()), id: \.element.key) { i, r in
@@ -113,12 +109,6 @@ struct MaterialsView: View {
     private func todo(_ r: MaterialRow) -> ItemState? {
         guard r.kind == "assignment", let id = r.id else { return nil }
         return model.item(id)
-    }
-
-    private func isOpen(_ r: MaterialRow) -> Bool {
-        if r.kind == "folder" { return true }
-        guard let it = todo(r) else { return false }
-        return !model.isFinished(it) && !it.graded
     }
 
     private func subtitle(_ r: MaterialRow) -> String? {
@@ -212,5 +202,57 @@ struct MaterialView: View {
         } catch let e as EngineError {
             error = e
         } catch {}
+    }
+}
+
+/// A class's open work at the top of its page: late first, then by due date.
+/// The same rules as To Do and the shelf's ribbon, so the ribbon is explained here.
+struct ClassOpenWork: View {
+    @Environment(AppModel.self) private var model
+    let sectionId: String
+
+    var body: some View {
+        let now = Date()
+        let items = model.openWork(sectionId, now: now)
+        if !items.isEmpty {
+            VStack(alignment: .leading, spacing: Theme.Space.s) {
+                Text("Open work").font(Theme.headline).foregroundStyle(Theme.text).accessibilityAddTraits(.isHeader)
+                VStack(spacing: 0) {
+                    ForEach(Array(items.enumerated()), id: \.element.schoologyId) { i, it in
+                        NavigationLink(value: AssignmentRoute(id: it.schoologyId)) { row(it, now) }
+                            .buttonStyle(.plain)
+                            .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
+                    }
+                }
+                .card()
+            }
+        }
+    }
+
+    private func row(_ it: ItemState, _ now: Date) -> some View {
+        let late = model.isOverdue(it, now: now)
+        let when = Self.when(it.due, late: late, now: now)
+        return HStack(spacing: Theme.Space.m) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(it.title).font(Theme.body).foregroundStyle(Theme.text).multilineTextAlignment(.leading)
+                Text(when).font(Theme.footnote.weight(late ? .semibold : .regular))
+                    .foregroundStyle(late ? Theme.late : Theme.secondary)
+            }
+            Spacer(minLength: 0)
+            if it.type == .exam ? it.studied : it.done {
+                Text(it.type == .exam ? "Studied" : "Done").font(Theme.footnote).foregroundStyle(Theme.accent)
+            }
+            Text("›").foregroundStyle(Theme.tertiary)
+        }
+        .padding(.horizontal, Theme.Space.m).padding(.vertical, Theme.Space.s)
+        .frame(minHeight: 44)
+        .contentShape(Rectangle())
+    }
+
+    /// "LATE · Mon Oct 5, 11:59 pm · 7 days", or the due words ("Today, 11:59 pm").
+    static func when(_ due: Date?, late: Bool, now: Date) -> String {
+        let words = Fmt.due(due, now: now)
+        guard late, let n = TodoLogic.daysLate(due: due, now: now) else { return words }
+        return "Late · " + words + (n > 0 ? " · \(n) day\(n == 1 ? "" : "s")" : "")
     }
 }

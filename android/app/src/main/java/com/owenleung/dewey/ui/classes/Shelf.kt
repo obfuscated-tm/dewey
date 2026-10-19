@@ -88,7 +88,7 @@ fun Shelf() {
     val standing = if (flatAll) emptyList() else model.classes.filter { it.sectionId !in off }
     val lying = if (flatAll) model.classes else model.classes.filter { it.sectionId in off }
     val now = Date()
-    val open = model.todoItems().filter { !model.isFinished(it) }
+    val open = model.classes.flatMap { model.openWork(it.sectionId, now) }
     // The letters on the labels (cached gradebooks; Grades refreshes them).
     LaunchedEffect(model.classes) { model.twoAtATime(model.classes) { model.loadGrades(it.sectionId) } }
     Column(verticalArrangement = Arrangement.spacedBy(Theme.Space.s)) {
@@ -111,7 +111,8 @@ fun Shelf() {
 
 private fun due(c: Course, open: List<ItemState>, now: Date): Due? {
     val mine = open.filter { it.sectionId == c.sectionId }
-    if (mine.any { TodoLogic.bucket(it.due, now) == TodoLogic.Bucket.OVERDUE && !TodoLogic.isOlder(it.due, now) }) return Due.LATE
+    // openWork keeps past-due rows only when they're really late (AppModel.isOverdue).
+    if (mine.any { it.due?.before(now) == true }) return Due.LATE
     if (mine.any { TodoLogic.bucket(it.due, now) == TodoLogic.Bucket.TODAY }) return Due.TODAY
     val tomorrow = Fmt.addDays(now, 1)
     if (mine.any { d -> d.due?.let { Fmt.sameDay(it, tomorrow) } == true }) return Due.TOMORROW

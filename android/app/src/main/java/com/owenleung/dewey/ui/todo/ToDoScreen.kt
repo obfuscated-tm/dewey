@@ -390,7 +390,7 @@ private fun RowAction(item: ItemState, submitUrl: String) {
 private fun DueText(item: ItemState, now: Date, modifier: Modifier) {
     // ItemState is mutable and the same instance: read the revision so a mark redraws this.
     model.revision.intValue
-    val late = if (TodoLogic.showsLate(item.type, item.isQuiz, item.done, item.turnedIn, item.submitted)) TodoLogic.daysLate(item.due, now) else null
+    val late = if (TodoLogic.showsLate(item.type, item.isQuiz, if (item.isExam) item.studied else item.done, item.turnedIn, item.submitted, item.inSchoology)) TodoLogic.daysLate(item.due, now) else null
     val dueColor = if (late != null) C.late else C.secondary
     val accent = C.accent
     val secondary = C.secondary

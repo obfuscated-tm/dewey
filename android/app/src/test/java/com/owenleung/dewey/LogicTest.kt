@@ -124,14 +124,16 @@ class LogicTest {
     }
 
     @Test fun showsLate() {
-        fun late(t: ItemType, quiz: Boolean = false, done: Boolean = false, turnedIn: Boolean = false, submitted: Boolean = false) =
-            TodoLogic.showsLate(t, quiz, done, turnedIn, submitted)
+        fun late(t: ItemType, quiz: Boolean = false, done: Boolean = false, turnedIn: Boolean = false, submitted: Boolean = false, listed: Boolean = true) =
+            TodoLogic.showsLate(t, quiz, done, turnedIn, submitted, listed)
+        assertFalse(late(ItemType.ASSIGNMENT, listed = false))  // Schoology dropped it: maybe handed in elsewhere
         assertTrue(late(ItemType.ASSIGNMENT))
         assertFalse(late(ItemType.ASSIGNMENT, done = true))
         assertFalse(late(ItemType.ASSIGNMENT, turnedIn = true))
         assertFalse(late(ItemType.ASSIGNMENT, submitted = true))
         assertFalse(late(ItemType.EXAM))                    // a test on paper: nothing to hand in after it
         assertTrue(late(ItemType.EXAM, quiz = true))        // an online quiz not taken yet
+        assertFalse(late(ItemType.EXAM, quiz = true, done = true)) // studied: given in class and taken
         assertFalse(late(ItemType.EXAM, quiz = true, submitted = true))
     }
 }

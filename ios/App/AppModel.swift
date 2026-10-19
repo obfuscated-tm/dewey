@@ -191,9 +191,18 @@ final class AppModel {
         (it.due ?? .distantFuture) < now && showsLate(it) && !TodoLogic.isOlder(due: it.due, now: now)
     }
 
+    /// A class's work still to do: late work (as on To Do), then everything due
+    /// later that isn't finished, soonest first. Past tests and Older work are left out.
+    func openWork(_ sectionId: String, now: Date = Date()) -> [ItemState] {
+        todoItems()
+            .filter { $0.sectionId == sectionId }
+            .filter { ($0.due ?? .distantFuture) < now ? isOverdue($0, now: now) : !isFinished($0) }
+            .sorted { ($0.due ?? .distantFuture) < ($1.due ?? .distantFuture) }
+    }
+
     /// Past due counts as late (TodoLogic.showsLate).
     func showsLate(_ it: ItemState) -> Bool {
-        TodoLogic.showsLate(type: it.type, isQuiz: it.isQuiz, done: it.done, turnedIn: it.turnedIn, submitted: it.submitted)
+        TodoLogic.showsLate(type: it.type, isQuiz: it.isQuiz, done: it.type == .exam ? it.studied : it.done, turnedIn: it.turnedIn, submitted: it.submitted, inSchoology: it.inSchoology)
     }
 
     func isFinished(_ it: ItemState) -> Bool {

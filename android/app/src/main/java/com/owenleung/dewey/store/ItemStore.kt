@@ -151,12 +151,15 @@ object TodoLogic {
     fun isVisible(it: ItemState) = isVisible(Snapshot(it.inSchoology, it.done, it.turnedIn, it.submitted, it.graded, it.dismissed))
 
     /**
-     * Whether a past-due row may say "late": not once it's handed in, marked
-     * done, or a test that isn't an online quiz (nothing to hand in after it).
+     * Whether a past-due row may say "late": only while Schoology still lists it
+     * as overdue (work it dropped, like paper or lab-site work, may well be
+     * handed in), and not once it's handed in or marked done. A test is late only
+     * as an online quiz not marked studied: Schoology keeps quizzes given in class
+     * on its overdue list, and a past test you studied for is one you took.
      */
-    fun showsLate(type: ItemType, isQuiz: Boolean, done: Boolean, turnedIn: Boolean, submitted: Boolean): Boolean {
-        if (submitted || turnedIn) return false
-        if (type == ItemType.EXAM) return isQuiz
+    fun showsLate(type: ItemType, isQuiz: Boolean, done: Boolean, turnedIn: Boolean, submitted: Boolean, inSchoology: Boolean = true): Boolean {
+        if (submitted || turnedIn || !inSchoology) return false
+        if (type == ItemType.EXAM) return isQuiz && !done
         return !done
     }
 
@@ -187,7 +190,8 @@ sealed class DayFilter {
     fun matches(it: ItemState, now: Date): Boolean {
         val b = TodoLogic.bucket(it.due, now)
         return when (this) {
-            Late -> b == TodoLogic.Bucket.OVERDUE && !TodoLogic.isOlder(it.due, now)
+            Late -> b == TodoLogic.Bucket.OVERDUE && !TodoLogic.isOlder(it.due, now) &&
+                TodoLogic.showsLate(it.type, it.isQuiz, if (it.isExam) it.studied else it.done, it.turnedIn, it.submitted, it.inSchoology)
             is Day -> {
                 val due = it.due ?: return false
                 b != TodoLogic.Bucket.OVERDUE && Fmt.sameDay(due, Fmt.addDays(Fmt.startOfDay(now), k))

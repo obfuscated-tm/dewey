@@ -1,17 +1,29 @@
 import Foundation
 
-/// Plan (To Do › Plan): the student's own order for the work in front of them,
-/// 1 to N, plus Not today. Pure, so tests can run it (DeweyTests PlanTests).
+/// Plan (To Do › Plan): the student's open work in three sections, To do,
+/// Later and Done, in their own order. Pure, so tests can run it (PlanTests).
 ///
-/// - In the plan: open work that is late, due in the next 7 days, the student's
-///   own tasks, and anything added by hand.
-/// - Order: the student's ranks. Work they haven't placed yet (a new item) is
-///   slotted in by due date: before the first placed item due later than it, so
-///   something due tomorrow never lands under work placed last week.
-/// - Not today: skipped for the day it was put there; back in its old place the
-///   next morning.
+/// - Where an item goes until the student moves it (by due date): To do for
+///   late work, work due today or tomorrow, a test in the next 3 days, and an
+///   own task with no date; Later for the rest. Done holds what was finished today.
+/// - Dragging a row into another section keeps it there (`planSection`);
+///   dragging it into Done marks it done, out of Done marks it to do.
+/// - Order inside a section: the student's ranks. Work not placed yet is
+///   slotted in by due date: before the first placed item due later than it,
+///   so something due tomorrow never lands under work placed last week.
 enum PlanLogic {
-    static let days = 7
+    enum Bucket: String, CaseIterable { case todo, later, done
+        var title: String { switch self { case .todo: "To do"; case .later: "Later"; case .done: "Done" } }
+    }
+
+    /// Where an item goes when the student hasn't put it anywhere.
+    static func autoBucket(due: Date?, late: Bool, isTest: Bool, mine: Bool, now: Date, calendar: Calendar = .current) -> Bucket {
+        if late { return .todo }
+        guard let due else { return mine ? .todo : .later }
+        let today = calendar.startOfDay(for: now)
+        let days = isTest ? 4 : 2   // a test: today + the next 3 days, so there's time to study
+        return due < calendar.date(byAdding: .day, value: days, to: today)! ? .todo : .later
+    }
 
     struct Entry: Equatable {
         var id: String
@@ -19,22 +31,7 @@ enum PlanLogic {
         var due: Date?
     }
 
-    /// In the plan's pool (before Not today and Done are split off).
-    static func inPool(due: Date?, mine: Bool, added: Bool, late: Bool, older: Bool, now: Date, calendar: Calendar = .current) -> Bool {
-        if mine || added { return true }
-        if older { return false }
-        if late { return true }
-        guard let due else { return false }
-        let end = calendar.date(byAdding: .day, value: days, to: calendar.startOfDay(for: now))!
-        return due >= now && due < end
-    }
-
-    /// Skipped today: Not today holds it until the day ends.
-    static func isSkipped(_ skipDay: Date?, now: Date, calendar: Calendar = .current) -> Bool {
-        skipDay.map { calendar.isDate($0, inSameDayAs: now) } ?? false
-    }
-
-    /// The plan's order: placed items by rank, each unplaced one slotted in by due date.
+    /// One section's order: placed items by rank, each unplaced one slotted in by due date.
     static func order(_ entries: [Entry]) -> [Entry] {
         let byDue: (Entry, Entry) -> Bool = { a, b in
             let x = a.due ?? .distantFuture, y = b.due ?? .distantFuture
@@ -49,25 +46,55 @@ enum PlanLogic {
         return out
     }
 
-    /// New ranks after a drag (List's onMove): every shown item gets its place,
-    /// 1…N, so what the student sees is what is kept.
-    static func moved(_ ids: [String], from: IndexSet, to: Int) -> [String: Double] {
-        var list = ids
+    /// The list as shown: each section's heading, then its items. Headings are rows
+    /// too, so dragging an item past one moves it into that section.
+    enum Row: Hashable {
+        case header(Bucket)
+        case item(String)
+    }
+
+    static func rows(todo: [String], later: [String], done: [String]) -> [Row] {
+        [.header(.todo)] + todo.map(Row.item) + [.header(.later)] + later.map(Row.item) + [.header(.done)] + done.map(Row.item)
+    }
+
+    /// Where every item ends up after a drag (List's onMove): its section, and its
+    /// place in it (1…). An item dropped above the first heading is in To do.
+    static func moved(_ rows: [Row], from: IndexSet, to: Int) -> [String: (Bucket, Double)] {
+        var list = rows
         let moving = from.map { list[$0] }
         for i in from.sorted(by: >) { list.remove(at: i) }
         let at = to - from.filter { $0 < to }.count
         list.insert(contentsOf: moving, at: max(0, min(at, list.count)))
-        return ranks(list)
+        return place(list)
     }
 
-    /// One item to a new place (Move to top / up / down / to bottom).
-    static func moved(_ ids: [String], id: String, toIndex: Int) -> [String: Double] {
-        var list = ids.filter { $0 != id }
-        list.insert(id, at: max(0, min(toIndex, list.count)))
-        return ranks(list)
+    /// One item to another section (a swipe, VoiceOver), at the top of it.
+    static func moved(_ rows: [Row], id: String, to bucket: Bucket) -> [String: (Bucket, Double)] {
+        var list = rows.filter { $0 != .item(id) }
+        let h = list.firstIndex(of: .header(bucket)) ?? list.count - 1
+        list.insert(.item(id), at: h + 1)
+        return place(list)
     }
 
-    static func ranks(_ ids: [String]) -> [String: Double] {
-        Dictionary(uniqueKeysWithValues: ids.enumerated().map { ($1, Double($0 + 1)) })
+    /// One item up or down a row (VoiceOver), crossing a heading if it's next.
+    static func nudged(_ rows: [Row], id: String, by step: Int) -> [String: (Bucket, Double)] {
+        guard let i = rows.firstIndex(of: .item(id)) else { return place(rows) }
+        var list = rows
+        let j = max(0, min(list.count - 1, i + step))
+        list.swapAt(i, j)
+        return place(list)
+    }
+
+    private static func place(_ list: [Row]) -> [String: (Bucket, Double)] {
+        var out: [String: (Bucket, Double)] = [:]
+        var bucket = Bucket.todo
+        var n = 0.0
+        for r in list {
+            switch r {
+            case .header(let b): bucket = b; n = 0
+            case .item(let id): n += 1; out[id] = (bucket, n)
+            }
+        }
+        return out
     }
 }

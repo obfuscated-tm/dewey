@@ -30,7 +30,6 @@ struct ToDoView: View {
     @AppStorage("todoMonth") private var showMonth = false
     /// The task editor: a new task, or one of the student's own (tap its row).
     @State private var editing: TaskTarget?
-    @State private var addingLater = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -57,7 +56,6 @@ struct ToDoView: View {
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $sheet) { SchoologySheet(target: $0) }
             .sheet(item: $editing) { TaskEditor(task: $0.task, sectionId: $0.sectionId) }
-            .sheet(isPresented: $addingLater) { AddLaterSheet(now: Date()) }
         }
         .onChange(of: model.deepLinkAssignment, initial: true) { _, id in
             guard let id else { return }
@@ -82,7 +80,7 @@ struct ToDoView: View {
     private func header(items: [ItemState], now: Date) -> some View {
         let open = items.filter { !model.isFinished($0) }
         let today = items.filter { TodoLogic.bucket(due: $0.due, now: now) == .today }
-        // Plan has its own Done today; two different "done today" counts would read as a mistake.
+        // Plan has its own Done section and count; two different "done today" counts would read as a mistake.
         let ripple = today.isEmpty || mode == .plan ? nil : RippleProgress(done: today.filter { model.isFinished($0) }.count, total: today.count)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do") {
@@ -165,7 +163,7 @@ struct ToDoView: View {
             }
         } else if mode == .plan {
             PlanContent(now: now, onOpen: open, onSubmit: { sheet = SheetTarget(url: submitURL($0), assignmentId: $0.schoologyId) },
-                        onSet: set, onNewTask: { editing = TaskTarget() }, onAddLater: { addingLater = true })
+                        onSet: set, onNewTask: { editing = TaskTarget() })
         } else {
             let filtered = items.filter { it in
                 guard let filter else { return true }
@@ -358,9 +356,6 @@ struct ToDoView: View {
                 } else {
                     Button { sheet = SheetTarget(url: assignmentURL(it), assignmentId: it.schoologyId) } label: {
                         Label("Open in Schoology", systemImage: "globe")
-                    }
-                    Button { model.setInPlan(it, !it.planAdded) } label: {
-                        Label(it.planAdded ? "Take out of plan" : "Add to plan", systemImage: it.planAdded ? "minus.circle" : "list.number")
                     }
                 }
                 if !it.inSchoology && !it.mine {

@@ -59,12 +59,10 @@ final class ItemState {
     var mine: Bool = false
     var notes: String?
 
-    // Plan (PlanLogic): the place in the student's order (nil = not placed yet,
-    // slotted in by due date), the day it was put in Not today, and whether it
-    // was added by hand (work due after the plan's 7 days).
+    // Plan (PlanLogic): the section the student dragged it to (nil = by due date)
+    // and its place there (nil = not placed yet, slotted in by due date).
+    var planSection: String?
     var planRank: Double?
-    var skipDay: Date?
-    var planAdded: Bool = false
 
     var firstSeen: Date = Date()
     var lastSeen: Date = Date()

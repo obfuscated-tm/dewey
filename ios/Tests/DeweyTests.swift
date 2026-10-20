@@ -448,30 +448,38 @@ final class PlanTests: XCTestCase {
         XCTAssertEqual(ids(PlanLogic.order(e)), ["new1", "y", "x", "new6", "nodate"])
     }
 
-    func testDrag() {
-        let r = PlanLogic.moved(["a", "b", "c", "d"], from: IndexSet(integer: 3), to: 0)
-        XCTAssertEqual(r, ["d": 1, "a": 2, "b": 3, "c": 4])
-        let down = PlanLogic.moved(["a", "b", "c", "d"], from: IndexSet(integer: 0), to: 3)
-        XCTAssertEqual(down, ["b": 1, "c": 2, "a": 3, "d": 4])
-        XCTAssertEqual(PlanLogic.moved(["a", "b", "c"], id: "c", toIndex: 0), ["c": 1, "a": 2, "b": 3])
-        XCTAssertEqual(PlanLogic.moved(["a", "b", "c"], id: "a", toIndex: 9), ["b": 1, "c": 2, "a": 3])
+    func testDragWithinAndAcrossSections() {
+        let rows = PlanLogic.rows(todo: ["a", "b"], later: ["c"], done: ["d"])
+        // [H todo, a, b, H later, c, H done, d]: b to the top of To do.
+        let up = PlanLogic.moved(rows, from: IndexSet(integer: 2), to: 1)
+        XCTAssertEqual(up["b"]?.0, .todo); XCTAssertEqual(up["b"]?.1, 1)
+        XCTAssertEqual(up["a"]?.1, 2)
+        // a dragged under the Later heading.
+        let down = PlanLogic.moved(rows, from: IndexSet(integer: 1), to: 4)
+        XCTAssertEqual(down["a"]?.0, .later); XCTAssertEqual(down["a"]?.1, 1)
+        XCTAssertEqual(down["c"]?.1, 2)
+        // c dragged to the end, into Done.
+        XCTAssertEqual(PlanLogic.moved(rows, from: IndexSet(integer: 4), to: 7)["c"]?.0, .done)
+        // Dropped above the first heading: still To do.
+        XCTAssertEqual(PlanLogic.moved(rows, from: IndexSet(integer: 4), to: 0)["c"]?.0, .todo)
+        // Swipe: to the top of Later; VoiceOver nudge across a heading.
+        XCTAssertEqual(PlanLogic.moved(rows, id: "a", to: .later)["a"]?.0, .later)
+        XCTAssertEqual(PlanLogic.nudged(rows, id: "b", by: 1)["b"]?.0, .later)
     }
 
-    func testPool() {
-        XCTAssertTrue(PlanLogic.inPool(due: day(1), mine: false, added: false, late: false, older: false, now: now))
-        XCTAssertFalse(PlanLogic.inPool(due: day(9), mine: false, added: false, late: false, older: false, now: now))
-        XCTAssertTrue(PlanLogic.inPool(due: day(9), mine: false, added: true, late: false, older: false, now: now))
-        XCTAssertTrue(PlanLogic.inPool(due: nil, mine: true, added: false, late: false, older: false, now: now))
-        XCTAssertTrue(PlanLogic.inPool(due: day(-2), mine: false, added: false, late: true, older: false, now: now))
-        XCTAssertFalse(PlanLogic.inPool(due: day(-90), mine: false, added: false, late: true, older: true, now: now))
-        XCTAssertFalse(PlanLogic.inPool(due: nil, mine: false, added: false, late: false, older: false, now: now))
-    }
-
-    func testNotTodayComesBackTomorrow() {
+    func testWhereWorkGoesByDueDate() {
         let cal = Calendar.current
-        XCTAssertTrue(PlanLogic.isSkipped(cal.startOfDay(for: now), now: now))
-        XCTAssertFalse(PlanLogic.isSkipped(cal.startOfDay(for: now), now: day(1)))
-        XCTAssertFalse(PlanLogic.isSkipped(nil, now: now))
+        let today = cal.startOfDay(for: now)
+        func at(_ d: Int) -> Date { cal.date(byAdding: .hour, value: 20, to: cal.date(byAdding: .day, value: d, to: today)!)! }
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(-2), late: true, isTest: false, mine: false, now: now), .todo)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(0), late: false, isTest: false, mine: false, now: now), .todo)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(1), late: false, isTest: false, mine: false, now: now), .todo)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(2), late: false, isTest: false, mine: false, now: now), .later)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(2), late: false, isTest: true, mine: false, now: now), .todo)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(3), late: false, isTest: true, mine: false, now: now), .todo)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(4), late: false, isTest: true, mine: false, now: now), .later)
+        XCTAssertEqual(PlanLogic.autoBucket(due: nil, late: false, isTest: false, mine: true, now: now), .todo)
+        XCTAssertEqual(PlanLogic.autoBucket(due: nil, late: false, isTest: false, mine: false, now: now), .later)
     }
 
     func testOwnTasksStayUntilDoneThenUntilTheDayEnds() {

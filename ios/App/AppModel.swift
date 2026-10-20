@@ -445,58 +445,62 @@ final class AppModel {
     // ── Plan ─────────────────────────────────────────────────────────────
 
     struct PlanLists {
-        /// Up next, in the student's order.
-        var next: [ItemState]
-        var notToday: [ItemState]
-        var doneToday: [ItemState]
-        /// Open work outside the plan (due after its 7 days, or no date): Add to plan.
+        var todo: [ItemState]
         var later: [ItemState]
+        /// Finished today.
+        var done: [ItemState]
+        var rows: [PlanLogic.Row] {
+            PlanLogic.rows(todo: todo.map(\.schoologyId), later: later.map(\.schoologyId), done: done.map(\.schoologyId))
+        }
     }
 
-    /// The plan's pool (PlanLogic.inPool), split into up next, Not today and done today.
+    /// For a plan row: finished, as Plan counts it (a test you studied for is done).
+    func planFinished(_ it: ItemState) -> Bool { isFinished(it) || (it.type == .exam && it.studied) }
+
+    /// Every open item in To do or Later (PlanLogic), plus what was finished today.
     func planLists(now: Date = Date()) -> PlanLists {
         let cal = Calendar.current
-        var open: [ItemState] = [], skipped: [ItemState] = [], done: [ItemState] = [], later: [ItemState] = []
+        var todo: [ItemState] = [], later: [ItemState] = [], done: [ItemState] = []
         for it in todoItems() {
-            let finished = isFinished(it) || (it.type == .exam && it.studied)
+            if planFinished(it) {
+                if cal.isDate(it.updatedAt, inSameDayAs: now) { done.append(it) }
+                continue
+            }
+            if TodoLogic.isOlder(due: it.due, now: now) { continue }
             let late = isOverdue(it, now: now)
-            let pool = PlanLogic.inPool(due: it.due, mine: it.mine, added: it.planAdded, late: late,
-                                        older: TodoLogic.isOlder(due: it.due, now: now), now: now)
-            if finished {
-                // Finished today, from the plan: a "done today" count, not gone without a trace.
-                if (pool || it.planRank != nil) && cal.isDate(it.updatedAt, inSameDayAs: now) { done.append(it) }
-                continue
-            }
             // A past test that isn't an online quiz isn't work any more (TodoLogic.showsLate).
-            if (it.due ?? .distantFuture) < now && !late && !it.mine && !it.planAdded { continue }
-            if !pool {
-                if !TodoLogic.isOlder(due: it.due, now: now) { later.append(it) }
-                continue
-            }
-            if PlanLogic.isSkipped(it.skipDay, now: now) { skipped.append(it) } else { open.append(it) }
+            if (it.due ?? .distantFuture) < now && !late && !it.mine { continue }
+            let auto = PlanLogic.autoBucket(due: it.due, late: late, isTest: it.type == .exam, mine: it.mine, now: now)
+            let b = it.planSection.flatMap(PlanLogic.Bucket.init(rawValue:)) ?? auto
+            if b == .later { later.append(it) } else { todo.append(it) }
         }
-        let byId = Dictionary(open.map { ($0.schoologyId, $0) }, uniquingKeysWith: { a, _ in a })
-        let ordered = PlanLogic.order(open.map { .init(id: $0.schoologyId, rank: $0.planRank, due: $0.due) }).compactMap { byId[$0.id] }
-        let soonest: (ItemState, ItemState) -> Bool = { ($0.due ?? .distantFuture) < ($1.due ?? .distantFuture) }
-        return PlanLists(next: ordered, notToday: skipped.sorted(by: soonest),
-                         doneToday: done.sorted { $0.updatedAt < $1.updatedAt }, later: later.sorted(by: soonest))
+        func ordered(_ list: [ItemState]) -> [ItemState] {
+            let byId = Dictionary(list.map { ($0.schoologyId, $0) }, uniquingKeysWith: { a, _ in a })
+            return PlanLogic.order(list.map { .init(id: $0.schoologyId, rank: $0.planRank, due: $0.due) }).compactMap { byId[$0.id] }
+        }
+        return PlanLists(todo: ordered(todo), later: ordered(later), done: done.sorted { $0.updatedAt < $1.updatedAt })
     }
 
-    /// Saves the plan's order as shown (PlanLogic.moved).
-    func setPlanRanks(_ ranks: [String: Double]) {
-        for it in allItems() { if let r = ranks[it.schoologyId] { it.planRank = r } }
-        save()
-    }
-
-    func setNotToday(_ it: ItemState, _ on: Bool) {
-        it.skipDay = on ? Calendar.current.startOfDay(for: Date()) : nil
-        save()
-    }
-
-    /// Work due after the plan's 7 days, put in (or taken out of) the plan by hand.
-    func setInPlan(_ it: ItemState, _ on: Bool) {
-        it.planAdded = on
-        if !on { it.planRank = nil }
+    /// Saves a drag (PlanLogic.moved): every item's place, and for the item that
+    /// changed section, that section. Into Done = done; out of Done = to do again.
+    func applyPlan(_ placed: [String: (PlanLogic.Bucket, Double)], moved id: String?, now: Date = Date()) {
+        let lists = planLists(now: now)
+        let was = Dictionary(lists.todo.map { ($0.schoologyId, PlanLogic.Bucket.todo) } + lists.later.map { ($0.schoologyId, .later) }
+                             + lists.done.map { ($0.schoologyId, .done) }, uniquingKeysWith: { a, _ in a })
+        for it in lists.todo + lists.later + lists.done {
+            guard let (b, rank) = placed[it.schoologyId] else { continue }
+            if b != .done { it.planRank = rank }
+            guard it.schoologyId == id, let from = was[it.schoologyId], from != b else { continue }
+            switch b {
+            case .done:
+                setProgress(it, .done)
+            case .todo, .later:
+                if from == .done { setProgress(it, .todo) }
+                // By due date it would be here anyway: leave it to follow its due date.
+                let auto = PlanLogic.autoBucket(due: it.due, late: isOverdue(it, now: now), isTest: it.type == .exam, mine: it.mine, now: now)
+                it.planSection = b == auto ? nil : b.rawValue
+            }
+        }
         save()
     }
 

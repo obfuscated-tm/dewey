@@ -112,7 +112,7 @@ Plan: `UIApplication.shared.open(url, options: [.universalLinksOnly: true])` so 
 
 ## Other decisions
 
-- **Own tasks and Plan:** a task the student adds is an `ItemState` keyed `mine-<uuid>`: on the phone only, never on Schoology, and not on neo-plan (its extension API only takes Schoology items). Plan's order and Not today are phone-only too.
+- **Own tasks and Plan:** a task the student adds is an `ItemState` keyed `mine-<uuid>`: on the phone only, never on Schoology, and not on neo-plan (its extension API only takes Schoology items). Plan's sections and order are phone-only too.
 - **iPhone Calendar:** optional (Settings › To Do). A calendar named Dewey, matched by each event's `classwork://assignment/{id}` link; needs full calendar access, since write-only access can't move or remove events later.
 - **Notifications:** local only (`UNUserNotificationCenter`), scheduled from fetched due dates; refreshed with `BGAppRefreshTask` (best effort). No push on a free account.
 - **Archiving:** if ported at all, save to the app's Documents folder so it shows in the Files app. The full-course archive stays a desktop feature.

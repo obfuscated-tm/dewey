@@ -423,7 +423,7 @@ final class NewGradeTests: XCTestCase {
     }
 }
 
-/// Plan's order, pool and Not today (PlanLogic), and the student's own tasks on To Do.
+/// Plan's sections and order (PlanLogic), and the student's own tasks on To Do.
 final class PlanTests: XCTestCase {
     let now = ISO8601DateFormatter().date(from: "2026-10-20T15:00:00Z")!
     func day(_ d: Int) -> Date { now.addingTimeInterval(Double(d) * 86400) }
@@ -465,6 +465,21 @@ final class PlanTests: XCTestCase {
         // Swipe: to the top of Later; VoiceOver nudge across a heading.
         XCTAssertEqual(PlanLogic.moved(rows, id: "a", to: .later)["a"]?.0, .later)
         XCTAssertEqual(PlanLogic.nudged(rows, id: "b", by: 1)["b"]?.0, .later)
+    }
+
+    func testDropOnCollapsedSection() {
+        // Later is collapsed: its items aren't rows, but a drop under its heading joins them at the top.
+        let rows = PlanLogic.rows(todo: ["a", "b"], later: [], done: ["d"])
+        let hidden: PlanLogic.Hidden = [.later: ["c", "e"]]
+        let p = PlanLogic.moved(rows, from: IndexSet(integer: 1), to: 4, hidden: hidden)
+        XCTAssertEqual(p["a"]?.0, .later)
+        XCTAssertEqual(p["a"]?.1, 1)
+        XCTAssertEqual(p["c"]?.1, 2)
+        XCTAssertEqual(p["e"]?.1, 3)
+        XCTAssertEqual(p["b"]?.1, 1)
+        XCTAssertEqual(PlanLogic.moved(rows, id: "b", to: .later, hidden: hidden)["e"]?.1, 3)
+        // The grip never lifts work above To do's heading.
+        XCTAssertEqual(PlanLogic.nudging(rows, id: "a", by: -1), rows)
     }
 
     func testWhereWorkGoesByDueDate() {

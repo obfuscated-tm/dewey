@@ -57,35 +57,63 @@ enum PlanLogic {
         [.header(.todo)] + todo.map(Row.item) + [.header(.later)] + later.map(Row.item) + [.header(.done)] + done.map(Row.item)
     }
 
+    /// A collapsed section's items aren't rows: `hidden` holds them by section,
+    /// so a drop on a collapsed heading lands at the top of that section and the
+    /// rest keep their order under it.
+    typealias Hidden = [Bucket: [String]]
+
     /// Where every item ends up after a drag (List's onMove): its section, and its
     /// place in it (1…). An item dropped above the first heading is in To do.
-    static func moved(_ rows: [Row], from: IndexSet, to: Int) -> [String: (Bucket, Double)] {
+    static func moved(_ rows: [Row], from: IndexSet, to: Int, hidden: Hidden = [:]) -> [String: (Bucket, Double)] {
+        place(expand(moving(rows, from: from, to: to), hidden))
+    }
+
+    static func moving(_ rows: [Row], from: IndexSet, to: Int) -> [Row] {
         var list = rows
         let moving = from.map { list[$0] }
         for i in from.sorted(by: >) { list.remove(at: i) }
         let at = to - from.filter { $0 < to }.count
         list.insert(contentsOf: moving, at: max(0, min(at, list.count)))
-        return place(list)
+        return list
     }
 
     /// One item to another section (a swipe, VoiceOver), at the top of it.
-    static func moved(_ rows: [Row], id: String, to bucket: Bucket) -> [String: (Bucket, Double)] {
+    static func moved(_ rows: [Row], id: String, to bucket: Bucket, hidden: Hidden = [:]) -> [String: (Bucket, Double)] {
         var list = rows.filter { $0 != .item(id) }
         let h = list.firstIndex(of: .header(bucket)) ?? list.count - 1
         list.insert(.item(id), at: h + 1)
-        return place(list)
+        return place(expand(list, hidden))
     }
 
-    /// One item up or down a row (VoiceOver), crossing a heading if it's next.
-    static func nudged(_ rows: [Row], id: String, by step: Int) -> [String: (Bucket, Double)] {
-        guard let i = rows.firstIndex(of: .item(id)) else { return place(rows) }
+    /// One item up or down a row (VoiceOver, the grip), crossing a heading if it's next.
+    /// Never above the first heading.
+    static func nudging(_ rows: [Row], id: String, by step: Int) -> [Row] {
+        guard let i = rows.firstIndex(of: .item(id)) else { return rows }
         var list = rows
-        let j = max(0, min(list.count - 1, i + step))
+        let j = max(1, min(list.count - 1, i + step))
         list.swapAt(i, j)
-        return place(list)
+        return list
     }
 
-    private static func place(_ list: [Row]) -> [String: (Bucket, Double)] {
+    static func nudged(_ rows: [Row], id: String, by step: Int, hidden: Hidden = [:]) -> [String: (Bucket, Double)] {
+        place(expand(nudging(rows, id: id, by: step), hidden))
+    }
+
+    /// The shown rows with each collapsed section's items put back at its end.
+    static func expand(_ rows: [Row], _ hidden: Hidden) -> [Row] {
+        guard !hidden.isEmpty else { return rows }
+        var out: [Row] = []
+        var open: Bucket?
+        func flush() { if let b = open { out += (hidden[b] ?? []).map(Row.item) } }
+        for r in rows {
+            if case .header(let b) = r { flush(); open = b }
+            out.append(r)
+        }
+        flush()
+        return out
+    }
+
+    static func place(_ list: [Row]) -> [String: (Bucket, Double)] {
         var out: [String: (Bucket, Double)] = [:]
         var bucket = Bucket.todo
         var n = 0.0

@@ -52,6 +52,7 @@ enum Demo {
         case "material": return material
         case "messages": return (args["page"] as? Int ?? 0) == 0 ? ["threads": threads, "unreadCount": 2, "hasMore": false] : ["threads": [] as [Any], "hasMore": false]
         case "message": return message(id)
+        case "account": return ["username": "1234567", "studentId": "1234567"]
         case "notifications": return (args["page"] as? Int ?? 0) == 0 ? ["items": notices, "hasMore": false] : ["items": [] as [Any], "hasMore": false]
         default: throw EngineError.http(404)
         }

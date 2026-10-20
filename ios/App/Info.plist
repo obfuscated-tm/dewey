@@ -19,6 +19,8 @@
 	<array>
 		<string>com.owenleung.classwork.refresh</string>
 	</array>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Dewey keeps a calendar called Dewey with your due dates, tests and own tasks. It never changes your other calendars.</string>
 	<key>NSCrossWebsiteTrackingUsageDescription</key>
 	<string>Google Assignments open inside Schoology's page. Allowing this lets Google keep you signed in there.</string>
 	<key>UIBackgroundModes</key>

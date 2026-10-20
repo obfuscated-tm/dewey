@@ -25,6 +25,12 @@ struct ToDoView: View {
     @AppStorage("statusTipKind") private var tipKind = StatusTip.Kind.done.rawValue
     @State private var showGuide = false
     @AppStorage(CallNumber.key) private var callRaw = ""
+    @AppStorage(ToDoMode.key) private var modeID = ToDoMode.list.rawValue
+    /// The week strip opened up to a month (MonthGrid).
+    @AppStorage("todoMonth") private var showMonth = false
+    /// The task editor: a new task, or one of the student's own (tap its row).
+    @State private var editing: TaskTarget?
+    @State private var addingLater = false
 
     var body: some View {
         NavigationStack(path: $path) {
@@ -50,6 +56,8 @@ struct ToDoView: View {
             .navigationDestination(isPresented: $showGuide) { StatusGuideView() }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $sheet) { SchoologySheet(target: $0) }
+            .sheet(item: $editing) { TaskEditor(task: $0.task, sectionId: $0.sectionId) }
+            .sheet(isPresented: $addingLater) { AddLaterSheet(now: Date()) }
         }
         .onChange(of: model.deepLinkAssignment, initial: true) { _, id in
             guard let id else { return }
@@ -58,9 +66,15 @@ struct ToDoView: View {
         }
         // The day filter belongs to the week strip.
         .onChange(of: layoutID) { filter = nil }
+        .onChange(of: modeID) { filter = nil }
     }
 
+    private static let dayName: DateFormatter = {
+        let f = DateFormatter(); f.locale = Locale(identifier: "en_US"); f.dateFormat = "EEE, MMM d"; return f
+    }()
+
     private var layout: ToDoLayout { ToDoLayout(rawValue: layoutID) ?? .week }
+    private var mode: ToDoMode { ToDoMode(rawValue: modeID) ?? .list }
 
     // ── Header: date, title, gear, week strip ───────────────────
 
@@ -68,15 +82,43 @@ struct ToDoView: View {
     private func header(items: [ItemState], now: Date) -> some View {
         let open = items.filter { !model.isFinished($0) }
         let today = items.filter { TodoLogic.bucket(due: $0.due, now: now) == .today }
-        let ripple = today.isEmpty ? nil : RippleProgress(done: today.filter { model.isFinished($0) }.count, total: today.count)
+        // Plan has its own Done today; two different "done today" counts would read as a mistake.
+        let ripple = today.isEmpty || mode == .plan ? nil : RippleProgress(done: today.filter { model.isFinished($0) }.count, total: today.count)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do") {
                 if !typeSize.isAccessibilitySize, let ripple { ripple.padding(.bottom, Theme.Space.xs) }
+                Button { editing = TaskTarget() } label: {
+                    Image(systemName: "plus").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
+                        .frame(width: 44, height: 44)
+                }
+                // Its own tap area: two buttons in one list row would otherwise both fire.
+                .buttonStyle(.borderless)
+                .accessibilityLabel("New task")
                 ScreenOptions(page: .todo)
             }
             if typeSize.isAccessibilitySize, let ripple { ripple.padding(.horizontal, Theme.Space.xs) }
+            Picker("View", selection: $modeID) {
+                ForEach(ToDoMode.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityHint("List shows everything; Plan is your own order")
             // Late, today and the next six days, a dot per item still to do; tap one to show only it.
-            if layout == .week { WeekStrip(items: open, now: now, selected: $filter) }
+            if mode == .list && layout == .week {
+                if showMonth { MonthGrid(items: open, now: now, selected: $filter) } else { WeekStrip(items: open, now: now, selected: $filter) }
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { showMonth.toggle(); filter = nil }
+                } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: showMonth ? "chevron.up" : "calendar")
+                        Text(showMonth ? "Show week" : "Show month")
+                    }
+                        .font(Theme.footnote.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 30)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .padding(.top, -Theme.Space.s)
+            }
             if let f = filter {
                 HStack(spacing: Theme.Space.s) {
                     Text(filterTitle(f, now: now)).font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary)
@@ -104,6 +146,9 @@ struct ToDoView: View {
         case .day(let k):
             let d = Calendar.current.date(byAdding: .day, value: k, to: Calendar.current.startOfDay(for: now))!
             return Fmt.header.string(from: d)
+        case .span(let start):
+            let next = Calendar.current.date(byAdding: .day, value: 1, to: start)!
+            return "\(Self.dayName.string(from: start)) and \(Self.dayName.string(from: next))"
         }
     }
 
@@ -118,6 +163,9 @@ struct ToDoView: View {
             } else {
                 Section { SkeletonRows() }.listRowBackground(Color.clear).listRowInsets(EdgeInsets())
             }
+        } else if mode == .plan {
+            PlanContent(now: now, onOpen: open, onSubmit: { sheet = SheetTarget(url: submitURL($0), assignmentId: $0.schoologyId) },
+                        onSet: set, onNewTask: { editing = TaskTarget() }, onAddLater: { addingLater = true })
         } else {
             let filtered = items.filter { it in
                 guard let filter else { return true }
@@ -173,12 +221,15 @@ struct ToDoView: View {
 
     private func grouped(_ items: [ItemState]) -> [Group] {
         var bySection: [String: [ItemState]] = [:]
-        for it in items { bySection[it.sectionId ?? "", default: []].append(it) }
+        for it in items { bySection[it.sectionId ?? (it.mine ? "mine" : ""), default: []].append(it) }
         var out: [Group] = []
         for c in model.courses {
             if let list = bySection.removeValue(forKey: c.sectionId), !list.isEmpty {
                 out.append(Group(key: c.sectionId, title: c.shortTitle, items: sortItems(list)))
             }
+        }
+        if let mine = bySection.removeValue(forKey: "mine"), !mine.isEmpty {
+            out.append(Group(key: "mine", title: "My tasks", items: sortItems(mine)))
         }
         let rest = bySection.values.flatMap { $0 }
         if !rest.isEmpty { out.append(Group(key: "other", title: "Other", items: sortItems(rest))) }
@@ -256,10 +307,10 @@ struct ToDoView: View {
     private func row(_ it: ItemState, now: Date) -> some View {
         TodoRow(item: it, now: now,
                 // Urgent first mixes classes, so each row says its own.
-                course: layout == .urgent ? model.courses.first { $0.sectionId == it.sectionId }?.shortTitle : nil,
+                course: layout == .urgent ? model.courses.first { $0.sectionId == it.sectionId }?.shortTitle ?? (it.mine ? "My task" : nil) : nil,
                 onSet: { set(it, $0) },
                 onSubmit: { sheet = SheetTarget(url: submitURL(it), assignmentId: it.schoologyId) },
-                onOpen: { path.append(AssignmentRoute(id: it.schoologyId)) })
+                onOpen: { open(it) })
             .coachTarget("todo.row.\(it.schoologyId)")
             // Every separator starts under the checkbox, whatever the row holds.
             .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
@@ -267,7 +318,9 @@ struct ToDoView: View {
             .listRowBackground(Theme.card)
             .listRowSeparatorTint(Theme.catalogLine)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                if it.turnedIn {
+                if it.mine && it.type == .task {
+                    EmptyView()
+                } else if it.turnedIn {
                     Button { model.setTurnedIn(it, false) } label: { Label("Not turned in", systemImage: "arrow.uturn.backward") }
                         .tint(Theme.secondary)
                 } else {
@@ -299,13 +352,26 @@ struct ToDoView: View {
                     }
                 }
                 Divider()
-                Button { sheet = SheetTarget(url: assignmentURL(it), assignmentId: it.schoologyId) } label: {
-                    Label("Open in Schoology", systemImage: "globe")
+                if it.mine {
+                    Button { open(it) } label: { Label("Edit task", systemImage: "pencil") }
+                    Button(role: .destructive) { model.deleteTask(it) } label: { Label("Delete task", systemImage: "trash") }
+                } else {
+                    Button { sheet = SheetTarget(url: assignmentURL(it), assignmentId: it.schoologyId) } label: {
+                        Label("Open in Schoology", systemImage: "globe")
+                    }
+                    Button { model.setInPlan(it, !it.planAdded) } label: {
+                        Label(it.planAdded ? "Take out of plan" : "Add to plan", systemImage: it.planAdded ? "minus.circle" : "list.number")
+                    }
                 }
-                if !it.inSchoology {
+                if !it.inSchoology && !it.mine {
                     Button(role: .destructive) { model.dismiss(it) } label: { Label("Remove from my list", systemImage: "trash") }
                 }
             }
+    }
+
+    /// A Schoology item opens its Assignment screen; the student's own task, its editor.
+    private func open(_ it: ItemState) {
+        if it.mine { editing = TaskTarget(task: it) } else { path.append(AssignmentRoute(id: it.schoologyId)) }
     }
 
     private func set(_ it: ItemState, _ p: AppModel.Progress) {
@@ -341,6 +407,13 @@ struct ToDoView: View {
 }
 
 struct AssignmentRoute: Hashable { let id: String }
+
+/// The task editor's sheet: a new task (optionally for a class), or an existing one.
+struct TaskTarget: Identifiable {
+    var task: ItemState?
+    var sectionId: String?
+    var id: String { task?.schoologyId ?? "new-\(sectionId ?? "")" }
+}
 
 /// To do / Done (Studied) / Turned in as three big buttons. Used in a To Do
 /// row (opens under it) and on the Assignment screen.
@@ -426,7 +499,7 @@ struct TodoRow: View {
                     .contentShape(Rectangle())
                     .onTapGesture(perform: onOpen)
                     .accessibilityAddTraits(.isButton)
-                    .accessibilityHint("Opens the assignment")
+                    .accessibilityHint(item.mine ? "Edits your task" : "Opens the assignment")
                     .accessibilityAction { onOpen() }
                 // The title keeps the full width; the one-tap action (Submit / Turn in /
                 // Undo) always sits at the right end of the due line, which wraps beside it.
@@ -471,7 +544,10 @@ struct TodoRow: View {
         .padding(.vertical, Theme.Space.xs)
     }
 
-    private var hasAction: Bool { !item.submitted && (item.turnedIn || item.hasDropbox || item.type != .exam) }
+    private var hasAction: Bool {
+        if item.mine && item.type == .task { return false }
+        return !item.submitted && (item.turnedIn || item.hasDropbox || item.type != .exam)
+    }
 
     private var action: some View { actionButton.coachTarget("todo.action.\(item.schoologyId)") }
 
@@ -520,7 +596,8 @@ struct TodoRow: View {
     /// The status, when it says more than "to do": its own line, never cut short.
     private var statusNote: (String, Color, Bool)? {
         if item.submitted { return ("Submitted on Schoology\(item.statusLate == true ? " · late" : "")", Theme.good, true) }
-        if item.turnedIn { return ("Turned in · not on Schoology", Theme.good, true) }
+        if item.turnedIn { return (item.mine ? "Turned in" : "Turned in · not on Schoology", Theme.good, true) }
+        if item.mine { return item.notes.map { ($0, Theme.secondary, false) } }
         if item.type == .exam { return nil }
         if item.external { return (item.done ? "Done · check it in Schoology" : "Google Assignment · turn in on Schoology", item.done ? Theme.accent : Theme.secondary, false) }
         if item.done { return (item.hasDropbox ? "Done · not submitted yet" : "Done", Theme.accent, false) }
@@ -551,8 +628,9 @@ struct CheckMark: View {
                 Circle().strokeBorder(Theme.accent, lineWidth: 2)
                 check(Theme.accent)
             } else {
-                Circle().stroke(item.neoPlanId == nil && NeoPlanClient().connected ? Theme.tertiary : Theme.secondary,
-                                style: StrokeStyle(lineWidth: 1.6, dash: item.neoPlanId == nil && NeoPlanClient().connected ? [3, 2.5] : []))
+                let unsynced = !item.mine && item.neoPlanId == nil && NeoPlanClient().connected
+                Circle().stroke(unsynced ? Theme.tertiary : Theme.secondary,
+                                style: StrokeStyle(lineWidth: 1.6, dash: unsynced ? [3, 2.5] : []))
             }
         }
         .frame(width: size, height: size)

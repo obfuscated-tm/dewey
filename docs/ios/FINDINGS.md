@@ -103,8 +103,17 @@ Plan: `UIApplication.shared.open(url, options: [.universalLinksOnly: true])` so 
 - **Taking** it is `/common-assessment-delivery/start/{id}?action=onresume&submissionId=…`: never requested (guard.js).
 - **Reviewing** a past attempt is a Learnosity page built in the browser from `/iapi2/common-assessments/edit-submission/{id}`, a JWT from `/common-assessment-access/generate-jwt-token/submission`, and `assessment-submission.svc.schoology.com`. A plain GET can't render the questions, so the app shows the attempts and leaves the review to the Schoology sheet (the student's tap).
 
+## Student ID (checked live 2026-10-20, read only)
+
+- The FUHSD ID card's barcode is **Code 39** and holds just the 7-digit student number printed under it (Apple Vision decoded a photo of a card: `VNBarcodeSymbologyCode39`, payload = the printed number, nothing else).
+- `/settings/account` (a GET; it's a form, nothing is ever posted): the **Username** row, `#edit-user-username-wrapper .form-text`, is that same 7-digit number (checked on Owen's account: digits only, matches the card). The next row is the primary email. Parser: `reader/parse/account.js`, engine op `account()`.
+- Not every district's username is a number, so the app only fills the ID in from Schoology when it is digits, warns (never blocks) when it isn't 7 long, and also offers scanning the card (VisionKit, Code 39 only) or typing it.
+- The app's own barcode (App/Store/Code39.swift, narrow:wide 1:3, 10-module quiet zones) decodes as Code 39 with the right number, both as a rendered image and from a simulator screenshot of the ID card. Still to check: the school's scanners reading it off a phone screen (older laser scanners may not).
+
 ## Other decisions
 
+- **Own tasks and Plan:** a task the student adds is an `ItemState` keyed `mine-<uuid>`: on the phone only, never on Schoology, and not on neo-plan (its extension API only takes Schoology items). Plan's order and Not today are phone-only too.
+- **iPhone Calendar:** optional (Settings › To Do). A calendar named Dewey, matched by each event's `classwork://assignment/{id}` link; needs full calendar access, since write-only access can't move or remove events later.
 - **Notifications:** local only (`UNUserNotificationCenter`), scheduled from fetched due dates; refreshed with `BGAppRefreshTask` (best effort). No push on a free account.
 - **Archiving:** if ported at all, save to the app's Documents folder so it shows in the Files app. The full-course archive stays a desktop feature.
 - **Naming:** the app can't use "Schoology" or its logo as its name or icon.

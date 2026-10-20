@@ -23,6 +23,7 @@ var SchoologyEngine = (() => {
   __export(engine_exports, {
     MATERIAL_SHAPES: () => MATERIAL_SHAPES,
     VERSION: () => VERSION,
+    account: () => account,
     assignment: () => assignment,
     call: () => call,
     callJSON: () => callJSON,
@@ -1243,6 +1244,29 @@ ${t.trim()}
     };
   }
 
+  // ../extension/reader/parse/account.js
+  var decode = (s) => s.replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#0?39;/g, "'");
+  function accountUsername(html) {
+    const s = String(html ?? "");
+    const at = s.search(/id=["']edit-user-username-wrapper["']/);
+    if (at < 0) return null;
+    const rest = s.slice(at);
+    const next = rest.slice(1).search(/class=["']form-item["']/);
+    const row = next < 0 ? rest : rest.slice(0, next + 1);
+    const m = row.match(/class=["'][^"']*\bform-text\b[^"']*["'][^>]*>([\s\S]*?)<\/div>/);
+    if (!m) return null;
+    const text = decode(m[1].replace(/<[^>]*>/g, "")).replace(/\s+/g, " ").trim();
+    return text || null;
+  }
+  function studentNumber(username) {
+    const d = String(username ?? "").replace(/[\s-]/g, "");
+    return /^\d{4,12}$/.test(d) ? d : null;
+  }
+  function parseAccount(html) {
+    const username = accountUsername(html);
+    return { username, studentId: studentNumber(username) };
+  }
+
   // ../extension/reader/ratelimit.js
   function isRateLimited(status2, text) {
     if (status2 === 429) return true;
@@ -1819,6 +1843,17 @@ ${t.trim()}
         }
         return { data: posts, url: r.url };
       }),
+      /**
+       * /settings/account: { username, studentId }. studentId is the username when
+       * it is a number (FUHSD: the 7-digit ID on the student's card), else null.
+       * Read only: the page is a form, and nothing is ever posted to it.
+       */
+      account: () => wrap(async () => {
+        const r = await get("/settings/account");
+        if (r.redirected) throw codeError("quiz");
+        if (LOGIN_RE2.test(r.text)) throw codeError("login");
+        return { data: parseAccount(r.text), url: r.url };
+      }),
       /** /home/notifications: { items: [{ key, type, course, sectionId, text, date, items }], hasMore }. */
       notifications: ({ page = 0 } = {}) => wrap(() => {
         const p = pageNo(page);
@@ -1941,6 +1976,7 @@ ${t.trim()}
   var notifications = (a) => call("notifications", a);
   var messages = (a) => call("messages", a);
   var message = (a) => call("message", a);
+  var account = (a) => call("account", a);
   var math = { ...grademath_exports, ...asgstate_exports, ...matstate_exports, ...todologic_exports };
   return __toCommonJS(engine_exports);
 })();

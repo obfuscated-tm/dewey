@@ -282,3 +282,14 @@ test('feed: a cut-off post gets its full body from show_more; other paths are ne
   assert.ok(r.data.every((p) => !('more' in p)));
   assert.deepEqual(calls.map((c) => c.key), ['/course/1/feed?page=0', more]);
 });
+
+test('account: GET /settings/account → username and student number', async () => {
+  const html = '<div class="form-item" id="edit-user-username-wrapper"><label>Username: </label><div class="form-text">1234567</div></div>';
+  const { eng, calls } = fakeEngine(new Map([['/settings/account', res(html)]]));
+  const r = await eng.account();
+  assert.equal(r.ok, true);
+  assert.deepEqual(r.data, { username: '1234567', studentId: '1234567' });
+  assert.deepEqual(calls.map((c) => [c.key, c.init.method]), [['/settings/account', 'GET']]);
+  const out = fakeEngine(new Map([['/settings/account', res('<form class="s-user-login-form"></form>')]]));
+  assert.equal((await out.eng.account()).error, 'login');
+});

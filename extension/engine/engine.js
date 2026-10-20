@@ -21,6 +21,7 @@ import { SHOW_MORE_RE } from '../reader/parse/feed.js';
 import { rubricPaths, parseRubric } from '../reader/parse/rubric.js';
 import { isQuizTakingUrl } from '../reader/guard.js';
 import { quizInfo, QUIZ_LANDING_RE } from '../reader/parse/quiz.js';
+import { parseAccount } from '../reader/parse/account.js';
 import { isRateLimited } from '../reader/ratelimit.js';
 import * as grademath from '../overlays/grademath.js';
 import * as asgstate from '../overlays/asgstate.js';
@@ -365,6 +366,18 @@ export function createEngine(deps = {}) {
       return { data: posts, url: r.url };
     }),
 
+    /**
+     * /settings/account: { username, studentId }. studentId is the username when
+     * it is a number (FUHSD: the 7-digit ID on the student's card), else null.
+     * Read only: the page is a form, and nothing is ever posted to it.
+     */
+    account: () => wrap(async () => {
+      const r = await get('/settings/account');
+      if (r.redirected) throw codeError('quiz');
+      if (LOGIN_RE.test(r.text)) throw codeError('login');
+      return { data: parseAccount(r.text), url: r.url };
+    }),
+
     /** /home/notifications: { items: [{ key, type, course, sectionId, text, date, items }], hasMore }. */
     notifications: ({ page = 0 } = {}) => wrap(() => {
       const p = pageNo(page);
@@ -494,6 +507,7 @@ export const feed = (a) => call('feed', a);
 export const notifications = (a) => call('notifications', a);
 export const messages = (a) => call('messages', a);
 export const message = (a) => call('message', a);
+export const account = (a) => call('account', a);
 
 /** The pure modules, for anything the screens need that has no op yet. */
 export const math = { ...grademath, ...asgstate, ...matstate, ...todologic };

@@ -12,6 +12,11 @@ struct ClassesView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     ScreenHeader(title: "Classes") {
+                        Button { NotificationCenter.default.post(name: .showStudentID, object: nil) } label: {
+                            Image(systemName: "person.text.rectangle").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
+                                .frame(width: 44, height: 44)
+                        }
+                        .accessibilityLabel("Student ID")
                         ScreenOptions(page: .classes)
                     }
                     .padding(.top, Theme.Space.s)

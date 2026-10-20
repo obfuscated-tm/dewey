@@ -1,4 +1,5 @@
 import AppIntents
+import SwiftData
 import WidgetKit
 
 // R4 · Siri and Shortcuts. Everything answers from the widget snapshot (the
@@ -163,6 +164,48 @@ extension Notification.Name {
     static let openTodo = Notification.Name("classwork.openTodo")
 }
 
+/// "Show my student ID": opens the app on the ID card (StudentIDCard).
+struct ShowStudentIDIntent: AppIntent {
+    static let title: LocalizedStringResource = "Show Student ID"
+    static let description = IntentDescription("Opens Dewey on your student ID barcode, at full brightness.")
+    static let openAppWhenRun = true
+
+    @MainActor
+    func perform() async throws -> some IntentResult {
+        NotificationCenter.default.post(name: .showStudentID, object: nil)
+        return .result()
+    }
+}
+
+/// "Add a task in Dewey": a task of the student's own, on the phone only.
+struct AddTaskIntent: AppIntent {
+    static let title: LocalizedStringResource = "Add Task"
+    static let description = IntentDescription("Adds a task of your own to Dewey's To Do and Plan. Only on this phone; nothing is added to Schoology.")
+
+    @Parameter(title: "Task", requestValueDialog: "What do you need to do?") var name: String
+    @Parameter(title: "Due", kind: .date) var due: Date?
+
+    static var parameterSummary: some ParameterSummary { Summary("Add \(\.$name) due \(\.$due)") }
+
+    @MainActor
+    func perform() async throws -> some IntentResult & ProvidesDialog {
+        let title = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty else { return .result(dialog: "There was no task to add.") }
+        let when = due.map { TaskEditor.endOfDay($0) }
+        if let m = AppModel.live {
+            m.addTask(title: title, due: when)
+        } else {
+            // Not running: straight into the same saved store the app opens.
+            let c = try ModelContainer(for: ItemState.self, CourseState.self)
+            let it = ItemState(mineTitle: title)
+            it.due = when
+            c.mainContext.insert(it)
+            try c.mainContext.save()
+        }
+        return .result(dialog: "Added \(title) to your Dewey To Do.")
+    }
+}
+
 struct DeweyShortcuts: AppShortcutsProvider {
     static var appShortcuts: [AppShortcut] {
         AppShortcut(intent: WhatsDueIntent(), phrases: [
@@ -179,5 +222,15 @@ struct DeweyShortcuts: AppShortcutsProvider {
             "Open \(.applicationName) To Do",
             "Open my To Do in \(.applicationName)",
         ], shortTitle: "Open To Do", systemImageName: "list.bullet")
+        AppShortcut(intent: ShowStudentIDIntent(), phrases: [
+            "Show my student ID in \(.applicationName)",
+            "\(.applicationName) student ID",
+            "Show my ID in \(.applicationName)",
+        ], shortTitle: "Student ID", systemImageName: "person.text.rectangle")
+        AppShortcut(intent: AddTaskIntent(), phrases: [
+            // A phrase can't hold free text (only entities and enums): Siri asks "What do you need to do?".
+            "Add a task in \(.applicationName)",
+            "New \(.applicationName) task",
+        ], shortTitle: "Add Task", systemImageName: "plus.circle")
     }
 }

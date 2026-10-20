@@ -25,6 +25,8 @@ enum ItemType: String, Codable, CaseIterable {
 /// The student's own state for one Schoology item, plus what the app last saw
 /// of it on Schoology. Keyed by the Schoology id. Survives relaunch; keeps
 /// paper work Schoology dropped from its lists (docs/ios/FINDINGS.md).
+/// A task the student added (`mine`) is a row too, keyed `mine-<uuid>`: it
+/// never reaches Schoology or neo-plan, and lives only on the phone.
 @Model
 final class ItemState {
     @Attribute(.unique) var schoologyId: String
@@ -52,6 +54,18 @@ final class ItemState {
     var external: Bool = false        // a Google Assignment
 
     var neoPlanId: String?
+
+    // The student's own task (TaskEditor), never on Schoology.
+    var mine: Bool = false
+    var notes: String?
+
+    // Plan (PlanLogic): the place in the student's order (nil = not placed yet,
+    // slotted in by due date), the day it was put in Not today, and whether it
+    // was added by hand (work due after the plan's 7 days).
+    var planRank: Double?
+    var skipDay: Date?
+    var planAdded: Bool = false
+
     var firstSeen: Date = Date()
     var lastSeen: Date = Date()
     var updatedAt: Date = Date()
@@ -59,6 +73,16 @@ final class ItemState {
     init(schoologyId: String, title: String) {
         self.schoologyId = schoologyId
         self.title = title
+    }
+
+    static let minePrefix = "mine-"
+    static func isMine(_ id: String) -> Bool { id.hasPrefix(minePrefix) }
+
+    /// A new task of the student's own.
+    convenience init(mineTitle title: String) {
+        self.init(schoologyId: Self.minePrefix + UUID().uuidString, title: title)
+        mine = true
+        typeOverride = ItemType.task.rawValue
     }
 
     var isQuiz: Bool { (url ?? "").contains("/assessment") }
@@ -102,11 +126,16 @@ enum TodoLogic {
         var submitted: Bool
         var graded: Bool
         var dismissed: Bool
+        /// The student's own task, and (for one) whether it was finished today.
+        var mine = false
+        var finishedToday = false
     }
 
     /// On the list: everything Schoology still lists (done rows stay until it
     /// drops them), plus work it dropped that the student hasn't finished.
+    /// The student's own tasks stay until done, and a done one until the day ends.
     static func isVisible(_ s: Snapshot) -> Bool {
+        if s.mine { return !s.dismissed && (!(s.done || s.turnedIn) || s.finishedToday) }
         if s.dismissed || s.graded { return false }
         if s.inSchoology { return true }
         return !(s.done || s.turnedIn || s.submitted)
@@ -117,6 +146,7 @@ enum TodoLogic {
     /// handed in), and not once it's handed in or marked done. A test is late only
     /// as an online quiz not marked studied: Schoology keeps quizzes given in class
     /// on its overdue list, and a past test you studied for is one you took.
+    /// The student's own tasks always count as listed (`inSchoology: true`).
     static func showsLate(type: ItemType, isQuiz: Bool, done: Bool, turnedIn: Bool, submitted: Bool, inSchoology: Bool = true) -> Bool {
         if submitted || turnedIn || !inSchoology { return false }
         if type == .exam { return isQuiz && !done }

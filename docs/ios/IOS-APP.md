@@ -126,9 +126,25 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 - **Done when:** every screen is usable at the largest text size and with VoiceOver, and nothing is unreadable in dark mode.
 - Check: `xcodebuild -scheme A11yAudit -collect-test-diagnostics never test` (Apple's audit on each tab, class grades and a class page, light and dark, largest text; needs the simulator signed in). Colour contrast is `ThemeTests` (every text colour on every surface, light and dark).
 
+### R6 · Student ID (built 2026-10-20)
+- The ID card's Code 39 barcode, full brightness; the number from Schoology's username (engine `account()`), the camera or typed; Siri, a widget, a Control Center button and the ID button on Classes open it (FINDINGS.md "Student ID").
+- **Done when:** the school's scanner (library, attendance) reads it off the phone.
+
+### R7 · Your own tasks (built 2026-10-20)
+- The + on To Do, TaskEditor, `ItemState` rows keyed `mine-…`; in To Do, Plan, widgets, reminders, Siri ("Add a task in Dewey"), never Schoology or neo-plan.
+- **Done when:** a task added on the phone shows in To Do, Plan and the widget, survives a relaunch, and leaves when done (at the end of that day).
+
+### R8 · Plan (built 2026-10-20)
+- To Do › Plan: the student's order 1…N, Not today, Done today, Add work due later (SCREENS.md 1a′).
+- **Done when:** after a week of real use, the order holds across refreshes and new work slots in where expected.
+
+### R9 · Calendar (built 2026-10-20, kept small)
+- Show month under the week strip (a day + the next); Settings › To Do › Show in the Calendar app (a Dewey calendar).
+- **Done when:** on the phone, the Dewey calendar matches To Do, and work marked done drops off after a refresh. Note: the month only shows what Schoology's To Do lists (about the next two weeks); a fuller month would need a Schoology calendar reader.
+
 ### Later / dropped
-- Later: Focus filter, GPA, offline classes, distribution (TestFlight needs a paid account).
-- Dropped: calendar sync, a native class Updates feed (feeds are nearly empty; the Inbox covers it), a "paper" setting.
+- Later: Focus filter, GPA, offline classes, distribution (TestFlight needs a paid account), the Android port of R6–R9.
+- Dropped: a native class Updates feed (feeds are nearly empty; the Inbox covers it), a "paper" setting.
 
 ## Progress
 
@@ -140,4 +156,5 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 | M2 Xcode project + login | done | `ios/` builds for the simulator (Xcode 27, iOS 27 sim); bundle ID `com.owenleung.classwork`; launches to Sign in. Checked 2026-10-11: still signed in after a relaunch; an expired session goes to Sign in. Build with default DerivedData: a build folder under ~/Documents fails codesign ("resource fork … detritus"). |
 | M3 Spikes S1, S3 | done | S1 (2026-10-11): upload dialog opens with Photos / Camera / Files; Google Assignments work on the phone with the R1 fixes. S3 (2026-10-11): Docs links work on the phone. S2 rubric source and S4 Google Assignment markup are done |
 | M4–M8 | built, tested live in the simulator | Checked live 2026-10-10: To Do, Assignment, PDF attachment viewer, Submit sheet (opened, never pressed). Fixed: session cookie lost on relaunch, Submit pill truncating due dates. Earlier:  To Do, Assignment + sheet, Grades (2a–2c, what-if, plan a test), Classes/Materials/file viewer/Schoology tab, Settings (neo-plan, reminders, Developer; per-class turn-in removed in R1). 10 XCTest cases pass (decoding, TodoLogic, routes, widget data). Owen's calls: one-tap status like the extension (circle = Done, pill = Turn in / Submit ↗ / Undo; long-press for all three), grade categories start collapsed (Expand all; remembered per class), Appearance setting (System / Light / Dark), Schoology always in its desktop layout. |
+| R6–R9 Student ID, own tasks, Plan, calendar | built 2026-10-20, checked in the simulator (demo) | 11 new XCTest cases (PlanTests, CalendarAndIDTests); extension `account.test.js`. Simulator checks: Plan drag (holding a row starts the drag; numbers follow), Not today by swipe, New task, month grid, ID card and its barcode decoded by Vision. Not yet on the phone: scanner at school, camera scan, Calendar app, Control Center button, Siri. |
 | Widgets + Live Activity | built, checked in the simulator 2026-10-11; needs a look on the phone | `DeweyWidgets` extension: **To Do** (small/medium/large + Lock Screen rectangle; list grouped Late/Today/Tomorrow/This week/Later; on the Home Screen a tap on the circle marks it done, or a test studied, in Dewey only, never Schoology, via `ToggleDoneIntent` and the App Group `widgetMarks` queue the app applies), **Tests and grades** (small: next test countdown + studied; medium: next 3 tests + latest 3 graded items; Lock Screen rectangle and "3d TEST" circle; test time shown only when it isn't 11:59 pm), and a due-time countdown Live Activity with a Dynamic Island, started from the Assignment screen (work due within 12 h). No inline (above-the-clock) or late-count widgets, by Owen's call. Data: `Shared/WidgetData.swift` through the App Group; `App/Widgets/WidgetBridge.swift` writes it after each refresh or mark. Links: `classwork://assignment/{id}`. |

@@ -102,6 +102,9 @@ enum AppLink {
     static let scheme = "classwork"
     static func assignment(_ id: String) -> URL { URL(string: "\(scheme)://assignment/\(id)")! }
     static let todo = URL(string: "\(scheme)://todo")!
+    /// The student ID card (StudentIDCard): the widget and the Control Center button.
+    static let studentID = URL(string: "\(scheme)://id")!
+    static func isStudentID(_ url: URL) -> Bool { url.scheme == scheme && url.host == "id" }
 
     /// classwork://assignment/123 → "123"
     static func assignmentId(_ url: URL) -> String? {

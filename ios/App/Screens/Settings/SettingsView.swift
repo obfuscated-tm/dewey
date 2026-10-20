@@ -3,7 +3,7 @@ import UserNotifications
 
 /// A page in Settings. The gear on To Do, Grades, Inbox and Classes opens Settings on its own page.
 enum SettingsPage: Hashable {
-    case schoology, notifications, todo, grades, classes, inbox, help, about
+    case schoology, notifications, todo, grades, classes, inbox, help, about, studentID
 }
 
 /// 4b · A short list of pages: Schoology, Notifications, one page per tab
@@ -53,6 +53,9 @@ struct SettingsView: View {
                     .coachTarget("settings.appearance")
                 }
                 Section {
+                    row(.studentID, "person.text.rectangle", 2, "Student ID", value: StudentID.number == nil ? "Not added" : "Added")
+                }
+                Section {
                     row(.todo, "checklist", 1, "To Do", value: (ToDoLayout(rawValue: todoLayout) ?? .week).title)
                     row(.grades, "chart.bar", 0, "Grades", value: reportCard ? "Letters" : "List")
                     row(.classes, "books.vertical", 4, "Classes", value: "\(onShelf) on shelf")
@@ -97,6 +100,7 @@ struct SettingsView: View {
             case .inbox: InboxSettings()
             case .help: HelpSettings(connected: $connected)
             case .about: AboutSettings()
+            case .studentID: StudentIDSetup(showsCard: true)
             }
         }
         .toolbar { done }
@@ -244,6 +248,8 @@ private struct ToDoSettings: View {
     @AppStorage(ToDoLayout.key) private var todoLayout = ToDoLayout.week.rawValue
     @AppStorage(Reminders.soonKey) private var dueSoon = true
     @AppStorage(Reminders.testNightKey) private var testNight = true
+    @AppStorage(CalendarSync.enabledKey) private var calendarOn = false
+    @State private var calendarNote: String?
 
     var body: some View {
         DewForm {
@@ -255,8 +261,8 @@ private struct ToDoSettings: View {
                 NavigationLink("Call numbers") { CallNumberSettings() }
             } footer: {
                 Text(todoLayout == ToDoLayout.urgent.rawValue
-                     ? "One list, late and due today at the top."
-                     : "Work grouped by class, under a strip of days.")
+                     ? "List shows one list, late and due today at the top. Plan, beside it, is your own order."
+                     : "List groups work by class, under a strip of days (Show month opens the whole month). Plan, beside it, is your own order.")
             }
             Section {
                 Toggle("2 hours before, if not submitted", isOn: $dueSoon)
@@ -265,6 +271,29 @@ private struct ToDoSettings: View {
                     .onChange(of: testNight) { _, on in ReminderSettings.dueChanged(model, on) }
             } header: { Text("Reminders") } footer: {
                 Text("More in Settings › Notifications.")
+            }
+            Section {
+                Toggle("Show in the Calendar app", isOn: Binding(get: { calendarOn }, set: { on in
+                    if on {
+                        Task {
+                            if await CalendarSync.shared.requestAccess() {
+                                calendarOn = true
+                                calendarNote = nil
+                                CalendarSync.shared.sync(model)
+                            } else {
+                                calendarOn = false
+                                calendarNote = "Dewey isn't allowed to use Calendar. Turn it on in the iPhone's Settings › Apps › Dewey › Calendars."
+                            }
+                        }
+                    } else {
+                        CalendarSync.shared.disable()
+                        calendarOn = false
+                    }
+                }))
+            } header: { Text("iPhone Calendar") } footer: {
+                Text(calendarNote ?? (calendarOn
+                     ? "Your open work, tests and own tasks are in a calendar called Dewey. Done work drops off. Turning this off removes that calendar."
+                     : "Puts your open work, tests and own tasks in a \u{201C}Dewey\u{201D} calendar. Dewey never touches your other calendars."))
             }
         }
         .navigationTitle("To Do")

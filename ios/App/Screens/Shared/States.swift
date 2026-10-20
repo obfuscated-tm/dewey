@@ -126,6 +126,7 @@ struct ScreenOptions: View {
             Image(systemName: "gearshape").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
                 .frame(width: 44, height: 44)
         }
+        .buttonStyle(.borderless)
         .accessibilityLabel("Settings")
         .coachTarget("gear.\(page)")
         .sheet(isPresented: $showSettings) { SettingsView(path: $path) }

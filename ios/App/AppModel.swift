@@ -188,9 +188,11 @@ final class AppModel {
     /// The To Do list: visible items (TodoLogic.isVisible).
     func todoItems() -> [ItemState] {
         _ = revision
+        let cal = Calendar.current, now = Date()
         return allItems().filter {
             TodoLogic.isVisible(.init(inSchoology: $0.inSchoology, done: $0.done, turnedIn: $0.turnedIn,
-                                      submitted: $0.submitted, graded: $0.graded, dismissed: $0.dismissed))
+                                      submitted: $0.submitted, graded: $0.graded, dismissed: $0.dismissed,
+                                      mine: $0.mine, finishedToday: cal.isDate($0.updatedAt, inSameDayAs: now)))
         }
     }
 
@@ -247,6 +249,7 @@ final class AppModel {
         revision += 1
         WidgetBridge.publish(self)
         Reminders.shared.schedule(items: todoItems(), courses: courses)
+        CalendarSync.shared.schedule(self)
     }
 
     func merge(_ lists: TodoLists, now: Date = Date()) {
@@ -271,7 +274,8 @@ final class AppModel {
             it.inSchoology = true
             it.lastSeen = now
         }
-        for it in all where !seen.contains(it.schoologyId) {
+        // The student's own tasks are never on Schoology's lists.
+        for it in all where !seen.contains(it.schoologyId) && !it.mine {
             it.inSchoology = false
         }
         try? context.save()
@@ -282,7 +286,7 @@ final class AppModel {
     func checkStatuses(cap: Int = 10) async {
         let cutoff = Date().addingTimeInterval(-30 * 60)
         let candidates = todoItems()
-            .filter { !$0.external && $0.statusState != "no_dropbox" && ($0.statusCheckedAt ?? .distantPast) < cutoff }
+            .filter { !$0.mine && !$0.external && $0.statusState != "no_dropbox" && ($0.statusCheckedAt ?? .distantPast) < cutoff }
             .filter { !$0.isQuiz || !$0.submitted }
             .sorted { ($0.statusCheckedAt ?? .distantPast) < ($1.statusCheckedAt ?? .distantPast) }
             .prefix(cap)
@@ -400,6 +404,100 @@ final class AppModel {
         revision += 1
         WidgetBridge.publish(self)
         Reminders.shared.schedule(items: todoItems(), courses: courses)
+        CalendarSync.shared.schedule(self)
+    }
+
+    // ── The student's own tasks ──────────────────────────────────────────
+
+    /// Adds a task of the student's own (TaskEditor, Siri). Never sent anywhere.
+    @discardableResult
+    func addTask(title: String, type: ItemType = .task, sectionId: String? = nil, due: Date? = nil, notes: String? = nil) -> ItemState {
+        let it = ItemState(mineTitle: title)
+        it.typeOverride = type.rawValue
+        it.sectionId = sectionId
+        it.courseName = course(sectionId)?.shortTitle
+        it.due = due
+        it.notes = notes
+        context.insert(it)
+        fetchedItems = nil
+        save()
+        return it
+    }
+
+    func updateTask(_ it: ItemState, title: String, type: ItemType, sectionId: String?, due: Date?, notes: String?) {
+        it.title = title
+        it.typeOverride = type.rawValue
+        it.sectionId = sectionId
+        it.courseName = course(sectionId)?.shortTitle
+        it.due = due
+        it.notes = notes
+        it.touch()
+        save()
+    }
+
+    func deleteTask(_ it: ItemState) {
+        guard it.mine else { return }
+        context.delete(it)
+        fetchedItems = nil
+        save()
+    }
+
+    // ── Plan ─────────────────────────────────────────────────────────────
+
+    struct PlanLists {
+        /// Up next, in the student's order.
+        var next: [ItemState]
+        var notToday: [ItemState]
+        var doneToday: [ItemState]
+        /// Open work outside the plan (due after its 7 days, or no date): Add to plan.
+        var later: [ItemState]
+    }
+
+    /// The plan's pool (PlanLogic.inPool), split into up next, Not today and done today.
+    func planLists(now: Date = Date()) -> PlanLists {
+        let cal = Calendar.current
+        var open: [ItemState] = [], skipped: [ItemState] = [], done: [ItemState] = [], later: [ItemState] = []
+        for it in todoItems() {
+            let finished = isFinished(it) || (it.type == .exam && it.studied)
+            let late = isOverdue(it, now: now)
+            let pool = PlanLogic.inPool(due: it.due, mine: it.mine, added: it.planAdded, late: late,
+                                        older: TodoLogic.isOlder(due: it.due, now: now), now: now)
+            if finished {
+                // Finished today, from the plan: a "done today" count, not gone without a trace.
+                if (pool || it.planRank != nil) && cal.isDate(it.updatedAt, inSameDayAs: now) { done.append(it) }
+                continue
+            }
+            // A past test that isn't an online quiz isn't work any more (TodoLogic.showsLate).
+            if (it.due ?? .distantFuture) < now && !late && !it.mine && !it.planAdded { continue }
+            if !pool {
+                if !TodoLogic.isOlder(due: it.due, now: now) { later.append(it) }
+                continue
+            }
+            if PlanLogic.isSkipped(it.skipDay, now: now) { skipped.append(it) } else { open.append(it) }
+        }
+        let byId = Dictionary(open.map { ($0.schoologyId, $0) }, uniquingKeysWith: { a, _ in a })
+        let ordered = PlanLogic.order(open.map { .init(id: $0.schoologyId, rank: $0.planRank, due: $0.due) }).compactMap { byId[$0.id] }
+        let soonest: (ItemState, ItemState) -> Bool = { ($0.due ?? .distantFuture) < ($1.due ?? .distantFuture) }
+        return PlanLists(next: ordered, notToday: skipped.sorted(by: soonest),
+                         doneToday: done.sorted { $0.updatedAt < $1.updatedAt }, later: later.sorted(by: soonest))
+    }
+
+    /// Saves the plan's order as shown (PlanLogic.moved).
+    func setPlanRanks(_ ranks: [String: Double]) {
+        for it in allItems() { if let r = ranks[it.schoologyId] { it.planRank = r } }
+        save()
+    }
+
+    func setNotToday(_ it: ItemState, _ on: Bool) {
+        it.skipDay = on ? Calendar.current.startOfDay(for: Date()) : nil
+        save()
+    }
+
+    /// Work due after the plan's 7 days, put in (or taken out of) the plan by hand.
+    func setInPlan(_ it: ItemState, _ on: Bool) {
+        it.planAdded = on
+        if !on { it.planRank = nil }
+        save()
     }
 
     // ── neo-plan ─────────────────────────────────────────────────────────
@@ -408,7 +506,8 @@ final class AppModel {
     private var pendingPush: [String: (NeoPlanClient, String) async throws -> Void] = [:]
 
     private func pushNeoPlan(_ it: ItemState, _ op: @escaping (NeoPlanClient, String) async throws -> Void) {
-        guard neoPlan.connected else { return }
+        // neo-plan's extension API only takes Schoology items: the student's own tasks stay here.
+        guard neoPlan.connected, !it.mine else { return }
         let sid = it.schoologyId
         Task {
             guard let id = await neoPlanId(for: sid) else { return }
@@ -437,7 +536,7 @@ final class AppModel {
         for (sid, op) in pendingPush {
             if let id = await neoPlanId(for: sid), (try? await op(neoPlan, id)) != nil { pendingPush[sid] = nil }
         }
-        let items = todoItems()
+        let items = todoItems().filter { !$0.mine }
         guard let got = try? await neoPlan.items(items.map(\.schoologyId)) else { return }
         let bySource = Dictionary(got.compactMap { g in g.sourceId.map { ($0, g) } }, uniquingKeysWith: { a, _ in a })
         let lastSync = Cache.load("neoplanSyncedAt", as: Date.self)?.value ?? .distantPast

@@ -96,6 +96,7 @@ struct MainTabs: View {
     /// The tour's "Take me there" opens a tab fresh: its screens are rebuilt (practice only).
     @State private var resets = [0, 0, 0, 0, 0]
     @State private var showTour = false
+    @State private var showID = false
 
     var body: some View {
         TabView(selection: $tab) {
@@ -124,7 +125,10 @@ struct MainTabs: View {
                 .tag(4)
         }
         .onReceive(NotificationCenter.default.publisher(for: .openTodo)) { _ in tab = 0 }
+        .onReceive(NotificationCenter.default.publisher(for: .showStudentID)) { _ in showID = true }
+        .fullScreenCover(isPresented: $showID) { StudentIDCard() }
         .onOpenURL { url in
+            if AppLink.isStudentID(url) { showID = true; return }
             tab = 0
             if let id = AppLink.assignmentId(url) { model.deepLinkAssignment = id }
         }

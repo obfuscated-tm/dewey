@@ -52,7 +52,16 @@ Tabs: **To Do · Grades · Classes · Schoology**. To Do, Grades, Inbox and Clas
 - **Row:** check mark (see table above), title, type tag (HW / TEST / TASK / CW), due time in mono (red with "N d late" when overdue), a status line ("Done · not submitted yet", "Submitted on Schoology · 9:40 pm", "Not studied", "Turned in · not on Schoology"), and on dropbox work a **Submit ↗** pill.
 - **Data:** `todo()` (upcoming + overdue + events) merged with the app's own saved list (paper work that Schoology dropped from overdue stays until ticked). Per-row `status({id})` only for rows that might have a dropbox. Type: TEST if the gradebook category says Test/Quiz/Exam/Summative or the title says Exam/Quiz/Interro, else HW; neo-plan's type wins when connected. Overdue > 60 days → collapsed "Older" group.
 - **Taps:** circle = Done toggle (square = Studied toggle). Submit ↗ only on dropbox work → 1c. Swipe left → "Mark turned in" + the class's real turn-in place ("Turn in on lab site ↗" for AP Bio, "Submit ↗" for dropbox, nothing extra for paper). Row → 1b. Pull → refresh.
+- **List · Plan** (a switch under the title; remembered). List is everything above. **Show month** under the week strip opens it up to a month grid (a dot per open item, black = test); tapping a day lists it and the day after. The **+** beside the gear adds a task of the student's own (1d).
 - **Status tip** (`design/Tutorial.options.html`, option C): the first time anything is ticked (Done, Studied or Turn in), a tip goes under that row with the next step and **How statuses work** (the full guide, also in Settings → Help). Once ever; stays until its × is tapped.
+
+### 1a′ Plan (To Do › Plan)
+- **Shows:** **Up next**, numbered 1…N: late work, everything due in the next 7 days, the student's own tasks and anything added by hand, in the student's order. Work not placed yet slots in by due date (before the first placed item due later), so new work due tomorrow never lands under last week's order. A tip above the list until closed: hold a row, then drag; swipe left for Not today. Then **Not today** (back tomorrow; each row has Put back) and **Done today** (folded), then **New task** and **Add work due later** (a sheet of the open work outside the 7 days).
+- **Taps:** hold and drag = reorder (no hold menu on these rows: a menu would take the hold). Circle = Done. Swipe left = Not today (full swipe works); swipe right = Done. VoiceOver: Move up / Move down / Not today actions. The header's done-today ring is hidden here, so there's only one "done today" count.
+- **Data:** `planRank`, `skipDay`, `planAdded` on `ItemState` (PlanLogic, PlanTests). Phone only.
+
+### 1d A task of your own (TaskEditor)
+- Title, kind (Task / Homework / Test / Classwork), class (or none), due date with an optional time (no time = 11:59 pm), notes. Delete when editing. "Only on this phone. Nothing is added to Schoology." Shows on To Do (a class's card, or **My tasks**), Plan, widgets, reminders, Siri ("Add a task in Dewey") and the Calendar app. Opened from a widget or class page, it shows `MineTaskPage`, never Schoology.
 
 ### 1b Assignment · `design/Assignment.dc.html`
 - **Shows:** a catalog line in the class colour (class · period · term · category), the title in New York, then the Submission card as a library date-due card (ruled Date due / Turn in columns, a class-colour band, and a stamp: DUE OCT 18, N DAYS LATE, SUBMITTED, or TURNED IN); instructions unboxed; Instructions (text + attachments, each with where it opens); "In neo-plan as" HW / Test / Task / CW switch; a dashed "What if I get __ / 20?" button. Bottom bar: Done + the main action. Globe button top right = this page in the Schoology sheet.
@@ -137,7 +146,8 @@ A short list of rows, each with a class-colour icon square and its current value
 - **Schoology** (subtitle: the host): signed in to, Sign out (clears the data store), Login compatibility mode.
 - **Notifications** (On / Off): Due work (2 hours before if not submitted, night before a test, homework the evening before + time, morning summary + time) and Alerts (new grades, messages, new materials, signed out; best effort).
 - **Appearance** (System / Light / Dark): a picker right in the list, not a page.
-- **To Do** (view): View, Call numbers, and the 2-hour and test-night reminders (the same switches as Notifications).
+- **Student ID** (Added / Not added): the number (digits only; a note when it isn't 7 long), Fill in from Schoology, Scan my ID card (camera, Code 39), Show my barcode, Remove. The card (`StudentIDCard`): black-on-white Code 39 and the number, full brightness and no auto-lock while open. Also from the ID button on Classes, Siri ("Show my student ID in Dewey"), the Student ID widget and the Control Center button (`classwork://id`). Kept in the Keychain; never in the widgets' shared data.
+- **To Do** (view): View, Call numbers, the 2-hour and test-night reminders (the same switches as Notifications), and **Show in the Calendar app** (a Dewey calendar; turning it off removes that calendar).
 - **Grades** (Letters / List): Letters across the top, and **Classes in Grades** (a switch per class; a hidden class also leaves New, Recently graded, the badge and grade alerts; pressing and holding a class in Grades hides it too).
 - **Classes** (N on shelf): which classes stand on the shelf.
 - **Inbox**: Mark messages read when opened.
@@ -151,4 +161,4 @@ First load (skeleton rows) · Offline: last saved copy + "as of N min ago" · Si
 
 ## Not designed (decide before building them)
 
-Inbox tab (messages + notifications, roadmap R2), dark mode and Dynamic Type passes (R5), VoiceOver actions for the swipe buttons, iPad. App name (Dewey) and icon are done. Dropped: calendar, a class Updates feed. Saving a whole class offline is out of v1.
+Inbox tab (messages + notifications, roadmap R2), dark mode and Dynamic Type passes (R5), VoiceOver actions for the swipe buttons, iPad. App name (Dewey) and icon are done. Dropped: a class Updates feed. Saving a whole class offline is out of v1.

@@ -8,6 +8,8 @@ struct DeweyWidgets: WidgetBundle {
         TodoWidget()
         TestsWidget()
         DueActivityWidget()
+        StudentIDWidget()
+        if #available(iOS 18.0, *) { StudentIDControl() }
     }
 }
 

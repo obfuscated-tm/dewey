@@ -1,10 +1,11 @@
 import SwiftUI
 
-/// Which part of the To Do list is showing: overdue work, or one day of the
-/// coming week (0 = today).
+/// Which part of the To Do list is showing: overdue work, one day of the
+/// coming week (0 = today), or a day picked on the month and the day after it.
 enum DayFilter: Hashable {
     case late
     case day(Int)
+    case span(Date)
 
     func matches(_ it: ItemState, now: Date, calendar: Calendar = .current) -> Bool {
         let b = TodoLogic.bucket(due: it.due, now: now, calendar: calendar)
@@ -16,6 +17,9 @@ enum DayFilter: Hashable {
             guard let due = it.due, b != .overdue,
                   let d = calendar.date(byAdding: .day, value: k, to: calendar.startOfDay(for: now)) else { return false }
             return calendar.isDate(due, inSameDayAs: d)
+        case .span(let start):
+            guard let due = it.due, let end = calendar.date(byAdding: .day, value: 2, to: calendar.startOfDay(for: start)) else { return false }
+            return due >= calendar.startOfDay(for: start) && due < end
         }
     }
 }
@@ -53,6 +57,7 @@ struct WeekStrip: View {
             case .late: return "Late"
             case .day(0): return "Today"
             case .day(let k): return Self.weekday.string(from: date(k))
+            case .span: return ""
             }
         }()
         let sub: String = {

@@ -21,6 +21,11 @@ struct AssignmentView: View {
     private var pageURL: URL { URL(string: "\(Engine.origin.absoluteString)/assignment/\(id)")! }
 
     var body: some View {
+        // The student's own task (from a widget, a reminder or a class page): never Schoology's.
+        if ItemState.isMine(id) { MineTaskPage(id: id) } else { assignment }
+    }
+
+    private var assignment: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
                 titleBlock

@@ -422,3 +422,118 @@ final class NewGradeTests: XCTestCase {
         XCTAssertEqual(log["a"]?.seen, false)
     }
 }
+
+/// Plan's order, pool and Not today (PlanLogic), and the student's own tasks on To Do.
+final class PlanTests: XCTestCase {
+    let now = ISO8601DateFormatter().date(from: "2026-10-20T15:00:00Z")!
+    func day(_ d: Int) -> Date { now.addingTimeInterval(Double(d) * 86400) }
+    func ids(_ e: [PlanLogic.Entry]) -> [String] { e.map(\.id) }
+
+    func testUnplacedGoByDue() {
+        let e: [PlanLogic.Entry] = [.init(id: "c", rank: nil, due: day(3)), .init(id: "a", rank: nil, due: day(-1)), .init(id: "b", rank: nil, due: day(1))]
+        XCTAssertEqual(ids(PlanLogic.order(e)), ["a", "b", "c"])
+    }
+
+    func testPlacedKeepTheStudentsOrder() {
+        let e: [PlanLogic.Entry] = [.init(id: "x", rank: 2, due: day(1)), .init(id: "y", rank: 1, due: day(5))]
+        XCTAssertEqual(ids(PlanLogic.order(e)), ["y", "x"])
+    }
+
+    func testNewWorkSlotsInBeforeLaterPlacedWork() {
+        // The student put y (due in 5 days) first. New work due tomorrow goes above it,
+        // not under everything they placed; new work due in 6 days goes after it.
+        let e: [PlanLogic.Entry] = [.init(id: "y", rank: 1, due: day(5)), .init(id: "x", rank: 2, due: day(2)),
+                                    .init(id: "new1", rank: nil, due: day(1)), .init(id: "new6", rank: nil, due: day(6)),
+                                    .init(id: "nodate", rank: nil, due: nil)]
+        XCTAssertEqual(ids(PlanLogic.order(e)), ["new1", "y", "x", "new6", "nodate"])
+    }
+
+    func testDrag() {
+        let r = PlanLogic.moved(["a", "b", "c", "d"], from: IndexSet(integer: 3), to: 0)
+        XCTAssertEqual(r, ["d": 1, "a": 2, "b": 3, "c": 4])
+        let down = PlanLogic.moved(["a", "b", "c", "d"], from: IndexSet(integer: 0), to: 3)
+        XCTAssertEqual(down, ["b": 1, "c": 2, "a": 3, "d": 4])
+        XCTAssertEqual(PlanLogic.moved(["a", "b", "c"], id: "c", toIndex: 0), ["c": 1, "a": 2, "b": 3])
+        XCTAssertEqual(PlanLogic.moved(["a", "b", "c"], id: "a", toIndex: 9), ["b": 1, "c": 2, "a": 3])
+    }
+
+    func testPool() {
+        XCTAssertTrue(PlanLogic.inPool(due: day(1), mine: false, added: false, late: false, older: false, now: now))
+        XCTAssertFalse(PlanLogic.inPool(due: day(9), mine: false, added: false, late: false, older: false, now: now))
+        XCTAssertTrue(PlanLogic.inPool(due: day(9), mine: false, added: true, late: false, older: false, now: now))
+        XCTAssertTrue(PlanLogic.inPool(due: nil, mine: true, added: false, late: false, older: false, now: now))
+        XCTAssertTrue(PlanLogic.inPool(due: day(-2), mine: false, added: false, late: true, older: false, now: now))
+        XCTAssertFalse(PlanLogic.inPool(due: day(-90), mine: false, added: false, late: true, older: true, now: now))
+        XCTAssertFalse(PlanLogic.inPool(due: nil, mine: false, added: false, late: false, older: false, now: now))
+    }
+
+    func testNotTodayComesBackTomorrow() {
+        let cal = Calendar.current
+        XCTAssertTrue(PlanLogic.isSkipped(cal.startOfDay(for: now), now: now))
+        XCTAssertFalse(PlanLogic.isSkipped(cal.startOfDay(for: now), now: day(1)))
+        XCTAssertFalse(PlanLogic.isSkipped(nil, now: now))
+    }
+
+    func testOwnTasksStayUntilDoneThenUntilTheDayEnds() {
+        func s(done: Bool, today: Bool) -> TodoLogic.Snapshot {
+            .init(inSchoology: true, done: done, turnedIn: false, submitted: false, graded: false, dismissed: false, mine: true, finishedToday: today)
+        }
+        XCTAssertTrue(TodoLogic.isVisible(s(done: false, today: false)))
+        XCTAssertTrue(TodoLogic.isVisible(s(done: true, today: true)))
+        XCTAssertFalse(TodoLogic.isVisible(s(done: true, today: false)))
+        XCTAssertTrue(ItemState.isMine("mine-ABC"))
+        XCTAssertFalse(ItemState.isMine("8610387535"))
+    }
+}
+
+/// What the Dewey calendar holds (CalendarSync.spec) and the Code 39 barcode.
+final class CalendarAndIDTests: XCTestCase {
+    let cal = Calendar.current
+    func at(_ h: Int, _ m: Int, days: Int = 1) -> Date {
+        cal.date(bySettingHour: h, minute: m, second: 0, of: cal.date(byAdding: .day, value: days, to: Date())!)!
+    }
+    func input(_ due: Date?, test: Bool = false, finished: Bool = false) -> CalendarSync.Input {
+        .init(id: "1", title: "Lab 4", course: "Chemistry H", due: due, isTest: test, finished: finished)
+    }
+
+    func testEventShapes() {
+        let now = Date()
+        let midnight = CalendarSync.spec(input(at(23, 59)), now: now)!
+        XCTAssertTrue(midnight.allDay)
+        XCTAssertEqual(midnight.start, cal.startOfDay(for: at(23, 59)))
+        let timed = CalendarSync.spec(input(at(8, 30)), now: now)!
+        XCTAssertFalse(timed.allDay)
+        XCTAssertEqual(timed.end, at(8, 30))
+        XCTAssertEqual(timed.start, at(8, 0))
+        XCTAssertEqual(timed.location, "Chemistry H")
+        let test = CalendarSync.spec(input(at(10, 5), test: true), now: now)!
+        XCTAssertTrue(test.allDay)
+        XCTAssertEqual(test.title, "Test: Lab 4")
+    }
+
+    func testWhatStaysOut() {
+        let now = Date()
+        XCTAssertNil(CalendarSync.spec(input(nil), now: now))
+        XCTAssertNil(CalendarSync.spec(input(at(9, 0), finished: true), now: now))
+        XCTAssertNil(CalendarSync.spec(input(at(9, 0, days: 120)), now: now))
+        XCTAssertNil(CalendarSync.spec(input(at(9, 0, days: -30)), now: now))
+    }
+
+    func testCode39() {
+        let m = Code39.modules("1234567")!
+        // 9 characters of 15 modules, 8 gaps, two quiet zones of 10.
+        XCTAssertEqual(m.count, 9 * 15 + 8 + 20)
+        XCTAssertFalse(m.prefix(Code39.quiet).contains(true))
+        XCTAssertTrue(m[Code39.quiet])
+        XCTAssertNil(Code39.modules("12A4"))
+        XCTAssertNil(Code39.modules(""))
+    }
+
+    func testStudentIDDigitsOnly() {
+        XCTAssertEqual(StudentID.clean(" 525-1103x"), "5251103")
+        XCTAssertNil(StudentID.warning("5251103"))
+        XCTAssertNil(StudentID.warning(""))
+        XCTAssertNotNil(StudentID.warning("52511"))
+        XCTAssertNotNil(StudentID.warning("52511030"))
+    }
+}

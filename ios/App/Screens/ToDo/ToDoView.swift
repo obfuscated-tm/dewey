@@ -50,6 +50,9 @@ struct ToDoView: View {
             .contentMargins(.top, 0, for: .scrollContent)
             .scrollContentBackground(.hidden)
             .background(Theme.background)
+            // Room under the last row for the + button.
+            .contentMargins(.bottom, 72, for: .scrollContent)
+            .overlay(alignment: .bottomTrailing) { addButton }
             .refreshable { await model.refreshTodo() }
             .navigationDestination(for: AssignmentRoute.self) { r in AssignmentView(id: r.id) }
             .navigationDestination(isPresented: $showGuide) { StatusGuideView() }
@@ -83,41 +86,21 @@ struct ToDoView: View {
         // Plan has its own Done section and count; two different "done today" counts would read as a mistake.
         let ripple = today.isEmpty || mode == .plan ? nil : RippleProgress(done: today.filter { model.isFinished($0) }.count, total: today.count)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do") {
+            ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do", titleMenu: AnyView(modeMenu)) {
                 if !typeSize.isAccessibilitySize, let ripple { ripple.padding(.bottom, Theme.Space.xs) }
-                Button { editing = TaskTarget() } label: {
-                    Image(systemName: "plus").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
-                        .frame(width: 44, height: 44)
-                }
-                // Its own tap area: two buttons in one list row would otherwise both fire.
-                .buttonStyle(.borderless)
-                .accessibilityLabel("New task")
                 ScreenOptions(page: .todo)
             }
             if typeSize.isAccessibilitySize, let ripple { ripple.padding(.horizontal, Theme.Space.xs) }
-            // One small row: List or Plan on the left, week or month on the right.
-            HStack {
-                ModeSwitch(mode: $modeID)
-                Spacer()
-                if mode == .list && layout == .week {
-                    Button {
-                        withAnimation(.snappy(duration: 0.2)) { showMonth.toggle(); filter = nil }
-                    } label: {
-                        Image(systemName: "calendar")
-                            .font(Theme.subhead.weight(.semibold))
-                            .foregroundStyle(showMonth ? Theme.accent : Theme.secondary)
-                            .frame(width: 36, height: 30)
-                            .background(showMonth ? Theme.accentSoft : .clear, in: Capsule())
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel(showMonth ? "Show week" : "Show month")
-                }
-            }
-            .padding(.horizontal, Theme.Space.xs)
             // Late, today and the next six days, a dot per item still to do; tap one to show only it.
+            // The handle under it opens it up to a month.
             if mode == .list && layout == .week {
-                if showMonth { MonthGrid(items: open, now: now, selected: $filter) } else { WeekStrip(items: open, now: now, selected: $filter) }
+                VStack(spacing: 0) {
+                    if showMonth { MonthGrid(items: open, now: now, selected: $filter) } else { WeekStrip(items: open, now: now, selected: $filter) }
+                    MonthHandle(open: showMonth) { set in
+                        guard set != showMonth else { return }
+                        withAnimation(.snappy(duration: 0.25)) { showMonth = set; filter = nil }
+                    }
+                }
             }
             if let f = filter {
                 HStack(spacing: Theme.Space.s) {
@@ -137,6 +120,42 @@ struct ToDoView: View {
                 }
             }
         }
+    }
+
+    /// The title is the List / Plan switch: "To Do ▾" or "Plan ▾", a menu of the two.
+    private var modeMenu: some View {
+        Menu {
+            Picker("View", selection: $modeID) {
+                Label("List", systemImage: "list.bullet").tag(ToDoMode.list.rawValue)
+                Label("Plan", systemImage: "list.number").tag(ToDoMode.plan.rawValue)
+            }
+        } label: {
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                Text(mode == .plan ? "Plan" : "To Do").font(Theme.display).foregroundStyle(Theme.text)
+                Image(systemName: "chevron.down")
+                    .font(Theme.subhead.weight(.bold))
+                    .foregroundStyle(Theme.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .menuOrder(.fixed)
+        .accessibilityLabel(mode == .plan ? "Plan" : "To Do, list")
+        .accessibilityHint("Switches between the list of everything and your own plan for the day")
+    }
+
+    /// New task: round, above the tab bar, on both List and Plan.
+    private var addButton: some View {
+        Button { editing = TaskTarget() } label: {
+            Image(systemName: "plus")
+                .font(Theme.title.weight(.semibold))
+                .foregroundStyle(Theme.onAccent)
+                .frame(width: 56, height: 56)
+                .background(Theme.accent, in: Circle())
+                .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
+        }
+        .padding(.trailing, Theme.Space.l)
+        .padding(.bottom, Theme.Space.s)
+        .accessibilityLabel("New task")
     }
 
     private func filterTitle(_ f: DayFilter, now: Date) -> String {
@@ -639,31 +658,24 @@ struct CheckMark: View {
     }
 }
 
-/// List or Plan: a small two-word switch, not a full-width control.
-private struct ModeSwitch: View {
-    @Binding var mode: String
+/// The grabber under the week strip: pull it down (or tap) for the month, push it up for the week.
+private struct MonthHandle: View {
+    let open: Bool
+    let set: (Bool) -> Void
 
     var body: some View {
-        HStack(spacing: 2) {
-            ForEach(ToDoMode.allCases, id: \.self) { m in
-                let on = mode == m.rawValue
-                Button {
-                    withAnimation(.snappy(duration: 0.2)) { mode = m.rawValue }
-                } label: {
-                    Text(m.title)
-                        .font(Theme.footnote.weight(.semibold))
-                        .foregroundStyle(on ? Theme.text : Theme.secondary)
-                        .padding(.horizontal, 12)
-                        .frame(minHeight: 28)
-                        .background(on ? Theme.card : .clear, in: Capsule())
-                        .contentShape(Capsule())
-                }
-                .buttonStyle(.borderless)
-                .accessibilityAddTraits(on ? .isSelected : [])
-                .accessibilityHint(m == .list ? "Everything, by class or by date" : "Your own order for the day")
-            }
-        }
-        .padding(2)
-        .background(Theme.divider.opacity(0.6), in: Capsule())
+        Capsule()
+            .fill(Theme.tertiary.opacity(0.5))
+            .frame(width: 36, height: 5)
+            .frame(maxWidth: .infinity, minHeight: 28)
+            .contentShape(Rectangle())
+            .onTapGesture { set(!open) }
+            .gesture(DragGesture(minimumDistance: 8).onEnded { v in
+                if v.translation.height > 12 { set(true) } else if v.translation.height < -12 { set(false) }
+            })
+            .accessibilityElement()
+            .accessibilityLabel(open ? "Show week" : "Show month")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { set(!open) }
     }
 }

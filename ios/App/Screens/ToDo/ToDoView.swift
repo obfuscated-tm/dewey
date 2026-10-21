@@ -86,7 +86,7 @@ struct ToDoView: View {
         // Plan has its own Done section and count; two different "done today" counts would read as a mistake.
         let ripple = today.isEmpty || mode == .plan ? nil : RippleProgress(done: today.filter { model.isFinished($0) }.count, total: today.count)
         VStack(alignment: .leading, spacing: Theme.Space.l) {
-            ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do", titleMenu: AnyView(modeMenu)) {
+            ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do", titleView: AnyView(modeTitles)) {
                 if !typeSize.isAccessibilitySize, let ripple { ripple.padding(.bottom, Theme.Space.xs) }
                 ScreenOptions(page: .todo)
             }
@@ -95,10 +95,14 @@ struct ToDoView: View {
             // The handle under it opens it up to a month.
             if mode == .list && layout == .week {
                 VStack(spacing: 0) {
-                    if showMonth { MonthGrid(items: open, now: now, selected: $filter) } else { WeekStrip(items: open, now: now, selected: $filter) }
+                    SwiftUI.Group {
+                        if showMonth { MonthGrid(items: open, now: now, selected: $filter) } else { WeekStrip(items: open, now: now, selected: $filter) }
+                    }
+                    .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.94, anchor: .top)),
+                                            removal: .opacity))
                     MonthHandle(open: showMonth) { set in
                         guard set != showMonth else { return }
-                        withAnimation(.snappy(duration: 0.25)) { showMonth = set; filter = nil }
+                        withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { showMonth = set; filter = nil }
                     }
                 }
             }
@@ -122,25 +126,27 @@ struct ToDoView: View {
         }
     }
 
-    /// The title is the List / Plan switch: "To Do ▾" or "Plan ▾", a menu of the two.
-    private var modeMenu: some View {
-        Menu {
-            Picker("View", selection: $modeID) {
-                Label("List", systemImage: "list.bullet").tag(ToDoMode.list.rawValue)
-                Label("Plan", systemImage: "list.number").tag(ToDoMode.plan.rawValue)
+    /// The title is the List / Plan switch: both names show, the one you're on large,
+    /// the other small and grey beside it. Tap the small one to swap.
+    private var modeTitles: some View {
+        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
+            ForEach(ToDoMode.allCases, id: \.self) { m in
+                let on = mode == m
+                Button {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { modeID = m.rawValue }
+                } label: {
+                    Text(m == .list ? "To Do" : "Plan")
+                        .font(on ? Theme.display : Theme.displaySmall)
+                        .foregroundStyle(on ? Theme.text : Theme.tertiary)
+                        .contentTransition(.interpolate)
+                        .lineLimit(1)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityAddTraits(on ? [.isSelected, .isHeader] : [])
+                .accessibilityHint(on ? "" : (m == .list ? "Shows everything due" : "Shows your own order for the day"))
             }
-        } label: {
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(mode == .plan ? "Plan" : "To Do").font(Theme.display).foregroundStyle(Theme.text)
-                Image(systemName: "chevron.down")
-                    .font(Theme.subhead.weight(.bold))
-                    .foregroundStyle(Theme.secondary)
-            }
-            .contentShape(Rectangle())
         }
-        .menuOrder(.fixed)
-        .accessibilityLabel(mode == .plan ? "Plan" : "To Do, list")
-        .accessibilityHint("Switches between the list of everything and your own plan for the day")
     }
 
     /// New task: round, above the tab bar, on both List and Plan.
@@ -658,21 +664,33 @@ struct CheckMark: View {
     }
 }
 
-/// The grabber under the week strip: pull it down (or tap) for the month, push it up for the week.
+/// The chevron under the week strip: pull it down (or tap) for the month, push it up for
+/// the week. It follows the finger a little and turns as you pull, then springs.
 private struct MonthHandle: View {
     let open: Bool
     let set: (Bool) -> Void
+    @State private var pull: CGFloat = 0
 
     var body: some View {
-        Capsule()
-            .fill(Theme.tertiary.opacity(0.5))
-            .frame(width: 36, height: 5)
-            .frame(maxWidth: .infinity, minHeight: 28)
+        // How far through the pull, 0…1 (toward the other state).
+        let progress = min(1, abs(pull) / 40)
+        let toward = open ? pull < 0 : pull > 0
+        Image(systemName: "chevron.compact.down")
+            .font(Theme.title.weight(.medium))
+            .foregroundStyle(toward && progress > 0.5 ? Theme.accent : Theme.tertiary)
+            .rotationEffect(.degrees((open ? 180 : 0) + (toward ? (open ? -180 : 180) * progress : 0)))
+            .offset(y: pull * 0.35)
+            .frame(maxWidth: .infinity)
+            .frame(height: 22)
             .contentShape(Rectangle())
             .onTapGesture { set(!open) }
-            .gesture(DragGesture(minimumDistance: 8).onEnded { v in
-                if v.translation.height > 12 { set(true) } else if v.translation.height < -12 { set(false) }
-            })
+            .gesture(DragGesture(minimumDistance: 4)
+                .onChanged { v in pull = max(-60, min(60, v.translation.height)) }
+                .onEnded { v in
+                    let dy = v.predictedEndTranslation.height
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) { pull = 0 }
+                    if dy > 30 { set(true) } else if dy < -30 { set(false) }
+                })
             .accessibilityElement()
             .accessibilityLabel(open ? "Show week" : "Show month")
             .accessibilityAddTraits(.isButton)

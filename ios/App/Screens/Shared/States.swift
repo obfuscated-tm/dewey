@@ -136,8 +136,8 @@ struct ScreenOptions: View {
 struct ScreenHeader<Trailing: View>: View {
     var kicker: String?
     let title: String
-    /// In place of the plain title: To Do's List / Plan menu.
-    var titleMenu: AnyView? = nil
+    /// In place of the plain title: To Do's List / Plan switch.
+    var titleView: AnyView? = nil
     @ViewBuilder var trailing: Trailing
     var body: some View {
         // The kicker gets the whole width, so a long date never wraps beside the buttons.
@@ -147,7 +147,7 @@ struct ScreenHeader<Trailing: View>: View {
                     .lineLimit(1).minimumScaleFactor(0.8)
             }
             HStack(alignment: .bottom) {
-                if let titleMenu { titleMenu } else { Text(title).font(Theme.display) }
+                if let titleView { titleView } else { Text(title).font(Theme.display) }
                 Spacer()
                 trailing
             }

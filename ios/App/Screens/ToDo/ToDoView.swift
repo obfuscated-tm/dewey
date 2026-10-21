@@ -95,31 +95,34 @@ struct ToDoView: View {
                 ScreenOptions(page: .todo)
             }
             if typeSize.isAccessibilitySize, let ripple { ripple.padding(.horizontal, Theme.Space.xs) }
-            Picker("View", selection: $modeID) {
-                ForEach(ToDoMode.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
+            // One small row: List or Plan on the left, week or month on the right.
+            HStack {
+                ModeSwitch(mode: $modeID)
+                Spacer()
+                if mode == .list && layout == .week {
+                    Button {
+                        withAnimation(.snappy(duration: 0.2)) { showMonth.toggle(); filter = nil }
+                    } label: {
+                        Image(systemName: "calendar")
+                            .font(Theme.subhead.weight(.semibold))
+                            .foregroundStyle(showMonth ? Theme.accent : Theme.secondary)
+                            .frame(width: 36, height: 30)
+                            .background(showMonth ? Theme.accentSoft : .clear, in: Capsule())
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel(showMonth ? "Show week" : "Show month")
+                }
             }
-            .pickerStyle(.segmented)
-            .accessibilityHint("List shows everything; Plan is your own order")
+            .padding(.horizontal, Theme.Space.xs)
             // Late, today and the next six days, a dot per item still to do; tap one to show only it.
             if mode == .list && layout == .week {
                 if showMonth { MonthGrid(items: open, now: now, selected: $filter) } else { WeekStrip(items: open, now: now, selected: $filter) }
-                Button {
-                    withAnimation(.snappy(duration: 0.2)) { showMonth.toggle(); filter = nil }
-                } label: {
-                    HStack(spacing: 5) {
-                        Image(systemName: showMonth ? "chevron.up" : "calendar")
-                        Text(showMonth ? "Show week" : "Show month")
-                    }
-                        .font(Theme.footnote.weight(.semibold))
-                        .frame(maxWidth: .infinity, minHeight: 30)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.borderless)
-                .padding(.top, -Theme.Space.s)
             }
             if let f = filter {
                 HStack(spacing: Theme.Space.s) {
                     Text(filterTitle(f, now: now)).font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary)
+                        .lineLimit(1).minimumScaleFactor(0.85)
                     Spacer()
                     Button("Show all") { withAnimation(.snappy(duration: 0.2)) { filter = nil } }
                         .font(Theme.footnote.weight(.semibold))
@@ -633,5 +636,34 @@ struct CheckMark: View {
 
     private func check(_ c: Color) -> some View {
         Image(systemName: "checkmark").font(.system(size: size * 0.5, weight: .bold)).foregroundStyle(c)
+    }
+}
+
+/// List or Plan: a small two-word switch, not a full-width control.
+private struct ModeSwitch: View {
+    @Binding var mode: String
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(ToDoMode.allCases, id: \.self) { m in
+                let on = mode == m.rawValue
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { mode = m.rawValue }
+                } label: {
+                    Text(m.title)
+                        .font(Theme.footnote.weight(.semibold))
+                        .foregroundStyle(on ? Theme.text : Theme.secondary)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 28)
+                        .background(on ? Theme.card : .clear, in: Capsule())
+                        .contentShape(Capsule())
+                }
+                .buttonStyle(.borderless)
+                .accessibilityAddTraits(on ? .isSelected : [])
+                .accessibilityHint(m == .list ? "Everything, by class or by date" : "Your own order for the day")
+            }
+        }
+        .padding(2)
+        .background(Theme.divider.opacity(0.6), in: Capsule())
     }
 }

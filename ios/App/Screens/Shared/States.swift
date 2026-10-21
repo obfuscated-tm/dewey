@@ -138,15 +138,17 @@ struct ScreenHeader<Trailing: View>: View {
     let title: String
     @ViewBuilder var trailing: Trailing
     var body: some View {
-        HStack(alignment: .bottom) {
-            VStack(alignment: .leading, spacing: 2) {
-                if let kicker {
-                    Text(kicker.uppercased()).font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.secondary)
-                }
-                Text(title).font(Theme.display)
+        // The kicker gets the whole width, so a long date never wraps beside the buttons.
+        VStack(alignment: .leading, spacing: 2) {
+            if let kicker {
+                Text(kicker.uppercased()).font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.secondary)
+                    .lineLimit(1).minimumScaleFactor(0.8)
             }
-            Spacer()
-            trailing
+            HStack(alignment: .bottom) {
+                Text(title).font(Theme.display)
+                Spacer()
+                trailing
+            }
         }
         // A hair in from the cards' edge (a list row clips the kicker's first letter at 0).
         .padding(.horizontal, Theme.Space.xs)

@@ -139,7 +139,7 @@ In the Claude desktop app, use the iOS Simulator tool (`attach` first, then `lau
 - **Done when:** after a week of real use, the order holds across refreshes and new work slots in where expected.
 
 ### R9 · Calendar (built 2026-10-20, kept small)
-- Show month under the week strip (a day + the next); Settings › To Do › Show in the Calendar app (a Dewey calendar).
+- Month grid from the calendar icon beside List · Plan (a day + the next); Settings › To Do › Show in the Calendar app (a Dewey calendar).
 - **Done when:** on the phone, the Dewey calendar matches To Do, and work marked done drops off after a refresh. Note: the month only shows what Schoology's To Do lists (about the next two weeks); a fuller month would need a Schoology calendar reader.
 
 ### Later / dropped

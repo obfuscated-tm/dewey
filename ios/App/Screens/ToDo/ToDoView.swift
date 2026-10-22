@@ -26,8 +26,10 @@ struct ToDoView: View {
     @State private var showGuide = false
     @AppStorage(CallNumber.key) private var callRaw = ""
     @AppStorage(ToDoMode.key) private var modeID = ToDoMode.list.rawValue
-    /// The week strip opened up to a month (MonthGrid).
+    /// The week strip opened up to a month (MonthGrid), and the month it shows.
     @AppStorage("todoMonth") private var showMonth = false
+    @State private var shownMonth = MonthGrid.start(of: Date())
+    @State private var monthForward = true
     /// The task editor: a new task, or one of the student's own (tap its row).
     @State private var editing: TaskTarget?
 
@@ -92,18 +94,27 @@ struct ToDoView: View {
             }
             if typeSize.isAccessibilitySize, let ripple { ripple.padding(.horizontal, Theme.Space.xs) }
             // Late, today and the next six days, a dot per item still to do; tap one to show only it.
-            // The handle under it opens it up to a month.
+            // Pull it down (anywhere on it, or its chevron) for the month; slide the month sideways.
             if mode == .list && layout == .week {
-                VStack(spacing: 0) {
+                CalendarPull(open: showMonth, set: { set in
+                    guard set != showMonth else { return }
+                    if set { shownMonth = MonthGrid.start(of: now) }
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { showMonth = set; filter = nil }
+                }, swipe: { n in
+                    monthForward = n > 0
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        shownMonth = Calendar.current.date(byAdding: .month, value: n, to: shownMonth)!
+                    }
+                }) {
                     SwiftUI.Group {
-                        if showMonth { MonthGrid(items: open, now: now, selected: $filter) } else { WeekStrip(items: open, now: now, selected: $filter) }
+                        if showMonth {
+                            MonthGrid(items: open, now: now, selected: $filter, month: $shownMonth, forward: $monthForward)
+                        } else {
+                            WeekStrip(items: open, now: now, selected: $filter)
+                        }
                     }
                     .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.94, anchor: .top)),
                                             removal: .opacity))
-                    MonthHandle(open: showMonth) { set in
-                        guard set != showMonth else { return }
-                        withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { showMonth = set; filter = nil }
-                    }
                 }
             }
             if let f = filter {
@@ -126,26 +137,36 @@ struct ToDoView: View {
         }
     }
 
-    /// The title is the List / Plan switch: both names show, the one you're on large,
-    /// the other small and grey beside it. Tap the small one to swap.
+    /// The title is the List / Plan switch: the view you're on, large, and a chip beside it
+    /// for the other one. Tap the chip to swap.
     private var modeTitles: some View {
-        HStack(alignment: .firstTextBaseline, spacing: Theme.Space.m) {
-            ForEach(ToDoMode.allCases, id: \.self) { m in
-                let on = mode == m
-                Button {
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { modeID = m.rawValue }
-                } label: {
-                    Text(m == .list ? "To Do" : "Plan")
-                        .font(on ? Theme.display : Theme.displaySmall)
-                        .foregroundStyle(on ? Theme.text : Theme.tertiary)
-                        .contentTransition(.interpolate)
-                        .lineLimit(1)
-                        .contentShape(Rectangle())
+        let other: ToDoMode = mode == .list ? .plan : .list
+        return HStack(alignment: .center, spacing: Theme.Space.s) {
+            Text(mode == .list ? "To Do" : "Plan")
+                .font(Theme.display).foregroundStyle(Theme.text)
+                .lineLimit(1)
+                .fixedSize()
+                .contentTransition(.opacity)
+                .accessibilityAddTraits(.isHeader)
+            Button {
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { modeID = other.rawValue }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: other == .plan ? "list.number" : "list.bullet")
+                    Text(other == .plan ? "Plan" : "To Do")
                 }
-                .buttonStyle(.borderless)
-                .accessibilityAddTraits(on ? [.isSelected, .isHeader] : [])
-                .accessibilityHint(on ? "" : (m == .list ? "Shows everything due" : "Shows your own order for the day"))
+                .font(Theme.footnote.weight(.semibold))
+                .foregroundStyle(Theme.accent)
+                .padding(.horizontal, 10)
+                .frame(minHeight: 30)
+                .fixedSize()
+                .background(Theme.accentSoft, in: Capsule())
+                .contentShape(Capsule())
             }
+            .buttonStyle(.borderless)
+            .lineLimit(1)
+            .accessibilityLabel(other == .plan ? "Switch to Plan" : "Switch to To Do list")
+            .accessibilityHint(other == .plan ? "Your own order for the day" : "Everything due")
         }
     }
 
@@ -664,36 +685,52 @@ struct CheckMark: View {
     }
 }
 
-/// The chevron under the week strip: pull it down (or tap) for the month, push it up for
-/// the week. It follows the finger a little and turns as you pull, then springs.
-private struct MonthHandle: View {
+/// The week strip (or month) and the chevron under it. Pull down anywhere on it for the
+/// month, push up for the week; it follows the finger a little and the chevron turns, then
+/// springs. Sideways on the month steps a month. Its own drag, ahead of the list's scroll
+/// and pull-to-refresh, so the pull isn't taken by the list.
+private struct CalendarPull<Content: View>: View {
     let open: Bool
     let set: (Bool) -> Void
+    let swipe: (Int) -> Void
+    @ViewBuilder var content: Content
     @State private var pull: CGFloat = 0
 
     var body: some View {
-        // How far through the pull, 0…1 (toward the other state).
         let progress = min(1, abs(pull) / 40)
         let toward = open ? pull < 0 : pull > 0
-        Image(systemName: "chevron.compact.down")
-            .font(Theme.title.weight(.medium))
-            .foregroundStyle(toward && progress > 0.5 ? Theme.accent : Theme.tertiary)
-            .rotationEffect(.degrees((open ? 180 : 0) + (toward ? (open ? -180 : 180) * progress : 0)))
-            .offset(y: pull * 0.35)
-            .frame(maxWidth: .infinity)
-            .frame(height: 22)
-            .contentShape(Rectangle())
-            .onTapGesture { set(!open) }
-            .gesture(DragGesture(minimumDistance: 4)
-                .onChanged { v in pull = max(-60, min(60, v.translation.height)) }
-                .onEnded { v in
-                    let dy = v.predictedEndTranslation.height
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) { pull = 0 }
-                    if dy > 30 { set(true) } else if dy < -30 { set(false) }
-                })
-            .accessibilityElement()
-            .accessibilityLabel(open ? "Show week" : "Show month")
-            .accessibilityAddTraits(.isButton)
-            .accessibilityAction { set(!open) }
+        VStack(spacing: 0) {
+            content.offset(y: pull * 0.15)
+            Image(systemName: "chevron.compact.down")
+                .font(Theme.title.weight(.medium))
+                .foregroundStyle(toward && progress > 0.5 ? Theme.accent : Theme.tertiary)
+                .rotationEffect(.degrees((open ? 180 : 0) + (toward ? (open ? -180 : 180) * progress : 0)))
+                .offset(y: pull * 0.35)
+                .frame(maxWidth: .infinity)
+                .frame(height: 22)
+                .contentShape(Rectangle())
+                .onTapGesture { set(!open) }
+                .accessibilityElement()
+                .accessibilityLabel(open ? "Show week" : "Show month")
+                .accessibilityAddTraits(.isButton)
+                .accessibilityAction { set(!open) }
+        }
+        .contentShape(Rectangle())
+        .highPriorityGesture(DragGesture(minimumDistance: 12)
+            .onChanged { v in
+                if abs(v.translation.height) > abs(v.translation.width) {
+                    pull = max(-60, min(60, v.translation.height))
+                }
+            }
+            .onEnded { v in
+                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) { pull = 0 }
+                let dx = v.translation.width, dy = v.translation.height
+                if abs(dx) > abs(dy) {
+                    if open && abs(dx) > 40 { swipe(dx < 0 ? 1 : -1) }
+                } else {
+                    let end = v.predictedEndTranslation.height
+                    if end > 30 { set(true) } else if end < -30 { set(false) }
+                }
+            })
     }
 }

@@ -65,10 +65,10 @@ struct WeekStrip: View {
             return "\(its.count)"
         }()
         let labelColor: Color = on ? Theme.onAccent : isLate ? Theme.late : isToday ? Theme.accent : Theme.secondary
-        return Button {
-            withAnimation(.snappy(duration: 0.2)) { selected = on ? nil : f }
-        } label: {
-            VStack(spacing: 3) {
+        let pick: () -> Void = { withAnimation(.snappy(duration: 0.2)) { selected = on ? nil : f } }
+        // A tap, not a Button: in the list a Button takes the touch, and the pull for the month
+        // (CalendarPull) has to start from the days too.
+        return VStack(spacing: 3) {
                 Text(label).font(Theme.caption.weight(.semibold)).foregroundStyle(isLate ? Theme.late : isToday ? Theme.accent : Theme.secondary)
                     .lineLimit(1).minimumScaleFactor(0.7)
                 // Bare type; the chosen day sits in a drop, the logo's shape.
@@ -84,10 +84,11 @@ struct WeekStrip: View {
             .padding(.vertical, 4)
             .frame(maxWidth: .infinity)
             .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
+        .onTapGesture(perform: pick)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(a11y(f, label: label, its))
-        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { pick() }
         .accessibilityHint(on ? "Shows the whole list again" : "Shows only these")
     }
 

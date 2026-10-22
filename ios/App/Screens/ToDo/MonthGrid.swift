@@ -2,22 +2,22 @@ import SwiftUI
 
 /// The week strip, opened up to a month (To Do › List, "Month"): a dot per
 /// open item on each day (black = test). Tap a day to list it and the day
-/// after it (DayFilter.span); tap it again to show everything.
+/// after it (DayFilter.span); tap it again to show everything. The month shown is the
+/// screen's (swiping sideways on it, CalendarPull, steps it too).
 struct MonthGrid: View {
     let items: [ItemState]     // open items only
     let now: Date
     @Binding var selected: DayFilter?
-    @State private var month: Date
+    @Binding var month: Date
+    /// Which way the last step went, so the days slide in from that side.
+    @Binding var forward: Bool
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private let cal = Calendar.current
 
-    init(items: [ItemState], now: Date, selected: Binding<DayFilter?>) {
-        self.items = items
-        self.now = now
-        _selected = selected
+    static func start(of d: Date) -> Date {
         let c = Calendar.current
-        _month = State(initialValue: c.date(from: c.dateComponents([.year, .month], from: now))!)
+        return c.date(from: c.dateComponents([.year, .month], from: d))!
     }
 
     var body: some View {
@@ -38,16 +38,21 @@ struct MonthGrid: View {
                     Text(d).font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.tertiary)
                         .accessibilityHidden(true)
                 }
+            }
+            LazyVGrid(columns: columns, spacing: 2) {
                 ForEach(Array(cells.enumerated()), id: \.offset) { _, day in
                     if let day { cell(day) } else { Color.clear.frame(height: 1) }
                 }
             }
+            .id(month)
+            .transition(.push(from: forward ? .trailing : .leading))
         }
         .padding(.horizontal, Theme.Space.xs)
     }
 
     private func step(_ n: Int) {
-        withAnimation(.snappy(duration: 0.2)) { month = cal.date(byAdding: .month, value: n, to: month)! }
+        forward = n > 0
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { month = cal.date(byAdding: .month, value: n, to: month)! }
     }
 
     private var weekdays: [String] {
@@ -72,12 +77,13 @@ struct MonthGrid: View {
             guard case .span(let start) = selected else { return false }
             return cal.isDate(day, inSameDayAs: start) || cal.isDate(day, inSameDayAs: cal.date(byAdding: .day, value: 1, to: start)!)
         }()
-        return Button {
+        let pick: () -> Void = {
             withAnimation(.snappy(duration: 0.2)) {
                 if case .span(let s) = selected, cal.isDate(s, inSameDayAs: day) { selected = nil } else { selected = .span(cal.startOfDay(for: day)) }
             }
-        } label: {
-            VStack(spacing: 2) {
+        }
+        // A tap, not a Button, so a pull or a sideways swipe can start on a day (CalendarPull).
+        return VStack(spacing: 2) {
                 Text("\(cal.component(.day, from: day))")
                     .font(Theme.subhead.weight(isToday ? .bold : .regular).monospacedDigit())
                     .foregroundStyle(isToday ? Theme.accent : past ? Theme.tertiary : Theme.text)
@@ -94,10 +100,11 @@ struct MonthGrid: View {
                 if isToday { RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous).stroke(Theme.accent, lineWidth: 1.5) }
             }
             .contentShape(Rectangle())
-        }
-        .buttonStyle(.borderless)
+        .onTapGesture(perform: pick)
+        .accessibilityElement(children: .ignore)
         .accessibilityLabel(a11y(day, its))
-        .accessibilityAddTraits(on ? .isSelected : [])
+        .accessibilityAddTraits(on ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { pick() }
         .accessibilityHint("Shows this day and the next")
     }
 

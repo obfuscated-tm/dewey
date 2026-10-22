@@ -54,50 +54,58 @@ struct QuickTask: View {
                 .disabled(cleanText.isEmpty)
                 .accessibilityLabel("Add task")
             }
-            summary(due: due, section: s, kind: k, typed: parsed, typedDay: day == nil && parsed.day != nil)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    ForEach(0..<5, id: \.self) { n in
-                        let date = cal.date(byAdding: .day, value: n, to: cal.startOfDay(for: now))!
-                        chip(dayName(n, date), on: d.map { cal.isDate($0, inSameDayAs: date) } ?? false) {
-                            toggle(&day, current: d, to: date) { cal.isDate($0, inSameDayAs: $1) }
+            // Day, time, class, kind: four small menus, all on screen. Each shows what's chosen.
+            HStack(spacing: 6) {
+                Menu {
+                    Picker("Day", selection: Binding(get: { d.map { cal.startOfDay(for: $0) } }, set: { v in day = v.map { .some($0) } ?? Choice.none })) {
+                        ForEach(0..<7, id: \.self) { n in
+                            let date = cal.date(byAdding: .day, value: n, to: cal.startOfDay(for: now))!
+                            Text(n < 2 ? dayName(n, date) : Self.menuDay.string(from: date)).tag(Optional(date))
                         }
+                        Text("No date").tag(Date?.none)
                     }
-                    let picked = d.map { day in !(0..<5).contains { cal.isDate(day, inSameDayAs: cal.date(byAdding: .day, value: $0, to: cal.startOfDay(for: now))!) } } ?? false
-                    chip(picked ? Self.short.string(from: d!) : "Pick", icon: "calendar", on: picked) { picking = .day }
+                    Button { picking = .day } label: { Label("Pick a day…", systemImage: "calendar") }
+                } label: {
+                    chipLabel(d.map(dayLabel) ?? "Day", icon: "calendar", on: d != nil)
                 }
-                .padding(.horizontal, 1)
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 6) {
-                    chip("Before school · \(clockText(TaskParse.beforeSchool, short: true))", on: t == TaskParse.beforeSchool) { toggle(&time, current: t, to: TaskParse.beforeSchool, ==) }
-                    chip("After school · \(clockText(TaskParse.afterSchool, short: true))", on: t == TaskParse.afterSchool) { toggle(&time, current: t, to: TaskParse.afterSchool, ==) }
-                    chip("Tonight", on: t == TaskParse.tonight) { toggle(&time, current: t, to: TaskParse.tonight, ==) }
-                    let other = t.map { ![TaskParse.beforeSchool, TaskParse.afterSchool, TaskParse.tonight].contains($0) } ?? false
-                    chip(other ? clockText(t!) : "Time", icon: "clock", on: other) { picking = .time }
-                    Divider().frame(height: 20)
-                    Menu {
-                        Button("No class") { section = Choice.none }
-                        ForEach(model.classes) { c in Button(c.shortTitle) { section = .some(c.sectionId) } }
-                    } label: {
-                        chipLabel(s.flatMap { model.course($0)?.shortTitle } ?? "Class", icon: "graduationcap", on: s != nil)
+                Menu {
+                    Picker("Time", selection: Binding(get: { t }, set: { v in time = v.map { .some($0) } ?? Choice.none })) {
+                        Text("Before school · \(clockText(TaskParse.beforeSchool))").tag(Optional(TaskParse.beforeSchool))
+                        Text("After school · \(clockText(TaskParse.afterSchool))").tag(Optional(TaskParse.afterSchool))
+                        Text("Tonight · 11:59 pm").tag(Optional(TaskParse.tonight))
+                        Text("No time").tag(TaskParse.Clock?.none)
                     }
-                    Menu {
-                        ForEach([ItemType.task, .assignment, .exam, .classwork], id: \.self) { t in
-                            Button(Self.kindName(t)) { type = t }
-                        }
-                    } label: {
-                        chipLabel(Self.kindName(k), icon: "tag", on: k != .task)
-                    }
+                    Button { picking = .time } label: { Label("Pick a time…", systemImage: "clock") }
+                } label: {
+                    chipLabel(t.map { clockText($0, short: true) } ?? "Time", icon: "clock", on: t != nil)
                 }
-                .padding(.horizontal, 1)
+                Menu {
+                    Picker("Class", selection: Binding(get: { s }, set: { v in section = v.map { .some($0) } ?? Choice.none })) {
+                        ForEach(model.classes) { c in Text(c.shortTitle).tag(Optional(c.sectionId)) }
+                        Text("No class").tag(String?.none)
+                    }
+                } label: {
+                    chipLabel(s.flatMap { model.course($0)?.shortTitle } ?? "Class", icon: "graduationcap", on: s != nil)
+                        .frame(maxWidth: 130)
+                }
+                Menu {
+                    Picker("Kind", selection: Binding(get: { k }, set: { type = $0 })) {
+                        ForEach([ItemType.task, .assignment, .exam, .classwork], id: \.self) { t in Text(Self.kindName(t)).tag(t) }
+                    }
+                } label: {
+                    chipLabel(k == .task ? "" : Self.kindName(k), icon: "tag", on: k != .task)
+                }
+                .accessibilityLabel("Kind: \(Self.kindName(k))")
+                Spacer(minLength: 0)
             }
+            .menuOrder(.fixed)
+            .lineLimit(1)
         }
         .padding(Theme.Space.l)
         .padding(.top, Theme.Space.s)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.background)
-        .presentationDetents([.height(150)])
+        .presentationDetents([.height(118)])
         .presentationDragIndicator(.visible)
         .onAppear {
             if let sectionId { section = .some(sectionId) }
@@ -112,35 +120,10 @@ struct QuickTask: View {
 
     // ── Pieces ───────────────────────────────────────────────────────────
 
-    /// One line saying what will be saved, so the typed words never surprise.
-    private func summary(due: Date?, section: String?, kind: ItemType, typed: TaskParse.Result, typedDay: Bool) -> some View {
-        var parts: [String] = [due.map(Self.dueText) ?? "No date"]
-        if let section, let c = model.course(section) { parts.append(c.shortTitle) }
-        if kind != .task { parts.append(Self.kindName(kind)) }
-        let fromText = typed.day != nil || typed.time != nil || typed.sectionId != nil || typed.type != nil
-        return HStack(spacing: 6) {
-            Image(systemName: due == nil ? "calendar.badge.minus" : "calendar").foregroundStyle(due == nil ? Theme.tertiary : Theme.accent)
-            Text(parts.joined(separator: " · "))
-                .foregroundStyle(due == nil ? Theme.secondary : Theme.text)
-                .lineLimit(1).minimumScaleFactor(0.85)
-            if fromText && !cleanText.isEmpty {
-                Text("from what you typed").foregroundStyle(Theme.tertiary).lineLimit(1)
-            }
-        }
-        .font(Theme.footnote.weight(.semibold))
-        .accessibilityElement(children: .combine)
-    }
-
-    private func chip(_ title: String, icon: String? = nil, on: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) { chipLabel(title, icon: icon, on: on) }
-            .buttonStyle(.borderless)
-            .accessibilityAddTraits(on ? .isSelected : [])
-    }
-
     private func chipLabel(_ title: String, icon: String?, on: Bool) -> some View {
         HStack(spacing: 4) {
             if let icon { Image(systemName: icon) }
-            Text(title).lineLimit(1)
+            if !title.isEmpty { Text(title).lineLimit(1) }
         }
         .font(Theme.footnote.weight(.semibold))
         .foregroundStyle(on ? Theme.accent : Theme.secondary)
@@ -149,11 +132,6 @@ struct QuickTask: View {
         .background(on ? Theme.accentSoft : Theme.card, in: Capsule())
         .overlay(Capsule().stroke(on ? Theme.accent.opacity(0.5) : Theme.border, lineWidth: 1))
         .contentShape(Capsule())
-    }
-
-    /// A tap on the chip that's on turns it off; on another, picks it.
-    private func toggle<T: Equatable>(_ choice: inout Choice<T>?, current: T?, to value: T, _ same: (T, T) -> Bool) {
-        if let current, same(current, value) { choice = Choice.none } else { choice = .some(value) }
     }
 
     private func pickerSheet(_ p: PickWhat, day: Date, time: TaskParse.Clock?) -> some View {
@@ -189,6 +167,14 @@ struct QuickTask: View {
         dismiss()
     }
 
+    /// The day button: "Today", "Tmrw", "Fri", or "Oct 30" further out.
+    private func dayLabel(_ d: Date) -> String {
+        let n = cal.dateComponents([.day], from: cal.startOfDay(for: now), to: cal.startOfDay(for: d)).day ?? 0
+        if n == 0 { return "Today" }
+        if n == 1 { return "Tmrw" }
+        return n < 7 ? Self.weekday.string(from: d) : Self.monthDay.string(from: d)
+    }
+
     private func dayName(_ n: Int, _ date: Date) -> String {
         n == 0 ? "Today" : n == 1 ? "Tomorrow" : Self.weekday.string(from: date)
     }
@@ -216,4 +202,6 @@ struct QuickTask: View {
     private static let short = fmt("EEE, MMM d")
     private static let time = fmt("h:mm a")
     private static let bare = fmt("h:mm")
+    private static let menuDay = fmt("EEEE, MMM d")
+    private static let monthDay = fmt("MMM d")
 }

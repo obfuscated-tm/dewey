@@ -701,13 +701,14 @@ private struct CalendarPull<Content: View>: View {
         let toward = open ? pull < 0 : pull > 0
         VStack(spacing: 0) {
             content.offset(y: pull * 0.15)
-            Image(systemName: "chevron.compact.down")
-                .font(Theme.subhead.weight(.semibold))
-                .foregroundStyle(toward && progress > 0.5 ? Theme.accent : Theme.tertiary)
+            FlatChevron()
+                .stroke(toward && progress > 0.5 ? Theme.accent : Theme.tertiary,
+                        style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
+                .frame(width: 40, height: 6)
                 .rotationEffect(.degrees((open ? 180 : 0) + (toward ? (open ? -180 : 180) * progress : 0)))
                 .offset(y: pull * 0.35)
                 .frame(maxWidth: .infinity)
-                .frame(height: 12)
+                .frame(height: 8)
                 // A bigger tap target than it looks, overlapping the gap around it.
                 .contentShape(Rectangle().inset(by: -10))
                 .onTapGesture { set(!open) }
@@ -733,5 +734,16 @@ private struct CalendarPull<Content: View>: View {
                     if end > 30 { set(true) } else if end < -30 { set(false) }
                 }
             })
+    }
+}
+
+/// A wide, shallow chevron: the full width of the old one, a third of its height.
+private struct FlatChevron: Shape {
+    func path(in r: CGRect) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: r.minX, y: r.minY))
+        p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+        return p
     }
 }

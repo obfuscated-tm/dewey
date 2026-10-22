@@ -702,13 +702,14 @@ private struct CalendarPull<Content: View>: View {
         VStack(spacing: 0) {
             content.offset(y: pull * 0.15)
             Image(systemName: "chevron.compact.down")
-                .font(Theme.title.weight(.medium))
+                .font(Theme.subhead.weight(.semibold))
                 .foregroundStyle(toward && progress > 0.5 ? Theme.accent : Theme.tertiary)
                 .rotationEffect(.degrees((open ? 180 : 0) + (toward ? (open ? -180 : 180) * progress : 0)))
                 .offset(y: pull * 0.35)
                 .frame(maxWidth: .infinity)
-                .frame(height: 22)
-                .contentShape(Rectangle())
+                .frame(height: 12)
+                // A bigger tap target than it looks, overlapping the gap around it.
+                .contentShape(Rectangle().inset(by: -10))
                 .onTapGesture { set(!open) }
                 .accessibilityElement()
                 .accessibilityLabel(open ? "Show week" : "Show month")

@@ -56,18 +56,12 @@ struct QuickTask: View {
             }
             // Day, time, class, kind: four small menus, all on screen. Each shows what's chosen.
             HStack(spacing: 6) {
-                Menu {
-                    Picker("Day", selection: Binding(get: { d.map { cal.startOfDay(for: $0) } }, set: { v in day = v.map { .some($0) } ?? Choice.none })) {
-                        ForEach(0..<7, id: \.self) { n in
-                            let date = cal.date(byAdding: .day, value: n, to: cal.startOfDay(for: now))!
-                            Text(n < 2 ? dayName(n, date) : Self.menuDay.string(from: date)).tag(Optional(date))
-                        }
-                        Text("No date").tag(Date?.none)
-                    }
-                    Button { picking = .day } label: { Label("Pick a day…", systemImage: "calendar") }
-                } label: {
+                // Straight to the calendar (Today and Tomorrow are one tap on the row below).
+                Button { picking = .day } label: {
                     chipLabel(d.map(dayLabel) ?? "Day", icon: "calendar", on: d != nil)
                 }
+                .buttonStyle(.borderless)
+                .accessibilityLabel(d.map { "Due \(Self.menuDay.string(from: $0))" } ?? "Due day")
                 Menu {
                     Picker("Time", selection: Binding(get: { t }, set: { v in time = v.map { .some($0) } ?? Choice.none })) {
                         Text("Before school · \(clockText(TaskParse.beforeSchool))").tag(Optional(TaskParse.beforeSchool))
@@ -170,7 +164,8 @@ struct QuickTask: View {
             VStack {
                 switch p {
                 case .day:
-                    DatePicker("Day", selection: Binding(get: { day }, set: { self.day = .some(cal.startOfDay(for: $0)) }),
+                    // Picking a day closes the calendar.
+                    DatePicker("Day", selection: Binding(get: { day }, set: { self.day = .some(cal.startOfDay(for: $0)); picking = nil }),
                                in: cal.startOfDay(for: now)..., displayedComponents: .date)
                         .datePickerStyle(.graphical)
                 case .time:
@@ -187,7 +182,12 @@ struct QuickTask: View {
             .padding(.horizontal, Theme.Space.l)
             .navigationTitle(p == .day ? "Due day" : "Due time")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { picking = nil }.fontWeight(.semibold) } }
+            .toolbar {
+                if p == .day {
+                    ToolbarItem(placement: .cancellationAction) { Button("No date") { self.day = Choice.none; picking = nil } }
+                }
+                ToolbarItem(placement: .confirmationAction) { Button("Done") { picking = nil }.fontWeight(.semibold) }
+            }
         }
         .presentationDetents([p == .day ? .medium : .height(300)])
     }

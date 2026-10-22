@@ -11,9 +11,10 @@ enum TaskParse {
         var minute: Int
     }
 
-    /// The school's own words for a time. FUHSD's first period starts around 8:30.
-    static let beforeSchool = Clock(hour: 8, minute: 0)
-    static let afterSchool = Clock(hour: 15, minute: 30)
+    /// "Before school" and "after school": the student's school day (Settings › To Do › School day).
+    /// Dewey can't know the bell schedule (Schoology doesn't have it), so these start as a guess.
+    static var beforeSchool: Clock { SchoolDay.start }
+    static var afterSchool: Clock { SchoolDay.end }
     /// Due tonight: 11:59 pm, like Schoology's "due that day".
     static let tonight = Clock(hour: 23, minute: 59)
 
@@ -203,5 +204,21 @@ enum TaskParse {
             if hits.count == 1 { return hits.first }
         }
         return nil
+    }
+}
+
+/// When school starts and ends, as the student set it (Settings › To Do › School day).
+/// Before school is the start, after school the end.
+enum SchoolDay {
+    static let startKey = "schoolStart", endKey = "schoolEnd"
+    /// The guess until it's set: 8:00 am and 3:30 pm.
+    static let defaultStart = 8 * 60, defaultEnd = 15 * 60 + 30
+
+    static var start: TaskParse.Clock { clock(startKey, defaultStart) }
+    static var end: TaskParse.Clock { clock(endKey, defaultEnd) }
+
+    private static func clock(_ key: String, _ fallback: Int) -> TaskParse.Clock {
+        let m = UserDefaults.standard.object(forKey: key) as? Int ?? fallback
+        return TaskParse.Clock(hour: m / 60, minute: m % 60)
     }
 }

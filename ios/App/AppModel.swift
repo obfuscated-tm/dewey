@@ -458,18 +458,25 @@ final class AppModel {
     func planFinished(_ it: ItemState) -> Bool { isFinished(it) || (it.type == .exam && it.studied) }
 
     /// Every open item in To do or Later (PlanLogic), plus what was finished today.
+    /// Work finished while Plan is open (a tick, a swipe, Submit): it stays where it
+    /// was, ticked, instead of dropping into Done at the bottom, until Plan closes.
+    var planKeep: Set<String> = []
+
     func planLists(now: Date = Date()) -> PlanLists {
         let cal = Calendar.current
         var todo: [ItemState] = [], later: [ItemState] = [], done: [ItemState] = []
         for it in todoItems() {
-            if planFinished(it) {
+            let kept = planKeep.contains(it.schoologyId)
+            if planFinished(it) && !kept {
                 if cal.isDate(it.updatedAt, inSameDayAs: now) { done.append(it) }
                 continue
             }
-            if TodoLogic.isOlder(due: it.due, now: now) { continue }
             let late = isOverdue(it, now: now)
-            // A past test that isn't an online quiz isn't work any more (TodoLogic.showsLate).
-            if (it.due ?? .distantFuture) < now && !late && !it.mine { continue }
+            if !kept {
+                if TodoLogic.isOlder(due: it.due, now: now) { continue }
+                // A past test that isn't an online quiz isn't work any more (TodoLogic.showsLate).
+                if (it.due ?? .distantFuture) < now && !late && !it.mine { continue }
+            }
             let auto = PlanLogic.autoBucket(due: it.due, late: late, isTest: it.type == .exam, mine: it.mine, now: now)
             let b = it.planSection.flatMap(PlanLogic.Bucket.init(rawValue:)) ?? auto
             if b == .later { later.append(it) } else { todo.append(it) }
@@ -493,6 +500,7 @@ final class AppModel {
             guard it.schoologyId == id, let from = was[it.schoologyId], from != b else { continue }
             switch b {
             case .done:
+                planKeep.remove(it.schoologyId)
                 setProgress(it, .done)
             case .todo, .later:
                 if from == .done { setProgress(it, .todo) }

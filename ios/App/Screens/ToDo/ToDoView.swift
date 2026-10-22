@@ -72,7 +72,9 @@ struct ToDoView: View {
         }
         // The day filter belongs to the week strip.
         .onChange(of: layoutID) { filter = nil }
-        .onChange(of: modeID) { filter = nil }
+        .onChange(of: modeID) { filter = nil; model.planKeep = [] }
+        // Leaving Plan (another tab, or List) lets work finished there go to Done.
+        .onDisappear { model.planKeep = [] }
     }
 
     private static let dayName: DateFormatter = {

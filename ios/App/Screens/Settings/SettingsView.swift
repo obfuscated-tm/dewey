@@ -249,7 +249,16 @@ private struct ToDoSettings: View {
     @AppStorage(Reminders.soonKey) private var dueSoon = true
     @AppStorage(Reminders.testNightKey) private var testNight = true
     @AppStorage(CalendarSync.enabledKey) private var calendarOn = false
+    @AppStorage(SchoolDay.startKey) private var schoolStart = SchoolDay.defaultStart
+    @AppStorage(SchoolDay.endKey) private var schoolEnd = SchoolDay.defaultEnd
     @State private var calendarNote: String?
+
+
+    /// Minutes after midnight, as a time for the picker.
+    private func minutes(_ m: Binding<Int>) -> Binding<Date> {
+        Binding(get: { Calendar.current.date(bySettingHour: m.wrappedValue / 60, minute: m.wrappedValue % 60, second: 0, of: Date())! },
+                set: { let c = Calendar.current.dateComponents([.hour, .minute], from: $0); m.wrappedValue = (c.hour ?? 0) * 60 + (c.minute ?? 0) })
+    }
 
     var body: some View {
         DewForm {
@@ -262,7 +271,13 @@ private struct ToDoSettings: View {
             } footer: {
                 Text(todoLayout == ToDoLayout.urgent.rawValue
                      ? "List shows one list, late and due today at the top. Plan, beside it, is your own order."
-                     : "List groups work by class, under a strip of days (Show month opens the whole month). Plan, beside it, is your own order.")
+                     : "List groups work by class, under a strip of days (pull it down for the month). Plan, beside it, is your own order.")
+            }
+            Section {
+                DatePicker("School starts", selection: minutes($schoolStart), displayedComponents: .hourAndMinute)
+                DatePicker("School ends", selection: minutes($schoolEnd), displayedComponents: .hourAndMinute)
+            } header: { Text("School day") } footer: {
+                Text("A new task's \u{201C}Before school\u{201D} and \u{201C}After school\u{201D} use these.")
             }
             Section {
                 Toggle("2 hours before, if not submitted", isOn: $dueSoon)

@@ -70,8 +70,8 @@ struct QuickTask: View {
             }
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: 6) {
-                    chip("Before school", on: t == TaskParse.beforeSchool) { toggle(&time, current: t, to: TaskParse.beforeSchool, ==) }
-                    chip("After school", on: t == TaskParse.afterSchool) { toggle(&time, current: t, to: TaskParse.afterSchool, ==) }
+                    chip("Before school · \(clockText(TaskParse.beforeSchool, short: true))", on: t == TaskParse.beforeSchool) { toggle(&time, current: t, to: TaskParse.beforeSchool, ==) }
+                    chip("After school · \(clockText(TaskParse.afterSchool, short: true))", on: t == TaskParse.afterSchool) { toggle(&time, current: t, to: TaskParse.afterSchool, ==) }
                     chip("Tonight", on: t == TaskParse.tonight) { toggle(&time, current: t, to: TaskParse.tonight, ==) }
                     let other = t.map { ![TaskParse.beforeSchool, TaskParse.afterSchool, TaskParse.tonight].contains($0) } ?? false
                     chip(other ? clockText(t!) : "Time", icon: "clock", on: other) { picking = .time }
@@ -193,8 +193,9 @@ struct QuickTask: View {
         n == 0 ? "Today" : n == 1 ? "Tomorrow" : Self.weekday.string(from: date)
     }
 
-    private func clockText(_ c: TaskParse.Clock) -> String {
-        Self.time.string(from: cal.date(bySettingHour: c.hour, minute: c.minute, second: 0, of: now)!)
+    /// "3:30 pm", or "3:30" for a chip that already says before or after school.
+    private func clockText(_ c: TaskParse.Clock, short: Bool = false) -> String {
+        (short ? Self.bare : Self.time).string(from: cal.date(bySettingHour: c.hour, minute: c.minute, second: 0, of: now)!)
     }
 
     static func kindName(_ t: ItemType) -> String {
@@ -214,4 +215,5 @@ struct QuickTask: View {
     private static let weekday = fmt("EEE")
     private static let short = fmt("EEE, MMM d")
     private static let time = fmt("h:mm a")
+    private static let bare = fmt("h:mm")
 }

@@ -182,6 +182,12 @@ struct PlanContent: View {
         return b
     }
 
+    /// Finishing something here keeps it in its row (ticked, dimmed) until Plan closes,
+    /// so it doesn't drop into Done at the bottom, out of reach (AppModel.planKeep).
+    private func hold(_ it: ItemState, _ b: PlanLogic.Bucket) {
+        if b != .done { model.planKeep.insert(it.schoologyId) }
+    }
+
     private func move(_ it: ItemState, _ placed: [String: (PlanLogic.Bucket, Double)]) {
         withAnimation(.snappy(duration: 0.2)) { model.applyPlan(placed, moved: it.schoologyId) }
         hintClosed = true
@@ -234,8 +240,8 @@ struct PlanContent: View {
             .padding(.top, Theme.Space.xs + 1)
             .accessibilityHidden(true)
             TodoRow(item: it, now: now, course: courseLine(it),
-                    onSet: { onSet(it, $0) }, onSubmit: { onSubmit(it) }, onOpen: { onOpen(it) })
-                .opacity(b == .done ? 0.6 : 1)
+                    onSet: { hold(it, b); onSet(it, $0) }, onSubmit: { hold(it, b); onSubmit(it) }, onOpen: { onOpen(it) })
+                .opacity(b == .done || model.planFinished(it) ? 0.6 : 1)
         }
         .accessibilityElement(children: .contain)
         .accessibilityLabel(number.map { "Number \($0)" } ?? b.title)
@@ -254,7 +260,7 @@ struct PlanContent: View {
         }
         .swipeActions(edge: .leading) {
             if b != .done {
-                Button { onSet(it, .done) } label: { Label(it.type == .exam ? "Studied" : "Done", systemImage: "checkmark") }
+                Button { hold(it, b); onSet(it, .done) } label: { Label(it.type == .exam ? "Studied" : "Done", systemImage: "checkmark") }
                     .tint(Theme.accent)
             }
         }

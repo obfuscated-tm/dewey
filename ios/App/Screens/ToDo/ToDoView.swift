@@ -60,7 +60,10 @@ struct ToDoView: View {
             .navigationDestination(isPresented: $showGuide) { StatusGuideView() }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $sheet) { SchoologySheet(target: $0) }
-            .sheet(item: $editing) { TaskEditor(task: $0.task, sectionId: $0.sectionId) }
+            .sheet(item: $editing) { t in
+                // New: the quick sheet (type it, or tap chips). An existing task: the full editor.
+                if let task = t.task { TaskEditor(task: task) } else { QuickTask(sectionId: t.sectionId) }
+            }
         }
         .onChange(of: model.deepLinkAssignment, initial: true) { _, id in
             guard let id else { return }

@@ -560,3 +560,67 @@ final class CalendarAndIDTests: XCTestCase {
         XCTAssertNotNil(StudentID.warning("52511030"))
     }
 }
+
+/// Quick add: the day, time, class and kind read from what the student types (TaskParse).
+final class TaskParseTests: XCTestCase {
+    var cal: Calendar = { var c = Calendar(identifier: .gregorian); c.timeZone = TimeZone(identifier: "America/Los_Angeles")!; return c }()
+    /// Wednesday, Oct 21 2026, 4 pm.
+    var now: Date { cal.date(from: DateComponents(year: 2026, month: 10, day: 21, hour: 16))! }
+    let classes: [TaskParse.ClassName] = [
+        .init(sectionId: "chem", title: "Chemistry H - 12345: P3"),
+        .init(sectionId: "bio", title: "AP Biology - 23456: P2"),
+        .init(sectionId: "pre", title: "Pre-Calculus H - 34567: P1"),
+        .init(sectionId: "us", title: "US History - 45678: P4"),
+    ]
+    func day(_ d: Int) -> Date { cal.date(from: DateComponents(year: 2026, month: 10, day: d))! }
+    func parse(_ s: String) -> TaskParse.Result { TaskParse.parse(s, now: now, classes: classes, calendar: cal) }
+
+    func testDaysAndTimesLeaveTheTitle() {
+        let r = parse("Chem lab report fri after school")
+        XCTAssertEqual(r.title, "Chem lab report")
+        XCTAssertEqual(r.day, day(23))
+        XCTAssertEqual(r.time, TaskParse.afterSchool)
+        XCTAssertEqual(r.sectionId, "chem")
+    }
+
+    func testDayWords() {
+        XCTAssertEqual(parse("essay tmrw").day, day(22))
+        XCTAssertEqual(parse("essay due tomorrow").title, "essay")
+        XCTAssertEqual(parse("read ch 5 tonight").time, TaskParse.tonight)
+        XCTAssertEqual(parse("quiz wed").day, day(21))          // today is Wednesday
+        XCTAssertEqual(parse("quiz next wed").day, day(28))
+        XCTAssertEqual(parse("quiz next mon").day, day(26))     // next week's Monday, not Nov 2
+        XCTAssertEqual(parse("vocab in 3 days").day, day(24))
+        XCTAssertEqual(parse("project 10/30").day, day(30))
+        XCTAssertEqual(parse("project oct 30").day, day(30))
+        XCTAssertEqual(parse("SAT practice").day, nil)          // the test, not Saturday
+    }
+
+    func testTimes() {
+        XCTAssertEqual(parse("call 8am").time, .init(hour: 8, minute: 0))
+        XCTAssertEqual(parse("lab 3:30").time, .init(hour: 15, minute: 30))
+        XCTAssertEqual(parse("meet at 3").time, .init(hour: 15, minute: 0))
+        XCTAssertEqual(parse("do 2 problems").time, nil)
+        XCTAssertEqual(parse("do 2 problems").title, "do 2 problems")
+    }
+
+    func testClassAndKind() {
+        XCTAssertEqual(parse("bio quiz").sectionId, "bio")
+        XCTAssertEqual(parse("bio quiz").type, .exam)
+        XCTAssertEqual(parse("precalc hw").sectionId, "pre")
+        XCTAssertEqual(parse("precalc hw").type, .assignment)
+        XCTAssertEqual(parse("history notes").sectionId, "us")
+        XCTAssertEqual(parse("study for finals").sectionId, nil)
+    }
+
+    func testDue() {
+        // A day alone: by the end of it. A time alone: today, or tomorrow once it's passed.
+        let eod = TaskParse.due(day: day(23), time: nil, now: now, calendar: cal)!
+        XCTAssertEqual(cal.component(.hour, from: eod), 23)
+        let past = TaskParse.due(day: nil, time: TaskParse.beforeSchool, now: now, calendar: cal)!
+        XCTAssertEqual(cal.component(.day, from: past), 22)
+        let later = TaskParse.due(day: nil, time: TaskParse.tonight, now: now, calendar: cal)!
+        XCTAssertEqual(cal.component(.day, from: later), 21)
+        XCTAssertNil(TaskParse.due(day: nil, time: nil, now: now, calendar: cal))
+    }
+}

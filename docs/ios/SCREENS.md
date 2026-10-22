@@ -61,6 +61,9 @@ Tabs: **To Do · Grades · Classes · Schoology**. To Do, Grades, Inbox and Clas
 - **Data:** `planSection` (nil = by due date) and `planRank` on `ItemState` (PlanLogic, PlanTests). Phone only.
 
 ### 1d A task of your own (TaskEditor)
+
+- **New (QuickTask):** a short sheet over the keyboard. Type the task with its day, time, class and kind in plain words ("chem lab fri after school", "precalc hw tmrw 8am", "quiz next tue"; TaskParse, TaskParseTests): the date and time words leave the title, the class and kind words stay. A line under the field says what will be saved ("Fri, Oct 23 · 3:30 pm · Chemistry H", "from what you typed"). Chips: Today, Tomorrow, the next three days, Pick (a calendar); Before school (8:00 am), After school (3:30 pm), Tonight (11:59 pm), Time; then Class and Kind menus. A chip wins over what was typed; tapping the one that's on turns it off. No date or time = no date; a day alone = by 11:59 pm. "next tue" = that day in next calendar week.
+- **Changing one (TaskEditor):** tap its row: the full form below, with notes and Delete.
 - Title, kind (Task / Homework / Test / Classwork), class (or none), due date with an optional time (no time = 11:59 pm), notes. Delete when editing. "Only on this phone. Nothing is added to Schoology." Shows on To Do (a class's card, or **My tasks**), Plan, widgets, reminders, Siri ("Add a task in Dewey") and the Calendar app. Opened from a widget or class page, it shows `MineTaskPage`, never Schoology.
 
 ### 1b Assignment · `design/Assignment.dc.html`

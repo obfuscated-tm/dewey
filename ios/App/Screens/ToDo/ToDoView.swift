@@ -37,14 +37,17 @@ struct ToDoView: View {
         NavigationStack(path: $path) {
             let items = model.todoItems()
             let now = Date()
-            List {
-                Section {
-                    header(items: items, now: now)
-                        .listRowInsets(EdgeInsets(top: Theme.Space.s, leading: 0, bottom: Theme.Space.m, trailing: 0))
-                        .listRowBackground(Color.clear)
-                        .listRowSeparator(.hidden)
+            // The reader lets Plan's grip scroll the list while a row is held at an edge.
+            ScrollViewReader { proxy in
+                List {
+                    Section {
+                        header(items: items, now: now)
+                            .listRowInsets(EdgeInsets(top: Theme.Space.s, leading: 0, bottom: Theme.Space.m, trailing: 0))
+                            .listRowBackground(Color.clear)
+                            .listRowSeparator(.hidden)
+                    }
+                    content(items: items, now: now, scroll: proxy)
                 }
-                content(items: items, now: now)
             }
             .listStyle(.insetGrouped)
             .listSectionSpacing(Theme.Space.l)
@@ -207,7 +210,7 @@ struct ToDoView: View {
     // ── The groups ───────────────────────────────────────────────────────
 
     @ViewBuilder
-    private func content(items: [ItemState], now: Date) -> some View {
+    private func content(items: [ItemState], now: Date, scroll: ScrollViewProxy) -> some View {
         if model.todoAsOf == nil && items.isEmpty {
             if let e = model.todoError {
                 Section { ErrorState(error: e, retry: { Task { await model.refreshTodo() } }) }
@@ -217,7 +220,7 @@ struct ToDoView: View {
             }
         } else if mode == .plan {
             PlanContent(now: now, onOpen: open, onSubmit: { sheet = SheetTarget(url: submitURL($0), assignmentId: $0.schoologyId) },
-                        onSet: set, onNewTask: { editing = TaskTarget() })
+                        onSet: set, onNewTask: { editing = TaskTarget() }, scroll: scroll)
         } else {
             let filtered = items.filter { it in
                 guard let filter else { return true }

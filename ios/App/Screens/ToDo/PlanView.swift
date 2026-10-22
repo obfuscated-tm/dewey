@@ -21,6 +21,8 @@ struct PlanContent: View {
     let onSubmit: (ItemState) -> Void
     let onSet: (ItemState, AppModel.Progress) -> Void
     let onNewTask: () -> Void
+    /// The list's scroller: a row held by its grip near the top or bottom scrolls it.
+    var scroll: ScrollViewProxy?
 
     @AppStorage("planHintClosed") private var hintClosed = false
     /// Folded sections, e.g. "later,done". Done starts folded: it only grows through the day.
@@ -33,6 +35,9 @@ struct PlanContent: View {
     @State private var grip: GripDrag?
     /// Where each row is on screen, so the grip knows when the finger has passed a neighbour's middle.
     @State private var frames: [PlanLogic.Row: CGRect] = [:]
+    /// While a gripped row is held near an edge: steps it on, a row at a time, scrolling with it.
+    @State private var edgeScroll: Task<Void, Never>?
+    @State private var fingerY: CGFloat = 0
 
     struct GripDrag {
         var id: String
@@ -213,8 +218,11 @@ struct PlanContent: View {
                 } else {
                     grip = g
                 }
+                fingerY = y
+                if Self.edge(y) != 0 { startEdgeScroll(id) } else { edgeScroll?.cancel(); edgeScroll = nil }
             }
             .onEnded { _ in
+                edgeScroll?.cancel(); edgeScroll = nil
                 guard let g = grip, g.id == id else { return }
                 grip = nil
                 guard g.rows != g.start else { return }
@@ -222,6 +230,36 @@ struct PlanContent: View {
                 dropCount += 1
                 hintClosed = true
             }
+    }
+
+    /// -1 near the top of the screen (under the status bar), 1 near the bottom (above the tab bar), else 0.
+    private static func edge(_ y: CGFloat) -> Int {
+        let h = (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.screen.bounds.height ?? 852
+        if y < 130 { return -1 }
+        if y > h - 160 { return 1 }
+        return 0
+    }
+
+    /// Held at an edge: every moment the finger stays there, the row moves one place that
+    /// way and the list scrolls to keep it in view (List gives the grip no scrolling of its own).
+    private func startEdgeScroll(_ id: String) {
+        guard edgeScroll == nil else { return }
+        edgeScroll = Task { @MainActor in
+            while !Task.isCancelled {
+                let dir = Self.edge(fingerY)
+                guard dir != 0, var g = grip, g.id == id else { break }
+                let moved = PlanLogic.nudging(g.rows, id: id, by: dir)
+                if moved != g.rows {
+                    g.rows = moved
+                    withAnimation(.snappy(duration: 0.18)) {
+                        grip = g
+                        scroll?.scrollTo(PlanLogic.Row.item(id), anchor: dir < 0 ? UnitPoint(x: 0.5, y: 0.2) : UnitPoint(x: 0.5, y: 0.8))
+                    }
+                }
+                try? await Task.sleep(for: .milliseconds(220))
+            }
+            edgeScroll = nil
+        }
     }
 
     private func planRow(_ it: ItemState, number: Int?, rows: [PlanLogic.Row], hidden: PlanLogic.Hidden) -> some View {

@@ -86,26 +86,41 @@ struct QuickTask: View {
                     }
                 } label: {
                     chipLabel(s.flatMap { model.course($0)?.shortTitle } ?? "Class", icon: "graduationcap", on: s != nil)
-                        .frame(maxWidth: 130)
                 }
                 Menu {
                     Picker("Kind", selection: Binding(get: { k }, set: { type = $0 })) {
                         ForEach([ItemType.task, .assignment, .exam, .classwork], id: \.self) { t in Text(Self.kindName(t)).tag(t) }
                     }
                 } label: {
-                    chipLabel(k == .task ? "" : Self.kindName(k), icon: "tag", on: k != .task)
+                    chipLabel(Self.kindName(k), icon: "tag", on: k != .task)
                 }
                 .accessibilityLabel("Kind: \(Self.kindName(k))")
-                Spacer(minLength: 0)
             }
             .menuOrder(.fixed)
             .lineLimit(1)
+            // One tap for the usual picks; tap one that's on to clear it.
+            HStack(spacing: 6) {
+                let today = cal.startOfDay(for: now)
+                let tomorrow = cal.date(byAdding: .day, value: 1, to: today)!
+                quick("Today", on: d.map { cal.isDate($0, inSameDayAs: today) } ?? false) {
+                    day = (d.map { cal.isDate($0, inSameDayAs: today) } ?? false) ? Choice.none : .some(today)
+                }
+                quick("Tomorrow", on: d.map { cal.isDate($0, inSameDayAs: tomorrow) } ?? false) {
+                    day = (d.map { cal.isDate($0, inSameDayAs: tomorrow) } ?? false) ? Choice.none : .some(tomorrow)
+                }
+                quick("After school", on: t == TaskParse.afterSchool) {
+                    time = t == TaskParse.afterSchool ? Choice.none : .some(TaskParse.afterSchool)
+                }
+                quick("Tonight", on: t == TaskParse.tonight) {
+                    time = t == TaskParse.tonight ? Choice.none : .some(TaskParse.tonight)
+                }
+            }
         }
         .padding(Theme.Space.l)
         .padding(.top, Theme.Space.s)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.background)
-        .presentationDetents([.height(118)])
+        .presentationDetents([.height(158)])
         .presentationDragIndicator(.visible)
         .onAppear {
             if let sectionId { section = .some(sectionId) }
@@ -120,18 +135,34 @@ struct QuickTask: View {
 
     // ── Pieces ───────────────────────────────────────────────────────────
 
+    /// A menu button: the four share the row's width equally.
     private func chipLabel(_ title: String, icon: String?, on: Bool) -> some View {
         HStack(spacing: 4) {
-            if let icon { Image(systemName: icon) }
-            if !title.isEmpty { Text(title).lineLimit(1) }
+            if let icon { Image(systemName: icon).imageScale(.small) }
+            Text(title).lineLimit(1).minimumScaleFactor(0.8)
         }
         .font(Theme.footnote.weight(.semibold))
         .foregroundStyle(on ? Theme.accent : Theme.secondary)
-        .padding(.horizontal, 11)
-        .frame(minHeight: 32)
+        .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, minHeight: 32)
         .background(on ? Theme.accentSoft : Theme.card, in: Capsule())
         .overlay(Capsule().stroke(on ? Theme.accent.opacity(0.5) : Theme.border, lineWidth: 1))
         .contentShape(Capsule())
+    }
+
+    /// A shortcut on the second row: plain text, tinted when it's what's set.
+    private func quick(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(Theme.footnote.weight(.semibold))
+                .lineLimit(1).minimumScaleFactor(0.8)
+                .foregroundStyle(on ? Theme.accent : Theme.text)
+                .frame(maxWidth: .infinity, minHeight: 30)
+                .background(on ? Theme.accentSoft : Theme.divider.opacity(0.5), in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.borderless)
+        .accessibilityAddTraits(on ? .isSelected : [])
     }
 
     private func pickerSheet(_ p: PickWhat, day: Date, time: TaskParse.Clock?) -> some View {

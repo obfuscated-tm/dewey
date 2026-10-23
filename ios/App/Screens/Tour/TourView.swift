@@ -4,15 +4,16 @@ import UserNotifications
 /// The tour, shown once after sign-in (and once to anyone already signed in
 /// when it shipped), again from Settings → Help → Take the tour: a welcome card,
 /// then the guided practice (PracticeView: a pretend week in the real screens,
-/// with Dewey pointing the way), then neo-plan for people who also use the
-/// desktop extension. Help → Tour cards shows the reference cards instead
-/// (where everything is, marking work, turning in, grades and what-if,
-/// Settings). The art is drawn with the app's own marks so it matches light and dark.
+/// with Dewey pointing the way), then the student ID (set up on the real
+/// account, now that the pretend week is gone), then neo-plan for people who
+/// also use the desktop extension. Help → Tour cards shows the reference cards
+/// instead (where everything is, marking work, Plan and your own tasks,
+/// turning in, grades and what-if, Settings). The art is drawn with the app's own marks so it matches light and dark.
 struct TourView: View {
     static let shownKey = "tourShown"
 
     enum Mode: String, Identifiable { case tour, cards; var id: String { rawValue } }
-    enum Card { case welcome, places, marking, turningIn, grades, settings, neoPlan }
+    enum Card { case welcome, places, marking, plan, turningIn, grades, settings, studentID, neoPlan }
 
     var mode: Mode = .tour
     @Environment(\.dismiss) private var dismiss
@@ -24,7 +25,7 @@ struct TourView: View {
     @State private var connected = NeoPlanClient().connected
 
     private var cards: [Card] {
-        mode == .tour ? [.welcome, .neoPlan] : [.places, .marking, .turningIn, .grades, .settings]
+        mode == .tour ? [.welcome, .studentID, .neoPlan] : [.places, .marking, .plan, .turningIn, .grades, .settings]
     }
     private var last: Bool { page == cards.count - 1 }
 
@@ -61,7 +62,7 @@ struct TourView: View {
         .tint(Theme.accent)
         .fullScreenCover(isPresented: $practicing) {
             PracticeView {
-                page = cards.count - 1
+                page = cards.firstIndex(of: .studentID) ?? cards.count - 1
                 practicing = false
             }
         }
@@ -73,9 +74,11 @@ struct TourView: View {
         case .welcome: WelcomeCard()
         case .places: PlacesCard()
         case .marking: MarkingCard()
+        case .plan: PlanCard()
         case .turningIn: TurningInCard()
         case .grades: GradesCard()
         case .settings: SettingsCard()
+        case .studentID: StudentIDTourCard()
         case .neoPlan: NeoPlanCard(connected: $connected)
         }
     }
@@ -213,7 +216,7 @@ private struct WelcomeCard: View {
 
 private struct PlacesCard: View {
     private let tabs: [(String, String, String)] = [
-        ("checklist", "To Do", "Everything due, by class. Start here."),
+        ("checklist", "To Do", "Everything due, by class, or Plan: your own order. Start here."),
         ("chart.bar", "Grades", "Every class's letter, new scores, what-if."),
         ("tray", "Inbox", "Messages from teachers, new materials and grades."),
         ("square.grid.2x2", "Classes", "Your classes on a shelf: materials, files, search."),
@@ -453,8 +456,10 @@ private struct SettingsCard: View {
         } details: {
             Point(symbol: "bell.badge", title: "Notifications",
                   detail: "2 hours before work that isn't submitted, the night before a test, new grades and messages. Pick which in Settings → Notifications.")
-            Point(symbol: "checklist", title: "To Do view",
-                  detail: "Week (by class, under the week strip) or Urgent first (one list: late, today, this week, later).")
+            Point(symbol: "checklist", title: "To Do",
+                  detail: "View: Week (by class, under the week strip) or Urgent first. School day: the times behind Before and After school. Show in the Calendar app: your work in a Dewey calendar.")
+            Point(symbol: "person.text.rectangle", title: "Student ID",
+                  detail: "Your number for the barcode on Classes. Also a widget, a Control Center button and Siri.")
             Point(symbol: "books.vertical", title: "Your classes",
                   detail: "Press and hold a book on the Classes shelf to take it off (study hall, advisory). Press and hold a class heading on To Do to change its call number.")
         }
@@ -465,6 +470,87 @@ private struct SettingsCard: View {
             case .denied: allowed = false
             default: allowed = nil
             }
+        }
+    }
+}
+
+// MARK: - Plan and your own tasks
+
+private struct PlanCard: View {
+    var body: some View {
+        TourCard(title: "Plan and your own tasks",
+                 lede: "Tap Plan beside To Do's title to put today in your own order.") {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(["Ch. 4 problems", "Reading notes", "Lab write-up"].enumerated()), id: \.offset) { i, t in
+                    if i > 0 { Divider().overlay(Theme.divider) }
+                    HStack(spacing: Theme.Space.m) {
+                        Text("\(i + 1)").font(Theme.callNumber.monospacedDigit())
+                            .foregroundStyle(i == 0 ? Theme.accent : Theme.secondary)
+                            .frame(minWidth: 18)
+                        Text(t).font(Theme.body)
+                        Spacer()
+                        Image(systemName: "line.3.horizontal")
+                            .foregroundStyle(Theme.tertiary)
+                    }
+                    .padding(.vertical, 10)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .accessibilityHidden(true)
+        } details: {
+            Point(symbol: "list.number", title: "To do, Later, Done",
+                  detail: "To do is today, numbered. Later is another day. Done fills up as you finish. New work goes where its due date puts it.")
+            Point(symbol: "hand.draw", title: "Drag by the dots",
+                  detail: "At once, no holding, even into Later or Done. Hold near the top or bottom of the screen to keep going. Swipe left for Later, right for Done.")
+            Point(symbol: "chevron.down", title: "Fold Later and Done",
+                  detail: "Tap the heading. Work you finish in Plan stays in its row until you leave Plan.")
+            Point(symbol: "plus", title: "Tasks of your own",
+                  detail: "Tap + and type it in words: \u{201C}chem lab fri after school\u{201D} fills in the day, time and class. Tap your task later to change it.")
+            Point(symbol: "calendar", title: "The month",
+                  detail: "On List, pull the week strip down. Swipe for other months; tap a day to see it and the next.")
+        }
+    }
+}
+
+// MARK: - Student ID (after the practice: the real account)
+
+private struct StudentIDTourCard: View {
+    @State private var number = StudentID.number
+    @State private var adding = false
+
+    var body: some View {
+        TourCard(title: "Your student ID",
+                 lede: "Keep your ID's barcode on your phone, for the library and attendance.") {
+            Image(systemName: "barcode")
+                .resizable().scaledToFit()
+                .frame(width: 96, height: 72)
+                .foregroundStyle(Theme.text)
+                .frame(height: 120)
+                .accessibilityHidden(true)
+        } details: {
+            if let number {
+                Label("Added: \(number)", systemImage: "checkmark.circle.fill")
+                    .font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.good)
+            } else {
+                Button { adding = true } label: {
+                    Label("Add my student ID", systemImage: "plus")
+                        .font(Theme.subhead.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 40)
+                }
+                .buttonStyle(.bordered)
+                .buttonBorderShape(.capsule)
+            }
+            Point(symbol: "graduationcap", title: "Fill in from Schoology, or scan your card",
+                  detail: "It stays on this phone. Dewey never sends it anywhere.")
+            Point(symbol: "square.grid.2x2", title: "Where it shows",
+                  detail: "The card button on Classes, the Student ID widget, a Control Center button, and Siri: \u{201C}Show my student ID in Dewey.\u{201D}")
+            if number == nil {
+                Text("Not now? Tap Next. It's in Settings → Student ID.")
+                    .font(Theme.footnote).foregroundStyle(Theme.secondary)
+            }
+        }
+        .sheet(isPresented: $adding, onDismiss: { number = StudentID.number }) {
+            NavigationStack { StudentIDSetup(onSaved: { adding = false }) }
         }
     }
 }

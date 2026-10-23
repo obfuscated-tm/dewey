@@ -1,5 +1,11 @@
 # Tutorial update: plan and brief
 
+> **Built 2026-10-22.** Decisions: a mid-length script (37 steps; tap-a-day,
+> fold, edit-your-task and the Inbox read note are lines in other steps or on
+> the Plan card), Student ID after the practice on the real account, Calendar
+> offered (Turn on / Not now), To Do view mentioned. SCREENS.md (Tour) now
+> describes what shipped; this file is the record of how it was planned.
+
 A brief for updating Dewey's iOS tutorial (the welcome cards and the practice
 week) to cover the features added on branch `plan-tasks-id`, and to have the
 student **set the settings that matter most while they're in the tutorial**,

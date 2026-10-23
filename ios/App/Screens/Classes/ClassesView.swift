@@ -17,6 +17,7 @@ struct ClassesView: View {
                                 .frame(width: 44, height: 44)
                         }
                         .accessibilityLabel("Student ID")
+                        .coachTarget("classes.id")
                         ScreenOptions(page: .classes)
                     }
                     .padding(.top, Theme.Space.s)

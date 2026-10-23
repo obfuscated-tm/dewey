@@ -22,6 +22,10 @@ final class Coach {
         var hint: Hint = .tap
         /// A button in the bubble moves on (and the hole takes no taps).
         var button: String?
+        /// What the button does before moving on (asking iOS for a permission, saving a choice).
+        var action: (@MainActor () async -> Void)?
+        /// A second, plain button that moves on without `action` ("Not now").
+        var other: String?
         /// Moves on by itself once this is true.
         var done: (@MainActor (AppModel) -> Bool)?
         /// The hole spans the screen's width: a list row, whose content slides
@@ -46,6 +50,9 @@ final class Coach {
     /// Where each `.coachTarget` is, in screen points. `tab.N` is the Nth tab
     /// of the practice's tab bar (found in UIKit; SwiftUI doesn't expose it).
     var frames: [String: CGRect] = [:]
+    /// Which view set each frame: a list that rebuilds its rows (Plan, after a drop) shows the new
+    /// row before the old one goes, and the old one's leaving mustn't clear the new one's frame.
+    @ObservationIgnored var owners: [String: UUID] = [:]
     /// Things a screen says happened that the model doesn't hold (`note`), e.g. a what-if score typed.
     private(set) var flags: Set<String> = []
     /// The overlay's own controls (bubble, Skip), which take taps.
@@ -181,8 +188,19 @@ final class Coach {
         advance()
     }
 
-    /// The bubble's button.
-    func next() { if step?.button != nil { move() } }
+    /// The bubble's button: its action first (a permission prompt waits for the answer).
+    func next() {
+        guard let s = step, s.button != nil else { return }
+        guard let action = s.action else { move(); return }
+        let at = index
+        Task {
+            await action()
+            if running && index == at { move() }
+        }
+    }
+
+    /// The bubble's second button: on without the action.
+    func pass() { if step?.other != nil { move() } }
 
     private func advance() {
         cheering = true
@@ -207,6 +225,7 @@ final class Coach {
         window?.isHidden = true
         window = nil
         frames = [:]
+        owners = [:]
         controls = [:]
         flags = []
         lost = false
@@ -246,12 +265,20 @@ extension View {
 private struct CoachTarget: ViewModifier {
     @Environment(AppModel.self) private var model
     let key: String
+    @State private var id = UUID()
 
     func body(content: Content) -> some View {
         if model.practice {
             content
-                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { Coach.shared.frames[key] = $0 }
-                .onDisappear { Coach.shared.frames[key] = nil }
+                .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
+                    Coach.shared.frames[key] = $0
+                    Coach.shared.owners[key] = id
+                }
+                .onDisappear {
+                    guard Coach.shared.owners[key] == id else { return }
+                    Coach.shared.frames[key] = nil
+                    Coach.shared.owners[key] = nil
+                }
         } else {
             content
         }
@@ -395,11 +422,19 @@ private struct Bubble: View {
                         .buttonBorderShape(.capsule)
                         .foregroundStyle(Theme.onAccent)
                 } else if let b = step.button, !cheering {
-                    Button(b) { Coach.shared.next() }
-                        .font(Theme.subhead.weight(.semibold))
-                        .buttonStyle(.borderedProminent)
-                        .buttonBorderShape(.capsule)
-                        .foregroundStyle(Theme.onAccent)
+                    HStack(spacing: Theme.Space.s) {
+                        Button(b) { Coach.shared.next() }
+                            .font(Theme.subhead.weight(.semibold))
+                            .buttonStyle(.borderedProminent)
+                            .buttonBorderShape(.capsule)
+                            .foregroundStyle(Theme.onAccent)
+                        if let o = step.other {
+                            Button(o) { Coach.shared.pass() }
+                                .font(Theme.subhead.weight(.semibold))
+                                .buttonStyle(.bordered)
+                                .buttonBorderShape(.capsule)
+                        }
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)

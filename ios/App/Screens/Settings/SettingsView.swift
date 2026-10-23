@@ -239,6 +239,7 @@ private struct NotificationSettings: View {
         }
         .navigationTitle("Notifications")
         .navigationBarTitleDisplayMode(.inline)
+        .coachTarget("settings.page.notifications")
     }
 }
 
@@ -275,6 +276,7 @@ private struct ToDoSettings: View {
             }
             Section {
                 DatePicker("School starts", selection: minutes($schoolStart), displayedComponents: .hourAndMinute)
+                    .coachTarget("settings.schoolDay")
                 DatePicker("School ends", selection: minutes($schoolEnd), displayedComponents: .hourAndMinute)
             } header: { Text("School day") } footer: {
                 Text("A new task's \u{201C}Before school\u{201D} and \u{201C}After school\u{201D} use these.")
@@ -305,6 +307,7 @@ private struct ToDoSettings: View {
                         calendarOn = false
                     }
                 }))
+                .coachTarget("settings.calendar")
             } header: { Text("iPhone Calendar") } footer: {
                 Text(calendarNote ?? (calendarOn
                      ? "Your open work, tests and own tasks are in a calendar called Dewey. Done work drops off. Turning this off removes that calendar."
@@ -313,6 +316,7 @@ private struct ToDoSettings: View {
         }
         .navigationTitle("To Do")
         .navigationBarTitleDisplayMode(.inline)
+        .coachTarget("settings.page.todo")
     }
 }
 

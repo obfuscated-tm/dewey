@@ -117,6 +117,7 @@ struct ToDoView: View {
                     SwiftUI.Group {
                         if showMonth {
                             MonthGrid(items: open, now: now, selected: $filter, month: $shownMonth, forward: $monthForward)
+                                .coachTarget("todo.month")
                         } else {
                             WeekStrip(items: open, now: now, selected: $filter)
                         }
@@ -124,6 +125,8 @@ struct ToDoView: View {
                     .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.94, anchor: .top)),
                                             removal: .opacity))
                 }
+                // The strip and its chevron: the tour's month step points here.
+                .coachTarget("todo.calendar")
             }
             if let f = filter {
                 HStack(spacing: Theme.Space.s) {
@@ -175,6 +178,7 @@ struct ToDoView: View {
             .lineLimit(1)
             .accessibilityLabel(other == .plan ? "Switch to Plan" : "Switch to To Do list")
             .accessibilityHint(other == .plan ? "Your own order for the day" : "Everything due")
+            .coachTarget("todo.modeChip")
         }
     }
 
@@ -188,6 +192,7 @@ struct ToDoView: View {
                 .background(Theme.accent, in: Circle())
                 .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
         }
+        .coachTarget("todo.add")
         .padding(.trailing, Theme.Space.l)
         .padding(.bottom, Theme.Space.s)
         .accessibilityLabel("New task")

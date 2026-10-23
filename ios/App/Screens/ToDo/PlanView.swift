@@ -145,6 +145,7 @@ struct PlanContent: View {
         .overlay(alignment: .bottom) { (b == .todo ? Theme.catalogRule : Theme.catalogLine).frame(height: 1.5) }
         .contentShape(Rectangle())
         .onTapGesture { if folds { toggle(b) } }
+        .coachTarget("plan.heading.\(b.rawValue)")
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames[.header(b)] = $0 }
         .listRowInsets(EdgeInsets(top: first ? Theme.Space.m : Theme.Space.xl, leading: Theme.Space.l, bottom: 0, trailing: Theme.Space.l))
         .listRowBackground(Theme.card)
@@ -273,6 +274,7 @@ struct PlanContent: View {
                     .foregroundStyle(number == 1 ? Theme.accent : Theme.secondary)
                 Grip(active: lifted)
                     .gesture(gripDrag(it.schoologyId, rows: rows, hidden: hidden))
+                    .coachTarget("plan.grip.\(it.schoologyId)")
             }
             .frame(minWidth: 22)
             .padding(.top, Theme.Space.xs + 1)
@@ -281,6 +283,7 @@ struct PlanContent: View {
                     onSet: { hold(it, b); onSet(it, $0) }, onSubmit: { hold(it, b); onSubmit(it) }, onOpen: { onOpen(it) })
                 .opacity(b == .done || model.planFinished(it) ? 0.6 : 1)
         }
+        .coachTarget("plan.row.\(it.schoologyId)")
         .accessibilityElement(children: .contain)
         .accessibilityLabel(number.map { "Number \($0)" } ?? b.title)
         .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: { frames[.item(it.schoologyId)] = $0 }

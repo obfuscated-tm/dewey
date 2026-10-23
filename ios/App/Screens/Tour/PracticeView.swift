@@ -37,6 +37,8 @@ struct PracticeView: View {
         Practice.end()
         WidgetBridge.publish(real)
         Reminders.shared.schedule(items: real.todoItems(), courses: real.courses)
+        // Turned on in the tour's Settings steps: fill the Dewey calendar from the real week.
+        CalendarSync.shared.schedule(real)
         onDone()
     }
 }
@@ -72,13 +74,50 @@ enum TourScript {
         .init(target: "todo.check.\(Practice.quiz)",
               text: "Tests are never turned in. Tap the circle once you've studied, and the night-before reminder stops.",
               done: { $0.item(Practice.quiz)?.studied == true }, tab: 0),
-        .init(text: "That's To Do! Circle = done for you. Submit or Turn in = handed in. Press and hold any row to pick its status. Now, grades.",
+        .init(text: "That's your list. Circle = done for you. Submit or Turn in = handed in. Press and hold any row to pick its status.",
               hint: .none, button: "Next"),
+        .init(target: "todo.calendar",
+              text: "Your next 7 days, with a dot for each thing due. Pull the days down to see the whole month.",
+              done: { _ in seen("todo.month") }, tab: 0),
+        .init(target: "todo.calendar",
+              text: "Swipe sideways for other months. Tap a day to see it and the next. Push the month back up when you're done.",
+              hint: .none,
+              done: { _ in !seen("todo.month") }, tab: 0, rewind: 1),
+    ]
+
+    /// Plan: your own order for the day, and tasks of your own.
+    static let plan: [Coach.Step] = [
+        .init(target: "todo.modeChip",
+              text: "To Do lists everything. Plan is your own order for today. Tap Plan.",
+              done: { _ in seen("plan.heading.later") }, tab: 0),
+        .init(text: "Plan has three parts. To do is numbered: today's work, in the order you'll do it. Later is for another day. Done fills up as you finish. New work goes where its due date puts it.",
+              hint: .none, button: "Next"),
+        .init(target: "plan.grip.\(Practice.problems)",
+              text: "Drag a row by its dots, at once, no holding. Drag the Chem problems up to number 1.",
+              done: { $0.planLists().todo.first?.schoologyId == Practice.problems }, tab: 0, rewind: 2),
+        .init(target: "plan.row.\(Practice.reading)",
+              text: "Not for today? Swipe it left for Later, or drag it below the Later heading. Hold near the top or bottom of the screen to keep it moving.",
+              hint: .swipeLeft,
+              done: { $0.planLists().later.contains { $0.schoologyId == Practice.reading } }, wide: true, tab: 0, rewind: 3),
+        .init(target: "todo.add",
+              text: "Something that isn't on Schoology? Tap + to add a task of your own.",
+              done: { _ in seen("quick.field") }, tab: 0),
+        .init(target: "quick.field",
+              text: "Type it the way you'd say it. Try: chem lab fri after school",
+              hint: .none,
+              done: { _ in Coach.shared.flags.contains("quickParsed") }, tab: 0, rewind: 1),
+        .init(target: "quick.sheet",
+              text: "Dewey filled in the day, time and class. The buttons change them, and the row under them is one tap for the usual ones. Tap ↑ to add it.",
+              hint: .none,
+              done: { m in m.todoItems().contains { $0.mine } }, tab: 0, rewind: 2),
+        .init(target: "todo.modeChip",
+              text: "Your task is on your list now. Tap it any time to change it or add notes. Tap To Do to go back to everything.",
+              done: { _ in seen("todo.calendar") }, tab: 0),
     ]
 
     static let grades: [Coach.Step] = [
         .init(target: "tab.1",
-              text: "Tap Grades to see every class's letter.",
+              text: "Now grades. Tap Grades to see every class's letter.",
               done: { _ in seen("grades.class.\(Practice.chem)") }, tab: 1),
         .init(target: "grades.class.\(Practice.chem)",
               text: "Every class, and how far it is from an A. Tap Chemistry to see every grade in it.",
@@ -105,8 +144,12 @@ enum TourScript {
         .init(target: "shelf.flat.any",
               text: "It lies flat under the shelf now. Press and hold it again to put it back.",
               hint: .none, button: "Next", tab: 3),
+        .init(target: "classes.id",
+              text: "Your student ID's barcode lives here, for the library and attendance. You'll add your number right after the tour.",
+              hint: .none, button: "Next", tab: 3),
     ]
 
+    /// Settings: the ones worth setting now, set for real (they're shared with the real app).
     static let settings: [Coach.Step] = [
         .init(target: "gear.classes",
               text: "Last stop: the gear. It opens Settings for the tab you're on. Tap it.",
@@ -120,13 +163,33 @@ enum TourScript {
               text: "Appearance: System, Light or Dark. Change it any time.",
               hint: .none, button: "Next", wide: true, tab: 3, rewind: 2),
         .init(target: "settings.notifications",
-              text: "Notifications: reminders before work is due, the night before a test, and new grades. Pick which ones here.",
-              hint: .none, button: "Next", wide: true, tab: 3, rewind: 3),
-        .init(text: "That's the tour! Your real week is waiting. You can take this again from Settings → Help.",
+              text: "Reminders are what keep work from slipping. Let's set them up for real. Tap Notifications.",
+              done: { _ in seen("settings.page.notifications") }, wide: true, tab: 3, rewind: 3),
+        .init(target: "settings.page.notifications",
+              text: "Switch on the ones you want. Your iPhone will ask once if Dewey may send notifications: tap Allow, or none of them arrive.",
+              hint: .none, button: "Allow",
+              action: { _ = await Reminders.shared.requestPermission() },
+              other: "Not now", free: true, tab: 3, rewind: 4),
+        .init(target: "settings.sheet",
+              text: "Now tap the back arrow, then To Do.",
+              hint: .none,
+              done: { _ in seen("settings.page.todo") },
+              free: true, tab: 3, rewind: 5),
+        .init(target: "settings.schoolDay",
+              text: "When does your school day start and end? Before school and After school in new tasks use these times. Fix them if they're off. (View, at the top, picks how List looks.)",
+              hint: .none, button: "Looks right", free: true, tab: 3, rewind: 6),
+        .init(target: "settings.calendar",
+              text: "Want your work in the iPhone Calendar app too? It goes in its own Dewey calendar, which you can hide any time.",
+              hint: .none, button: "Turn on",
+              action: {
+                  if await CalendarSync.shared.requestAccess() { UserDefaults.standard.set(true, forKey: CalendarSync.enabledKey) }
+              },
+              other: "Not now", wide: true, tab: 3, rewind: 7),
+        .init(text: "That's the practice! One last thing on your real account: your student ID. You can take this tour again from Settings → Help.",
               hint: .none, button: "Finish"),
     ]
 
-    static var all: [Coach.Step] { todo + grades + classes + settings }
+    static var all: [Coach.Step] { todo + plan + grades + classes + settings }
 }
 
 /// The Schoology sheet during practice: a pretend dropbox, so the real page

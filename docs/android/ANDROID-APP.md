@@ -144,4 +144,5 @@ Still to check:
 | Widgets, background refresh, reminders, countdown | done, checked on emulator |
 | Design refresh (Dew palette, settings pages, catalog cards, shelf, status guide) | done, seen in the tour on the emulator |
 | Guided tour, practice mode, tour cards | done, run start to finish on emulator (signed out) |
+| Tour update from iOS (2026-10-22): month, Plan and new-task steps, settings set during the tour (notifications, school day, Calendar), Student ID card after practice, Plan reference card | **to port** (see docs/ios/SCREENS.md, Tour; needs Plan and quick add on Android first) |
 | Unit tests | 17 pass (Dew contrast, call numbers, logic) |

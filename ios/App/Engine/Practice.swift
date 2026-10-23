@@ -16,6 +16,8 @@ enum Practice {
         submitted = []
         // A practice the app was quit in the middle of left its settings behind.
         clearSettings()
+        restoreView()
+        saveView()
         active = true
         Cache.clearPractice()
     }
@@ -26,6 +28,41 @@ enum Practice {
         submitted = []
         Cache.clearPractice()
         clearSettings()
+        restoreView()
+    }
+
+    // ── How To Do looks ──────────────────────────────────────────────────
+    // Shared with the real app (AppStorage). The steps need List by class with the
+    // week strip and Plan as it starts, so practice sets them and puts the student's
+    // own back when it ends (or, after a practice the app was quit in, when the next begins).
+
+    private static let savedViewKey = "practiceSavedView"
+    private static let viewKeys: [String: Any] = [
+        ToDoMode.key: ToDoMode.list.rawValue, ToDoLayout.key: ToDoLayout.week.rawValue,
+        "todoMonth": false, "planCollapsed": "done", "planHintClosed": true,
+    ]
+
+    private static func saveView() {
+        let d = UserDefaults.standard
+        var saved: [String: Any] = [:]
+        for (k, v) in viewKeys {
+            if let old = d.object(forKey: k) { saved[k] = old }
+            d.set(v, forKey: k)
+        }
+        // Keys that weren't set are saved as missing, so they go back to their defaults.
+        saved["_keys"] = Array(viewKeys.keys)
+        d.set(saved, forKey: savedViewKey)
+    }
+
+    static func restoreView() {
+        let d = UserDefaults.standard
+        guard let saved = d.dictionary(forKey: savedViewKey) else { return }
+        for k in saved["_keys"] as? [String] ?? [] {
+            // One the student changed during practice (Settings › To Do › View) is theirs now.
+            guard (d.object(forKey: k) as? NSObject) == (viewKeys[k] as? NSObject) else { continue }
+            if let v = saved[k] { d.set(v, forKey: k) } else { d.removeObject(forKey: k) }
+        }
+        d.removeObject(forKey: savedViewKey)
     }
 
     @MainActor
@@ -40,12 +77,14 @@ enum Practice {
         d.set(hidden.sorted().joined(separator: ","), forKey: GradesLook.hiddenKey)
     }
 
-    // ── The pretend week: three classes, four things due ─────────────────
+    // ── The pretend week: three classes, seven things due ────────────────
 
     static let courses = [Demo.course("AP Bio"), Demo.course("Chem"), Demo.course("English")]
 
     /// The ids the tour's steps point at.
     static let lab = "9206", worksheet = "9502", quiz = "9503", flameTest = "9504"
+    /// Plan's steps: two things due tomorrow (reorder one, send one to Later).
+    static let reading = "9702", problems = "9701"
     static let chem = Demo.course("Chem").id, english = Demo.course("English").id
 
     static let events: [Demo.Event] = [
@@ -53,6 +92,9 @@ enum Practice {
         Demo.Event(id: worksheet, title: "Stoichiometry Worksheet", course: Demo.course("Chem"), day: -1, hour: 8, minute: 30),
         Demo.Event(id: quiz, title: "Unit 2 Quiz", course: Demo.course("Chem"), day: 3, hour: 9, minute: 40),
         Demo.Event(id: "9304", title: "Essay Draft: The Crucible", course: Demo.course("English"), day: 2, hour: 23, status: "submitted"),
+        Demo.Event(id: reading, title: "Reading Notes 3.1", course: Demo.course("AP Bio"), day: 1, hour: 8, minute: 0),
+        Demo.Event(id: problems, title: "Ch. 4 Practice Problems", course: Demo.course("Chem"), day: 1, hour: 23),
+        Demo.Event(id: "9703", title: "Vocab Unit 5", course: Demo.course("English"), day: 5, hour: 23),
     ]
 
     /// The op's `data`, or nil to let engine.js run it (pure ops only).

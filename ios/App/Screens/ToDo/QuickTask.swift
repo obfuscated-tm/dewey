@@ -45,6 +45,11 @@ struct QuickTask: View {
                     .submitLabel(.done)
                     .onSubmit { add(parsed, due: due, section: s, kind: k) }
                     .accessibilityLabel("Task")
+                    .coachTarget("quick.field")
+                    // The tour waits for a task typed with its day, time and class.
+                    .onChange(of: parsed.day != nil && parsed.time != nil && parsed.sectionId != nil) { _, all in
+                        if all && model.practice { Coach.shared.note("quickParsed") }
+                    }
                 Button { add(parsed, due: due, section: s, kind: k) } label: {
                     Image(systemName: "arrow.up.circle.fill")
                         .font(Theme.title)
@@ -112,6 +117,7 @@ struct QuickTask: View {
         }
         .padding(Theme.Space.l)
         .padding(.top, Theme.Space.s)
+        .coachTarget("quick.sheet")
         .frame(maxHeight: .infinity, alignment: .top)
         .background(Theme.background)
         .presentationDetents([.height(158)])

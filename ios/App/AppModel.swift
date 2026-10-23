@@ -68,6 +68,8 @@ final class AppModel {
             session = .signedIn
             return
         }
+        // To Do's look, if the app was quit in the middle of the tour's practice.
+        if !Practice.active { Practice.restoreView() }
         // Demo rows live only in memory (the saved courses don't), so seed on every launch.
         if Demo.on, (try? context.fetchCount(FetchDescriptor<ItemState>())) == 0 { Demo.seed(self) }
         if let id = Demo.openAssignment { deepLinkAssignment = id }

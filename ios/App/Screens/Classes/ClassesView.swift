@@ -35,7 +35,7 @@ struct ClassesView: View {
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: query) { _, q in if !q.isEmpty { index.build(model) } }
             .navigationDestination(for: Course.self) { MaterialsView(sectionId: $0.sectionId, folderId: nil, title: $0.shortTitle, trail: []) }
-            .navigationDestination(for: AssignmentRoute.self) { AssignmentView(id: $0.id) }
+            .classDestinations()
             .refreshable { try? await model.loadCourses() }
         }
     }
@@ -109,6 +109,23 @@ struct SearchField: View {
     }
 }
 
+/// What a class page pushes. Every link under a class is a value (none is a view
+/// link), so when a folder redraws under an open assignment (its status or grade
+/// came in) SwiftUI doesn't pop the assignment and push it again, over and over.
+struct FolderRoute: Hashable { let sectionId: String; let folderId: String?; let title: String; let trail: [String] }
+struct MaterialPageRoute: Hashable { let row: MaterialRow }
+struct ClassGradesRoute: Hashable { let course: Course }
+
+extension View {
+    /// The screens a class page can open; on every stack that shows MaterialsView.
+    func classDestinations() -> some View {
+        navigationDestination(for: FolderRoute.self) { MaterialsView(sectionId: $0.sectionId, folderId: $0.folderId, title: $0.title, trail: $0.trail) }
+            .navigationDestination(for: MaterialPageRoute.self) { MaterialView(row: $0.row) }
+            .navigationDestination(for: ClassGradesRoute.self) { CourseGradesView(course: $0.course) }
+            .navigationDestination(for: AssignmentRoute.self) { AssignmentView(id: $0.id, sectionId: $0.sectionId) }
+    }
+}
+
 /// A row that opens a material where it belongs (3b's table).
 struct MaterialLink: View {
     let sectionId: String
@@ -130,15 +147,15 @@ struct MaterialLink: View {
     private var content: some View {
         switch row.kind {
         case "folder":
-            NavigationLink { MaterialsView(sectionId: sectionId, folderId: row.id, title: row.title, trail: trail) } label: { label("folder", "›") }
+            NavigationLink(value: FolderRoute(sectionId: sectionId, folderId: row.id, title: row.title, trail: trail)) { label("folder", "›") }
         case "assignment":
             if let id = row.id {
-                NavigationLink(value: AssignmentRoute(id: id)) { label("doc.text", "›") }
+                NavigationLink(value: AssignmentRoute(id: id, sectionId: sectionId)) { label("doc.text", "›") }
                     .simultaneousGesture(TapGesture().onEnded { RecentMaterials.add(sectionId, row) })
             } else { webButton }
         case "page", "other":
             if let url = absURL, Self.isMaterialPage(url) {
-                NavigationLink { MaterialView(row: row) } label: { label(row.kind == "page" ? "doc.plaintext" : "link", "›") }
+                NavigationLink(value: MaterialPageRoute(row: row)) { label(row.kind == "page" ? "doc.plaintext" : "link", "›") }
                     .simultaneousGesture(TapGesture().onEnded { RecentMaterials.add(sectionId, row) })
             } else { webButton }
         case "document":

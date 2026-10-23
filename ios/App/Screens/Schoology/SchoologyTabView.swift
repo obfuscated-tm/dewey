@@ -38,6 +38,7 @@ struct SchoologyTabView: View {
                 case .materials(let c): MaterialsView(sectionId: c.sectionId, folderId: nil, title: c.shortTitle)
                 }
             }
+            .classDestinations()
         }
     }
 

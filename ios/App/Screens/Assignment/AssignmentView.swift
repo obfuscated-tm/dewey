@@ -6,6 +6,7 @@ struct AssignmentView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
     let id: String
+    var sectionId: String? = nil
     @State private var a: Assignment?
     @State private var status: SubmissionStatus?
     @State private var checkedAt: Date?
@@ -18,6 +19,10 @@ struct AssignmentView: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var it: ItemState? { _ = model.revision; return model.item(id) }
+    /// The class: the saved row's, else the link's, else whichever loaded gradebook has this item.
+    private var section: String? {
+        it?.sectionId ?? sectionId ?? model.grades.first { $0.value.items.contains { $0.id == id } }?.key
+    }
     private var pageURL: URL { URL(string: "\(Engine.origin.absoluteString)/assignment/\(id)")! }
 
     var body: some View {
@@ -69,7 +74,7 @@ struct AssignmentView: View {
         .safeAreaInset(edge: .bottom) { bottomBar }
         .sheet(item: $sheet) { SchoologySheet(target: $0) }
         .sheet(item: $file) { FileViewer(target: $0) }
-        .sheet(isPresented: $whatIf) { WhatIfSheet(itemId: id, sectionId: it?.sectionId) }
+        .sheet(isPresented: $whatIf) { WhatIfSheet(itemId: id, sectionId: section) }
         .task { await load() }
         .onChange(of: model.revision) { _, _ in
             if let s = it?.statusState { status = SubmissionStatus(state: s, late: it?.statusLate); checkedAt = it?.statusCheckedAt }
@@ -106,7 +111,7 @@ struct AssignmentView: View {
         } catch let e as EngineError {
             error = e
         } catch {}
-        if let s = it?.sectionId { await model.loadGrades(s) }
+        if let s = section { await model.loadGrades(s) }
     }
 
     // ── Header ───────────────────────────────────────────────────────────
@@ -114,7 +119,7 @@ struct AssignmentView: View {
     private var titleBlock: some View {
         VStack(alignment: .leading, spacing: 6) {
             // A library catalog line: class · period · term · category, in the class colour.
-            if let c = model.course(it?.sectionId) {
+            if let c = model.course(section) {
                 Text(catalogLine(c)).font(Theme.caption.weight(.semibold)).tracking(0.6)
                     .foregroundStyle(model.classColor(c.sectionId)).maxLines(2)
             }
@@ -140,7 +145,7 @@ struct AssignmentView: View {
     }
 
     private var gradeItem: CourseGrade.Item? {
-        guard let s = it?.sectionId else { return nil }
+        guard let s = section else { return nil }
         return model.grades[s]?.items.first { $0.id == id }
     }
 
@@ -226,8 +231,8 @@ struct AssignmentView: View {
         .card()
         // The class colour across the top edge, like the band on a library card.
         .overlay(alignment: .top) {
-            if it?.sectionId != nil {
-                model.classColor(it?.sectionId).frame(height: 5)
+            if section != nil {
+                model.classColor(section).frame(height: 5)
                     .clipShape(UnevenRoundedRectangle(topLeadingRadius: Theme.Radius.card, topTrailingRadius: Theme.Radius.card, style: .continuous))
             }
         }
@@ -422,7 +427,7 @@ struct AssignmentView: View {
     private var gradeCard: some View {
         if let g = gradeItem, g.earned != nil || !g.comment.isEmpty {
             NavigationLink {
-                GradeDetailView(sectionId: it?.sectionId ?? "", itemId: id)
+                GradeDetailView(sectionId: section ?? "", itemId: id)
             } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {

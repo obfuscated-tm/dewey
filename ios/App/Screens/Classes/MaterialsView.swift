@@ -127,7 +127,7 @@ struct MaterialsView: View {
             Text("Materials").font(Theme.footnote.weight(.semibold))
                 .padding(.horizontal, 12).frame(minHeight: 30)
                 .foregroundStyle(Theme.onAccent).background(Theme.accent, in: Capsule())
-            NavigationLink { CourseGradesView(course: c) } label: {
+            NavigationLink(value: ClassGradesRoute(course: c)) {
                 Text("Grades").font(Theme.footnote.weight(.semibold))
                     .padding(.horizontal, 12).frame(minHeight: 30)
                     .foregroundStyle(Theme.accent).background(Theme.accentSoft, in: Capsule())
@@ -219,7 +219,7 @@ struct ClassOpenWork: View {
                 Text("Open work").font(Theme.headline).foregroundStyle(Theme.text).accessibilityAddTraits(.isHeader)
                 VStack(spacing: 0) {
                     ForEach(Array(items.enumerated()), id: \.element.schoologyId) { i, it in
-                        NavigationLink(value: AssignmentRoute(id: it.schoologyId)) { row(it, now) }
+                        NavigationLink(value: AssignmentRoute(id: it.schoologyId, sectionId: sectionId)) { row(it, now) }
                             .buttonStyle(.plain)
                             .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
                     }

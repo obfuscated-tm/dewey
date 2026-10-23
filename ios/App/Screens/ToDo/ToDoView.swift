@@ -458,7 +458,9 @@ struct ToDoView: View {
     }
 }
 
-struct AssignmentRoute: Hashable { let id: String }
+/// `sectionId`: the class, when the link knows it (a class page). An assignment that
+/// isn't on To Do has no saved row to say which class it is in.
+struct AssignmentRoute: Hashable { let id: String; var sectionId: String? = nil }
 
 /// The task editor's sheet: a new task (optionally for a class), or an existing one.
 struct TaskTarget: Identifiable {

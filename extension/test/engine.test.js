@@ -293,3 +293,35 @@ test('account: GET /settings/account → username and student number', async () 
   const out = fakeEngine(new Map([['/settings/account', res('<form class="s-user-login-form"></form>')]]));
   assert.equal((await out.eng.account()).error, 'login');
 });
+
+test('a request that never answers ends as `network` (timeout) and frees its slot', async () => {
+  const timers = [];
+  let n = 0;
+  const eng = createEngine({
+    origin: ORIGIN,
+    now: () => 0,
+    sleep: async () => {},
+    timeoutMs: 1000,
+    setTimeout: (f, ms) => { timers.push({ f, ms }); return timers.length; },
+    clearTimeout: () => {},
+    fetch: async (url, init) => {
+      n++;
+      if (n <= 2) return new Promise((_, reject) => init.signal?.addEventListener('abort', () => reject(new Error('aborted'))));
+      return res('{"ok":1}');
+    },
+    parseKind: () => ({ data: 'fine' }),
+  });
+  // Two stalled requests fill both slots; a third waits behind them.
+  const a = eng.courses();
+  const b = eng.courses();
+  const c = eng.courses();
+  await new Promise((r) => setImmediate(r));
+  assert.equal(timers.length, 2);
+  assert.equal(timers[0].ms, 1000);
+  timers.forEach((t) => t.f());
+  assert.deepEqual(await a, { ok: false, error: 'network', message: 'timeout' });
+  assert.equal((await b).error, 'network');
+  const r = await c;
+  assert.equal(r.ok, true);
+  assert.equal(r.data, 'fine');
+});

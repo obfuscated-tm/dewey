@@ -58,7 +58,7 @@ struct ToDoView: View {
             // Room under the last row for the + button.
             .contentMargins(.bottom, 72, for: .scrollContent)
             .overlay(alignment: .bottomTrailing) { addButton }
-            .refreshable { await model.refreshTodo() }
+            .refreshable { await model.refreshTodo(quick: true) }
             .navigationDestination(for: AssignmentRoute.self) { r in AssignmentView(id: r.id) }
             .navigationDestination(isPresented: $showGuide) { StatusGuideView() }
             .toolbar(.hidden, for: .navigationBar)

@@ -57,7 +57,7 @@ final class Engine: NSObject {
     private(set) var webView: WKWebView?
     private var ready = false
     private var loading = false
-    private var waiters: [CheckedContinuation<Void, Error>] = []
+    private var waiters: [UUID: CheckedContinuation<Void, Error>] = [:]
     private let script: String
 
     /// Called when Schoology's session is gone (a load ended on sign-in, or an op said `login`).
@@ -129,8 +129,8 @@ final class Engine: NSObject {
     }
 
     private func finishWaiters(_ error: Error?) {
-        let w = waiters
-        waiters = []
+        let w = waiters.values
+        waiters = [:]
         for c in w {
             if let error { c.resume(throwing: error) } else { c.resume() }
         }
@@ -139,18 +139,17 @@ final class Engine: NSObject {
     private func waitReady() async throws {
         if ready { return }
         if webView == nil || !loading { start() }
-        try await withThrowingTaskGroup(of: Void.self) { group in
-            group.addTask { @MainActor in
-                try await withCheckedThrowingContinuation { c in
-                    if self.ready { c.resume() } else { self.waiters.append(c) }
-                }
-            }
-            group.addTask {
-                try await Task.sleep(nanoseconds: 30_000_000_000)
-                throw EngineError.notReady
-            }
-            defer { group.cancelAll() }
-            try await group.next()
+        // A page that never finishes loading: give up after 30 s, and let the next call load it again.
+        let id = UUID()
+        let timeout = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 30_000_000_000)
+            guard !Task.isCancelled, let self, let c = self.waiters.removeValue(forKey: id) else { return }
+            self.loading = false
+            c.resume(throwing: EngineError.notReady)
+        }
+        defer { timeout.cancel() }
+        try await withCheckedThrowingContinuation { c in
+            if ready { c.resume() } else { waiters[id] = c }
         }
     }
 

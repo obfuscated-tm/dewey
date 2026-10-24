@@ -56,7 +56,7 @@ final class CalendarSync {
     }
 
     /// Two weeks back to three months ahead.
-    static let back: TimeInterval = 14 * 86400, ahead: TimeInterval = 90 * 86400
+    nonisolated static let back: TimeInterval = 14 * 86400, ahead: TimeInterval = 90 * 86400
 
     /// The event for one item, or nil when it stays out (no date, finished, out of range).
     /// A test is all day on its day (Schoology's time is often when it closes); so is work

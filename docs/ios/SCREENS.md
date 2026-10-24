@@ -5,6 +5,7 @@ What every screen shows, where its data comes from, and what each tap does. Buil
 ## Mockups
 
 - Layout direction (2026-10-18, Owen's picks from [design/Layouts.html](design/Layouts.html)): G1 report-card row, C1 shelf, A1 checkout card, T1 drop and ripple, Dew as the default theme. Where the older per-screen mockups differ, Layouts.html and this file win.
+- iPhone Duo, open (regular width): [design/Duo.html](design/Duo.html), a proposal (2026-10-24, not built). Sidebar instead of tabs; To Do, Grades and Inbox show the list and the open item side by side. Folded, the app is unchanged.
 - Static copies in this repo: [design/](design/). One file per screen (`Main.dc.html` = To Do, etc.), 390×844 pt. Open one in a browser to see it; the `{{accent}}` placeholders are `#1D5EA8`. `design/canvas.json` holds the notes that sat under each screen (the same text as below).
 - Live canvas: https://claude.ai/artifact/GSX8QmamsY6nkjpdjckhue (private to Owen; read it with the Artifact tool if you have access, else use the copies).
 - The mockups are the **look**; this file is the **behaviour**. Where they differ, this file wins. Copy in `[brackets]` in a mockup is placeholder text.

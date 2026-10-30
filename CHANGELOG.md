@@ -1,6 +1,6 @@
 # Changelog
 
-The extension and the MCP server are versioned separately (see [Versioning and releases](README.md#versioning-and-releases)). Newest first.
+The extension and the MCP server are versioned separately (see [Versioning and releases](docs/DEVELOPING.md#versioning-and-releases)). Newest first.
 
 Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git history. Apart from MCP 1.0.0 (tag `mcp-v1.0.0`), those versions were never tagged, so they're listed by date.
 

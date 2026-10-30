@@ -20,9 +20,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -47,7 +47,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -281,22 +280,20 @@ fun CoachOverlay(model: AppModel) {
     }
 }
 
-/** Dewey and what he says. He bobs while he waits and hops when a step is done. */
+/** Dewey and what he says. He stays still; the text changes when a step is done. */
 @Composable
 private fun Bubble(step: Coach.Step, cheering: Boolean, lost: Boolean, still: Boolean) {
-    val bob = if (still) 0f else rememberInfiniteTransition(label = "bob").animateFloat(-3f, 3f, infiniteRepeatable(tween(1100), RepeatMode.Reverse), label = "y").value
-    val hop by animateFloatAsState(if (cheering) 1.15f else 1f, if (still) tween(0) else spring(dampingRatio = 0.4f), label = "hop")
     Row(
         Modifier.widthIn(max = 520.dp).fillMaxWidth().shadow(12.dp, RoundedCornerShape(Theme.Radius.card)).clip(RoundedCornerShape(Theme.Radius.card))
             .background(C.card).blockTouches().padding(Theme.Space.m),
         verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(Theme.Space.m),
     ) {
-        Image(painterResource(R.drawable.dewey_hello), null, Modifier.size(52.dp).offset(y = bob.dp).scale(hop))
+        Image(painterResource(R.drawable.dewey_hello), null, Modifier.size(52.dp))
         Column(Modifier.weight(1f).semantics { liveRegion = LiveRegionMode.Polite }, verticalArrangement = Arrangement.spacedBy(Theme.Space.s)) {
             if (cheering) Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Outlined.CheckCircle, null, tint = C.good, modifier = Modifier.size(20.dp))
                 Spacer(Modifier.width(6.dp))
-                Text("Nice!", style = Theme.headline, color = C.good)
+                Text("Done", style = Theme.headline, color = C.good)
             } else Text(step.text, style = Theme.subhead, color = C.text)
             if (lost) {
                 Text("Lost your place? I'll take you back.", style = Theme.footnote, color = C.secondary)

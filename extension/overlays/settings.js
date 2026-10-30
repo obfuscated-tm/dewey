@@ -65,7 +65,7 @@ const CSS = `
 .theme-btn:hover { background: var(--sunk); color: var(--ink); }
 .theme-btn[aria-pressed="true"] { color: var(--ink); box-shadow: 0 0 0 2px var(--accent); }
 .swatch {
-  width: 36px; height: 18px; border-radius: 4px; display: flex; overflow: hidden;
+  width: 36px; height: 18px; border-radius: var(--radius-sm); display: flex; overflow: hidden;
   border: 1px solid var(--line); flex: none;
 }
 .swatch span { flex: 1; }
@@ -73,14 +73,14 @@ const CSS = `
 /* An on/off switch, the same shape as the Overlay switch. */
 .toggle {
   appearance: none; -webkit-appearance: none; flex: none; margin: 0; cursor: pointer;
-  position: relative; width: 32px; height: 18px; border-radius: 9px; background: var(--line);
+  position: relative; width: 28px; height: 16px; border-radius: 8px; background: var(--line);
 }
 .toggle::after {
   content: ""; position: absolute; top: 2px; left: 2px;
-  width: 14px; height: 14px; border-radius: 50%; background: var(--surface);
+  width: 12px; height: 12px; border-radius: 50%; background: var(--surface);
 }
 .toggle:checked { background: var(--accent); }
-.toggle:checked::after { left: 16px; }
+.toggle:checked::after { left: 14px; }
 
 /* neo-plan: the explainer above the token frame. */
 .explain p { margin: 0 0 6px; font-size: 13px; line-height: 18px; }

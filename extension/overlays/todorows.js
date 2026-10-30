@@ -31,7 +31,7 @@ export const ROW_CSS = `
 .nothing { color: var(--faint); padding: 8px 0 2px; }
 .row {
   display: grid; grid-template-columns: 14px 1fr auto; grid-template-rows: auto auto auto;
-  align-items: stretch; column-gap: 8px; row-gap: 2px; padding: 6px 0; border-bottom: 1px solid #E9ECF0;
+  align-items: stretch; column-gap: 8px; row-gap: 2px; padding: 6px 0; border-bottom: 1px solid var(--line);
 }
 .row:last-child { border-bottom: 0; }
 .tag {
@@ -39,7 +39,7 @@ export const ROW_CSS = `
   writing-mode: vertical-rl; transform: rotate(180deg);
   display: flex; align-items: center; justify-content: center;
   width: 14px; font-family: var(--sans); font-size: 9px; font-weight: 600; letter-spacing: .04em;
-  border-radius: 3px; white-space: nowrap;
+  border-radius: var(--radius-sm); white-space: nowrap;
 }
 .tag-solid { background: var(--ink); color: #fff; }
 .tag-outline { border: 1px solid var(--line); color: var(--dim); background: var(--surface); }

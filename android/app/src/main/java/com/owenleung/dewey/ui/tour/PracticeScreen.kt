@@ -106,7 +106,7 @@ object TourScript {
     private fun seen(key: String) = Coach.seen(key)
 
     private val todo = listOf(
-        Coach.Step(text = "Hi, I'm Dewey! This is a pretend week, so nothing you tap here touches your real Schoology. Let's try what you'll do every day.",
+        Coach.Step(text = "Hi, I'm Dewey. This is a pretend week, so nothing you tap here touches your real Schoology. First, what you'll do every day.",
             hint = Coach.Hint.NONE, button = "Let's go"),
         Coach.Step("todo.check.${Practice.LAB}", "You just finished your Bio lab. Tap its circle to mark it Done.",
             done = { it.item(Practice.LAB)?.done == true }, tab = 0),
@@ -114,7 +114,7 @@ object TourScript {
             done = { seen("dropbox.submit") }, tab = 0),
         Coach.Step("dropbox.submit", "This is a pretend Schoology page. On the real one you'd attach your file here. Tap Submit.",
             done = { Practice.LAB in Practice.submitted }, tab = 0, rewind = 1),
-        Coach.Step("dropbox.done", "Sent! Tap Done. When you close Schoology, Dewey checks it again.",
+        Coach.Step("dropbox.done", "Sent. Tap Done. When you close Schoology, Dewey checks it again.",
             done = { it.item(Practice.LAB)?.submitted == true }, tab = 0, rewind = 2),
         Coach.Step("todo.row.${Practice.LAB}", "The green seal means Schoology has it. Dewey only says Submitted when Schoology does.",
             hint = Coach.Hint.NONE, button = "Next", wide = true, tab = 0),
@@ -156,7 +156,7 @@ object TourScript {
             hint = Coach.Hint.NONE, button = "Next", wide = true, tab = 3, rewind = 2),
         Coach.Step("settings.notifications", "Notifications: reminders before work is due, the night before a test, and new grades. Pick which ones here.",
             hint = Coach.Hint.NONE, button = "Next", wide = true, tab = 3, rewind = 3),
-        Coach.Step(text = "That's the tour! Your real week is waiting. You can take this again from Settings → Help.",
+        Coach.Step(text = "That's the tour. You can take this again from Settings → Help.",
             hint = Coach.Hint.NONE, button = "Finish"),
     )
 

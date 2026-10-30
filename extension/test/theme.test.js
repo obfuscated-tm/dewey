@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { THEMES, themeCss, preInvert } from '../overlays/theme.js';
+import { THEMES, RETIRED_THEMES, themeCss, preInvert } from '../overlays/theme.js';
 
 test('schoology: no page changes at all', () => {
   assert.equal(themeCss('schoology'), '');
@@ -14,9 +14,9 @@ test('schoology: no page changes at all', () => {
 });
 
 test('a light theme colours the header and doesn\'t invert the page', () => {
-  const css = themeCss('ocean');
+  const css = themeCss('dewey');
   assert.match(css, /#header > header/);
-  assert.match(css, new RegExp(THEMES.ocean.header));
+  assert.match(css, new RegExp(THEMES.dewey.header));
   assert.doesNotMatch(css, /html \{ filter/);
 });
 
@@ -30,31 +30,23 @@ test('a dark theme inverts the page and re-inverts real media', () => {
   assert.match(css, new RegExp(preInvert(THEMES.dark.header)));
 });
 
-test('midnight is dark too, with a gradient header pre-inverted stop by stop', () => {
-  const css = themeCss('midnight');
-  assert.match(css, /filter: invert\(1\)/);
-  for (const stop of THEMES.midnight.header) assert.match(css, new RegExp(preInvert(stop)));
-  assert.match(css, /linear-gradient\(90deg/);
-});
-
 test('a dark page: canvas and body pre-inverted, and no light rubber-band past the edges', () => {
-  const t = THEMES.dracula, css = themeCss('dracula');
+  const t = THEMES.dark, css = themeCss('dark');
   assert.match(css, new RegExp(`html \\{[^}]*background: ${preInvert(t.page)}[^}]*overscroll-behavior: none`));
   assert.match(css, new RegExp(`body \\{ background: ${preInvert(t.page)}`));
 });
 
 test('the header covers Schoology\'s wrapped buttons (Courses, Groups, Apps, user menu)', () => {
-  for (const key of ['ocean', 'sunset', 'nord']) {
+  for (const key of ['dewey', 'dark']) {
     const css = themeCss(key);
     assert.match(css, /#header, #header > header \{/);
     assert.match(css, /nav > ul > li > div > :is\(a, button\)/);
     assert.match(css, /svg/);
   }
-  assert.match(themeCss('rainbow'), /text-shadow/);
 });
 
 test('light themes with a page colour tint the page and its canvas', () => {
-  assert.match(themeCss('sakura'), new RegExp(`html, body \\{ background: ${THEMES.sakura.page}`));
+  assert.match(themeCss('dewey'), new RegExp(`html, body \\{ background: ${THEMES.dewey.page}`));
 });
 
 test('preInvert round-trips: applying the filter to it gives back the original colour', () => {
@@ -77,4 +69,11 @@ test('every theme has a name and an accent', () => {
     assert.match(t.accentSoft, /^#[0-9a-fA-F]{6}$/, key);
   }
   assert.equal(THEMES.schoology.header, null);
+});
+
+test('every retired theme falls back to one that still exists', () => {
+  for (const [old, now] of Object.entries(RETIRED_THEMES)) {
+    assert.ok(!(old in THEMES), `${old} is still a theme`);
+    assert.ok(now in THEMES, `${old} -> ${now}`);
+  }
 });

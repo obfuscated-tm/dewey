@@ -146,12 +146,13 @@ Schoology's white cards and past the page's edges):
 
 - `schoology` (default) — no page changes at all. `header` is `null`; `accent`/
   `accentSoft` are the overlay's original blue.
-- `ocean`, `forest`, `plum`, `crimson`, `graphite` — light: a coloured header bar
-  (white text and icons), a lightly tinted page, a matching accent.
-- `sunset`, `aurora`, `sakura`, `matcha`, `rainbow` — light, with gradient headers
-  (rainbow's text gets a shadow to stay readable on its yellow).
-- `dark`, `midnight`, `dracula`, `nord`, `synthwave`, `ember` — dark: the whole
-  page inverted ("smart invert", below), each with its own header and page tint.
+- `dewey` — light: a teal header bar (white text and icons), a lightly tinted page,
+  a teal accent.
+- `dark` — the whole page inverted ("smart invert", below), with a dark header and page.
+
+Extension 1.12 had 14 more (gradient headers, several dark tints). They're gone;
+`RETIRED_THEMES` maps each to `schoology`, `dewey` or `dark`, and theme.js saves
+the replacement the first time it sees an old key.
 
 **Page styling.** `themeCss(key)` (pure, testable in node) returns the CSS for one
 `<style id="np-theme">` appended to `document.documentElement` — additive, present

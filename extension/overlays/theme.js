@@ -21,7 +21,7 @@
 // import cycle, ui.js knows nothing about THEMES: theme.js hands it a
 // `hostThemeCss(key)` function via setThemeProvider().
 
-import { onOverlay, onSettings, setThemeProvider } from './ui.js';
+import { onOverlay, onSettings, setSetting, setThemeProvider } from './ui.js';
 
 // Every colour here is what the eye should see, dark themes included:
 // themeCss() and hostThemeCss() pre-invert them for dark themes (paint()).
@@ -31,22 +31,16 @@ import { onOverlay, onSettings, setThemeProvider } from './ui.js';
 //               (null: Schoology's own grey)
 export const THEMES = {
   schoology: { name: 'Schoology', dark: false, header: null, page: null, accent: '#1D5EA8', accentSoft: '#E7EFF8' },
-  ocean: { name: 'Ocean', dark: false, header: '#0B5E77', page: '#EEF5F7', accent: '#0B5E77', accentSoft: '#E3F0F4' },
-  forest: { name: 'Forest', dark: false, header: '#1E6B3A', page: '#EFF5F0', accent: '#1E6B3A', accentSoft: '#E5F2EA' },
-  plum: { name: 'Plum', dark: false, header: '#6B3FA0', page: '#F4F0F9', accent: '#6B3FA0', accentSoft: '#F0E9F7' },
-  crimson: { name: 'Crimson', dark: false, header: '#A02C3E', page: '#F9F1F2', accent: '#A02C3E', accentSoft: '#F8E8EA' },
-  graphite: { name: 'Graphite', dark: false, header: '#3F4750', page: '#EEF0F2', accent: '#3F4750', accentSoft: '#E9EBEC' },
-  sunset: { name: 'Sunset', dark: false, header: ['#B8325A', '#D9573B', '#E08A2E'], page: '#FFF4EC', accent: '#B8431F', accentSoft: '#FCE9DF' },
-  aurora: { name: 'Aurora', dark: false, header: ['#0F766E', '#2563EB', '#7C3AED'], page: '#EEF6F8', accent: '#0F766E', accentSoft: '#E2F3F1' },
-  sakura: { name: 'Sakura', dark: false, header: ['#B83280', '#D6477F'], page: '#FDF1F6', accent: '#B0306F', accentSoft: '#FBE6EF' },
-  matcha: { name: 'Matcha', dark: false, header: ['#3F6212', '#5B7F2A'], page: '#F3F6EA', accent: '#4D6B18', accentSoft: '#EAF1DA' },
-  rainbow: { name: 'Rainbow', dark: false, header: ['#D62828', '#E76F24', '#D9A400', '#2A9D48', '#1D6FD1', '#7B3FC4'], page: '#F7F6FB', accent: '#5B3FC4', accentSoft: '#EEEAFA' },
+  dewey: { name: 'Dewey', dark: false, header: '#0F6E56', page: '#F1F7F5', accent: '#0F6E56', accentSoft: '#E1F5EE' },
   dark: { name: 'Dark', dark: true, header: '#1F2226', page: '#141619', accent: '#6EA8FE', accentSoft: '#1C2A3D' },
-  midnight: { name: 'Midnight', dark: true, header: ['#10244A', '#1B3A7A'], page: '#0E1422', accent: '#7AA2FF', accentSoft: '#1A2440' },
-  dracula: { name: 'Dracula', dark: true, header: ['#44475A', '#6272A4'], page: '#22232E', accent: '#BD93F9', accentSoft: '#352E4D' },
-  nord: { name: 'Nord', dark: true, header: '#3B4252', page: '#2A2F3A', accent: '#88C0D0', accentSoft: '#2F3E48' },
-  synthwave: { name: 'Synthwave', dark: true, header: ['#F72585', '#7209B7', '#3A0CA3'], page: '#170F2B', accent: '#FF5FB0', accentSoft: '#3A1740' },
-  ember: { name: 'Ember', dark: true, header: ['#7C2D12', '#C2410C'], page: '#1B1411', accent: '#FB923C', accentSoft: '#3B2418' },
+};
+
+// Themes that used to exist (extension 1.12 and earlier), and the one each
+// now falls back to, so a saved pick still lands somewhere sensible.
+export const RETIRED_THEMES = {
+  ocean: 'dewey', forest: 'dewey', matcha: 'dewey', aurora: 'dewey',
+  plum: 'schoology', crimson: 'schoology', graphite: 'schoology', sunset: 'schoology', sakura: 'schoology', rainbow: 'schoology',
+  midnight: 'dark', dracula: 'dark', nord: 'dark', synthwave: 'dark', ember: 'dark',
 };
 
 // ── Colour math ────────────────────────────────────────────────────────────
@@ -119,9 +113,6 @@ function headerCss(t) {
   // Icons are drawn in their own fills, not currentColor: flatten them to
   // the text colour (white, or black before a dark page's inversion).
   const icon = dark ? 'brightness(0)' : 'brightness(0) invert(1)';
-  // Three or more stops (rainbow) pass through a light middle: a shadow keeps
-  // the white text readable. Light themes only: inverted, it would glow.
-  const multi = !dark && Array.isArray(t.header) && t.header.length > 2;
   return `
 ${HEADER} {
   background: ${headerBackground(t)} !important;
@@ -130,7 +121,7 @@ ${HEADER} {
 #header > header nav { background: transparent !important; }
 ${each('')} {
   background: transparent !important;
-  color: ${text} !important;${multi ? '\n  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);' : ''}
+  color: ${text} !important;
 }
 ${each(':hover')} {
   background: ${dark ? 'rgba(0, 0, 0, 0.16)' : 'rgba(255, 255, 255, 0.16)'} !important;
@@ -213,7 +204,11 @@ export function start() {
   let theme = null;
   const update = () => { if (overlayOn === null || theme === null) return; applyPageStyle(theme, overlayOn); };
   onOverlay((on) => { overlayOn = on; update(); });
-  onSettings((s) => { theme = s.theme; update(); });
+  onSettings((s) => {
+    // A theme that was taken out: save its replacement (this fires again).
+    if (RETIRED_THEMES[s.theme]) { setSetting('theme', RETIRED_THEMES[s.theme]); return; }
+    theme = s.theme; update();
+  });
 }
 
 /** Take the page theme off for good (overlays/quizpage.js, when an attempt starts). */

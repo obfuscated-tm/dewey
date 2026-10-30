@@ -389,26 +389,22 @@ private struct HintMark: View {
     }
 }
 
-/// Dewey and what he says. He bobs while he waits and hops when a step is done.
+/// Dewey and what he says. He stays still; the text changes when a step is done.
 private struct Bubble: View {
     let step: Coach.Step
     let cheering: Bool
     let lost: Bool
     let reduceMotion: Bool
-    @State private var bob = false
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             Image("DeweyHello")
                 .resizable().scaledToFit()
                 .frame(width: 52, height: 52)
-                .offset(y: reduceMotion ? 0 : bob ? -3 : 3)
-                .scaleEffect(cheering ? 1.15 : 1)
-                .animation(reduceMotion ? nil : .spring(duration: 0.35, bounce: 0.6), value: cheering)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 if cheering {
-                    Label("Nice!", systemImage: "checkmark.circle.fill")
+                    Label("Done", systemImage: "checkmark.circle.fill")
                         .font(Theme.headline).foregroundStyle(Theme.good)
                 } else {
                     Text(step.text).font(Theme.subhead).foregroundStyle(Theme.text)
@@ -452,9 +448,5 @@ private struct Bubble: View {
         .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
         .tint(Theme.accent)
         .accessibilityElement(children: .contain)
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) { bob = true }
-        }
     }
 }

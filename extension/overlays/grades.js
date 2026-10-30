@@ -43,7 +43,7 @@ const EPS = 0.005;
 
 const CSS = `
 .imp {
-  display: inline-block; min-width: 44px; padding: 0 5px; border-radius: 3px; text-align: center;
+  display: inline-block; min-width: 44px; padding: 0 5px; border-radius: var(--radius-sm); text-align: center;
   font: 500 11px/16px var(--sans); font-variant-numeric: tabular-nums;
 }
 .imp.pos { color: var(--good); background: var(--good-soft); }
@@ -56,7 +56,7 @@ const CSS = `
 .linkbtn { color: var(--accent); font-size: 12px; text-decoration: underline; text-underline-offset: 2px; }
 input {
   font: 12px/16px var(--sans); font-variant-numeric: tabular-nums; color: var(--ink);
-  padding: 1px 5px; margin: 0; border: 1px dashed var(--accent); border-radius: 4px;
+  padding: 1px 5px; margin: 0; border: 1px dashed var(--accent); border-radius: var(--radius-sm);
   background: var(--surface); text-align: right;
 }
 input::placeholder { color: var(--accent); opacity: .7; font-family: var(--sans); }
@@ -76,7 +76,7 @@ const INLINE_CSS = CSS + `
 :host { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; vertical-align: middle; }
 :host([hidden]) { display: none !important; }
 .spark {
-  display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: 4px;
+  display: inline-flex; align-items: center; gap: 6px; padding: 2px 4px; border-radius: var(--radius-sm);
   color: var(--accent); font-size: 12px; font-weight: 400; white-space: nowrap;
 }
 .spark:hover { background: var(--accent-soft); }
@@ -105,7 +105,7 @@ const ROW_CSS = CSS + `
 .tip {
   position: absolute; pointer-events: none; transform: translate(-50%, -100%); margin-top: -10px;
   background: var(--ink); color: #fff; font-size: 12px; line-height: 1.4; padding: 6px 8px;
-  border-radius: 4px; white-space: nowrap;
+  border-radius: var(--radius-sm); white-space: nowrap;
 }
 .tip b { font-weight: 500; font-variant-numeric: tabular-nums; }
 .tip .s { opacity: .7; }
@@ -454,7 +454,7 @@ async function mountCourse({ doc, root: scope, courseId }) {
       }
       if (base == null) return cell(tr);
       if (shown && Math.abs(base - shown.pct) > shown.tol + 1e-9) {
-        const n = el('span', 'note warn', `Weights? we get ${fmt(base)}%`);
+        const n = el('span', 'note warn', `Doesn't match: ${fmt(base)}%`);
         n.title = `Schoology shows ${shown.pct}%. The overlay's math doesn't match it, so its numbers on this page are off. If a category has no weight, type it in beside the category's name.`;
         return cell(tr, n);
       }
@@ -515,9 +515,9 @@ async function mountCourse({ doc, root: scope, courseId }) {
         // Plus lets you edit any grade) and "drop" (excluded from the math).
         const { host, root } = inline(gradeCell(tr), 'np-grade-pct');
         const pctSpan = el('span', 'pct');
-        const editBtn = el('button', 'linkbtn reveal', 'edit');
-        const dropBtn = el('button', 'linkbtn reveal', 'drop');
-        const score = input('number', 'wi-score', `What-if score for ${it.title}`, 'what if');
+        const editBtn = el('button', 'linkbtn reveal', 'Edit');
+        const dropBtn = el('button', 'linkbtn reveal', 'Drop');
+        const score = input('number', 'wi-score', `What-if score for ${it.title}`, 'What if');
         const editWrap = el('span', 'wrap');
         editWrap.append(score, '/', el('span', 'tnum', String(it.possible)));
         root.append(pctSpan, editBtn, dropBtn, editWrap);
@@ -531,7 +531,7 @@ async function mountCourse({ doc, root: scope, courseId }) {
           score.select();
         });
         dropBtn.addEventListener('click', () => { dropped.add(it.id); update(); });
-        const undo = el('button', 'linkbtn', 'undo');
+        const undo = el('button', 'linkbtn', 'Undo');
         undo.addEventListener('click', () => { dropped.delete(it.id); update(); });
         const restore = () => { score.value = ''; whatIf.delete(it.id); editing = false; score.blur(); update(); };
         score.addEventListener('input', () => {
@@ -572,8 +572,8 @@ async function mountCourse({ doc, root: scope, courseId }) {
       }
 
       const { root } = inline(gradeCell(tr), 'np-grade-whatif');
-      const btn = el('button', 'linkbtn reveal', 'what if');
-      const score = input('number', 'wi-score', `What-if score for ${it.title}`, 'what if');
+      const btn = el('button', 'linkbtn reveal', 'What if');
+      const score = input('number', 'wi-score', `What-if score for ${it.title}`, 'What if');
       const wrap = el('span', 'wrap');
       wrap.append(score, '/');
       let pts = null;
@@ -620,7 +620,7 @@ async function mountCourse({ doc, root: scope, courseId }) {
     const kind = /test|quiz|exam|assess/i.test(cat.title) ? 'test' : 'assignment';
 
     const { root: planBtnRoot } = inline(titleCell(ctr), 'np-grade-plan');
-    const planBtn = el('button', 'linkbtn reveal', '+ plan');
+    const planBtn = el('button', 'linkbtn reveal', '+ Plan');
     planBtn.title = `Plan an upcoming ${kind}`;
     planBtnRoot.append(planBtn);
     planBtn.addEventListener('click', () => {

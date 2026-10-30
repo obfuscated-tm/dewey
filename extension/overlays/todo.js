@@ -201,7 +201,7 @@ const CSS = ROW_CSS + `
 .ghead { display: flex; align-items: center; gap: 8px; padding: 2px 0 6px; border-bottom: 1px solid var(--line); }
 .gname { font-weight: 600; }
 .gcount { margin-left: auto; color: var(--faint); }
-.gtoday { color: var(--bad); background: var(--bad-soft); border-radius: 3px; padding: 1px 6px; font-size: 11px; font-weight: 600; }
+.gtoday { color: var(--bad); background: var(--bad-soft); border-radius: var(--radius-sm); padding: 1px 6px; font-size: 11px; font-weight: 600; }
 `;
 
 function renderGroup(g, expanded) {

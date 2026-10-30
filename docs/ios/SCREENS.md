@@ -5,7 +5,12 @@ What every screen shows, where its data comes from, and what each tap does. Buil
 ## Mockups
 
 - Layout direction (2026-10-18, Owen's picks from [design/Layouts.html](design/Layouts.html)): G1 report-card row, C1 shelf, A1 checkout card, T1 drop and ripple, Dew as the default theme. Where the older per-screen mockups differ, Layouts.html and this file win.
-- iPhone Duo, open (regular width): [design/Duo.html](design/Duo.html), a proposal (2026-10-24, not built). Sidebar instead of tabs; To Do, Grades and Inbox show the list and the open item side by side. Folded, the app is unchanged.
+- iPhone Duo, open (regular width): [design/Duo.html](design/Duo.html), built 2026-10-24 (`App/Screens/Wide/`), reworked the same day after a first try felt squished on the left and idle on the right. An icon rail instead of tabs; To Do, Grades and Inbox show the list and something useful side by side. Folded, the app is unchanged.
+  - Chosen by `horizontalSizeClass == .regular` in RootView (WideShell), never by "is it open". Rail (72 pt) + list fill the left half, the right pane the rest, so nothing sits on the hinge.
+  - Rail: the Dewey mark, the five tabs (icon, badge, label), each class as its report-card short name with a colour dot ("AP BIOL"; tinted when picked, since a colour alone didn't say which class), Settings at the bottom. The mark slides the full sidebar over the list (tab and class names with counts); picking anything slides it away. A class filters To Do ("Only Chemistry H · Show all"); on Grades it opens that class.
+  - Right pane with nothing open: To Do → Plan (the same Plan as the phone: order the day, tick work off, + for a task); Grades → the class with the newest grade, open as if tapped (picked once the gradebooks are in; a new grade landing later moves it while it's still Dewey's pick, a tapped class stays); Inbox → quiet (unread counts, Open newest unread, New message ↗) with New in your classes under it, moved off the list. It never opens a message by itself, since opening marks it read.
+  - Every list row that would push (`SplitLink`) opens on the right instead and stays tinted; each tab keeps its own open item, and "‹" goes back to Plan / the quiet Inbox. Graded work and the assignment a message links to push inside the right pane. To Do's mode chip is hidden (the list is always List; Plan is beside it).
+  - Not built from the mockup: the Schoology sheet still covers the whole screen (not just the right half), and the folded tweaks (F2 one-line To Do header, shorter date-due card). On iOS 27 the folded Duo draws the status bar and tab bar down the right edge, so the bottom tab bar the mockup measured isn't there; check on the phone before building them.
 - Static copies in this repo: [design/](design/). One file per screen (`Main.dc.html` = To Do, etc.), 390×844 pt. Open one in a browser to see it; the `{{accent}}` placeholders are `#1D5EA8`. `design/canvas.json` holds the notes that sat under each screen (the same text as below).
 - Live canvas: https://claude.ai/artifact/GSX8QmamsY6nkjpdjckhue (private to Owen; read it with the Artifact tool if you have access, else use the copies).
 - The mockups are the **look**; this file is the **behaviour**. Where they differ, this file wins. Copy in `[brackets]` in a mockup is placeholder text.
@@ -20,7 +25,8 @@ Anything that **changes** Schoology (submit, take a quiz, post in a discussion, 
 
 | Mark | Meaning | Who sets it |
 |---|---|---|
-| Accent ring with an accent ✓ (outlined, not solid) | You marked it done | Student |
+| Accent ring with a small ↑ (no fill, no ✓) | You marked it done; it still has to be handed in | Student |
+| Accent ring with an accent ✓ (outlined, not solid) | Your own task done, or a test studied | Student |
 | Solid green seal with ✓ | Schoology shows a submission (dropbox work only) | Schoology, read by the app |
 | Solid green seal with ✓ (same look; the status line says "not on Schoology") | You marked it turned in (paper, lab site, elsewhere) | Student (local / neo-plan only) |
 | Rounded square | A test: Studied / not studied | Student |

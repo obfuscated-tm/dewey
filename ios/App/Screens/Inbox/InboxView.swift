@@ -7,6 +7,8 @@ import SwiftUI
 /// in the tab badge. Writing a message happens in the Schoology sheet.
 struct InboxView: View {
     @Environment(AppModel.self) private var model
+    /// The open Duo: New in your classes sits in the right half instead.
+    @Environment(\.split) private var split
     @State private var sheet: SheetTarget?
     /// Folded boxes, by id, kept across launches.
     @AppStorage("inboxFolded") private var foldedRaw = "school"
@@ -49,8 +51,10 @@ struct InboxView: View {
                         }
                         box("teachers", "From teachers", empty: "No messages from teachers", sources: [.messages],
                             rows: { i in i.teacherThreads(classes).map(Row.thread) })
-                        box("classes", "New in your classes", empty: "Nothing new", sources: [.notices],
-                            rows: { i in i.classNotices(classes).map(Row.notice) })
+                        if split == nil {
+                            box("classes", "New in your classes", empty: "Nothing new", sources: [.notices],
+                                rows: { i in i.classNotices(classes).map(Row.notice) })
+                        }
                         // Only groups: a course switched to a class in Settings drops out right away.
                         let posts = inbox.posts.filter { p in !classes.contains { $0.sectionId == p.sectionId } }
                         if !posts.isEmpty {
@@ -197,7 +201,7 @@ struct InboxView: View {
     }
 
     private func threadRow(_ t: MessageThread, divider: Bool) -> some View {
-        NavigationLink(value: t) {
+        SplitLink(value: t, inset: 0) {
             ThreadRow(thread: t, isNew: model.inbox.isNew(t))
                 .overlay(alignment: .top) { if divider { Theme.divider.frame(height: 1) } }
         }
@@ -308,7 +312,7 @@ struct NoticeRow: View {
         let label = Text(item.title).font(Theme.subhead).foregroundStyle(Theme.accent).maxLines(2)
             .multilineTextAlignment(.leading)
         if case .assignment(let id)? = WebConfig.nativeRoute(for: URL(string: item.url)) {
-            NavigationLink(value: AssignmentLink(id: id)) { label }.buttonStyle(.plain)
+            SplitLink(value: AssignmentLink(id: id)) { label }.buttonStyle(.plain)
         } else if let u = URL(string: item.url) {
             // Quizzes and everything else open in Schoology, by the student's tap.
             Button { open(SheetTarget(url: u)) } label: { label }.buttonStyle(.plain)

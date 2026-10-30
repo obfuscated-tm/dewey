@@ -615,20 +615,41 @@ final class AppModel {
         return nil
     }
 
-    /// neo-plan is the shared copy: the newer edit wins. Pulls its state for every listed item.
-    func syncNeoPlan() async {
+    /// What went wrong in the last neo-plan sync, for Settings → neo-plan; nil when all went through.
+    var neoPlanProblem: String?
+
+    /// neo-plan is the shared copy: the newer edit wins. Tells it the courses
+    /// (so it files work by class, and a new account gets a column per class),
+    /// adds new work it doesn't have, then pulls its state for every listed item.
+    func syncNeoPlan(byHand: Bool = false) async {
         guard neoPlan.connected else { return }
+        var problem: String?
+        let items = todoItems().filter { !$0.mine }
+        // Not on every return to the app: every 10 minutes, or when asked.
+        let enrichedAt = Cache.load("neoplanEnrichedAt", as: Date.self)?.value ?? .distantPast
+        if !courses.isEmpty, byHand || Date().timeIntervalSince(enrichedAt) > 10 * 60 {
+            let work = items.filter(\.isSchoologyAssignment).compactMap { it in it.sectionId.map { (schoologyId: it.schoologyId, sectionId: $0) } }
+            do {
+                _ = try await neoPlan.enrich(courses: courses, items: work, byHand: byHand)
+                Cache.save("neoplanEnrichedAt", Date())
+            } catch { problem = Self.neoPlanProblemText(error) }
+        }
         for (sid, ops) in pendingPush {
             guard let id = await neoPlanId(for: sid) else { continue }
             var left = ops
             while let op = left.first, (try? await op.run(neoPlan, id)) != nil { left.removeFirst() }
             pendingPush[sid] = left.isEmpty ? nil : left
         }
-        let items = todoItems().filter { !$0.mine }
-        guard let got = try? await neoPlan.items(items.map(\.schoologyId)) else { return }
+        let got: [NeoPlanItem]
+        do { got = try await neoPlan.items(items.map(\.schoologyId)) } catch {
+            neoPlanProblem = Self.neoPlanProblemText(error)
+            return
+        }
+        let added = await addNewWork(items, have: Set(got.compactMap(\.sourceId)), problem: &problem)
+        neoPlanProblem = problem
         let bySource = Dictionary(got.compactMap { g in g.sourceId.map { ($0, g) } }, uniquingKeysWith: { a, _ in a })
         let lastSync = Cache.load("neoplanSyncedAt", as: Date.self)?.value ?? .distantPast
-        for it in items {
+        for it in items where !added.contains(it.schoologyId) {
             guard let g = bySource[it.schoologyId] else { continue }
             it.neoPlanId = g.id
             // Local edits since the last sync win; otherwise neo-plan's state.
@@ -642,6 +663,45 @@ final class AppModel {
         }
         Cache.save("neoplanSyncedAt", Date())
         save()
+    }
+
+    /// Open Schoology work neo-plan has no item for goes onto the board, as the
+    /// extension's sync does (sync.js step 5b): not overdue by more than two
+    /// weeks, at most 25 a sync, and once only (an item it removed comes back
+    /// in `have`). What the student already marked here goes with it. Returns
+    /// the ids added, which the pull below leaves alone.
+    private func addNewWork(_ items: [ItemState], have: Set<String>, problem: inout String?) async -> Set<String> {
+        let cutoff = Date().addingTimeInterval(-14 * 86_400)
+        let new = items.filter {
+            $0.isSchoologyAssignment && $0.neoPlanId == nil && !have.contains($0.schoologyId)
+                && !$0.submitted && !$0.dismissed && ($0.due.map { $0 >= cutoff } ?? true)
+        }
+        var added: Set<String> = []
+        var noColumn = 0
+        for it in new.prefix(25) {
+            do {
+                guard let item = try await neoPlan.addItem(schoologyId: it.schoologyId, sectionId: it.sectionId, title: it.title,
+                                                           due: it.due, type: it.isQuiz ? .exam : nil) else { continue }
+                it.neoPlanId = item.id
+                added.insert(it.schoologyId)
+                if it.type == .exam ? it.studied : it.done { try? await neoPlan.setWork(item.id, ready: true) }
+                if it.turnedIn { try? await neoPlan.turnIn(item.id) }
+            } catch NeoPlanError.refused(409, let word) where word == "no_column" {
+                noColumn += 1
+            } catch {
+                problem = problem ?? Self.neoPlanProblemText(error)
+            }
+        }
+        if noColumn > 0 { problem = "\(noColumn) not added: no column for its class" }
+        return added
+    }
+
+    nonisolated static func neoPlanProblemText(_ error: Error) -> String {
+        switch error {
+        case NeoPlanError.refused(401, _): "Token refused"
+        case NeoPlanError.refused: "neo-plan refused a change"
+        default: "Can’t reach neo-plan"
+        }
     }
 
     // ── Grades ───────────────────────────────────────────────────────────

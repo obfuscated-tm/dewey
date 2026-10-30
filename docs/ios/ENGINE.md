@@ -119,6 +119,9 @@ Same server, token and ops as the extension (`outputs/neoplan/api.js`). Base `ht
 | remove / restore | `POST /api/extension/items/{id}/remove` / `restore` |
 | addItem | `POST /api/extension/items` `{ schoology_id, section_id, title, due_at, source_url, type? }` |
 | courses / setCourse | `GET /api/extension/courses`, `PUT /api/extension/courses/{section_id}` `{ class_id }` |
+| enrich | `POST /api/import/schoology/enrich` `{ fetched_at, by_hand?, courses: [{ section_id, title, section_title }], items: [{ kind: "assignment", schoology_id, section_id }] }` |
+
+The app's sync (`AppModel.syncNeoPlan`): enrich with every course and which To Do work is in which, at most every 10 minutes (every time from Sync now, as `by_hand`). That is how neo-plan learns the courses, files work by class, and gives an account that started with no columns a column per course with work (neo-plan's contract 4, rule 1b). Then open Schoology work neo-plan has no item for is added (as the extension's step 5b: ≤ 25 a sync, not overdue by more than two weeks), carrying any done, studied or turned-in mark; a refused add shows in Settings → neo-plan.
 
 `buildRequest()` in that file is the source of truth for bodies and validation; if it and this table disagree, it wins. Without neo-plan, the same state lives in SwiftData only.
 

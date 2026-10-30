@@ -41,6 +41,7 @@ struct GradesView: View {
             .background(Theme.background)
             .refreshable { await loadAll(force: true) }
             .navigationDestination(for: Course.self) { CourseGradesView(course: $0) }
+            .navigationDestination(for: GradeRoute.self) { GradeDetailView(sectionId: $0.sectionId, itemId: $0.itemId) }
             .toolbar(.hidden, for: .navigationBar)
             .task { await loadAll(force: false) }
         }
@@ -58,7 +59,7 @@ struct GradesView: View {
                 .accessibilityAddTraits(.isHeader)
             VStack(spacing: 0) {
                 ForEach(Array(visible.enumerated()), id: \.element.sectionId) { i, c in
-                    NavigationLink(value: c) { ClassGradeRow(course: c, showLetter: !reportCard) }
+                    SplitLink(value: c) { ClassGradeRow(course: c, showLetter: !reportCard) }
                         .buttonStyle(.plain)
                         .coachTarget("grades.class.\(c.sectionId)")
                         .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
@@ -115,9 +116,7 @@ struct GradesView: View {
     private func gradeList(_ rows: [(Course, CourseGrade.Item)], showNew: Bool) -> some View {
         VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.1.id) { i, r in
-                NavigationLink {
-                    GradeDetailView(sectionId: r.0.sectionId, itemId: r.1.id)
-                } label: {
+                SplitLink(value: GradeRoute(sectionId: r.0.sectionId, itemId: r.1.id)) {
                     let isNew = showNew && model.isNewGrade(r.1.id)
                     HStack(alignment: .top) {
                         VStack(alignment: .leading, spacing: 3) {
@@ -179,7 +178,8 @@ struct ReportCardRow: View {
         let perRow = typeSize.isAccessibilitySize ? 3 : min(max(classes.count, 1), 6)
         LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 0), count: perRow), spacing: Theme.Space.m) {
             ForEach(classes) { c in
-                NavigationLink(value: c) { cell(c) }.buttonStyle(.plain)
+                // The class row below is tinted; the letter stays as it is.
+                SplitLink(value: c, inset: nil) { cell(c) }.buttonStyle(.plain)
             }
         }
         .padding(.horizontal, Theme.Space.s)
@@ -212,6 +212,9 @@ struct ReportCardRow: View {
         .accessibilityAddTraits(.isButton)
     }
 }
+
+/// One graded item (2c), as a navigation value.
+struct GradeRoute: Hashable { let sectionId: String; let itemId: String }
 
 /// The small "NEW" capsule on a score the student hasn't looked at.
 struct NewTag: View {

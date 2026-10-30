@@ -4,6 +4,7 @@ import SwiftUI
 
 @main
 struct DeweyApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model = AppModel()
     @Environment(\.scenePhase) private var phase
 
@@ -68,8 +69,18 @@ struct DeweyApp: App {
     }
 }
 
+/// Portrait on a phone-sized screen, as always; any way up on a screen at least
+/// 600 pt both ways (the open iPhone Duo).
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        guard let b = window?.windowScene?.screen.bounds else { return .portrait }
+        return min(b.width, b.height) >= 600 ? .allButUpsideDown : .portrait
+    }
+}
+
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
 
     var body: some View {
@@ -83,7 +94,8 @@ struct RootView: View {
             case .signedOut:
                 SignInView()
             case .signedIn:
-                MainTabs()
+                // The open iPhone Duo (regular width): sidebar, list and detail side by side.
+                if sizeClass == .regular { WideShell() } else { MainTabs() }
             }
         }
         .task { await model.boot() }

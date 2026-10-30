@@ -11,37 +11,96 @@ Dewey makes Schoology make sense. It's a free Chrome extension that shows what's
 
 ## What it does
 
-- **To Do**, grouped by class, with the real due time, overdue work marked "2 d late", and Done / Turn in buttons on each row.
-- **Grades**, with a graph of the term, how far above an A you are, how low each category can drop, and what each score did to your grade. Type a score you might get ("what if I get a 38/50?") and watch it change.
-- **Materials**, where every folder shows what's still open ("1 missing · 1 to turn in") and your score.
-- **Archive.** Schoology deletes classes when the term ends. Dewey saves slides, handouts, Google Docs (as PDFs), your own submissions, grades and announcements to a folder you own.
-- **Claude**, optionally. Ask "quiz me on Unit 3" and it reads your actual slides and notes.
+### See what's due
+
+Your To Do list, grouped by class. Late work says how late ("2 d late"), and every row has **Done** and **Turn in** buttons.
+
+<img src="docs/images/home.png" alt="The To Do column grouped by class, with Done, Turn in and Undo buttons on each row" width="360">
+
+### Know your grade
+
+A graph of your grade over the term, how far above an A you are, and how much each score moved it.
 
 <img src="docs/images/grades.png" alt="The Grades page with the course graph, distance above an A, and each score's impact" width="100%">
 
-<img src="docs/images/materials.png" alt="Materials page with per-folder status and scores" width="100%">
+### Try a score first
+
+Type a score you might get ("what if I get a 38/50?") and watch your grade change. **Plan a test** tells you what you need to keep your A.
 
 <img src="docs/images/assignment.png" alt="Assignment page with a Missing chip and a what-if box" width="100%">
 
+### Find missing work
+
+Every Materials folder shows what's still open ("1 missing · 1 to turn in").
+
+<img src="docs/images/materials.png" alt="Materials page with per-folder status and scores" width="100%">
+
+### Keep your classes
+
+Schoology deletes classes when the term ends. One click saves the slides, handouts, Google Docs, your own submissions and grades to a folder on your computer.
+
+<img src="docs/images/archive.png" alt="The Archive card: pick a course and click Archive this course" width="400">
+
+### Study with Claude (optional)
+
+Ask "quiz me on Unit 3" and Claude reads your real slides and notes, then quizzes you one question at a time. [How to set it up](#study-with-claude).
+
 ## Install
 
-You need Google Chrome and a Schoology student login. No coding.
+Takes about 2 minutes. You need Google Chrome and a Schoology student login. No coding.
 
-1. [Download the ZIP](https://github.com/obfuscated-tm/dewey/releases/latest/download/dewey-extension.zip) and unzip it. Move the `dewey-extension` folder somewhere it can stay, like Documents. If you delete the folder, Chrome removes the extension.
-2. Go to `chrome://extensions`, turn on **Developer mode** (top right), click **Load unpacked** and pick the `dewey-extension` folder.
-3. Pin **Dewey for Schoology** from the puzzle-piece menu, then open Schoology. The Welcome card walks you through the rest.
+### 1. Download
 
-Chrome may show a "Disable developer mode extensions" bubble. That's normal for extensions installed from a folder; close it.
+**[Download dewey-extension.zip](https://github.com/obfuscated-tm/dewey/releases/latest/download/dewey-extension.zip)**
 
-**Updating:** download the new ZIP, replace the old folder (same place, same name), then click ↻ on Dewey in `chrome://extensions` and refresh Schoology. Your settings and saved classes stay. To hear about new versions, click **Watch → Custom → Releases** at the top of this page.
+Double-click it to unzip. You'll get a folder called **`dewey-extension`**. Move it somewhere it can stay, like **Documents**. (If you delete the folder, Chrome removes the extension.)
 
-**From source:** `git clone https://github.com/obfuscated-tm/dewey.git`, then Load unpacked the `extension` folder inside it. Update with `git pull` and ↻. The [Claude add-on](#study-with-claude) needs this way.
+### 2. Add it to Chrome
+
+1. Paste **`chrome://extensions`** into the address bar and press Enter.
+2. Turn on **Developer mode** (top right).
+3. Click **Load unpacked** and pick the **`dewey-extension`** folder.
+4. Click the puzzle piece in Chrome's toolbar and pin **Dewey for Schoology**.
+
+### 3. Open Schoology
+
+That's it. Dewey's **Welcome** card walks you through the rest.
+
+Chrome may show a "Disable developer mode extensions" bubble. That's normal for extensions installed from a folder. Just close it.
+
+<details>
+<summary><b>Updating to a new version</b></summary>
+<br>
+
+1. Download the [latest ZIP](https://github.com/obfuscated-tm/dewey/releases/latest/download/dewey-extension.zip) and unzip it.
+2. Replace your old `dewey-extension` folder with the new one (same place, same name).
+3. In `chrome://extensions`, click ↻ on Dewey, then refresh Schoology.
+
+Your settings and saved classes stay. To get an email when there's a new version, click **Watch → Custom → Releases** at the top of this page.
+
+</details>
+
+<details>
+<summary><b>Install from source instead (git)</b></summary>
+<br>
+
+```bash
+git clone https://github.com/obfuscated-tm/dewey.git
+```
+
+Then **Load unpacked** the `extension` folder inside it. Run `git pull` and click ↻ to update. The [Claude add-on](#study-with-claude) needs this way.
+
+</details>
 
 ## Save your classes
 
-Open a class, click **Archive** in the bottom-left corner, then **Archive this course**. It runs in the background while you keep browsing. The first time, Dewey asks where to save; make a folder like `Documents/Schoology Archive` (otherwise it goes to `Downloads/Schoology Archive`).
+1. Open any class in Schoology.
+2. Click **Archive** in the bottom-left corner, then **Archive this course**.
+3. Keep browsing. It runs in the background.
 
-Re-archive every week or so, and once more before the term ends. It only grabs what's new, so it's quick.
+The first time, Dewey asks where to save. Make a folder like **Documents/Schoology Archive** and pick it. (Skip it and classes go to `Downloads/Schoology Archive`.)
+
+**Re-archive every week or so, and always once more before the term ends.** It only grabs what's new, so it's quick.
 
 Each class becomes a normal folder:
 
@@ -152,9 +211,12 @@ Claude gets live answers while Chrome is open. When Chrome is closed, it uses yo
 
 ## Is it safe?
 
-Dewey only reads Schoology. It can't submit, post or change anything. It never opens or starts a quiz, and it goes completely quiet while you have one open. Nothing is uploaded anywhere: saved classes are ordinary files in a folder you chose, and it uses the login Chrome already has, so there are no passwords.
-
-To hide everything, use the switch in Schoology's bottom-left corner. To stop a save instantly, press **Alt+Shift+K**. Every line is here, [MIT licensed](LICENSE).
+- **It only reads.** It can't submit, post or change anything on Schoology.
+- **It stays out of your tests.** It never opens a quiz, and goes completely quiet while you have one open.
+- **Nothing leaves your computer.** Saved classes are ordinary files in a folder you chose.
+- **No passwords.** It uses the Schoology login Chrome already has.
+- **You can turn it off.** Use the switch in Schoology's bottom-left corner, or press **Alt+Shift+K** to stop a save instantly.
+- **It's open source.** Every line is right here, [MIT licensed](LICENSE).
 
 ## Troubleshooting
 

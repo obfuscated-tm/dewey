@@ -144,6 +144,8 @@ final class Coach {
         w.rootViewController = host
         w.isHidden = false
         window = w
+        // The app's window stays key (press-and-hold menus need it).
+        scene.windows.first { $0 !== w && !$0.isHidden && $0.windowLevel == .normal }?.makeKey()
         announce()
     }
 
@@ -244,7 +246,11 @@ final class Coach {
 
 /// Passes taps inside the hole through to the app, keeps the overlay's own
 /// controls, and swallows the rest. With VoiceOver on, nothing is swallowed.
+/// It never becomes the key window: tapping Dewey's buttons would otherwise make it key,
+/// and the app's press-and-hold menus don't open while the app's window isn't key.
 final class CoachWindow: UIWindow {
+    override var canBecomeKey: Bool { false }
+
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let c = Coach.shared
         guard let step = c.step else { return nil }
@@ -266,12 +272,21 @@ private struct CoachTarget: ViewModifier {
     @Environment(AppModel.self) private var model
     let key: String
     @State private var id = UUID()
+    /// The last frame reported: a view that comes back unmoved (popping back from a pushed
+    /// page) gets no new geometry change, so it says where it is again on appear.
+    @State private var last: CGRect?
 
     func body(content: Content) -> some View {
         if model.practice {
             content
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
+                    last = $0
                     Coach.shared.frames[key] = $0
+                    Coach.shared.owners[key] = id
+                }
+                .onAppear {
+                    guard let last else { return }
+                    Coach.shared.frames[key] = last
                     Coach.shared.owners[key] = id
                 }
                 .onDisappear {

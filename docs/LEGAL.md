@@ -39,8 +39,8 @@ If one of these stops being true, the policies are wrong.
   by the browser), hashed extension tokens, and import records, which are pruned
   after 30 days. It runs on Supabase (us-west-1) and Vercel, with no analytics.
 - neo-plan's Delete account removes every row (all `user_id`s cascade).
-- Dewey's code is MIT-licensed, so the Terms don't claim the code. They reserve
-  only the name and logo.
+- Dewey is all rights reserved (`LICENSE`): the code is public to read, not to
+  copy. Releases before 2026-10-31 went out under MIT, and those copies stay MIT.
 
 ## Deploying the Dewey pages
 

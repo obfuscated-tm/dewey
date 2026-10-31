@@ -19,10 +19,11 @@ struct Course: Codable, Hashable, Identifiable {
         return t.isEmpty ? title : t
     }
 
-    /// "P3", "Period 3" … from the section title, or the section title itself.
+    /// "P3" from "P3", "Per 3", "Period 3" … in the section title, else "" (districts name
+    /// sections differently, and a raw title like "1404: GarciaJ T1" is noise next to a class).
     var periodLabel: String {
         if let m = sectionTitle.firstMatch(of: /(?i)\b(?:p(?:er(?:iod)?)?\.?\s*)(\d)\b/) { return "P\(m.1)" }
-        return sectionTitle
+        return ""
     }
 
     /// A class, not a hub or advisory: the student's choice in Settings, else the guess from the name.

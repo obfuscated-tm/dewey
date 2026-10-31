@@ -217,7 +217,7 @@ struct FlatBook: View {
 }
 
 private func classLabel(_ c: Course, _ g: CourseGrade?, _ due: Shelf.Due?, _ open: Int) -> String {
-    [c.shortTitle, c.periodLabel, g?.letter.map { "grade \($0)" }, due?.spoken, open > 0 ? "\(open) open" : nil]
+    [c.shortTitle, c.periodLabel.isEmpty ? nil : c.periodLabel, g?.letter.map { "grade \($0)" }, due?.spoken, open > 0 ? "\(open) open" : nil]
         .compactMap { $0 }.joined(separator: ", ")
 }
 

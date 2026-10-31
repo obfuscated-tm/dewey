@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Dewey's one palette, Dew (the brand teal), with a light and a dark value for every colour
+/// Dewey's one palette, paper and ink: warm off-white paper, near-black ink, and the brand
+/// teal kept for the one main action on a screen. A light and a dark value for every colour
 /// (WCAG AA: text ≥ 4.5:1 on every surface; ThemeTests checks). Settings → Appearance
 /// picks light, dark or the system's.
 struct Palette {
@@ -20,8 +21,8 @@ struct Palette {
     }
 
     static let dew = Palette(
-        light: "#EEF6F2 #FFFFFF #CFE3DA #E0EDE7 #0E2A24 #3F5A53 #52685F #A63A0B #FBEDE5 #426E10 #E9F2DC #E1F0E9 #0F6E56",
-        dark: "#0F1A18 #172623 #27403A #1F332E #E1F5EE #A9C7BD #8FB0A5 #FF9466 #3A2219 #B5DB6E #2B3A17 #21352F #5DCAA5")
+        light: "#F6F4EE #FFFDF8 #E3DED3 #ECE7DC #1B1A17 #5C5950 #6B675D #A63A0B #F8EBE3 #3F6B12 #EAF0DE #ECE8DF #0F6E56",
+        dark: "#121211 #1B1A18 #2C2A27 #252421 #EDEAE2 #A9A59B #9A968C #FF9466 #35221A #B5DB6E #283318 #2A2926 #5DCAA5")
 
     static let colors = Dictionary(uniqueKeysWithValues: names.map { ($0, dew.color($0)) })
 }
@@ -90,7 +91,7 @@ enum Theme {
     /// 17 bold New York · the Dewey number on a To Do catalog card.
     static let callNumber = Font.system(.headline, design: .serif, weight: .bold)
     /// A To Do catalog card's red rule under its heading, and its pale blue ruled lines.
-    static let catalogRule = Color(light: "#C94B4B", dark: "#D9706B")
+    static let catalogRule = Color(light: "#C24A42", dark: "#D9706B")
     static let catalogLine = Color(light: "#C9DDF0", dark: "#2E4258")
     /// 10 heavy · the word on a shelf book's bookmark ribbon only (like the type bar's
     /// label: a fixed size so the ribbon stays thinner than the spine's name).
@@ -102,8 +103,9 @@ enum Theme {
     enum Radius {
         /// Tags, type bars, thumbnails.
         static let tag: CGFloat = 6
-        /// Every card, sheet and field. Buttons are capsules, checkboxes circles.
-        static let card: CGFloat = 14
+        /// Every card, sheet, field and button: small corners, like an index card.
+        /// Checkboxes are circles.
+        static let card: CGFloat = 8
     }
     enum Space {
         static let xs: CGFloat = 4, s: CGFloat = 8, m: CGFloat = 12, l: CGFloat = 16, xl: CGFloat = 24
@@ -218,30 +220,48 @@ struct TypeTag: View {
     }
 }
 
-/// A pill button. `external` adds the ↗ arrow for anything that leaves the app
-/// (an SF Symbol: the ↗ character turns into an emoji on iOS).
+/// A small button with index-card corners: filled for the one action that leaves for
+/// Schoology (Submit), outlined in `color` for everything that stays in Dewey (Turn in,
+/// Undo). `icon` is an SF Symbol before the title; `external` adds the ↗ arrow for anything
+/// that leaves the app (an SF Symbol: the ↗ character turns into an emoji on iOS).
 struct PillButton: View {
     let title: String
     var color: Color = Theme.accent
     var filled = false
+    var icon: String?
     var external = false
     let action: () -> Void
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous)
         Button(action: action) {
-            HStack(spacing: 3) {
+            HStack(spacing: 4) {
+                if let icon { Image(systemName: icon).imageScale(.small).fontWeight(.bold) }
                 Text(title)
                 if external { Image(systemName: "arrow.up.right").imageScale(.small).fontWeight(.bold) }
             }
             .font(Theme.footnote.weight(.semibold))
-            .padding(.horizontal, Theme.Space.m).frame(minHeight: 30)
+            .padding(.horizontal, 10).frame(minHeight: 30)
             .foregroundStyle(filled ? Theme.onAccent : color)
-            .background(filled ? color : color.opacity(0.1), in: Capsule())
+            .background(filled ? color : Color.clear, in: shape)
+            .overlay(shape.strokeBorder(filled ? Color.clear : color, lineWidth: 1.5))
+            .contentShape(shape)
         }
         .buttonStyle(.plain)
     }
 }
 
-/// A full-width capsule button, 48 pt tall.
+/// To Do's two one-tap actions, so they never look alike: Turn in stays in Dewey
+/// (outlined ink, a check), Submit leaves for Schoology's dropbox (filled, the globe, ↗).
+extension PillButton {
+    static func turnIn(_ action: @escaping () -> Void) -> PillButton {
+        PillButton(title: "Turn in", color: Theme.text, icon: "checkmark", action: action)
+    }
+    static func submit(_ action: @escaping () -> Void) -> PillButton {
+        PillButton(title: "Submit", filled: true, icon: "globe", external: true, action: action)
+    }
+}
+
+/// A full-width button, 48 pt tall, with card corners.
 struct WideButton: View {
     let title: String
     var systemImage: String?
@@ -259,8 +279,8 @@ struct WideButton: View {
             .font(Theme.headline)
             .frame(maxWidth: .infinity, minHeight: 48)
             .foregroundStyle(filled ? Theme.onAccent : color)
-            .background(filled ? color : Theme.card, in: Capsule())
-            .overlay(Capsule().stroke(filled ? Color.clear : Theme.border))
+            .background(filled ? color : Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(filled ? Color.clear : Theme.border))
         }
         .buttonStyle(.plain)
     }

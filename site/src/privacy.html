@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy · Dewey</title>
+  <meta name="description" content="What Dewey reads, where it keeps it, and what never leaves your device.">
+  <link rel="icon" href="/brand/icon.svg" type="image/svg+xml">
+  <link rel="icon" href="/brand/icon32.png" sizes="32x32">
+  <link rel="stylesheet" href="/style.css">
+  <script>try { var t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+  <script src="/site.js" defer></script>
+</head>
+<body>
+  <header class="top wrap">
+    <a href="/" class="brand" aria-label="Dewey home">
+      <img class="logo-light" src="/brand/dewey-horizontal.svg" alt="Dewey" height="36">
+      <img class="logo-dark" src="/brand/dewey-horizontal-dark.svg" alt="" height="36">
+    </a>
+    <nav>
+      <a href="/terms">Terms</a>
+      <button class="theme" type="button" aria-label="Switch light or dark"><span aria-hidden="true"></span></button>
+    </nav>
+  </header>
+
+  <main class="doc wrap">
+    <p class="call"><b>340</b>Law</p>
+    <h1>Privacy</h1>
+    <p class="updated">Last updated October 31, 2026</p>
+
+    <div class="summary">
+      <b>The short version</b>
+      <ul>
+        <li>Dewey has no server of its own, no accounts, no analytics and no ads.</li>
+        <li>What it reads from Schoology stays on your computer or phone.</li>
+        <li>Nothing is sent anywhere unless you turn on an optional connection (neo-plan or Claude), and this page says exactly what each one sends.</li>
+        <li>We never see your password. We never sell or share anything, because we never have it.</li>
+      </ul>
+    </div>
+
+    <h2>Who “we” are</h2>
+    <p>Dewey is made by Owen, an individual student developer, not a company. “Dewey” means the Chrome extension, the Android and iPhone apps, and this website. Questions go to <a href="mailto:legal@owen64.me">legal@owen64.me</a>.</p>
+    <p>Dewey is not affiliated with Schoology, PowerSchool, or your school.</p>
+
+    <h2>What Dewey reads</h2>
+    <p>Dewey works by reading Schoology pages that you can already see, using the Schoology login you already have. Depending on what you use, that includes:</p>
+    <ul>
+      <li>Your courses, To Do and upcoming lists, assignments and their submission status.</li>
+      <li>Your grades and gradebook categories.</li>
+      <li>Course materials, announcements and updates.</li>
+      <li>Files linked from your courses, including Google Docs, Slides and Drive files, when you save a class.</li>
+    </ul>
+    <p>Dewey only reads. It never submits, posts, or changes anything on Schoology, and it never opens a test or quiz.</p>
+
+    <h2>Where it's kept</h2>
+    <table>
+      <tr><th>Chrome extension</th><td>In Chrome's own storage for the extension, on your computer. Saved classes are ordinary files in the folder you choose (by default, a folder in Downloads).</td></tr>
+      <tr><th>Android and iPhone apps</th><td>On your phone, in the app's own storage. Your Schoology sign-in stays in the app's web view, as it would in a browser. Reminders and widgets are made on the phone.</td></tr>
+      <tr><th>What-if scores, “done” marks, your own tasks</th><td>On your device, with the rest.</td></tr>
+    </table>
+    <p>Requests to Schoology and Google go straight from your device to them, the same as when you browse there yourself. Their own privacy policies cover what they log.</p>
+
+    <h2>What leaves your device</h2>
+    <p>Nothing, unless you turn on one of these. Both are off until you set them up.</p>
+
+    <h3>neo-plan (optional planner sync)</h3>
+    <p>neo-plan is a separate planner app. If you paste a neo-plan token into Dewey, Dewey sends neo-plan what it needs to keep your planner up to date:</p>
+    <ul>
+      <li>Your course names, and which planner column each one goes in.</li>
+      <li>Assignments and events from your To Do and upcoming lists, with due dates.</li>
+      <li>Grades for the courses you connect, and whether open assignments have been submitted.</li>
+      <li>Things you mark in Dewey, like “done” or “studied”.</li>
+    </ul>
+    <p>Your token is stored on your device (in the phone's Keychain or Keystore on the apps) and is only ever sent to neo-plan. neo-plan's own privacy policy covers what it does with this. Remove the token in Dewey's settings to stop.</p>
+
+    <h3>Claude (optional study add-on)</h3>
+    <p>If you set up Dewey's Claude add-on, a small program on your computer lets the Claude desktop app read your Schoology data and saved classes when you ask it to. That program runs only on your computer. When you ask Claude something, what Claude reads is sent to Anthropic as part of your conversation, under Anthropic's terms and privacy policy, the same as anything else you share with Claude.</p>
+
+    <h2>This website</h2>
+    <p>dewey.owen64.me is hosted on Cloudflare. It sets no cookies and runs no analytics or trackers. Cloudflare processes basic request data, like IP addresses, to deliver and protect the site; see Cloudflare's privacy policy. The site remembers your light or dark choice in your own browser and nowhere else.</p>
+
+    <h2>Students and children</h2>
+    <p>Dewey is made for high school students. Because Dewey doesn't collect personal information, we don't collect it from anyone, including children under 13. Dewey isn't a service provided by your school, and your school records stay between you, your school, and Schoology.</p>
+
+    <h2>Your choices</h2>
+    <ul>
+      <li>Hide Dewey on Schoology any time with the switch in the bottom-left corner.</li>
+      <li>Disconnect neo-plan or Claude in Dewey's settings.</li>
+      <li>Remove the extension or app to delete what it stored. Saved classes are your own files; delete the folder if you want them gone.</li>
+    </ul>
+
+    <h2>Security</h2>
+    <p>Your data stays where you already keep things: your browser, your phone, your folders. Dewey never asks for or stores your password. Keep your device locked and your Schoology login private.</p>
+
+    <h2>Changes</h2>
+    <p>If this policy changes, the new version goes on this page with a new date at the top. If a change means Dewey sends something new off your device, it will be off until you choose to turn it on.</p>
+
+    <h2>Contact</h2>
+    <p><a href="mailto:legal@owen64.me">legal@owen64.me</a></p>
+  </main>
+
+  <footer class="foot wrap">
+    <img src="/brand/dewey-mark.svg" alt="" width="28" height="28">
+    <p>Made by a student, for students. Not affiliated with Schoology or PowerSchool.</p>
+    <nav><a href="/">Home</a><a href="/privacy">Privacy</a><a href="/terms">Terms</a></nav>
+  </footer>
+</body>
+</html>

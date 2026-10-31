@@ -1,0 +1,13 @@
+{
+  "name": "dewey-site",
+  "private": true,
+  "description": "dewey.owen64.me: download and info page, deployed as a Cloudflare Worker.",
+  "scripts": {
+    "build": "./build.sh",
+    "preview": "./build.sh && wrangler dev",
+    "deploy": "./build.sh && wrangler deploy"
+  },
+  "devDependencies": {
+    "wrangler": "4.40.0"
+  }
+}

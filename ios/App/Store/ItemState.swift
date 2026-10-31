@@ -102,8 +102,17 @@ final class ItemState {
 final class CourseState {
     @Attribute(.unique) var sectionId: String
     var aCutoff: Double?
+    /// The grade the student aims for (a % from `Goal.scale`); nil = the A line.
+    var goal: Double?
 
     init(sectionId: String) { self.sectionId = sectionId }
+}
+
+/// The letters a goal can be, from grademath's SCALE (A down to C-).
+enum Goal {
+    static let scale: [(letter: String, pct: Double)] = [("A", 93), ("A-", 90), ("B+", 87), ("B", 83), ("B-", 80), ("C+", 77), ("C", 73), ("C-", 70)]
+
+    static func letter(_ pct: Double) -> String { scale.first { pct >= $0.pct - 1e-9 }?.letter ?? "D" }
 }
 
 /// Pure To Do rules, separate from SwiftData so tests can run them.

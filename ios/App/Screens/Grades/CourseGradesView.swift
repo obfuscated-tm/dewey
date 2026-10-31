@@ -1,10 +1,12 @@
 import SwiftUI
 
 /// 2b · Every item of the current period by category, facts first, with the
-/// grade-over-time graph. What-if mode (off by default, cleared on leaving)
-/// puts a score box on every row, lets the student drop a row or add a made-up
-/// one per category, keeps real → what-if pinned at the top, and holds "Plan an
-/// upcoming test".
+/// grade-over-time graph. What-if mode (off by default) puts a score box on
+/// every row, lets the student drop a row or add a made-up one per category,
+/// keeps real → what-if pinned at the top, and holds "Plan an upcoming test".
+/// "Show real" hides the what-if scores without clearing them; they live in
+/// this screen's state, so a tab switch keeps them and leaving the class clears
+/// them. The Goal chip (saved per class) is the grade the planner aims for.
 struct CourseGradesView: View {
     @Environment(AppModel.self) private var model
     let course: Course
@@ -19,6 +21,7 @@ struct CourseGradesView: View {
     @State private var planCategory = ""
     @State private var planPoints = "100"
     @State private var plan: PlanResult?
+    @State private var planGen = 0
     @State private var sheet: SheetTarget?
     @FocusState private var focused: String?
     /// Scores that were new when the screen opened; they keep their tag until it closes.
@@ -50,6 +53,7 @@ struct CourseGradesView: View {
     private var real: CourseGrade? { model.grades[course.sectionId] }
     private var shown: CourseGrade? { whatIfOn ? (preview ?? real) : real }
     private var cutoff: Double { model.courseState(course.sectionId).aCutoff ?? 93 }
+    private var goal: Double { model.goal(course.sectionId) }
     private func possibleOf(_ it: CourseGrade.Item) -> Double? {
         it.possible ?? Double(whatIfOutOf[it.id] ?? "").flatMap { $0 > 0 ? $0 : nil }
     }
@@ -62,7 +66,7 @@ struct CourseGradesView: View {
             VStack(alignment: .leading, spacing: 14) {
                 if !whatIfOn { summary }
                 if let g = real {
-                    GradeHistoryChart(history: g.history, cutoff: cutoff,
+                    GradeHistoryChart(history: g.history, cutoff: goal, cutoffLabel: Goal.letter(goal),
                                       whatIfPct: whatIfOn && changeCount > 0 ? preview?.pct : nil)
                 }
                 if let g = shown {
@@ -101,8 +105,9 @@ struct CourseGradesView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button(whatIfOn ? "Done" : "What-if") { setWhatIf(!whatIfOn) }
+                Button(whatIfOn ? "Show real" : "What-if") { setWhatIf(!whatIfOn) }
                     .fontWeight(.semibold)
+                    .accessibilityHint(whatIfOn ? "Shows your real grade; your what-if scores stay until you leave the class" : "")
             }
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
@@ -118,21 +123,19 @@ struct CourseGradesView: View {
             model.markGradesSeen(fresh)
         }
         .sheet(item: $sheet) { SchoologySheet(target: $0) }
-        .onDisappear { clearWhatIf() }
     }
 
     private var gradesURL: URL { URL(string: "\(Engine.origin.absoluteString)/course/\(course.sectionId)/student_grades")! }
 
+    /// Off only hides the what-if scores; Reset (or leaving the class) clears them.
     private func setWhatIf(_ on: Bool) {
         focused = nil
-        withAnimation(.snappy(duration: 0.25)) {
-            whatIfOn = on
-            if !on { clearWhatIf(); plan = nil }
-        }
+        withAnimation(.snappy(duration: 0.25)) { whatIfOn = on }
     }
 
     private func clearWhatIf() {
         whatIf = [:]; whatIfOutOf = [:]; dropped = []; extras = []; preview = nil
+        replan()
     }
 
     // ── Summary ──────────────────────────────────────────────────────────
@@ -152,8 +155,16 @@ struct CourseGradesView: View {
                 if let g = real {
                     Text(g.mode == "weighted" ? "Weighted by category" : "Total points").font(Theme.footnote).foregroundStyle(Theme.tertiary)
                 }
+                if let p = real?.pct {
+                    HStack(spacing: 6) {
+                        goalMenu.coachTarget("grades.goal")
+                        Text(p >= goal - 0.005 ? "At your goal" : "\(String(format: "%.2f", goal - p)) to go")
+                            .font(Theme.caption.monospacedDigit()).foregroundStyle(Theme.secondary)
+                    }
+                    .padding(.top, 2)
+                }
                 if !whatIfOn, real?.pct != nil {
-                    PillButton(title: "Try what-if scores") { setWhatIf(true) }
+                    PillButton(title: changeCount > 0 ? "Back to what-if · \(changeCount) change\(changeCount == 1 ? "" : "s")" : "Try what-if scores") { setWhatIf(true) }
                         .coachTarget("grades.whatif")
                         .padding(.top, 4)
                 }
@@ -165,6 +176,25 @@ struct CourseGradesView: View {
         }
         .padding(16)
         .card()
+    }
+
+    /// The grade to aim for: a small chip, saved per class.
+    private var goalMenu: some View {
+        Menu {
+            Picker("Goal", selection: Binding(get: { goal }, set: { model.setGoal(course.sectionId, $0); replan() })) {
+                ForEach(Goal.scale, id: \.pct) { Text("\($0.letter)  ·  \(Fmt.num($0.pct))%").tag($0.pct) }
+            }
+        } label: {
+            HStack(spacing: 3) {
+                Text("Goal \(Goal.letter(goal))")
+                Image(systemName: "chevron.down").imageScale(.small)
+            }
+            .font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.accent)
+            .padding(.horizontal, 8).padding(.vertical, 3)
+            .background(Theme.accentSoft, in: Capsule())
+        }
+        .accessibilityLabel("Goal \(Goal.letter(goal)), \(Fmt.num(goal)) percent")
+        .accessibilityHint("Changes the grade you're aiming for in this class")
     }
 
     /// Pinned under the nav bar in what-if mode: real → what-if, always in view while typing.
@@ -454,24 +484,30 @@ struct CourseGradesView: View {
             .accessibilityLabel(label)
     }
 
-    private func recompute() {
-        guard let rows = model.gradeRows(course.sectionId), let g = real else { return }
+    /// The what-if scores as grademath opts: typed scores, made-up items, drops.
+    private func scenario() -> (whatIf: [String: [String: Double]], extra: [[String: Any]], drop: [String]) {
         var w: [String: [String: Double]] = [:]
         for (id, s) in whatIf {
-            guard let v = Double(s), let it = g.items.first(where: { $0.id == id }), let p = possibleOf(it) else { continue }
+            guard let v = Double(s), let it = real?.items.first(where: { $0.id == id }), let p = possibleOf(it) else { continue }
             w[id] = ["earned": v, "possible": p]
         }
         let extra: [[String: Any]] = extras.compactMap { x in
             guard let e = Double(x.earned), let p = Double(x.possible), p > 0 else { return nil }
             return ["category": x.category, "earned": e, "possible": p]
         }
+        return (w, extra, Array(dropped))
+    }
+
+    private func recompute() {
+        guard let rows = model.gradeRows(course.sectionId), real != nil else { return }
+        let s = scenario()
         previewGen += 1
         let gen = previewGen
-        let drop = Array(dropped)
         Task {
-            let r = try? await model.summarize(rows: rows, whatIf: w, extra: extra, drop: drop)
+            let r = try? await model.summarize(rows: rows, whatIf: s.whatIf, extra: s.extra, drop: s.drop)
             if gen == previewGen { preview = r }
         }
+        replan()
     }
 
     // ── Plan an upcoming test (needFor) ──────────────────────────────────
@@ -484,7 +520,11 @@ struct CourseGradesView: View {
 
     private var planner: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Plan an upcoming test").font(Theme.headline)
+            HStack {
+                Text("Plan an upcoming test").font(Theme.headline)
+                Spacer()
+                goalMenu
+            }
             // Resolved while drawing, so the picker never sees "" (no such tag) on its first pass.
             Picker("Category", selection: Binding(get: { chosenCategory }, set: { planCategory = $0 })) {
                 ForEach(real?.categories.map(\.title) ?? [], id: \.self) { Text($0).tag($0) }
@@ -498,15 +538,15 @@ struct CourseGradesView: View {
                 Spacer()
                 PillButton(title: "Work it out", filled: true) {
                     focused = nil
-                    Task {
-                        plan = await model.plan(sectionId: course.sectionId, category: chosenCategory,
-                                                possible: Double(planPoints) ?? 0, target: cutoff)
-                    }
+                    runPlan()
                 }
             }
             if let plan {
                 Text(planText(plan)).font(Theme.subhead.weight(.medium))
                     .foregroundStyle(plan.status == "out" ? Theme.late : Theme.good)
+                if changeCount > 0 {
+                    Text("Counts your what-if scores above.").font(Theme.caption).foregroundStyle(Theme.secondary)
+                }
             }
         }
         .padding(16)
@@ -514,14 +554,31 @@ struct CourseGradesView: View {
 
     }
 
+    /// Works out the plan with the what-if scores on screen and the goal.
+    private func runPlan() {
+        let s = scenario(), category = chosenCategory, possible = Double(planPoints) ?? 0, target = goal
+        planGen += 1
+        let gen = planGen
+        Task {
+            let r = await model.plan(sectionId: course.sectionId, category: category, possible: possible, target: target,
+                                     whatIf: s.whatIf, extra: s.extra, drop: s.drop)
+            if gen == planGen { plan = r }
+        }
+    }
+
+    /// An answer on screen follows the scores and the goal; none appears until "Work it out".
+    private func replan() { if plan != nil { runPlan() } }
+
     private func planText(_ p: PlanResult) -> String {
         let pts = Double(planPoints) ?? 0
+        let name = "\(Goal.letter(goal)) (\(Fmt.num(goal))%)"
+        let reach = (preview?.pct ?? real?.pct ?? 0) < goal
         switch p.status {
-        case "any": return "Even a zero keeps you at \(Fmt.num(cutoff))%."
-        case "out": return "A full score still leaves you under \(Fmt.num(cutoff))%."
+        case "any": return reach ? "Even a zero gets you to \(name)." : "Even a zero keeps your \(name)."
+        case "out": return "A full score still leaves you under \(name)."
         case "need":
             let need = (p.need ?? 0).rounded(.up)
-            return "You need \(Fmt.num(need)) / \(Fmt.num(pts)) (\(Fmt.pct(pts > 0 ? need / pts * 100 : nil, digits: 0))) to stay at \(Fmt.num(cutoff))%."
+            return "You need \(Fmt.num(need)) / \(Fmt.num(pts)) (\(Fmt.pct(pts > 0 ? need / pts * 100 : nil, digits: 0))) to \(reach ? "reach" : "keep") \(name)."
         default: return "Pick a category with grades."
         }
     }

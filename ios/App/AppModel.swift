@@ -757,9 +757,20 @@ final class AppModel {
         return try await engine.call("courseGrade", ["rows": rowsObj, "opts": opts])
     }
 
-    func plan(sectionId: String, category: String, possible: Double, target: Double) async -> PlanResult? {
+    /// The score a planned item needs, counting the what-if scores on screen (same opts as `summarize`).
+    func plan(sectionId: String, category: String, possible: Double, target: Double,
+              whatIf: [String: [String: Double]] = [:], extra: [[String: Any]] = [], drop: [String] = []) async -> PlanResult? {
         guard let raw = gradeRows(sectionId), let rows = try? JSONSerialization.jsonObject(with: raw) else { return nil }
-        return try? await engine.call("planTest", ["rows": rows, "category": category, "possible": possible, "target": target])
+        let opts: [String: Any] = ["whatIf": whatIf, "extra": extra, "drop": drop]
+        return try? await engine.call("planTest", ["rows": rows, "category": category, "possible": possible, "target": target, "opts": opts])
+    }
+
+    /// The grade the student aims for in a class (the Goal chip): saved, and the A line until they pick one.
+    func goal(_ sectionId: String) -> Double { courseState(sectionId).goal ?? courseState(sectionId).aCutoff ?? 93 }
+
+    func setGoal(_ sectionId: String, _ pct: Double) {
+        courseState(sectionId).goal = pct
+        save()
     }
 
     /// The gradebook category gives an item its type.

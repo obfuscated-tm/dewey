@@ -159,7 +159,8 @@ struct WhatIfSheet: View {
     @FocusState private var typing: Bool
 
     private var item: CourseGrade.Item? { sectionId.flatMap { model.grades[$0]?.items.first { $0.id == itemId } } }
-    private var cutoff: Double { sectionId.flatMap { model.courseState($0).aCutoff } ?? 93 }
+    /// The class's goal (Course grades' Goal chip).
+    private var cutoff: Double { sectionId.map { model.goal($0) } ?? 93 }
 
     var body: some View {
         NavigationStack {
@@ -283,12 +284,14 @@ struct WhatIfSheet: View {
     }
 
     private func needText(_ n: PlanResult, _ possible: Double) -> String {
+        let name = "\(Goal.letter(cutoff)) (\(Fmt.num(cutoff))%)"
+        let reach = (sectionId.flatMap { model.grades[$0]?.pct } ?? 0) < cutoff
         switch n.status {
-        case "any": return "Any score here keeps you at \(Fmt.num(cutoff))% or above."
-        case "out": return "Even \(Fmt.num(possible)) / \(Fmt.num(possible)) leaves you under \(Fmt.num(cutoff))%."
+        case "any": return reach ? "Any score here gets you to \(name)." : "Any score here keeps your \(name)."
+        case "out": return "Even \(Fmt.num(possible)) / \(Fmt.num(possible)) leaves you under \(name)."
         case "need":
             let need = min((n.need ?? 0).rounded(.up), possible)
-            return "You need \(Fmt.num(need)) / \(Fmt.num(possible)) (\(Fmt.pct(need / possible * 100, digits: 0))) to stay at \(Fmt.num(cutoff))%."
+            return "You need \(Fmt.num(need)) / \(Fmt.num(possible)) (\(Fmt.pct(need / possible * 100, digits: 0))) to \(reach ? "reach" : "keep") \(name)."
         default: return ""
         }
     }

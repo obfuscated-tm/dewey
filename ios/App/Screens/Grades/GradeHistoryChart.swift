@@ -7,7 +7,9 @@ import SwiftUI
 /// what-if grade.
 struct GradeHistoryChart: View {
     let history: [CourseGrade.Point]
+    /// The dashed goal line and its letter.
     let cutoff: Double
+    var cutoffLabel = "A"
     var whatIfPct: Double?
 
     @State private var selectedDate: Date?
@@ -101,11 +103,11 @@ struct GradeHistoryChart: View {
         let lo = max(0, (min(vals.min() ?? 80, cutoff) - 2).rounded(.down))
         let hi = max(100, (vals.max() ?? 100).rounded(.up))
         return Chart {
-            RuleMark(y: .value("A line", cutoff))
+            RuleMark(y: .value("Goal", cutoff))
                 .foregroundStyle(Theme.good.opacity(0.6))
                 .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
                 .annotation(position: .top, alignment: .leading, spacing: 2) {
-                    Text("A \(Fmt.num(cutoff))%").font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.good)
+                    Text("\(cutoffLabel) \(Fmt.num(cutoff))%").font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.good)
                 }
             ForEach(pts) { p in
                 AreaMark(x: .value("Day", p.date), yStart: .value("Low", lo), yEnd: .value("Grade", p.pct))

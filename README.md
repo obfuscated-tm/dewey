@@ -18,7 +18,7 @@ A free Chrome extension for students on any school's Schoology, plus iPhone and 
 
 <br>
 
-[![Latest extension](https://img.shields.io/github/v/release/obfuscated-tm/dewey?filter=ext-v*&label=extension&color=1D9E75)](https://github.com/obfuscated-tm/dewey/releases/latest) ![iOS app: beta](https://img.shields.io/badge/iOS%20app-beta-0F6E56?logo=apple) ![Android app: beta](https://img.shields.io/badge/Android%20app-beta-0F6E56?logo=android) ![Claude add-on 1.1.0](https://img.shields.io/badge/Claude%20add--on-1.1.0-d97706)
+[![Latest extension](https://img.shields.io/github/v/release/obfuscated-tm/dewey?filter=ext-v*&label=extension&color=1D9E75)](https://github.com/obfuscated-tm/dewey/releases/latest) ![iOS app: beta](https://img.shields.io/badge/iOS%20app-beta-0F6E56?logo=apple) ![Android app: beta](https://img.shields.io/badge/Android%20app-beta-0F6E56?logo=android) ![Claude add-on 1.1.0](https://img.shields.io/badge/Claude%20add--on-1.1.0-d97706) [![All rights reserved](https://img.shields.io/badge/license-all%20rights%20reserved-555555)](LICENSE)
 
 [**Install**](#-install-the-extension-2-minutes) · [**Features**](#-what-you-get) · [**Phone apps**](#-dewey-for-iphone-and-android-beta) · [**Claude**](#-study-with-claude-optional) · [**Safety**](#%EF%B8%8F-is-it-safe) · [**Help**](#-troubleshooting)
 
@@ -352,7 +352,7 @@ Claude gets live answers while Chrome is open. When Chrome is closed, it uses yo
 | **Your stuff stays yours** | Nothing is uploaded anywhere. Saved classes are ordinary files in a folder you chose. |
 | **No passwords** | It uses the Schoology login Chrome already has. |
 | **Off switch** | Hide everything with the switch in Schoology's bottom-left corner, or press **Alt+Shift+K** to stop a save instantly. |
-| **Public source** | Every line is right here to read. |
+| **Nothing hidden** | Every line is right here to read. |
 
 ---
 
@@ -384,3 +384,9 @@ Still stuck? [Open an issue](https://github.com/obfuscated-tm/dewey/issues) and 
 ## 🔧 For developers
 
 How it works, the MCP tools, settings, tests, project layout and releases are in [docs/DEVELOPING.md](docs/DEVELOPING.md).
+
+---
+
+## 📄 License
+
+All rights reserved ([LICENSE](LICENSE)). The code is public to read, not to copy, change or share. No warranty.

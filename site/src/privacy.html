@@ -33,29 +33,31 @@
       <ul>
         <li>Dewey has no server of its own, no accounts, no analytics and no ads.</li>
         <li>What it reads from Schoology stays on your computer or phone.</li>
-        <li>Nothing is sent anywhere unless you turn on an optional connection (neo-plan or Claude), and this page says exactly what each one sends.</li>
-        <li>We never see your password. We never sell or share anything, because we never have it.</li>
+        <li>Nothing leaves your device unless you turn on an optional connection (neo-plan or Claude). This page says exactly what each one sends.</li>
+        <li>Dewey never sees your password, and I never sell or share anything, because Dewey never sends it to me.</li>
       </ul>
     </div>
 
-    <h2>Who “we” are</h2>
-    <p>Dewey is made by Owen, an individual student developer, not a company. “Dewey” means the Chrome extension, the Android and iPhone apps, and this website. Questions go to <a href="mailto:legal@owen64.me">legal@owen64.me</a>.</p>
+    <h2>Who I am</h2>
+    <p>Dewey is made by Owen, an individual student developer, not a company. “Dewey” means the Chrome extension, the Android and iPhone apps, the Claude add-on, and this website. Questions go to <a href="mailto:legal@owen64.me">legal@owen64.me</a>.</p>
+    <p>I also make and run <a href="https://neo-plan.vercel.app/privacy">neo-plan</a>, a planner with accounts and a server. Dewey can connect to it, but only if you choose to. neo-plan has <a href="https://neo-plan.vercel.app/privacy">its own privacy policy</a>.</p>
     <p>Dewey is not affiliated with Schoology, PowerSchool, or your school.</p>
 
     <h2>What Dewey reads</h2>
-    <p>Dewey works by reading Schoology pages that you can already see, using the Schoology login you already have. Depending on what you use, that includes:</p>
+    <p>Dewey works by reading Schoology pages you can already see, using the Schoology sign-in you already have. Depending on what you use, that includes:</p>
     <ul>
-      <li>Your courses, To Do and upcoming lists, assignments and their submission status.</li>
+      <li>Your courses, To Do and upcoming lists, assignments and whether they've been submitted.</li>
       <li>Your grades and gradebook categories.</li>
       <li>Course materials, announcements and updates.</li>
       <li>Files linked from your courses, including Google Docs, Slides and Drive files, when you save a class.</li>
     </ul>
-    <p>Dewey only reads. It never submits, posts, or changes anything on Schoology, and it never opens a test or quiz.</p>
+    <p>Dewey only reads. It never submits, posts or changes anything on Schoology for you, and it never opens a test or quiz. The apps can open Schoology's own Submit page; when you submit there, you're submitting on Schoology yourself, as you would in a browser.</p>
 
     <h2>Where it's kept</h2>
     <table>
       <tr><th>Chrome extension</th><td>In Chrome's own storage for the extension, on your computer. Saved classes are ordinary files in the folder you choose (by default, a folder in Downloads).</td></tr>
       <tr><th>Android and iPhone apps</th><td>On your phone, in the app's own storage. Your Schoology sign-in stays in the app's web view, as it would in a browser. Reminders and widgets are made on the phone.</td></tr>
+      <tr><th>Claude add-on</th><td>A small program on your computer keeps a copy of what the extension last read, on your computer.</td></tr>
       <tr><th>What-if scores, “done” marks, your own tasks</th><td>On your device, with the rest.</td></tr>
     </table>
     <p>Requests to Schoology and Google go straight from your device to them, the same as when you browse there yourself. Their own privacy policies cover what they log.</p>
@@ -63,34 +65,37 @@
     <h2>What leaves your device</h2>
     <p>Nothing, unless you turn on one of these. Both are off until you set them up.</p>
 
-    <h3>neo-plan (optional planner sync)</h3>
-    <p>neo-plan is a separate planner app. If you paste a neo-plan token into Dewey, Dewey sends neo-plan what it needs to keep your planner up to date:</p>
+    <h3>neo-plan (optional planner)</h3>
+    <p>If you paste a neo-plan token into Dewey, Dewey sends neo-plan what it needs to keep your planner up to date, for the courses and assignments it reads:</p>
     <ul>
-      <li>Your course names, and which planner column each one goes in.</li>
-      <li>Assignments and events from your To Do and upcoming lists, with due dates.</li>
-      <li>Grades for the courses you connect, and whether open assignments have been submitted.</li>
-      <li>Things you mark in Dewey, like “done” or “studied”.</li>
+      <li>Course names and Schoology's ID for each section.</li>
+      <li>Assignment and event titles, links, IDs and due dates.</li>
+      <li>Whether an assignment has been submitted, and whether it was late.</li>
+      <li>Whether Schoology's gradebook marks an assignment <b>Missing</b>. That yes-or-no is all Dewey sends from your gradebook. Your scores and grades are never sent to neo-plan.</li>
+      <li>An assignment's description text, so neo-plan can fill in the notes.</li>
+      <li>Things you change from Dewey, like “done”, “studied” or adding something to neo-plan.</li>
     </ul>
-    <p>Your token is stored on your device (in the phone's Keychain or Keystore on the apps) and is only ever sent to neo-plan. neo-plan's own privacy policy covers what it does with this. Remove the token in Dewey's settings to stop.</p>
+    <p>Dewey never sends your Schoology password or cookies. Your token is stored on your device (in the phone's Keychain or Keystore on the apps) and is only ever sent to neo-plan. With a token, Dewey also shows neo-plan in a card on Schoology pages; that card is neo-plan's own site, under neo-plan's policy. What neo-plan stores is in <a href="https://neo-plan.vercel.app/privacy">neo-plan's privacy policy</a>. Remove the token in Dewey's settings to stop.</p>
 
     <h3>Claude (optional study add-on)</h3>
-    <p>If you set up Dewey's Claude add-on, a small program on your computer lets the Claude desktop app read your Schoology data and saved classes when you ask it to. That program runs only on your computer. When you ask Claude something, what Claude reads is sent to Anthropic as part of your conversation, under Anthropic's terms and privacy policy, the same as anything else you share with Claude.</p>
+    <p>If you set up Dewey's Claude add-on, a small program on your computer lets the Claude desktop app read your Schoology data and saved classes when you ask it to. That program runs only on your computer. It gets your Schoology data from Dewey on the same computer, and when Claude asks it to open a course website, it fetches that public page directly, like a browser would. When you ask Claude something, what Claude reads is sent to Anthropic as part of your conversation, under Anthropic's terms and privacy policy, the same as anything else you share with Claude. Claude is only for people who meet Anthropic's age requirements.</p>
 
     <h2>This website</h2>
-    <p>dewey.owen64.me is hosted on Cloudflare. It sets no cookies and runs no analytics or trackers. Cloudflare processes basic request data, like IP addresses, to deliver and protect the site; see Cloudflare's privacy policy. The site remembers your light or dark choice in your own browser and nowhere else.</p>
+    <p>dewey.owen64.me is hosted on Cloudflare. It sets no cookies and runs no analytics or trackers. Cloudflare processes basic request data, like IP addresses, to deliver and protect the site; see <a href="https://www.cloudflare.com/privacypolicy/">Cloudflare's privacy policy</a>. The site remembers your light or dark choice in your own browser and nowhere else. Because nothing here tracks you, the site works the same whether or not your browser sends a Do Not Track signal.</p>
 
     <h2>Students and children</h2>
-    <p>Dewey is made for high school students. Because Dewey doesn't collect personal information, we don't collect it from anyone, including children under 13. Dewey isn't a service provided by your school, and your school records stay between you, your school, and Schoology.</p>
+    <p>Dewey is made for high school students. Because Dewey doesn't collect personal information, it doesn't collect it from anyone, including children under 13. Dewey isn't a service provided by your school, and your school records stay between you, your school and Schoology. neo-plan, which does have accounts, is for ages 13 and up.</p>
 
-    <h2>Your choices</h2>
+    <h2>Your choices and rights</h2>
     <ul>
       <li>Hide Dewey on Schoology any time with the switch in the bottom-left corner.</li>
       <li>Disconnect neo-plan or Claude in Dewey's settings.</li>
       <li>Remove the extension or app to delete what it stored. Saved classes are your own files; delete the folder if you want them gone.</li>
     </ul>
+    <p>Privacy laws like California's give you the right to know, delete and correct personal information a service holds about you. Dewey holds none: everything it keeps is on your own device, where you can delete it.</p>
 
     <h2>Security</h2>
-    <p>Your data stays where you already keep things: your browser, your phone, your folders. Dewey never asks for or stores your password. Keep your device locked and your Schoology login private.</p>
+    <p>Your data stays where you already keep things: your browser, your phone, your folders. Dewey never asks for or stores your password. Keep your device locked and your Schoology sign-in private. If you find a security problem in Dewey, email me.</p>
 
     <h2>Changes</h2>
     <p>If this policy changes, the new version goes on this page with a new date at the top. If a change means Dewey sends something new off your device, it will be off until you choose to turn it on.</p>

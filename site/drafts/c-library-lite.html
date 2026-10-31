@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draft C · Library, compact</title>
+<link rel="icon" href="/brand/icon.svg" type="image/svg+xml">
+<style>
+  /* Draft C: today's library look, cut to two screens. Serif only for the
+     headline, a rounded sans for everything else, stamps as small accents,
+     three cards in a row instead of three long sections. */
+  :root {
+    --bg: #F4EFE4; --paper: #FFFCF5; --line: #E4DBC8; --rule: #DCE8EE;
+    --text: #04342C; --soft: #34514A; --accent: #0F6E56; --accent-text: #fff; --stamp: #B8430F;
+    --serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+    --round: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --shadow: 0 10px 28px -14px rgba(4, 52, 44, .3);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) { :root {
+    --bg: #0A1F1B; --paper: #102924; --line: #1F443C; --rule: #173A33;
+    --text: #E1F5EE; --soft: #B0CFC5; --accent: #5DCAA5; --accent-text: #04342C; --stamp: #F08A5D;
+    --shadow: 0 10px 28px -14px rgba(0, 0, 0, .6); color-scheme: dark;
+  } .m-light { display: none; } }
+  @media (prefers-color-scheme: light) { .m-dark { display: none; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.5 var(--round); -webkit-font-smoothing: antialiased; }
+  .wrap { max-width: 1060px; margin: 0 auto; padding: 0 20px; }
+  header { display: flex; justify-content: space-between; align-items: center; padding: 22px 0; }
+  header img { height: 34px; display: block; }
+  header button { background: none; border: 0; color: var(--soft); font: 600 .95rem var(--round); cursor: pointer; }
+
+  .stamp { display: inline-block; font: 700 .72rem/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--stamp); border: 2px solid currentColor; border-radius: 4px; padding: .4em .55em; transform: rotate(var(--r, -3deg)); white-space: nowrap; }
+
+  .hero { display: grid; grid-template-columns: 1.15fr 1fr; gap: 40px; align-items: center; padding: 24px 0 48px; }
+  h1 { font: 700 clamp(2.6rem, 6vw, 4rem)/1.05 var(--serif); margin: 14px 0 14px; letter-spacing: -.02em; }
+  h1 em { color: var(--accent); }
+  .hero p { color: var(--soft); font-size: 1.15rem; margin: 0 0 24px; max-width: 26em; }
+  .btn { display: inline-flex; align-items: center; min-height: 50px; padding: 0 26px; border-radius: 999px; border: 0; background: var(--accent); color: var(--accent-text); font: 700 1.05rem var(--round); text-decoration: none; cursor: pointer; }
+  .alt { margin-left: 14px; color: var(--soft); font-weight: 600; }
+  .small { font-size: .88rem; color: var(--soft); margin-top: 12px !important; }
+
+  .libcard { background: var(--paper); border-radius: 8px; box-shadow: var(--shadow); padding-bottom: 6px; }
+  .libcard header { padding: 14px 18px 10px; border-bottom: 2px solid var(--stamp); font: 700 .72rem var(--mono); letter-spacing: .18em; text-transform: uppercase; }
+  .libcard ol { list-style: none; margin: 0; padding: 0; }
+  .libcard li { display: grid; grid-template-columns: 92px 1fr; align-items: center; gap: 10px; padding: 10px 18px 10px 10px; border-bottom: 1px solid var(--rule); cursor: pointer; }
+  .libcard li:last-child { border: 0; }
+  .libcard li .stamp.due { color: var(--soft); }
+  .libcard li b { font-weight: 600; }
+  .libcard li small { display: block; color: var(--soft); font-size: .82rem; }
+  .libcard li.on b { text-decoration: line-through; opacity: .45; }
+  .libcard li.on .stamp { color: var(--accent); }
+
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding-bottom: 20px; }
+  .card { background: var(--paper); border-radius: 18px; padding: 22px; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+  .card h2 { font-size: 1.2rem; margin: 12px 0 4px; }
+  .card p { margin: 0 0 16px; color: var(--soft); font-size: .95rem; }
+  .card .demo { margin-top: auto; background: var(--bg); border-radius: 12px; padding: 14px; }
+  .num { font: 700 2.4rem/1 var(--serif); }
+  .num span { font: 600 1rem var(--round); color: var(--soft); margin-left: 6px; }
+  input[type="range"] { width: 100%; accent-color: var(--accent); }
+  .files { list-style: none; margin: 0 0 10px; padding: 0; font: .8rem/1.6 var(--mono); color: var(--soft); }
+  .files li.got { color: var(--text); } .files li.got::before { content: "✓ "; color: var(--accent); }
+  .mini { width: 100%; min-height: 40px; border-radius: 999px; border: 1.5px solid var(--text); background: none; color: var(--text); font: 700 .9rem var(--round); cursor: pointer; }
+
+  .promises { display: flex; flex-wrap: wrap; gap: 10px 22px; justify-content: center; padding: 28px 0; margin: 0; list-style: none; font-weight: 600; }
+  .promises li::before { content: "✕ "; color: var(--stamp); font-family: var(--mono); }
+  .promises-title { text-align: center; color: var(--soft); font-size: .9rem; margin: 20px 0 0; }
+
+  footer { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px; padding: 20px 0 32px; border-top: 1px solid var(--line); font-size: .88rem; color: var(--soft); }
+  footer a { color: inherit; margin-left: 14px; }
+  dialog { border: 0; border-radius: 18px; padding: 28px; max-width: 520px; background: var(--paper); color: var(--text); }
+  dialog::backdrop { background: rgba(4, 52, 44, .4); }
+  dialog li { margin: 10px 0; }
+  code { background: var(--bg); padding: 2px 6px; border-radius: 6px; font-size: .9em; }
+
+  @media (max-width: 860px) { .hero, .three { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img src="/brand/dewey-horizontal.svg" alt="Dewey" class="m-light">
+      <img src="/brand/dewey-horizontal-dark.svg" alt="Dewey" class="m-dark">
+      <button data-open>Install</button>
+    </header>
+
+    <section class="hero">
+      <div>
+        <span class="stamp" data-today>Today</span>
+        <h1>Schoology, <em>sorted.</em></h1>
+        <p>See what's due, know your exact grade, and keep your classes after the term ends.</p>
+        <button class="btn" data-open>Add to Chrome, free</button><a class="alt" href="/download/dewey-android.apk">Android beta</a>
+        <p class="small">No account · no password · iPhone coming soon</p>
+      </div>
+      <div class="libcard">
+        <header>Date due</header>
+        <ol data-todo>
+          <li><span class="stamp" style="--r:-4deg">1 d late</span><span><b>Lab 2.2: Cell Size</b><small>AP Biology</small></span></li>
+          <li><span class="stamp" style="--r:2deg">Today</span><span><b>HW 3.1, #1–35 odd</b><small>Algebra 2</small></span></li>
+          <li><span class="stamp due" style="--r:-2deg">Tomorrow</span><span><b>Gatsby ch. 4 notes</b><small>English 10</small></span></li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="three">
+      <article class="card">
+        <span class="stamp" style="--r:-2deg">To Do</span>
+        <h2>One list for every class</h2>
+        <p>Late work in red, today's on top, a Done button on every row.</p>
+        <div class="demo"><img src="/img/home.png" alt="Dewey's To Do on Schoology" style="width:100%;height:150px;object-fit:cover;object-position:top;border-radius:8px;display:block"></div>
+      </article>
+      <article class="card">
+        <span class="stamp" style="--r:2deg">Grades</span>
+        <h2>Your grade, and what if</h2>
+        <p>The exact number, and what one test will do to it. Drag it.</p>
+        <div class="demo"><div class="num" data-g>91.8<span>A</span></div><input type="range" min="0" max="50" value="38" data-r aria-label="Test score"><small data-s>Unit 4 Test: 38 / 50</small></div>
+      </article>
+      <article class="card">
+        <span class="stamp" style="--r:-3deg">Archive</span>
+        <h2>Keep your classes</h2>
+        <p>One click saves a class to a folder you own, before the term ends.</p>
+        <div class="demo"><ul class="files" data-files><li>Unit 1 slides.pdf</li><li>Notes (Google Doc).pdf</li><li>Your lab report.docx</li></ul><button class="mini" data-archive>Save Chemistry</button></div>
+      </article>
+    </section>
+
+    <p class="promises-title">What Dewey won't do</p>
+    <ul class="promises">
+      <li>Change anything on Schoology</li>
+      <li>Touch your tests</li>
+      <li>Ask for your password</li>
+      <li>Track you</li>
+    </ul>
+
+    <footer>
+      <span>Made by Owen, a high school student. Not affiliated with Schoology.</span>
+      <span><a href="/privacy">Privacy</a><a href="/terms">Terms</a></span>
+    </footer>
+  </div>
+
+  <dialog data-dialog>
+    <h2 style="margin-top:0;font-family:var(--serif)">Add Dewey to Chrome</h2>
+    <ol>
+      <li><a href="/download/dewey-extension.zip">Download the ZIP</a> and unzip it somewhere it can stay.</li>
+      <li>Open <code>chrome://extensions</code>, turn on <b>Developer mode</b>, click <b>Load unpacked</b>, pick the folder.</li>
+      <li>Open Schoology. Dewey takes it from there.</li>
+    </ol>
+    <button class="btn" data-close>Done</button>
+  </dialog>
+
+<script>
+  const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
+  const d = $('[data-dialog]');
+  $$('[data-open]').forEach((b) => b.onclick = () => d.showModal());
+  $('[data-close]').onclick = () => d.close();
+  const now = new Date();
+  $('[data-today]').textContent = now.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' }).replace(',', '');
+  $$('[data-todo] li').forEach((li) => li.onclick = () => li.classList.toggle('on'));
+  const r = $('[data-r]');
+  const draw = () => {
+    const g = ((182 + +r.value) / 250) * 50 + 47.8;
+    $('[data-g]').innerHTML = `${g.toFixed(1)}<span>${g >= 90 ? 'A' : g >= 80 ? 'B' : 'C'}</span>`;
+    $('[data-s]').textContent = `Unit 4 Test: ${r.value} / 50`;
+  };
+  r.oninput = draw; draw();
+  $('[data-archive]').onclick = async (e) => {
+    for (const li of $$('[data-files] li')) { await new Promise((ok) => setTimeout(ok, 250)); li.classList.add('got'); }
+    e.target.textContent = 'Saved';
+  };
+</script>
+</body>
+</html>

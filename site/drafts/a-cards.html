@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draft A · Cards</title>
+<link rel="icon" href="/brand/icon.svg" type="image/svg+xml">
+<style>
+  /* Draft A: one rounded panel, a short hero, every feature visible at once.
+     Friendly through the rounded system font, soft shapes and the mascot. */
+  :root {
+    --bg: #EEF5F1; --panel: #FFFFFF; --card: #F6FAF8; --line: #E0ECE6;
+    --text: #04342C; --soft: #36544C; --accent: #0F6E56; --accent-text: #fff;
+    --tint: #E1F5EE; --late: #B8430F;
+    --round: ui-rounded, "SF Pro Rounded", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) { :root {
+    --bg: #071C18; --panel: #0C2924; --card: #11332D; --line: #1D453D;
+    --text: #E1F5EE; --soft: #B5D3C9; --accent: #5DCAA5; --accent-text: #04342C;
+    --tint: #16413A; --late: #F08A5D; color-scheme: dark;
+  } .m-light { display: none; } }
+  @media (prefers-color-scheme: light) { .m-dark { display: none; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.5 var(--round); -webkit-font-smoothing: antialiased; }
+  .panel { max-width: 1000px; margin: 24px auto; background: var(--panel); border-radius: 32px; padding: 28px 36px 36px; }
+  header { display: flex; justify-content: space-between; align-items: center; }
+  header img { height: 34px; display: block; }
+  header nav { display: flex; gap: 8px; }
+  .chip { border: 0; background: var(--card); color: var(--text); font: 600 .9rem var(--round); padding: 9px 14px; border-radius: 999px; text-decoration: none; cursor: pointer; }
+
+  .hero { text-align: center; padding: 44px 0 36px; }
+  h1 { font-size: clamp(2.2rem, 5vw, 3.2rem); line-height: 1.1; margin: 0 0 12px; letter-spacing: -.02em; }
+  .hero p { margin: 0 auto 24px; color: var(--soft); font-size: 1.15rem; max-width: 30em; }
+  .btn { display: inline-flex; align-items: center; gap: 8px; min-height: 50px; padding: 0 26px; border-radius: 999px; border: 0; background: var(--accent); color: var(--accent-text); font: 700 1.05rem var(--round); text-decoration: none; cursor: pointer; }
+  .btn.alt { background: var(--card); color: var(--text); }
+  .ctas { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+  .small { color: var(--soft); font-size: .88rem; margin-top: 12px; }
+
+  h2 { font-size: 1.3rem; margin: 8px 4px 14px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+  .card { background: var(--card); border-radius: 22px; padding: 18px; display: flex; flex-direction: column; }
+  .art { height: 132px; border-radius: 14px; background: var(--panel); display: grid; place-items: center; margin-bottom: 14px; overflow: hidden; padding: 12px; }
+  .art img { height: 96px; width: auto; }
+  .card h3 { margin: 0 0 4px; font-size: 1.08rem; }
+  .card p { margin: 0; color: var(--soft); font-size: .95rem; }
+
+  /* tiny demos inside the art boxes */
+  .todo { list-style: none; margin: 0; padding: 0; width: 100%; font-size: .85rem; }
+  .todo li { display: flex; align-items: center; gap: 8px; padding: 4px 0; cursor: pointer; }
+  .todo i { width: 16px; height: 16px; border-radius: 50%; border: 2px solid var(--accent); flex: none; }
+  .todo .late { color: var(--late); font-weight: 700; margin-left: auto; }
+  .todo li.on i { background: var(--accent); }
+  .todo li.on span:first-of-type { text-decoration: line-through; opacity: .5; }
+  .big { font-size: 2.6rem; font-weight: 800; letter-spacing: -.02em; line-height: 1; text-align: center; }
+  .big small { display: block; font-size: .8rem; font-weight: 600; color: var(--soft); letter-spacing: 0; margin-top: 6px; }
+  .whatif { width: 100%; text-align: center; }
+  .whatif b { font-size: 1.9rem; display: block; line-height: 1.1; }
+  .whatif input { width: 100%; accent-color: var(--accent); }
+  .whatif span { font-size: .8rem; color: var(--soft); }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+  .tag { font-size: .8rem; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: var(--tint); }
+  .tag.red { background: color-mix(in srgb, var(--late) 15%, transparent); color: var(--late); }
+
+  .promises { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 30px 0 4px; padding: 0; list-style: none; }
+  .promises li { background: var(--tint); border-radius: 999px; padding: 8px 14px; font-weight: 600; font-size: .92rem; }
+  .promises li::before { content: "✓ "; color: var(--accent); }
+
+  footer { max-width: 1000px; margin: 0 auto 32px; padding: 0 20px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; color: var(--soft); font-size: .88rem; }
+  footer a { color: inherit; margin-left: 14px; }
+
+  dialog { border: 0; border-radius: 24px; padding: 28px; max-width: 520px; background: var(--panel); color: var(--text); }
+  dialog::backdrop { background: rgba(4, 52, 44, .4); }
+  dialog ol { padding-left: 20px; } dialog li { margin: 10px 0; }
+  code { background: var(--card); padding: 2px 6px; border-radius: 6px; font-size: .9em; }
+
+  @media (max-width: 760px) {
+    .panel { margin: 0; border-radius: 0; padding: 20px 16px 28px; }
+    .grid { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 480px) { .grid { grid-template-columns: 1fr; } header nav .hide { display: none; } }
+</style>
+</head>
+<body>
+  <div class="panel">
+    <header>
+      <img src="/brand/dewey-horizontal.svg" alt="Dewey" class="m-light">
+      <img src="/brand/dewey-horizontal-dark.svg" alt="Dewey" class="m-dark">
+      <nav><button class="chip" data-open>Install</button><a class="chip hide" href="/privacy">Privacy</a></nav>
+    </header>
+
+    <section class="hero">
+      <h1>Schoology, sorted.</h1>
+      <p>See what's due, know your exact grade, and keep your classes after the term ends.</p>
+      <div class="ctas">
+        <button class="btn" data-open>Add to Chrome, free</button>
+        <a class="btn alt" href="#phones">iPhone &amp; Android</a>
+      </div>
+      <p class="small">No account · no password · made by a student</p>
+    </section>
+
+    <h2>What it does</h2>
+    <div class="grid">
+      <article class="card">
+        <div class="art">
+          <ul class="todo" data-todo>
+            <li><i></i><span>Lab 2.2</span><span class="late">1 d late</span></li>
+            <li><i></i><span>HW 3.1</span><span class="late">Today</span></li>
+            <li><i></i><span>Gatsby ch. 4</span></li>
+            <li><i></i><span>Unit 4 Test</span></li>
+          </ul>
+        </div>
+        <h3>One To Do list</h3>
+        <p>Every class in one place, with the real due time.</p>
+      </article>
+      <article class="card">
+        <div class="art"><div class="big">93.3<small>AP Biology · 3.3 above an A</small></div></div>
+        <h3>Your grade, to the decimal</h3>
+        <p>Not just a letter. See how close you are to the line.</p>
+      </article>
+      <article class="card">
+        <div class="art"><div class="whatif"><b data-g>A 91.8</b><input type="range" min="0" max="50" value="38" data-r aria-label="Test score"><span data-s>Test: 38 / 50</span></div></div>
+        <h3>What if?</h3>
+        <p>Try a score before you get it. Drag it.</p>
+      </article>
+      <article class="card">
+        <div class="art"><img src="m/dewey-archiving.svg" alt="" class="m-light"><img src="m/dewey-archiving-dark.svg" alt="" class="m-dark"></div>
+        <h3>Keep your classes</h3>
+        <p>Save a whole class in one click, before the term ends.</p>
+      </article>
+      <article class="card">
+        <div class="art"><div class="tags"><span class="tag red">1 missing</span><span class="tag">1 to turn in</span><span class="tag">All turned in</span></div></div>
+        <h3>Find missing work</h3>
+        <p>Every folder shows what's still open.</p>
+      </article>
+      <article class="card" id="phones">
+        <div class="art"><img src="m/dewey-hello.svg" alt="" class="m-light"><img src="m/dewey-hello-dark.svg" alt="" class="m-dark"></div>
+        <h3>On your phone too</h3>
+        <p>Android in beta. iPhone coming soon.</p>
+      </article>
+    </div>
+
+    <ul class="promises">
+      <li>Never changes Schoology</li>
+      <li>Stays out of your tests</li>
+      <li>No password</li>
+      <li>No tracking</li>
+    </ul>
+  </div>
+
+  <footer>
+    <span>Made by Owen, a high school student. Not affiliated with Schoology.</span>
+    <span><a href="/privacy">Privacy</a><a href="/terms">Terms</a></span>
+  </footer>
+
+  <dialog data-dialog>
+    <h2 style="margin-top:0">Add Dewey to Chrome</h2>
+    <ol>
+      <li><a href="/download/dewey-extension.zip">Download the ZIP</a> and unzip it somewhere it can stay.</li>
+      <li>Open <code>chrome://extensions</code>, turn on <b>Developer mode</b>, click <b>Load unpacked</b>, pick the folder.</li>
+      <li>Open Schoology. Dewey takes it from there.</li>
+    </ol>
+    <button class="btn alt" data-close>Done</button>
+  </dialog>
+
+<script>
+  const d = document.querySelector('[data-dialog]');
+  document.querySelectorAll('[data-open]').forEach((b) => b.onclick = () => d.showModal());
+  document.querySelector('[data-close]').onclick = () => d.close();
+  document.querySelectorAll('[data-todo] li').forEach((li) => li.onclick = () => li.classList.toggle('on'));
+  const r = document.querySelector('[data-r]');
+  const draw = () => {
+    const t = ((182 + +r.value) / 250) * 100, g = t * .5 + 47.8;
+    document.querySelector('[data-g]').textContent = `${g >= 90 ? 'A' : g >= 80 ? 'B' : 'C'} ${g.toFixed(1)}`;
+    document.querySelector('[data-s]').textContent = `Test: ${r.value} / 50`;
+  };
+  r.oninput = draw; draw();
+</script>
+</body>
+</html>

@@ -12,6 +12,18 @@
         "extension"
       ],
       "port": 8765
+    },
+    {
+      "name": "site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8766",
+        "--directory",
+        "site/dist"
+      ],
+      "port": 8766
     }
   ]
 }

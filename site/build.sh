@@ -9,13 +9,14 @@ root="$(dirname "$here")"
 dist="$here/dist"
 
 rm -rf "$dist"
-mkdir -p "$dist/brand" "$dist/img" "$dist/download"
+mkdir -p "$dist/brand" "$dist/img/app" "$dist/download"
 
 cp "$here"/src/{style.css,site.js,404.html,privacy.html,terms.html} "$dist/"
 cp "$root"/brand/logo/dewey-{horizontal,horizontal-dark,mark}.svg "$dist/brand/"
 cp "$root/brand/mascot/dewey-hello.svg" "$dist/brand/"
 cp "$root/brand/icons/chrome/icon.svg" "$root/brand/icons/chrome/icon32.png" "$dist/brand/"
 cp "$root"/docs/images/{hero,grades,materials,home,archive,ios-preview}.png "$dist/img/"
+cp "$here"/src/img/app/*.jpg "$dist/img/app/"
 
 # Newest tag with a prefix: gh lists releases newest first.
 latest_tag() {

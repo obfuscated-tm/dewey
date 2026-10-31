@@ -144,6 +144,8 @@ final class Coach {
         w.rootViewController = host
         w.isHidden = false
         window = w
+        // The app's window stays key (press-and-hold menus need it).
+        scene.windows.first { $0 !== w && !$0.isHidden && $0.windowLevel == .normal }?.makeKey()
         announce()
     }
 
@@ -244,7 +246,11 @@ final class Coach {
 
 /// Passes taps inside the hole through to the app, keeps the overlay's own
 /// controls, and swallows the rest. With VoiceOver on, nothing is swallowed.
+/// It never becomes the key window: tapping Dewey's buttons would otherwise make it key,
+/// and the app's press-and-hold menus don't open while the app's window isn't key.
 final class CoachWindow: UIWindow {
+    override var canBecomeKey: Bool { false }
+
     override func hitTest(_ point: CGPoint, with event: UIEvent?) -> UIView? {
         let c = Coach.shared
         guard let step = c.step else { return nil }
@@ -266,12 +272,21 @@ private struct CoachTarget: ViewModifier {
     @Environment(AppModel.self) private var model
     let key: String
     @State private var id = UUID()
+    /// The last frame reported: a view that comes back unmoved (popping back from a pushed
+    /// page) gets no new geometry change, so it says where it is again on appear.
+    @State private var last: CGRect?
 
     func body(content: Content) -> some View {
         if model.practice {
             content
                 .onGeometryChange(for: CGRect.self) { $0.frame(in: .global) } action: {
+                    last = $0
                     Coach.shared.frames[key] = $0
+                    Coach.shared.owners[key] = id
+                }
+                .onAppear {
+                    guard let last else { return }
+                    Coach.shared.frames[key] = last
                     Coach.shared.owners[key] = id
                 }
                 .onDisappear {
@@ -389,26 +404,22 @@ private struct HintMark: View {
     }
 }
 
-/// Dewey and what he says. He bobs while he waits and hops when a step is done.
+/// Dewey and what he says. He stays still; the text changes when a step is done.
 private struct Bubble: View {
     let step: Coach.Step
     let cheering: Bool
     let lost: Bool
     let reduceMotion: Bool
-    @State private var bob = false
 
     var body: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             Image("DeweyHello")
                 .resizable().scaledToFit()
                 .frame(width: 52, height: 52)
-                .offset(y: reduceMotion ? 0 : bob ? -3 : 3)
-                .scaleEffect(cheering ? 1.15 : 1)
-                .animation(reduceMotion ? nil : .spring(duration: 0.35, bounce: 0.6), value: cheering)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: Theme.Space.s) {
                 if cheering {
-                    Label("Nice!", systemImage: "checkmark.circle.fill")
+                    Label("Done", systemImage: "checkmark.circle.fill")
                         .font(Theme.headline).foregroundStyle(Theme.good)
                 } else {
                     Text(step.text).font(Theme.subhead).foregroundStyle(Theme.text)
@@ -452,9 +463,5 @@ private struct Bubble: View {
         .shadow(color: .black.opacity(0.25), radius: 12, y: 4)
         .tint(Theme.accent)
         .accessibilityElement(children: .contain)
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) { bob = true }
-        }
     }
 }

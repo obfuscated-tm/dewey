@@ -1,0 +1,16 @@
+// dewey.owen64.me: a static-assets-only Worker. Build first (`npm run build`),
+// then `npm run deploy`. The custom domain is created on the first deploy,
+// since owen64.me's DNS is on Cloudflare.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dewey-site",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "dewey.owen64.me", "custom_domain": true }
+  ],
+  "workers_dev": false
+}

@@ -64,7 +64,6 @@ struct WeekStrip: View {
             if case .day(let k) = f { return Self.dayNumber.string(from: date(k)) }
             return "\(its.count)"
         }()
-        let labelColor: Color = on ? Theme.onAccent : isLate ? Theme.late : isToday ? Theme.accent : Theme.secondary
         let pick: () -> Void = { withAnimation(.snappy(duration: 0.2)) { selected = on ? nil : f } }
         // A tap, not a Button: in the list a Button takes the touch, and the pull for the month
         // (CalendarPull) has to start from the days too.

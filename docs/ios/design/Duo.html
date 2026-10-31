@@ -1,0 +1,801 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dewey on iPhone Duo</title>
+<style>
+/* Dew theme, light (Palette "dew" in Theme.swift). Same tokens as Layouts.html. */
+:root{
+  --bg:#EEF6F2; --card:#FFFFFF; --border:#CFE3DA; --divider:#E0EDE7;
+  --text:#0E2A24; --secondary:#3F5A53; --tertiary:#52685F;
+  --late:#A63A0B; --lateSoft:#FBEDE5; --good:#426E10; --goodSoft:#E9F2DC; --tagSoft:#E1F0E9;
+  --accent:#0F6E56; --accentSoft:rgba(15,110,86,.11); --ripple:#5DCAA5; --spray:#9FE1CB; --mist:#E1F5EE;
+  --side:#E3EFE9; --rule:#C8462E; --line:#DCEAF5;
+  --c1:#1D5EA8; --c2:#23794A; --c3:#6A4BA8; --c4:#A8324A; --c5:#9A5B0C; --c6:#16707A;
+  --sans:-apple-system,"SF Pro Text",system-ui,"Helvetica Neue",sans-serif;
+  --serif:"New York",ui-serif,"Iowan Old Style",Georgia,serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:#DCE6E1;color:var(--text);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+.page{max-width:960px;margin:0 auto;padding:32px 16px 64px}
+.intro{max-width:760px;margin:0 0 28px}
+.intro h1{font-family:var(--serif);font-size:34px;margin:0 0 8px}
+.intro p,.intro li{font-size:15px;line-height:1.5;color:var(--secondary);margin:6px 0}
+.intro ul{padding-left:20px;margin:6px 0}
+figure{margin:0 0 48px}
+figcaption{max-width:760px;padding:16px 2px 0;font-size:14px;line-height:1.45;color:var(--secondary)}
+figcaption>b:first-child{color:var(--text);font-size:15px;display:block;margin-bottom:3px}
+
+/* The open phone. 7.6" inner display, 2670 × 1878 px at 430 ppi = 890 × 626 pt at 3x (10:7).
+   Scaled down to fit narrow windows by the script at the bottom. */
+.fit{width:100%}
+.scaler{width:910px;padding:10px;transform-origin:top left}
+.duo{width:890px;height:626px;background:var(--bg);border-radius:38px;overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px #10201C,0 24px 60px rgba(0,0,0,.25);display:flex}
+.hinge{position:absolute;left:445px;top:0;bottom:0;border-left:1px dashed rgba(14,42,36,.22);pointer-events:none}
+.hinge span{position:absolute;bottom:10px;left:6px;font-size:10px;color:rgba(14,42,36,.4);white-space:nowrap;letter-spacing:.04em}
+.statusbar{position:absolute;top:0;left:0;right:0;height:30px;display:flex;justify-content:space-between;align-items:flex-end;padding:0 34px 4px;font-size:15px;font-weight:600;pointer-events:none}
+
+/* Columns */
+.side{width:170px;flex:none;background:var(--side);border-right:1px solid var(--border);padding:38px 8px 12px;display:flex;flex-direction:column}
+.list{width:275px;flex:none;border-right:1px solid var(--border);padding:38px 14px 0;position:relative;overflow:hidden}
+.detail{flex:1;min-width:0;display:flex;flex-direction:column;background:var(--bg)}
+.detail .bar{flex:none;height:64px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 8px}
+.detail .scroll{flex:1;overflow:hidden;padding:4px 26px 0}
+.detail .bottom{flex:none;padding:10px 26px 18px;display:flex;gap:10px;border-top:1px solid var(--divider)}
+
+.half{width:445px;height:626px;flex:none;background:var(--bg);border-radius:30px;overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px #10201C,0 24px 60px rgba(0,0,0,.25);display:flex}
+.halves{display:flex;gap:40px}
+/* Folded: outer display, 1398 × 2034 px at 460 ppi ≈ 466 × 678 pt at 3x. */
+.foldgrid{display:flex;flex-wrap:wrap;gap:8px 28px}
+figure.small{width:466px;max-width:100%}
+.fold{width:466px;height:678px;background:var(--bg);border-radius:40px;overflow:hidden;position:relative;
+  box-shadow:0 0 0 10px #10201C,0 20px 50px rgba(0,0,0,.25);display:flex;flex-direction:column}
+.fstatus{height:44px;flex:none;display:flex;justify-content:space-between;align-items:flex-end;padding:0 30px 6px;font-size:15px;font-weight:600}
+.fscroll{flex:1;overflow:hidden;padding:2px 18px 0;position:relative}
+.ftabs{flex:none;height:78px;border-top:1px solid var(--divider);background:rgba(255,255,255,.85);display:flex;padding-top:8px}
+.ftabs div{flex:1;text-align:center;font-size:10px;font-weight:500;color:var(--tertiary);position:relative}
+.ftabs div i{display:block;width:24px;height:24px;margin:0 auto 3px;border-radius:7px;background:var(--divider)}
+.ftabs div.on{color:var(--accent)} .ftabs div.on i{background:var(--accent)}
+.tbadge{position:absolute;top:-4px;left:calc(50% + 6px);font-size:11px;font-weight:700;color:#fff;background:var(--late);border-radius:99px;padding:0 6px}
+.count{min-height:50px;border-radius:12px;display:flex;flex-direction:column;justify-content:center;padding:4px 12px;font-size:12.5px;font-weight:600}
+.count b{font-size:19px}
+.fab{position:absolute;right:18px;bottom:14px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:300;box-shadow:0 6px 16px rgba(15,110,86,.35)}
+/* Sidebar */
+.brand{display:flex;align-items:center;gap:8px;padding:0 8px 8px;font-family:var(--serif);font-weight:700;font-size:22px}
+.nav{display:flex;align-items:center;gap:10px;height:36px;padding:0 10px;border-radius:10px;font-size:15px;font-weight:500;color:var(--text)}
+.nav svg{width:20px;height:20px;flex:none;color:var(--accent)}
+.nav.on{background:var(--accent);color:#fff}
+.nav.on svg{color:#fff}
+.nav .count{margin-left:auto;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--tertiary)}
+.nav .badge{margin-left:auto;font-size:12px;font-weight:700;color:#fff;background:var(--late);border-radius:99px;padding:1px 7px}
+.nav.on .count{color:rgba(255,255,255,.85)}
+.sidehead{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tertiary);padding:12px 10px 4px}
+.cls{display:flex;align-items:center;gap:10px;height:28px;padding:0 10px;font-size:14px;color:var(--secondary)}
+.cls i{width:9px;height:9px;border-radius:50%;flex:none}
+.cls .count{margin-left:auto;font-size:12px;font-variant-numeric:tabular-nums;color:var(--tertiary)}
+
+/* Type, from Layouts.html */
+.kicker{font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tertiary)}
+.display{font-family:var(--serif);font-weight:700;font-size:34px;line-height:1.1;letter-spacing:-.01em}
+.displaySmall{font-family:var(--serif);font-weight:700;font-size:22px;line-height:1.2}
+.title{font-size:22px;font-weight:700}
+.headline{font-size:17px;font-weight:600}
+.body{font-size:17px}
+.subhead{font-size:15px}
+.foot{font-size:13px}
+.cap{font-size:12px}
+.num{font-variant-numeric:tabular-nums}
+.sec{color:var(--secondary)} .ter{color:var(--tertiary)} .acc{color:var(--accent)} .late{color:var(--late)} .good{color:var(--good)}
+.row{display:flex;align-items:center;gap:12px}
+.hair{border-top:1px solid var(--divider)}
+.newtag{font-size:11px;font-weight:700;color:#fff;background:var(--accent);border-radius:99px;padding:1px 6px}
+.pill{font-size:13px;font-weight:600;border-radius:99px;padding:6px 12px}
+.sel{background:var(--accentSoft);box-shadow:inset 3px 0 0 var(--accent)}
+svg{display:block}
+
+/* To Do catalog card (1a) */
+.catalog{margin-top:14px;background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden}
+.catalog .head{display:flex;align-items:baseline;gap:8px;padding:10px 12px 6px;border-bottom:2px solid var(--rule)}
+.catalog .callno{font-family:var(--serif);font-weight:700;font-size:15px}
+.catalog .item{display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border-top:1px solid var(--line)}
+.catalog .item:first-of-type{border-top:0}
+.circle{width:22px;height:22px;border-radius:50%;border:2px solid var(--tertiary);flex:none;margin-top:1px}
+.tag{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:1px 5px;border-radius:5px;background:var(--tagSoft);color:var(--secondary)}
+.tag.test{background:var(--text);color:#fff}
+</style>
+</head>
+<body>
+<div class="page">
+
+<div class="intro">
+  <h1>Dewey on iPhone Duo</h1>
+  <p>The open phone's 7.6" inner display. It reports a <b>regular</b> width, so the tab bar turns into a <b>sidebar</b> and each tab shows its list and the thing you opened <b>side by side</b>. Folded, the 5.4" outer display keeps the phone layout, with three tweaks for its shorter screen (<a href="#folded">Folded</a>, at the bottom). Same Dew theme, type and picks (G1, A1, T1); nothing new to learn, just no more going back and forth.</p>
+  <ul>
+    <li><b>The hinge</b> (dashed line) runs down the middle. Sidebar + list fill the left half and the detail fills the right, so nothing important sits on the crease.</li>
+    <li><b>The sidebar</b> holds the five tabs with their counts, then your classes. Tapping a class filters the list. It slides away (top-left button or a swipe) to give the list and detail more room.</li>
+    <li>Drawn at the real shape: 2670 × 1878 px (Apple's spec) is about 890 × 626 pt, 10:7, wider than tall. The point size assumes 3× like other iPhones; Apple hasn't published it. Each half is about as wide as a phone (445 pt vs 402), so the right half is a phone-sized page and the left half fits the sidebar and a narrow list.</li>
+    <li>The layout is chosen by size class, never by "is it open", so a 50/50 split with another app gets the folded layout.</li>
+  </ul>
+</div>
+
+<!-- ───────────────────────── D0 · To Do, nothing open ───────────────────────── -->
+<figure>
+<div class="fit"><div class="scaler"><div class="duo">
+  <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+
+  <!-- Sidebar -->
+  <div class="side">
+    <div class="brand">
+      <svg width="22" height="26" viewBox="0 0 30 34"><path d="M15 1C10 8 3 14 3 21a12 12 0 0 0 24 0c0-7-7-13-12-20z" fill="var(--accent)"/></svg>Dewey
+    </div>
+    <div class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16 9.7"/></svg>To Do<span class="badge">1</span></div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>Grades<span class="count">2 new</span></div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></svg>Inbox<span class="count">3</span></div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="4" height="16" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><path d="M16.5 7.2l3.6-1 3.4 13.4-3.6 1z" transform="translate(-2 0)"/></svg>Classes</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>Schoology</div>
+
+    <div class="sidehead">Classes</div>
+    <div class="cls"><i style="background:var(--c1)"></i>Algebra 2</div>
+    <div class="cls"><i style="background:var(--c2)"></i>AP Biology<span class="count">2</span></div>
+    <div class="cls"><i style="background:var(--c3)"></i>English 10</div>
+    <div class="cls"><i style="background:var(--c4)"></i>Spanish 2<span class="count late">1</span></div>
+    <div class="cls"><i style="background:var(--c5)"></i>Chemistry H<span class="count">2</span></div>
+    <div class="cls"><i style="background:var(--c6)"></i>US History<span class="count">1</span></div>
+    <div style="flex:1"></div>
+    <div class="cls"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Settings</div>
+  </div>
+
+  <!-- List: To Do (T1) -->
+  <div class="list">
+    <div class="row" style="align-items:flex-end;gap:8px">
+      <div style="flex:1">
+        <div class="kicker">Sunday, Oct 18</div>
+        <div class="row" style="gap:8px"><div class="display">To Do</div><span class="pill acc" style="background:var(--accentSoft);padding:4px 10px;font-size:12px">Plan</span></div>
+      </div>
+      <svg width="36" height="36" viewBox="0 0 44 44" aria-label="1 of 3 done today">
+        <circle cx="22" cy="22" r="20" fill="none" stroke="var(--divider)" stroke-width="2.5"/>
+        <circle cx="22" cy="22" r="14" fill="none" stroke="var(--divider)" stroke-width="2.5"/>
+        <circle cx="22" cy="22" r="8" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+        <path d="M22 18.2c-1.6 2-2.6 3.3-2.6 4.6a2.6 2.6 0 0 0 5.2 0c0-1.3-1-2.6-2.6-4.6z" fill="var(--accent)"/>
+      </svg>
+    </div>
+
+    <!-- Week strip -->
+    <div style="margin-top:14px;display:grid;grid-template-columns:repeat(8,1fr);text-align:center">
+      <div><div class="cap late" style="font-weight:600;font-size:11px">Late</div><div class="subhead late num" style="font-weight:700;margin-top:4px;height:28px;line-height:28px">1</div></div>
+      <div>
+        <div class="cap acc" style="font-weight:600;font-size:11px">Today</div>
+        <div style="position:relative;height:28px;margin-top:4px;display:flex;align-items:center;justify-content:center">
+          <svg width="26" height="30" viewBox="0 0 30 34" style="position:absolute;top:-5px;left:50%;transform:translateX(-50%)"><path d="M15 1C10 8 3 14 3 21a12 12 0 0 0 24 0c0-7-7-13-12-20z" fill="var(--accent)"/></svg>
+          <span class="subhead num" style="position:relative;color:#fff;font-weight:700;padding-top:5px;font-size:14px">18</span>
+        </div>
+      </div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Mon</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">19</div></div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Tue</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">20</div></div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Wed</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">21</div></div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Thu</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">22</div></div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Fri</div><div class="subhead num ter" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">23</div></div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Sat</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">24</div></div>
+    </div>
+    <div class="hair" style="margin-top:8px"></div>
+
+    <!-- Catalog cards -->
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c2)">570</span><span class="subhead" style="font-weight:600">AP Biology</span><span class="foot ter">P2</span></div>
+      <div class="item">
+        <span class="circle"></span>
+        <div style="flex:1;min-width:0"><div class="subhead" style="font-weight:600">Lab 2.2 Cell Size and Diffusion</div><div class="foot sec num">11:59 pm · <span class="tag">HW</span> · not submitted</div></div>
+      </div>
+      <div class="item">
+        <span class="circle" style="background:var(--good);border-color:var(--good);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">✓</span>
+        <div style="flex:1;min-width:0"><div class="subhead sec">Read Ch. 5: Membranes</div><div class="foot good">Turned in · not on Schoology</div></div>
+      </div>
+    </div>
+
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c4)">460</span><span class="subhead" style="font-weight:600">Spanish 2</span><span class="foot ter">P4</span></div>
+      <div class="item">
+        <span class="circle" style="border-color:var(--late)"></span>
+        <div style="flex:1;min-width:0"><div class="subhead">Vocabulario 2.3 Practice</div><div class="foot late num" style="font-weight:600">2 d late · Fri 6:00 pm</div></div>
+      </div>
+    </div>
+
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c5)">540</span><span class="subhead" style="font-weight:600">Chemistry H</span><span class="foot ter">P5</span></div>
+      <div class="item">
+        <span class="circle"></span>
+        <div style="flex:1;min-width:0"><div class="subhead">Stoichiometry Worksheet</div><div class="foot sec num">Mon 8:30 am · <span class="tag">HW</span></div></div>
+      </div>
+      <div class="item">
+        <span class="circle" style="border-radius:5px"></span>
+        <div style="flex:1;min-width:0"><div class="subhead">Unit 3 Test</div><div class="foot sec num">Wed · <span class="tag test">TEST</span> · not studied</div></div>
+      </div>
+    </div>
+
+    <!-- + button -->
+    <div style="position:absolute;right:16px;bottom:22px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:300;box-shadow:0 6px 16px rgba(15,110,86,.35)">+</div>
+  </div>
+
+  <!-- Detail: nothing open → Today -->
+  <div class="detail">
+    <div class="bar headline acc"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg><span></span></div>
+    <div class="scroll">
+      <div class="row" style="gap:18px;margin-top:4px">
+        <svg width="96" height="96" viewBox="0 0 44 44" aria-label="1 of 3 done today">
+          <circle cx="22" cy="22" r="20" fill="none" stroke="var(--divider)" stroke-width="1.6"/>
+          <circle cx="22" cy="22" r="14" fill="none" stroke="var(--divider)" stroke-width="1.6"/>
+          <circle cx="22" cy="22" r="8" fill="none" stroke="var(--accent)" stroke-width="1.6"/>
+          <path d="M22 18.2c-1.6 2-2.6 3.3-2.6 4.6a2.6 2.6 0 0 0 5.2 0c0-1.3-1-2.6-2.6-4.6z" fill="var(--accent)"/>
+        </svg>
+        <div><div class="kicker">Today</div><div class="displaySmall" style="font-size:28px">1 of 3 done</div><div class="foot sec" style="margin-top:2px">2 left, the first due 11:59 pm</div></div>
+      </div>
+
+      <div class="headline" style="margin-top:22px">Next up</div>
+      <div style="margin-top:8px;background:var(--card);border:1px solid var(--border);border-left:5px solid var(--c2);border-radius:14px;padding:12px 14px">
+        <div class="kicker" style="color:var(--c2)">AP BIO · P2</div>
+        <div class="headline" style="margin-top:2px">Lab 2.2 Cell Size and Diffusion</div>
+        <div class="row" style="margin-top:6px"><span class="foot sec num" style="flex:1">Today 11:59 pm · not submitted</span><span class="pill acc" style="background:var(--accentSoft)">Open ›</span></div>
+      </div>
+
+      <div class="headline" style="margin-top:20px">Coming up</div>
+      <div class="row" style="padding:10px 0"><span class="foot sec num" style="width:38px">Wed</span><span class="tag test">TEST</span><div style="flex:1;min-width:0"><div class="subhead">Unit 3 Test</div></div><span class="foot" style="color:var(--c5);font-weight:600">Chem H</span></div>
+      <div class="row hair" style="padding:10px 0"><span class="foot sec num" style="width:38px">Thu</span><span class="tag">HW</span><div style="flex:1;min-width:0"><div class="subhead">DBQ Outline</div></div><span class="foot" style="color:var(--c6);font-weight:600">US Hist</span></div>
+      <div class="foot ter" style="margin-top:18px;text-align:center">Tap any work on the left to open it here.</div>
+    </div>
+  </div>
+
+  <div class="hinge"><span>hinge</span></div>
+</div></div></div>
+<figcaption><b>D0 · To Do with nothing open</b>What the right half shows before you tap anything, and again after you finish the open item: <b>Today</b>. The ripple rings from the header, big, with how many are done; <b>Next up</b> (the most urgent unfinished work, one tap to open it); and <b>Coming up</b>, the tests and work of the next few days, so a test on Wednesday is visible without scrolling the week. It's never an empty "Select an item" page. With everything done, the rings are full and Next up says "All done for today".</figcaption>
+</figure>
+
+<!-- ───────────────────────── D1 · To Do + Assignment ───────────────────────── -->
+<figure>
+<div class="fit"><div class="scaler"><div class="duo">
+  <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+
+  <!-- Sidebar -->
+  <div class="side">
+    <div class="brand">
+      <svg width="22" height="26" viewBox="0 0 30 34"><path d="M15 1C10 8 3 14 3 21a12 12 0 0 0 24 0c0-7-7-13-12-20z" fill="var(--accent)"/></svg>Dewey
+    </div>
+    <div class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16 9.7"/></svg>To Do<span class="badge">1</span></div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>Grades<span class="count">2 new</span></div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></svg>Inbox<span class="count">3</span></div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="4" height="16" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><path d="M16.5 7.2l3.6-1 3.4 13.4-3.6 1z" transform="translate(-2 0)"/></svg>Classes</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>Schoology</div>
+
+    <div class="sidehead">Classes</div>
+    <div class="cls"><i style="background:var(--c1)"></i>Algebra 2</div>
+    <div class="cls"><i style="background:var(--c2)"></i>AP Biology<span class="count">2</span></div>
+    <div class="cls"><i style="background:var(--c3)"></i>English 10</div>
+    <div class="cls"><i style="background:var(--c4)"></i>Spanish 2<span class="count late">1</span></div>
+    <div class="cls"><i style="background:var(--c5)"></i>Chemistry H<span class="count">2</span></div>
+    <div class="cls"><i style="background:var(--c6)"></i>US History<span class="count">1</span></div>
+    <div style="flex:1"></div>
+    <div class="cls"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Settings</div>
+  </div>
+
+  <!-- List: To Do (T1) -->
+  <div class="list">
+    <div class="row" style="align-items:flex-end;gap:8px">
+      <div style="flex:1">
+        <div class="kicker">Sunday, Oct 18</div>
+        <div class="row" style="gap:8px"><div class="display">To Do</div><span class="pill acc" style="background:var(--accentSoft);padding:4px 10px;font-size:12px">Plan</span></div>
+      </div>
+      <svg width="36" height="36" viewBox="0 0 44 44" aria-label="1 of 3 done today">
+        <circle cx="22" cy="22" r="20" fill="none" stroke="var(--divider)" stroke-width="2.5"/>
+        <circle cx="22" cy="22" r="14" fill="none" stroke="var(--divider)" stroke-width="2.5"/>
+        <circle cx="22" cy="22" r="8" fill="none" stroke="var(--accent)" stroke-width="2.5"/>
+        <path d="M22 18.2c-1.6 2-2.6 3.3-2.6 4.6a2.6 2.6 0 0 0 5.2 0c0-1.3-1-2.6-2.6-4.6z" fill="var(--accent)"/>
+      </svg>
+    </div>
+
+    <!-- Week strip -->
+    <div style="margin-top:14px;display:grid;grid-template-columns:repeat(8,1fr);text-align:center">
+      <div><div class="cap late" style="font-weight:600;font-size:11px">Late</div><div class="subhead late num" style="font-weight:700;margin-top:4px;height:28px;line-height:28px">1</div></div>
+      <div>
+        <div class="cap acc" style="font-weight:600;font-size:11px">Today</div>
+        <div style="position:relative;height:28px;margin-top:4px;display:flex;align-items:center;justify-content:center">
+          <svg width="26" height="30" viewBox="0 0 30 34" style="position:absolute;top:-5px;left:50%;transform:translateX(-50%)"><path d="M15 1C10 8 3 14 3 21a12 12 0 0 0 24 0c0-7-7-13-12-20z" fill="var(--accent)"/></svg>
+          <span class="subhead num" style="position:relative;color:#fff;font-weight:700;padding-top:5px;font-size:14px">18</span>
+        </div>
+      </div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Mon</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">19</div></div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Tue</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">20</div></div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Wed</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">21</div></div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Thu</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">22</div></div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Fri</div><div class="subhead num ter" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">23</div></div>
+      <div><div class="cap sec" style="font-weight:600;font-size:11px">Sat</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">24</div></div>
+    </div>
+    <div class="hair" style="margin-top:8px"></div>
+
+    <!-- Catalog cards -->
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c2)">570</span><span class="subhead" style="font-weight:600">AP Biology</span><span class="foot ter">P2</span></div>
+      <div class="item sel">
+        <span class="circle"></span>
+        <div style="flex:1;min-width:0"><div class="subhead" style="font-weight:600">Lab 2.2 Cell Size and Diffusion</div><div class="foot sec num">11:59 pm · <span class="tag">HW</span> · not submitted</div></div>
+      </div>
+      <div class="item">
+        <span class="circle" style="background:var(--good);border-color:var(--good);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">✓</span>
+        <div style="flex:1;min-width:0"><div class="subhead sec">Read Ch. 5: Membranes</div><div class="foot good">Turned in · not on Schoology</div></div>
+      </div>
+    </div>
+
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c4)">460</span><span class="subhead" style="font-weight:600">Spanish 2</span><span class="foot ter">P4</span></div>
+      <div class="item">
+        <span class="circle" style="border-color:var(--late)"></span>
+        <div style="flex:1;min-width:0"><div class="subhead">Vocabulario 2.3 Practice</div><div class="foot late num" style="font-weight:600">2 d late · Fri 6:00 pm</div></div>
+      </div>
+    </div>
+
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c5)">540</span><span class="subhead" style="font-weight:600">Chemistry H</span><span class="foot ter">P5</span></div>
+      <div class="item">
+        <span class="circle"></span>
+        <div style="flex:1;min-width:0"><div class="subhead">Stoichiometry Worksheet</div><div class="foot sec num">Mon 8:30 am · <span class="tag">HW</span></div></div>
+      </div>
+      <div class="item">
+        <span class="circle" style="border-radius:5px"></span>
+        <div style="flex:1;min-width:0"><div class="subhead">Unit 3 Test</div><div class="foot sec num">Wed · <span class="tag test">TEST</span> · not studied</div></div>
+      </div>
+    </div>
+
+    <!-- + button -->
+    <div style="position:absolute;right:16px;bottom:22px;width:52px;height:52px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-size:28px;font-weight:300;box-shadow:0 6px 16px rgba(15,110,86,.35)">+</div>
+  </div>
+
+  <!-- Detail: Assignment (A1) -->
+  <div class="detail">
+    <div class="bar headline acc"><span style="display:flex;gap:6px;align-items:center"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></span><span>◎</span></div>
+    <div class="scroll">
+      <div class="kicker" style="color:var(--c2)">AP BIO · P2 · 26-27 T1 · Labs &amp; Homework</div>
+      <div class="displaySmall" style="margin-top:6px;font-size:28px">Lab 2.2 Cell Size and Diffusion</div>
+
+      <div style="margin-top:44px;position:relative;background:#FFFDF7;border-radius:6px;box-shadow:0 1px 0 var(--border),0 6px 18px rgba(14,42,36,.08);padding:14px 18px 6px;border-top:5px solid var(--c2)">
+        <div class="row" style="padding-bottom:6px;border-bottom:1.5px solid var(--text)">
+          <span class="kicker" style="flex:1;color:var(--text)">Date due</span><span class="kicker" style="width:150px;color:var(--text)">Turn in</span>
+        </div>
+        <div class="row" style="padding:10px 0;border-bottom:1px solid #E7DFCC"><span class="subhead num" style="flex:1;font-weight:600">Today, 11:59 pm</span><span class="subhead" style="width:150px">Dropbox</span></div>
+        <div class="row" style="padding:10px 0;border-bottom:1px solid #E7DFCC"><span class="subhead num sec" style="flex:1">20 points</span><span class="subhead late" style="width:150px;font-weight:600">Not submitted</span></div>
+        <div class="row" style="padding:10px 0"><span class="foot ter" style="flex:1">Checked 2 min ago</span><span class="foot acc" style="width:150px;font-weight:600">Mark turned in</span></div>
+        <div style="position:absolute;right:10px;top:-50px;transform:rotate(-7deg);border:2.5px solid var(--late);color:var(--late);border-radius:8px;padding:4px 10px 3px;text-align:center;background:rgba(251,237,229,.92)">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.14em">DUE</div>
+          <div style="font-size:20px;font-weight:800;letter-spacing:.04em" class="num">OCT 18</div>
+        </div>
+      </div>
+
+      <div class="headline" style="margin-top:30px">Instructions</div>
+      <p class="body" style="line-height:1.5;margin:8px 0 0">Model cells as agar cubes of three sizes. Record how far the dye spreads in 10 minutes, then compute surface area to volume for each. Answer the analysis questions on the handout.</p>
+      <div class="row" style="margin-top:16px;padding:10px 0"><span class="cap" style="font-weight:700;color:#fff;background:var(--late);border-radius:4px;padding:2px 5px">PDF</span><span class="subhead" style="flex:1">Lab 2.2 handout.pdf</span><span class="foot ter">Opens here</span></div>
+      <div class="row hair" style="padding:10px 0"><span class="cap" style="font-weight:700;color:#fff;background:var(--c1);border-radius:4px;padding:2px 5px">LINK</span><span class="subhead" style="flex:1">Lab site</span><span class="ter">↗</span></div>
+
+      <div class="row" style="margin-top:22px;gap:14px">
+        <span class="foot sec" style="flex:none">In neo-plan as</span>
+        <div style="display:flex;background:var(--tagSoft);border-radius:8px;padding:2px">
+          <span class="foot" style="padding:4px 12px;border-radius:6px;background:var(--card);font-weight:600">HW</span><span class="foot sec" style="padding:4px 12px">Test</span><span class="foot sec" style="padding:4px 12px">Task</span><span class="foot sec" style="padding:4px 12px">CW</span>
+        </div>
+      </div>
+      <div style="margin-top:14px"><span class="foot acc" style="display:inline-block;white-space:nowrap;border:1.5px dashed var(--border);border-radius:99px;padding:6px 14px;font-weight:600">What if I get __ / 20?</span></div>
+    </div>
+    <div class="bottom">
+      <span class="headline" style="flex:1;height:48px;border-radius:99px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--accent)">Done</span>
+      <span class="headline" style="flex:1.6;height:48px;border-radius:99px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center">Submit on Schoology ↗</span>
+    </div>
+  </div>
+
+  <div class="hinge"><span>hinge</span></div>
+</div></div></div>
+<figcaption><b>D1 · To Do with the assignment open</b>Left half: the sidebar and the To Do list exactly as on the phone (week strip in a drop, ripple rings, catalog cards with call numbers), just narrower. Right half: the assignment page (A1) for the selected row, with its checkout card, stamp and bottom bar. Tapping another row swaps the right side; Done, Turn in and the swipe actions still work on the rows. <b>Submit on Schoology ↗</b> slides the Schoology sheet over the right half only, so the list stays in view, and re-checks the dropbox when it closes. With nothing selected, the right side shows today's summary (the ripple rings, big) instead of an empty page. The top-left button on the detail hides the sidebar.</figcaption>
+</figure>
+
+<!-- ───────────────────────── D2 · Grades + Course grades ───────────────────────── -->
+<figure>
+<div class="fit"><div class="scaler"><div class="duo">
+  <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+
+  <div class="side">
+    <div class="brand"><svg width="22" height="26" viewBox="0 0 30 34"><path d="M15 1C10 8 3 14 3 21a12 12 0 0 0 24 0c0-7-7-13-12-20z" fill="var(--accent)"/></svg>Dewey</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16 9.7"/></svg>To Do<span class="badge">1</span></div>
+    <div class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>Grades<span class="count">2 new</span></div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></svg>Inbox<span class="count">3</span></div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="4" height="16" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><path d="M16.5 7.2l3.6-1 3.4 13.4-3.6 1z" transform="translate(-2 0)"/></svg>Classes</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>Schoology</div>
+    <div class="sidehead">Classes</div>
+    <div class="cls"><i style="background:var(--c1)"></i>Algebra 2</div>
+    <div class="cls"><i style="background:var(--c2)"></i>AP Biology<span class="count">2</span></div>
+    <div class="cls"><i style="background:var(--c3)"></i>English 10</div>
+    <div class="cls"><i style="background:var(--c4)"></i>Spanish 2<span class="count late">1</span></div>
+    <div class="cls"><i style="background:var(--c5)"></i>Chemistry H<span class="count">2</span></div>
+    <div class="cls"><i style="background:var(--c6)"></i>US History<span class="count">1</span></div>
+    <div style="flex:1"></div>
+    <div class="cls"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Settings</div>
+  </div>
+
+  <!-- List: Grades (G1) -->
+  <div class="list">
+    <div class="kicker">26-27 T1</div>
+    <div class="display">Grades</div>
+
+    <div style="margin:14px -16px 0;padding:12px 10px;background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);text-align:center">
+        <div><div class="displaySmall" style="color:var(--c1);font-size:24px">B+</div><div class="cap sec" style="font-weight:600;font-size:10px;margin-top:2px">ALG 2</div></div>
+        <div style="position:relative"><div class="displaySmall" style="color:var(--c2);font-size:24px">A</div><div class="cap sec" style="font-weight:600;font-size:10px;margin-top:2px">AP BIO</div><span style="position:absolute;top:2px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--accent)"></span></div>
+        <div><div class="displaySmall" style="color:var(--c3);font-size:24px">A</div><div class="cap sec" style="font-weight:600;font-size:10px;margin-top:2px">ENG 10</div></div>
+        <div><div class="displaySmall" style="color:var(--c4);font-size:24px">A−</div><div class="cap sec" style="font-weight:600;font-size:10px;margin-top:2px">SPAN 2</div></div>
+        <div><div class="displaySmall" style="color:var(--c5);font-size:24px">B</div><div class="cap sec" style="font-weight:600;font-size:10px;margin-top:2px">CHEM H</div></div>
+        <div><div class="displaySmall" style="color:var(--c6);font-size:24px">A</div><div class="cap sec" style="font-weight:600;font-size:10px;margin-top:2px">US HIST</div></div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:18px"><span class="headline">New</span><span class="newtag">2</span><span style="flex:1"></span><span class="foot acc" style="font-weight:600">Mark all seen</span></div>
+    <div class="row" style="padding:8px 0"><div style="flex:1;min-width:0"><div class="subhead" style="font-weight:600">Unit 2 Test</div><div class="foot sec">AP Biology</div></div><div style="text-align:right"><div class="subhead num" style="font-weight:600">47 / 50</div><div class="cap num good">+0.6</div></div></div>
+    <div class="row hair" style="padding:8px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Quiz 4.2</div><div class="foot sec">Algebra 2</div></div><div style="text-align:right"><div class="subhead num" style="font-weight:600">18 / 20</div><div class="cap num good">+0.2</div></div></div>
+
+    <div class="headline" style="margin-top:18px">Classes</div>
+    <div style="margin:4px -16px 0">
+      <div class="row" style="padding:9px 16px"><span style="width:4px;height:28px;border-radius:2px;background:var(--c1)"></span><div style="flex:1;min-width:0"><div class="subhead" style="font-weight:600">Algebra 2</div><div class="foot late num" style="font-weight:600">3.4 under A</div></div><svg width="44" height="20"><path d="M0 12 L9 8 L18 14 L27 11 L36 7 L44 9" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg><div class="subhead num" style="width:50px;text-align:right;font-weight:600">89.6%</div></div>
+      <div class="row sel" style="padding:9px 16px"><span style="width:4px;height:28px;border-radius:2px;background:var(--c2)"></span><div style="flex:1;min-width:0"><div class="subhead" style="font-weight:600">AP Biology</div><div class="foot good num" style="font-weight:600">+1.5 over A</div></div><svg width="44" height="20"><path d="M0 11 L9 8 L18 10 L27 6 L36 7 L44 4" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg><div class="subhead num" style="width:50px;text-align:right;font-weight:600">94.5%</div></div>
+      <div class="row" style="padding:9px 16px"><span style="width:4px;height:28px;border-radius:2px;background:var(--c3)"></span><div style="flex:1;min-width:0"><div class="subhead" style="font-weight:600">English 10</div><div class="foot good num" style="font-weight:600">+0.4 over A</div></div><svg width="44" height="20"><path d="M0 7 L11 11 L22 9 L33 10 L44 8" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg><div class="subhead num" style="width:50px;text-align:right;font-weight:600">93.4%</div></div>
+      <div class="row" style="padding:9px 16px"><span style="width:4px;height:28px;border-radius:2px;background:var(--c4)"></span><div style="flex:1;min-width:0"><div class="subhead" style="font-weight:600">Spanish 2</div><div class="foot late num" style="font-weight:600">2.1 under A</div></div><svg width="44" height="20"><path d="M0 8 L15 12 L29 11 L44 13" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg><div class="subhead num" style="width:50px;text-align:right;font-weight:600">90.9%</div></div>
+      <div class="row" style="padding:9px 16px"><span style="width:4px;height:28px;border-radius:2px;background:var(--c5)"></span><div style="flex:1;min-width:0"><div class="subhead" style="font-weight:600">Chemistry H</div><div class="foot late num" style="font-weight:600">7.6 under A</div></div><svg width="44" height="20"><path d="M0 5 L11 10 L22 13 L33 16 L44 15" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg><div class="subhead num" style="width:50px;text-align:right;font-weight:600">85.4%</div></div>
+      <div class="row" style="padding:9px 16px"><span style="width:4px;height:28px;border-radius:2px;background:var(--c6)"></span><div style="flex:1;min-width:0"><div class="subhead" style="font-weight:600">US History</div><div class="foot good num" style="font-weight:600">+4.1 over A</div></div><svg width="44" height="20"><path d="M0 9 L15 7 L29 6 L44 5" fill="none" stroke="var(--accent)" stroke-width="1.5"/></svg><div class="subhead num" style="width:50px;text-align:right;font-weight:600">97.1%</div></div>
+    </div>
+  </div>
+
+  <!-- Detail: Course grades (2b) -->
+  <div class="detail">
+    <div class="bar headline acc"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg><span class="pill" style="background:var(--accentSoft)">What-if</span></div>
+    <div class="scroll">
+      <div class="kicker" style="color:var(--c2)">AP BIO · P2 · Rivera · 26-27 T1</div>
+      <div class="row" style="margin-top:6px;align-items:flex-end">
+        <div style="flex:1"><div class="displaySmall" style="font-size:28px">AP Biology</div><div class="subhead sec num" style="margin-top:4px">94.5% · <span class="good" style="font-weight:600">+1.5 over A</span></div></div>
+        <div class="display" style="font-size:56px;color:var(--c2);line-height:1">A</div>
+      </div>
+
+      <svg width="100%" height="64" viewBox="0 0 400 64" preserveAspectRatio="none" style="margin-top:16px"><path d="M0 22H400" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="4 4"/><path d="M0 40 L50 34 L100 38 L150 28 L200 31 L250 24 L300 26 L350 18 L400 14" fill="none" stroke="var(--accent)" stroke-width="2"/><circle cx="400" cy="14" r="3.5" fill="var(--accent)"/></svg>
+
+      <!-- Category -->
+      <div class="row" style="margin-top:18px;padding-bottom:6px;border-bottom:1.5px solid var(--text)"><span class="headline" style="flex:1">Tests</span><span class="foot sec num">50% · 95.2% · A holds down to 81%</span></div>
+      <div class="row" style="padding:10px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Unit 2 Test <span class="newtag">NEW</span></div><div class="foot sec num">Oct 15 · <span class="acc">Comment</span> · <span class="acc">Rubric</span></div></div><div style="text-align:right"><div class="subhead num" style="font-weight:600">47 / 50</div><div class="cap num good">94% · +0.6</div></div></div>
+      <div class="row hair" style="padding:10px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Unit 1 Test</div><div class="foot sec num">Sep 24</div></div><div style="text-align:right"><div class="subhead num" style="font-weight:600">46 / 48</div><div class="cap num sec">95.8%</div></div></div>
+
+      <div class="row" style="margin-top:16px;padding-bottom:6px;border-bottom:1.5px solid var(--text)"><span class="headline" style="flex:1">Labs &amp; Homework</span><span class="foot sec num">30% · 93.1%</span></div>
+      <div class="row" style="padding:10px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Lab 2.2 Cell Size and Diffusion</div><div class="foot sec num">Due today</div></div><div style="text-align:right"><div class="subhead num ter">— / 20</div></div></div>
+      <div class="row hair" style="padding:10px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Lab 2.1 Osmosis</div><div class="foot sec num">Oct 9 · <span class="acc">Comment</span></div></div><div style="text-align:right"><div class="subhead num" style="font-weight:600">18 / 20</div><div class="cap num late">90% · −0.3</div></div></div>
+      <div class="row hair" style="padding:10px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">HW 2.3 Membranes</div><div class="foot sec num">Oct 6</div></div><div style="text-align:right"><div class="subhead num" style="font-weight:600">10 / 10</div><div class="cap num sec">100%</div></div></div>
+
+      <div class="row" style="margin-top:16px;padding-bottom:6px;border-bottom:1.5px solid var(--text)"><span class="headline" style="flex:1">Classwork</span><span class="foot sec num">20% · 95.0%</span></div>
+      <div class="row" style="padding:10px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Cell Organelles Sort</div><div class="foot sec num">Oct 2</div></div><div style="text-align:right"><div class="subhead num" style="font-weight:600">19 / 20</div><div class="cap num sec">95%</div></div></div>
+    </div>
+  </div>
+
+  <div class="hinge"><span>hinge</span></div>
+</div></div></div>
+<figcaption><b>D2 · Grades with a class open</b>Left: the report-card row (G1, letters a size smaller so all six fit), New grades and the class rows, the selected class tinted. Right: that class's grades (2b) with the big letter, its history line against the A line, and every item by category with its effect on the grade. A row with a Comment or Rubric opens graded work (2c) in the same right pane with a back button, so the class list never moves. <b>What-if</b> works as on the phone, only for the class on the right; switching classes clears it. Tapping a letter in the row does the same as tapping its class.</figcaption>
+</figure>
+
+<!-- ───────────────────────── D3 · Inbox + Message ───────────────────────── -->
+<figure>
+<div class="fit"><div class="scaler"><div class="duo">
+  <div class="statusbar"><span>9:41</span><span>●●●</span></div>
+
+  <div class="side">
+    <div class="brand"><svg width="22" height="26" viewBox="0 0 30 34"><path d="M15 1C10 8 3 14 3 21a12 12 0 0 0 24 0c0-7-7-13-12-20z" fill="var(--accent)"/></svg>Dewey</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.6 2.6L16 9.7"/></svg>To Do<span class="badge">1</span></div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V5M19 20v-6"/></svg>Grades<span class="count">2 new</span></div>
+    <div class="nav on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 13l3-8h12l3 8v6H3z"/><path d="M3 13h5l1.5 2.5h5L16 13h5"/></svg>Inbox<span class="count">3</span></div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="4" width="4" height="16" rx="1"/><rect x="10" y="6" width="4" height="14" rx="1"/><path d="M16.5 7.2l3.6-1 3.4 13.4-3.6 1z" transform="translate(-2 0)"/></svg>Classes</div>
+    <div class="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3.2 3 14.8 0 18M12 3c-3 3.2-3 14.8 0 18"/></svg>Schoology</div>
+    <div class="sidehead">Classes</div>
+    <div class="cls"><i style="background:var(--c1)"></i>Algebra 2</div>
+    <div class="cls"><i style="background:var(--c2)"></i>AP Biology<span class="count">2</span></div>
+    <div class="cls"><i style="background:var(--c3)"></i>English 10</div>
+    <div class="cls"><i style="background:var(--c4)"></i>Spanish 2<span class="count late">1</span></div>
+    <div class="cls"><i style="background:var(--c5)"></i>Chemistry H<span class="count">2</span></div>
+    <div class="cls"><i style="background:var(--c6)"></i>US History<span class="count">1</span></div>
+    <div style="flex:1"></div>
+    <div class="cls"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>Settings</div>
+  </div>
+
+  <!-- List: Inbox (R2) -->
+  <div class="list">
+    <div class="display">Inbox</div>
+
+    <div class="row" style="margin-top:16px;gap:8px"><span class="kicker" style="flex:1">New from school</span><span class="foot ter">⌄</span></div>
+    <div style="margin:6px -16px 0;padding:10px 16px;background:var(--mist)">
+      <div class="subhead" style="font-weight:600">Picture retakes are Thursday</div>
+      <div class="foot sec" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">School Hub: Gr10 · Bring your form to the library before…</div>
+    </div>
+
+    <div class="row" style="margin-top:18px;gap:8px"><span class="kicker" style="flex:1">From teachers</span><span class="foot ter">⌄</span></div>
+    <div style="margin:4px -16px 0">
+      <div class="row sel" style="padding:10px 16px;align-items:flex-start">
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:7px;flex:none"></span>
+        <div style="flex:1;min-width:0"><div class="row" style="gap:6px"><span class="subhead" style="font-weight:600;flex:1">Ms. Rivera</span><span class="cap ter num">9:34 am</span></div><div class="foot" style="font-weight:600">Lab 2.2 data table</div><div class="foot sec" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:var(--c2);font-weight:600">AP Bio</span> · A few of you asked about the…</div></div>
+      </div>
+      <div class="row hair" style="padding:10px 16px;align-items:flex-start">
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:7px;flex:none"></span>
+        <div style="flex:1;min-width:0"><div class="row" style="gap:6px"><span class="subhead" style="font-weight:600;flex:1">Mr. Nguyen</span><span class="cap ter num">Sat</span></div><div class="foot" style="font-weight:600">Test moved to Wednesday</div><div class="foot sec" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><span style="color:var(--c5);font-weight:600">Chem H</span> · Because of the assembly, Unit 3…</div></div>
+      </div>
+      <div class="row hair" style="padding:10px 16px;align-items:flex-start">
+        <span style="width:8px;flex:none"></span>
+        <div style="flex:1;min-width:0"><div class="row" style="gap:6px"><span class="subhead sec" style="flex:1">Ms. Patel</span><span class="cap ter num">Thu</span></div><div class="foot sec">Essay drafts returned</div></div>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:18px;gap:8px"><span class="kicker" style="flex:1">New in your classes</span><span class="foot ter">⌄</span></div>
+    <div class="row" style="padding:9px 0"><span class="cap" style="font-weight:700;color:#fff;background:var(--late);border-radius:4px;padding:2px 5px">PDF</span><div style="flex:1;min-width:0"><div class="subhead">Unit 3 Slides.pdf</div><div class="foot sec">AP Biology · Materials</div></div></div>
+    <div class="row hair" style="padding:9px 0"><span class="cap" style="font-weight:700;color:#fff;background:var(--c6);border-radius:4px;padding:2px 5px">HW</span><div style="flex:1;min-width:0"><div class="subhead">DBQ Outline</div><div class="foot sec">US History · due Thu</div></div></div>
+    <div class="foot acc" style="font-weight:600;padding:6px 0">Show older</div>
+
+    <div class="row hair" style="margin-top:8px;padding-top:12px;gap:8px"><span class="kicker" style="flex:1">School</span><span class="foot ter">Folded · 4 ›</span></div>
+  </div>
+
+  <!-- Detail: Message -->
+  <div class="detail">
+    <div class="bar headline acc"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg><span>◎</span></div>
+    <div class="scroll">
+      <div class="kicker" style="color:var(--c2)">AP BIO · P2 · Course message</div>
+      <div class="displaySmall" style="margin-top:6px;font-size:28px">Lab 2.2 data table</div>
+      <div class="row" style="margin-top:16px">
+        <span style="width:40px;height:40px;border-radius:50%;background:var(--c2);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700">MR</span>
+        <div style="flex:1"><div class="subhead" style="font-weight:600">Ms. Rivera</div><div class="foot sec num">To: AP Biology P2 · Sun Oct 18 at 9:34 am</div></div>
+      </div>
+      <div class="hair" style="margin-top:16px"></div>
+      <div class="body" style="line-height:1.55;margin-top:16px">
+        <p style="margin:0 0 14px">Hi everyone,</p>
+        <p style="margin:0 0 14px">A few of you asked about the data table for Lab 2.2. You only need the three cube sizes we used in class (1, 2 and 3 cm). Record the depth the dye reached on each face, then average them.</p>
+        <p style="margin:0 0 14px">Surface area to volume goes in the last column. Round to two decimals. I've attached a filled-in example row.</p>
+        <p style="margin:0">See you Monday,<br>Ms. Rivera</p>
+      </div>
+      <div class="row" style="margin-top:20px;padding:12px 14px;background:var(--card);border:1px solid var(--border);border-radius:14px"><span class="cap" style="font-weight:700;color:#fff;background:var(--late);border-radius:4px;padding:2px 5px">PDF</span><span class="subhead" style="flex:1">Lab 2.2 example row.pdf</span><span class="foot ter">Opens here</span></div>
+      <div class="row" style="margin-top:12px;padding:12px 14px;background:var(--accentSoft);border-radius:14px"><span class="foot acc" style="font-weight:600;flex:1">Linked to Lab 2.2 Cell Size and Diffusion · due today</span><span class="acc">›</span></div>
+    </div>
+    <div class="bottom">
+      <span class="headline" style="flex:1;height:48px;border-radius:99px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center">Reply on Schoology ↗</span>
+    </div>
+  </div>
+
+  <div class="hinge"><span>hinge</span></div>
+</div></div></div>
+<figcaption><b>D3 · Inbox with a message open</b>Left: the Inbox sections from R2 (New from school, From teachers with unread dots, New in your classes, School folded), each still folding away and with its own Show older. Right: the open message, its attachments opening in the same pane, and a link to the assignment it's about when Dewey can match it (title, same class). Opening a message marks it read (Settings → Inbox switch, as today). Reply and new messages still happen in the Schoology sheet, which slides over the right half. A new-material row opens the file viewer (3c) on the right.</figcaption>
+</figure>
+
+<!-- ───────────────────────── D4 · Grades and Inbox, nothing open ───────────────────────── -->
+<figure>
+<div class="fit" data-w="990" data-h="646"><div class="scaler"><div class="halves">
+
+  <!-- Grades: all classes -->
+  <div class="half"><div class="detail">
+    <div class="statusbar" style="justify-content:flex-end"><span>●●●</span></div>
+    <div class="bar headline acc"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg><span></span></div>
+    <div class="scroll">
+      <div class="kicker">26-27 T1</div>
+      <div class="displaySmall" style="font-size:28px">All classes</div>
+      <div class="foot sec" style="margin-top:2px">4 at an A · 2 under. Tap a class to open it.</div>
+      <div style="margin-top:16px;position:relative">
+        <div class="row" style="padding:6px 0"><span class="foot" style="width:84px;font-weight:600;white-space:nowrap">Algebra 2</span><div style="flex:1;height:14px;background:var(--divider);border-radius:4px;position:relative"><div style="width:65.3%;height:100%;background:var(--c1);border-radius:4px"></div></div><span class="foot num" style="width:46px;text-align:right;font-weight:600">89.6%</span></div>
+        <div class="row" style="padding:6px 0"><span class="foot" style="width:84px;font-weight:600;white-space:nowrap">AP Biology</span><div style="flex:1;height:14px;background:var(--divider);border-radius:4px"><div style="width:81.7%;height:100%;background:var(--c2);border-radius:4px"></div></div><span class="foot num" style="width:46px;text-align:right;font-weight:600">94.5%</span></div>
+        <div class="row" style="padding:6px 0"><span class="foot" style="width:84px;font-weight:600;white-space:nowrap">English 10</span><div style="flex:1;height:14px;background:var(--divider);border-radius:4px"><div style="width:78%;height:100%;background:var(--c3);border-radius:4px"></div></div><span class="foot num" style="width:46px;text-align:right;font-weight:600">93.4%</span></div>
+        <div class="row" style="padding:6px 0"><span class="foot" style="width:84px;font-weight:600;white-space:nowrap">Spanish 2</span><div style="flex:1;height:14px;background:var(--divider);border-radius:4px"><div style="width:69.7%;height:100%;background:var(--c4);border-radius:4px"></div></div><span class="foot num" style="width:46px;text-align:right;font-weight:600">90.9%</span></div>
+        <div class="row" style="padding:6px 0"><span class="foot" style="width:84px;font-weight:600;white-space:nowrap">Chemistry H</span><div style="flex:1;height:14px;background:var(--divider);border-radius:4px"><div style="width:51.3%;height:100%;background:var(--c5);border-radius:4px"></div></div><span class="foot num" style="width:46px;text-align:right;font-weight:600">85.4%</span></div>
+        <div class="row" style="padding:6px 0"><span class="foot" style="width:84px;font-weight:600;white-space:nowrap">US History</span><div style="flex:1;height:14px;background:var(--divider);border-radius:4px"><div style="width:90.3%;height:100%;background:var(--c6);border-radius:4px"></div></div><span class="foot num" style="width:46px;text-align:right;font-weight:600">97.1%</span></div>
+        <!-- A line at 90%: bars run 70% → 100% -->
+        <div style="position:absolute;top:0;bottom:0;left:calc(96px + (100% - 154px) * .6667);border-left:1.5px dashed var(--good)"></div>
+      </div>
+      <div class="cap good" style="text-align:right;margin-top:2px">dashed line = A (90%) · bars start at 70%</div>
+      <div class="headline" style="margin-top:16px">Recently graded</div>
+      <div class="row" style="padding:9px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Unit 2 Test <span class="newtag">NEW</span></div><div class="foot sec">AP Biology · Oct 15</div></div><div class="subhead num" style="font-weight:600">47 / 50</div></div>
+      <div class="row hair" style="padding:9px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Quiz 4.2 <span class="newtag">NEW</span></div><div class="foot sec">Algebra 2 · Oct 14</div></div><div class="subhead num" style="font-weight:600">18 / 20</div></div>
+    </div>
+  </div></div>
+
+  <!-- Inbox: no message open -->
+  <div class="half"><div class="detail">
+    <div class="statusbar" style="justify-content:flex-end"><span>●●●</span></div>
+    <div class="bar headline acc"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg><span></span></div>
+    <div class="scroll" style="display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding-bottom:64px">
+      <svg width="110" height="110" viewBox="0 0 44 44">
+        <circle cx="22" cy="22" r="20" fill="none" stroke="var(--divider)" stroke-width="1.2"/>
+        <circle cx="22" cy="22" r="14" fill="none" stroke="var(--divider)" stroke-width="1.2"/>
+        <path d="M22 13c-3.2 4-5.2 6.6-5.2 9.2a5.2 5.2 0 0 0 10.4 0c0-2.6-2-5.2-5.2-9.2z" fill="var(--spray)"/>
+      </svg>
+      <div class="displaySmall" style="margin-top:14px">No message open</div>
+      <div class="subhead sec" style="margin-top:6px;line-height:1.45">2 unread from teachers<br>1 new from school</div>
+      <span class="headline" style="margin-top:20px;height:44px;border-radius:99px;background:var(--accent);color:#fff;display:flex;align-items:center;padding:0 22px">Open newest unread</span>
+      <span class="foot acc" style="margin-top:14px;font-weight:600">New message on Schoology ↗</span>
+    </div>
+  </div></div>
+
+</div></div></div>
+<figcaption><b>D4 · Grades and Inbox with nothing open</b>Only the right halves; the left halves are D2's and D3's lists with no row selected. <b>Grades</b> shows <b>All classes</b>: every class's % as a bar against the A line, so you can compare them at a glance (the one thing the phone can't show in one view), then Recently graded. <b>Inbox</b> stays quiet: the drop, what's unread, a button that opens the newest unread message, and a way to write a new one in the Schoology sheet. Unlike Mail it doesn't open the top message for you, because opening marks it read. When everything is read it says "You're all caught up".</figcaption>
+</figure>
+
+<!-- ═════════════════════════ Folded: the outer display ═════════════════════════ -->
+<div class="intro" id="folded" style="margin-top:8px">
+  <h1 style="font-size:28px">Folded</h1>
+  <p>The 5.4" outer display: 1398 × 2034 px at 460 ppi, about <b>466 × 678 pt</b> at 3× (MacRumors' figures; Apple hasn't published points). That's a little wider than an iPhone 17 (402 pt) and about 200 pt shorter, so it keeps the normal phone layout (compact width, tab bar) but fits fewer rows. Three tweaks, keyed to <b>height</b> rather than "is it folded", so they also help small iPhones and landscape split view:</p>
+  <ul>
+    <li><b>To Do:</b> the count buttons and week strip scroll away with the list into a one-line bar; scroll up or tap the bar to get them back.</li>
+    <li><b>Assignment:</b> a shorter date-due card (one ruled row, smaller stamp) so Instructions start above the bottom bar.</li>
+    <li><b>Grades:</b> no change; the wider screen gives the letter row more room.</li>
+  </ul>
+</div>
+
+<div class="foldgrid">
+
+<!-- F1 · To Do, top -->
+<figure class="small">
+<div class="fit" data-w="486" data-h="698"><div class="scaler"><div class="fold">
+  <div class="fstatus"><span>9:41</span><span>●●●</span></div>
+  <div class="fscroll">
+    <div class="row" style="align-items:flex-end;gap:8px">
+      <div style="flex:1"><div class="kicker">Sunday, Oct 18</div><div class="row" style="gap:8px"><div class="display">To Do</div><span class="pill acc" style="background:var(--accentSoft);padding:4px 10px;font-size:12px">Plan</span></div></div>
+      <svg width="40" height="40" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="none" stroke="var(--divider)" stroke-width="2.5"/><circle cx="22" cy="22" r="14" fill="none" stroke="var(--divider)" stroke-width="2.5"/><circle cx="22" cy="22" r="8" fill="none" stroke="var(--accent)" stroke-width="2.5"/><path d="M22 18.2c-1.6 2-2.6 3.3-2.6 4.6a2.6 2.6 0 0 0 5.2 0c0-1.3-1-2.6-2.6-4.6z" fill="var(--accent)"/></svg>
+    </div>
+    <div style="margin-top:12px;display:grid;grid-template-columns:repeat(3,1fr);gap:8px">
+      <div class="count" style="background:var(--lateSoft);color:var(--late)"><b class="num">1</b>Overdue</div>
+      <div class="count" style="background:var(--accentSoft);color:var(--accent)"><b class="num">1</b>Due today</div>
+      <div class="count" style="background:var(--card);border:1px solid var(--border)"><b class="num">6</b><span class="sec">This week</span></div>
+    </div>
+    <div style="margin-top:12px;display:grid;grid-template-columns:repeat(8,1fr);text-align:center">
+      <div><div class="cap late" style="font-weight:600">Late</div><div class="subhead late num" style="font-weight:700;margin-top:4px;height:28px;line-height:28px">1</div></div>
+      <div><div class="cap acc" style="font-weight:600">Today</div><div style="position:relative;height:28px;margin-top:4px;display:flex;align-items:center;justify-content:center"><svg width="28" height="32" viewBox="0 0 30 34" style="position:absolute;top:-6px;left:50%;transform:translateX(-50%)"><path d="M15 1C10 8 3 14 3 21a12 12 0 0 0 24 0c0-7-7-13-12-20z" fill="var(--accent)"/></svg><span class="subhead num" style="position:relative;color:#fff;font-weight:700;padding-top:5px">18</span></div></div>
+      <div><div class="cap sec" style="font-weight:600">Mon</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">19</div></div>
+      <div><div class="cap sec" style="font-weight:600">Tue</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">20</div></div>
+      <div><div class="cap sec" style="font-weight:600">Wed</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">21</div></div>
+      <div><div class="cap sec" style="font-weight:600">Thu</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">22</div></div>
+      <div><div class="cap sec" style="font-weight:600">Fri</div><div class="subhead num ter" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">23</div></div>
+      <div><div class="cap sec" style="font-weight:600">Sat</div><div class="subhead num" style="font-weight:600;margin-top:4px;height:28px;line-height:28px">24</div></div>
+    </div>
+    <div class="hair" style="margin-top:6px"></div>
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c2)">570</span><span class="subhead" style="font-weight:600">AP Biology</span><span class="foot ter">P2</span></div>
+      <div class="item"><span class="circle"></span><div style="flex:1;min-width:0"><div class="subhead" style="font-weight:600">Lab 2.2 Cell Size and Diffusion</div><div class="foot sec num">11:59 pm · <span class="tag">HW</span> · not submitted</div></div><span class="pill acc" style="background:var(--accentSoft)">Submit ↗</span></div>
+      <div class="item"><span class="circle" style="background:var(--good);border-color:var(--good);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">✓</span><div style="flex:1;min-width:0"><div class="subhead sec">Read Ch. 5: Membranes</div><div class="foot good">Turned in · not on Schoology</div></div></div>
+    </div>
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c4)">460</span><span class="subhead" style="font-weight:600">Spanish 2</span><span class="foot ter">P4</span></div>
+      <div class="item"><span class="circle" style="border-color:var(--late)"></span><div style="flex:1;min-width:0"><div class="subhead">Vocabulario 2.3 Practice</div><div class="foot late num" style="font-weight:600">2 d late · Fri 6:00 pm</div></div></div>
+    </div>
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c5)">540</span><span class="subhead" style="font-weight:600">Chemistry H</span><span class="foot ter">P5</span></div>
+      <div class="item"><span class="circle"></span><div style="flex:1;min-width:0"><div class="subhead">Stoichiometry Worksheet</div><div class="foot sec num">Mon 8:30 am · <span class="tag">HW</span></div></div></div>
+    </div>
+    <div class="fab">+</div>
+  </div>
+  <div class="ftabs"><div class="on"><i></i>To Do<span class="tbadge">1</span></div><div><i></i>Grades</div><div><i></i>Inbox</div><div><i></i>Classes</div><div><i></i>Schoology</div></div>
+</div></div></div>
+<figcaption><b>F1 · To Do, at the top</b>The same screen as on the phone. Before the tweak, the header and the tab bar take about 330 of the 678 pt, so only 4 rows show (about 9 on an iPhone 17).</figcaption>
+</figure>
+
+<!-- F2 · To Do, scrolled -->
+<figure class="small">
+<div class="fit" data-w="486" data-h="698"><div class="scaler"><div class="fold">
+  <div class="fstatus"><span>9:41</span><span>●●●</span></div>
+  <!-- the one-line bar the header collapses into -->
+  <div style="flex:none;display:flex;align-items:center;gap:10px;padding:4px 18px 10px;border-bottom:1px solid var(--divider);background:rgba(238,246,242,.94)">
+    <span class="headline">To Do</span>
+    <span class="cap late" style="font-weight:700;background:var(--lateSoft);border-radius:99px;padding:3px 8px">1 late</span>
+    <span class="cap acc" style="font-weight:700;background:var(--accentSoft);border-radius:99px;padding:3px 8px">1 today</span>
+    <span class="cap sec" style="font-weight:600">Sun 18 ⌄</span>
+    <span style="flex:1"></span>
+    <svg width="26" height="26" viewBox="0 0 44 44"><circle cx="22" cy="22" r="20" fill="none" stroke="var(--divider)" stroke-width="3"/><circle cx="22" cy="22" r="14" fill="none" stroke="var(--divider)" stroke-width="3"/><circle cx="22" cy="22" r="8" fill="none" stroke="var(--accent)" stroke-width="3"/></svg>
+  </div>
+  <div class="fscroll" style="padding-top:0">
+    <div class="catalog" style="margin-top:-30px">
+      <div class="item"><span class="circle" style="background:var(--good);border-color:var(--good);display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700">✓</span><div style="flex:1;min-width:0"><div class="subhead sec">Read Ch. 5: Membranes</div><div class="foot good">Turned in · not on Schoology</div></div></div>
+    </div>
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c4)">460</span><span class="subhead" style="font-weight:600">Spanish 2</span><span class="foot ter">P4</span></div>
+      <div class="item"><span class="circle" style="border-color:var(--late)"></span><div style="flex:1;min-width:0"><div class="subhead">Vocabulario 2.3 Practice</div><div class="foot late num" style="font-weight:600">2 d late · Fri 6:00 pm</div></div></div>
+    </div>
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c5)">540</span><span class="subhead" style="font-weight:600">Chemistry H</span><span class="foot ter">P5</span></div>
+      <div class="item"><span class="circle"></span><div style="flex:1;min-width:0"><div class="subhead">Stoichiometry Worksheet</div><div class="foot sec num">Mon 8:30 am · <span class="tag">HW</span></div></div></div>
+      <div class="item"><span class="circle" style="border-radius:5px"></span><div style="flex:1;min-width:0"><div class="subhead">Unit 3 Test</div><div class="foot sec num">Wed · <span class="tag test">TEST</span> · not studied</div></div></div>
+    </div>
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c6)">973</span><span class="subhead" style="font-weight:600">US History</span><span class="foot ter">P7</span></div>
+      <div class="item"><span class="circle"></span><div style="flex:1;min-width:0"><div class="subhead">DBQ Outline</div><div class="foot sec num">Thu 11:59 pm · <span class="tag">HW</span></div></div></div>
+    </div>
+    <div class="catalog">
+      <div class="head"><span class="callno" style="color:var(--c1)">512</span><span class="subhead" style="font-weight:600">Algebra 2</span><span class="foot ter">P1</span></div>
+      <div class="item"><span class="circle"></span><div style="flex:1;min-width:0"><div class="subhead">4.3 Practice Set</div><div class="foot sec num">Tue 8:00 am · <span class="tag">HW</span></div></div></div>
+    </div>
+    <div class="fab">+</div>
+  </div>
+  <div class="ftabs"><div class="on"><i></i>To Do<span class="tbadge">1</span></div><div><i></i>Grades</div><div><i></i>Inbox</div><div><i></i>Classes</div><div><i></i>Schoology</div></div>
+</div></div></div>
+<figcaption><b>F2 · To Do, scrolled</b>The tweak. Scrolling down folds the title, count buttons and week strip into one bar: the title, the late and today counts as chips (tap = filter, as the buttons do), the selected day (tap = open the strip again) and the ripple rings, small. That gives back about 190 pt, room for 6 or 7 rows instead of 4. Scrolling up a little brings the full header back; it springs to open or closed, never halfway.</figcaption>
+</figure>
+
+<!-- F3 · Assignment, compact card -->
+<figure class="small">
+<div class="fit" data-w="486" data-h="698"><div class="scaler"><div class="fold">
+  <div class="fstatus"><span>9:41</span><span>●●●</span></div>
+  <div style="flex:none;display:flex;justify-content:space-between;padding:2px 18px 0" class="headline acc"><span>‹ To Do</span><span>◎</span></div>
+  <div class="fscroll" style="padding-top:10px">
+    <div class="kicker" style="color:var(--c2)">AP BIO · P2 · 26-27 T1 · Labs &amp; Homework</div>
+    <div class="displaySmall" style="margin-top:4px;font-size:24px">Lab 2.2 Cell Size and Diffusion</div>
+
+    <!-- Compact checkout card: one ruled row, stamp on the card -->
+    <div style="margin-top:16px;position:relative;background:#FFFDF7;border-radius:6px;box-shadow:0 1px 0 var(--border),0 6px 18px rgba(14,42,36,.08);padding:10px 14px 4px;border-top:5px solid var(--c2)">
+      <div class="row" style="padding-bottom:4px;border-bottom:1.5px solid var(--text)">
+        <span class="kicker" style="flex:1;color:var(--text)">Date due</span><span class="kicker" style="width:140px;color:var(--text)">Turn in</span><span style="width:84px"></span>
+      </div>
+      <div class="row" style="padding:8px 0;border-bottom:1px solid #E7DFCC">
+        <div style="flex:1"><div class="subhead num" style="font-weight:600">Today, 11:59 pm</div><div class="foot sec num">20 points</div></div>
+        <div style="width:140px"><div class="subhead">Dropbox</div><div class="foot late" style="font-weight:600">Not submitted</div></div>
+        <div style="width:84px;display:flex;justify-content:flex-end"><div style="transform:rotate(-7deg);border:2px solid var(--late);color:var(--late);border-radius:6px;padding:2px 7px 1px;text-align:center;background:rgba(251,237,229,.92)"><div style="font-size:9px;font-weight:800;letter-spacing:.14em">DUE</div><div style="font-size:15px;font-weight:800" class="num">OCT 18</div></div></div>
+      </div>
+      <div class="row" style="padding:7px 0"><span class="foot ter" style="flex:1">Checked 2 min ago</span><span class="foot acc" style="font-weight:600">Mark turned in</span></div>
+    </div>
+
+    <div class="headline" style="margin-top:18px">Instructions</div>
+    <p class="body" style="line-height:1.45;margin:6px 0 0">Model cells as agar cubes of three sizes. Record how far the dye spreads in 10 minutes, then compute surface area to volume for each.</p>
+    <div class="row" style="margin-top:10px;padding:9px 0"><span class="cap" style="font-weight:700;color:#fff;background:var(--late);border-radius:4px;padding:2px 5px">PDF</span><span class="subhead" style="flex:1">Lab 2.2 handout.pdf</span><span class="ter">›</span></div>
+    <div class="row hair" style="padding:9px 0"><span class="cap" style="font-weight:700;color:#fff;background:var(--c1);border-radius:4px;padding:2px 5px">LINK</span><span class="subhead" style="flex:1">Lab site</span><span class="ter">↗</span></div>
+  </div>
+  <div style="flex:none;padding:10px 18px 26px;display:flex;gap:10px;border-top:1px solid var(--divider);background:var(--bg)">
+    <span class="headline" style="flex:1;height:46px;border-radius:99px;border:1px solid var(--border);background:var(--card);display:flex;align-items:center;justify-content:center;color:var(--accent)">Done</span>
+    <span class="headline" style="flex:1.6;height:46px;border-radius:99px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center">Submit on Schoology ↗</span>
+  </div>
+</div></div></div>
+<figcaption><b>F3 · Assignment, the short card</b>Same facts as A1 in about half the height: the three ruled rows become one (due date over points, turn-in place over its status), and the stamp sits on the card at the right instead of hanging above it. Instructions and both attachments now show without scrolling. On a tall phone the full A1 card stays.</figcaption>
+</figure>
+
+<!-- F4 · Grades -->
+<figure class="small">
+<div class="fit" data-w="486" data-h="698"><div class="scaler"><div class="fold">
+  <div class="fstatus"><span>9:41</span><span>●●●</span></div>
+  <div class="fscroll">
+    <div class="kicker">26-27 T1</div>
+    <div class="display">Grades</div>
+    <div style="margin:14px -18px 0;padding:14px 18px 12px;background:var(--card);border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);text-align:center">
+        <div><div class="display" style="color:var(--c1)">B+</div><div class="cap sec" style="font-weight:600;margin-top:4px">ALG 2</div></div>
+        <div style="position:relative"><div class="display" style="color:var(--c2)">A</div><div class="cap sec" style="font-weight:600;margin-top:4px">AP BIO</div><span style="position:absolute;top:2px;right:14px;width:8px;height:8px;border-radius:50%;background:var(--accent)"></span></div>
+        <div><div class="display" style="color:var(--c3)">A</div><div class="cap sec" style="font-weight:600;margin-top:4px">ENG 10</div></div>
+        <div><div class="display" style="color:var(--c4)">A−</div><div class="cap sec" style="font-weight:600;margin-top:4px">SPAN 2</div></div>
+        <div><div class="display" style="color:var(--c5)">B</div><div class="cap sec" style="font-weight:600;margin-top:4px">CHEM H</div></div>
+        <div><div class="display" style="color:var(--c6)">A</div><div class="cap sec" style="font-weight:600;margin-top:4px">US HIST</div></div>
+      </div>
+    </div>
+    <div class="row" style="margin-top:16px"><span class="headline">New</span><span class="newtag">2</span><span style="flex:1"></span><span class="subhead acc" style="font-weight:600">Mark all seen</span></div>
+    <div class="row" style="padding:8px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Unit 2 Test</div><div class="foot sec">AP Biology · Nice work on the FRQ.</div></div><div style="text-align:right"><div class="subhead num" style="font-weight:600">47 / 50</div><div class="cap num good">+0.6</div></div></div>
+    <div class="row hair" style="padding:8px 0"><div style="flex:1"><div class="subhead" style="font-weight:600">Quiz 4.2</div><div class="foot sec">Algebra 2</div></div><div style="text-align:right"><div class="subhead num" style="font-weight:600">18 / 20</div><div class="cap num good">+0.2</div></div></div>
+    <div class="headline" style="margin-top:16px">Classes</div>
+    <div class="row" style="padding:8px 0"><span style="width:4px;height:30px;border-radius:2px;background:var(--c1)"></span><div style="flex:1"><div class="subhead" style="font-weight:600">Algebra 2</div><div class="foot late num" style="font-weight:600">3.4 under A <span class="ter" style="font-weight:400">· P1</span></div></div><svg width="80" height="24"><path d="M0 14 L16 10 L32 16 L48 13 L64 9 L80 11" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 6H80" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg><div class="subhead num" style="width:52px;text-align:right;font-weight:600">89.6%</div></div>
+    <div class="row hair" style="padding:8px 0"><span style="width:4px;height:30px;border-radius:2px;background:var(--c2)"></span><div style="flex:1"><div class="subhead" style="font-weight:600">AP Biology <span class="newtag" style="margin-left:4px">1 new</span></div><div class="foot good num" style="font-weight:600">+1.5 over A <span class="ter" style="font-weight:400">· P2</span></div></div><svg width="80" height="24"><path d="M0 12 L16 9 L32 11 L48 7 L64 8 L80 5" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 9H80" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg><div class="subhead num" style="width:52px;text-align:right;font-weight:600">94.5%</div></div>
+    <div class="row hair" style="padding:8px 0"><span style="width:4px;height:30px;border-radius:2px;background:var(--c3)"></span><div style="flex:1"><div class="subhead" style="font-weight:600">English 10</div><div class="foot good num" style="font-weight:600">+0.4 over A <span class="ter" style="font-weight:400">· P3</span></div></div><svg width="80" height="24"><path d="M0 8 L20 12 L40 10 L60 11 L80 9" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 10H80" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg><div class="subhead num" style="width:52px;text-align:right;font-weight:600">93.4%</div></div>
+    <div class="row hair" style="padding:8px 0"><span style="width:4px;height:30px;border-radius:2px;background:var(--c4)"></span><div style="flex:1"><div class="subhead" style="font-weight:600">Spanish 2</div><div class="foot late num" style="font-weight:600">2.1 under A <span class="ter" style="font-weight:400">· P4</span></div></div><svg width="80" height="24"><path d="M0 9 L26 13 L53 12 L80 14" fill="none" stroke="var(--accent)" stroke-width="1.6"/><path d="M0 8H80" stroke="var(--good)" stroke-opacity=".5" stroke-dasharray="3 3"/></svg><div class="subhead num" style="width:52px;text-align:right;font-weight:600">90.9%</div></div>
+  </div>
+  <div class="ftabs"><div><i></i>To Do<span class="tbadge">1</span></div><div class="on"><i></i>Grades</div><div><i></i>Inbox</div><div><i></i>Classes</div><div><i></i>Schoology</div></div>
+</div></div></div>
+<figcaption><b>F4 · Grades</b>Unchanged G1. The 64 extra points of width give the letter row breathing room. Four classes show before scrolling, against six on an iPhone 17. That's fine: the letter row already shows all six grades at a glance.</figcaption>
+</figure>
+
+</div>
+
+</div>
+<script>
+// Scale the drawings down to fit narrow windows (no horizontal scroll).
+function fit(){
+  document.querySelectorAll('.fit').forEach(function(f){
+    var w=+f.dataset.w||910, h=+f.dataset.h||646;
+    var s=Math.min(1,f.clientWidth/w), el=f.firstElementChild;
+    el.style.transform='scale('+s+')';
+    el.style.width=w+'px'; f.style.height=(h*s)+'px';
+  });
+}
+window.addEventListener('resize',fit); fit();
+</script>
+</body>
+</html>

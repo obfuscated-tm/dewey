@@ -15,7 +15,7 @@ export const MARK_CSS = `
 .num { font-family: var(--sans); font-variant-numeric: tabular-nums; }
 .score { color: var(--ink); }
 .pill {
-  padding: 0 6px; border-radius: var(--radius);
+  padding: 0 6px; border-radius: var(--radius-sm);
   color: var(--bad); background: var(--bad-soft); font-weight: 500; font-size: 11px; line-height: 16px;
 }
 .circle { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--dim); flex: none; }

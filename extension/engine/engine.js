@@ -36,6 +36,8 @@ const MAX_IN_FLIGHT = 2;
 const MIN_GAP_MS = 300;
 const RATE_WAITS_MS = [5000, 10000, 20000];
 const SERVER_WAITS_MS = [3000, 6000];
+// A stalled request holds one of the 2 slots for good, and every op behind it waits.
+const REQUEST_TIMEOUT_MS = 20000;
 const LOGIN_RE = /s-user-login-form|login-container/;
 
 function codeError(code, extra = {}) {
@@ -130,12 +132,35 @@ export function createEngine(deps = {}) {
   const pMcp = deps.parseMcpKind || parseMcpKind;
   const online = deps.online || (() => globalThis.navigator?.onLine !== false);
   const queue = makeQueue({ now, sleep });
+  const timeoutMs = deps.timeoutMs ?? REQUEST_TIMEOUT_MS;
+  const setTimer = deps.setTimeout || ((f, ms) => globalThis.setTimeout(f, ms));
+  const clearTimer = deps.clearTimeout || ((h) => globalThis.clearTimeout(h));
+
+  // fetch + its body, in one queue slot, given up after `timeoutMs` (a `network` error).
+  function fetchText(url, init) {
+    return queue.run(async () => {
+      const ac = typeof AbortController === 'function' ? new AbortController() : null;
+      let timer;
+      const timeout = new Promise((_, reject) => {
+        timer = setTimer(() => { ac?.abort(); reject(codeError('network', { message: 'timeout' })); }, timeoutMs);
+      });
+      try {
+        return await Promise.race([(async () => {
+          const r = await doFetch(url, { ...init, ...(ac ? { signal: ac.signal } : {}) });
+          const text = r.type === 'opaqueredirect' ? '' : await r.text();
+          return { r, text };
+        })(), timeout]);
+      } finally {
+        clearTimer(timer);
+      }
+    });
+  }
 
   // Session gone? Schoology redirects every page to /login (then Google) when
   // it is: a manual-redirect probe of a page that never redirects otherwise.
   async function sessionGone() {
     try {
-      const r = await queue.run(() => doFetch(`${origin}/iapi/course/active`, { credentials: 'include', redirect: 'manual' }));
+      const { r } = await fetchText(`${origin}/iapi/course/active`, { credentials: 'include', redirect: 'manual' });
       return r.type === 'opaqueredirect' || (r.status >= 300 && r.status < 400);
     } catch {
       return false;
@@ -154,17 +179,17 @@ export function createEngine(deps = {}) {
     let rateHits = 0;
     let serverHits = 0;
     for (;;) {
-      let r;
+      let r, text;
       try {
-        r = await queue.run(() => doFetch(url, { method: 'GET', credentials: 'include', redirect, ...(headers ? { headers } : {}) }));
+        ({ r, text } = await fetchText(url, { method: 'GET', credentials: 'include', redirect, ...(headers ? { headers } : {}) }));
       } catch (e) {
+        if (e?.code === 'network') throw e;
         // A redirect to Google sign-in shows up as a CORS TypeError.
         if (!online()) throw codeError('network', { message: 'offline' });
         if (await sessionGone()) throw codeError('login');
         throw codeError('network', { message: String(e?.message || e) });
       }
       if (r.type === 'opaqueredirect') return { redirected: true, url };
-      const text = await r.text();
       if (isRateLimited(r.status, text)) {
         if (rateHits >= RATE_WAITS_MS.length) throw codeError('ratelimit');
         await sleep(RATE_WAITS_MS[rateHits++]);

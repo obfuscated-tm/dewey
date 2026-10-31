@@ -56,7 +56,9 @@ targets:
         INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents: YES
         INFOPLIST_KEY_NSCameraUsageDescription: "To scan homework into a Schoology submission, or the barcode on your student ID card."
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "To attach photos to a Schoology submission."
-        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: UIInterfaceOrientationPortrait
+        # Every orientation is listed so the open iPhone Duo can turn; AppDelegate keeps
+        # phone-sized screens (and the folded Duo) in portrait.
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_FILE: App/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO

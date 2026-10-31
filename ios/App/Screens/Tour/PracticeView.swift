@@ -50,7 +50,7 @@ enum TourScript {
     private static func seen(_ key: String) -> Bool { Coach.shared.frames[key] != nil }
 
     static let todo: [Coach.Step] = [
-        .init(text: "Hi, I'm Dewey! This is a pretend week, so nothing you tap here touches your real Schoology. Let's try what you'll do every day.",
+        .init(text: "Hi, I'm Dewey. This is a pretend week, so nothing you tap here touches your real Schoology. First, what you'll do every day.",
               hint: .none, button: "Let's go"),
         .init(target: "todo.check.\(Practice.lab)",
               text: "You just finished your Bio lab. Tap its circle to mark it Done.",
@@ -62,7 +62,7 @@ enum TourScript {
               text: "This is a pretend Schoology page. On the real one you'd attach your file here. Tap Submit.",
               done: { _ in Practice.submitted.contains(Practice.lab) }, tab: 0, rewind: 1),
         .init(target: "dropbox.done",
-              text: "Sent! Tap Done. When you close Schoology, Dewey checks it again.",
+              text: "Sent. Tap Done. When you close Schoology, Dewey checks it again.",
               done: { $0.item(Practice.lab)?.submitted == true }, tab: 0, rewind: 2),
         .init(target: "todo.row.\(Practice.lab)",
               text: "The green seal means Schoology has it. Dewey only says Submitted when Schoology does.",
@@ -185,7 +185,7 @@ enum TourScript {
                   if await CalendarSync.shared.requestAccess() { UserDefaults.standard.set(true, forKey: CalendarSync.enabledKey) }
               },
               other: "Not now", wide: true, tab: 3, rewind: 7),
-        .init(text: "That's the practice! One last thing on your real account: your student ID. You can take this tour again from Settings → Help.",
+        .init(text: "That's the practice. One last thing on your real account: your student ID. You can take this tour again from Settings → Help.",
               hint: .none, button: "Finish"),
     ]
 

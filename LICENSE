@@ -1,21 +1,18 @@
-MIT License
+Copyright (c) 2026 obfuscated-tm. All rights reserved.
 
-Copyright (c) 2026 obfuscated-tm
+This repository is public so its source can be read. That is not a license.
+No permission is granted to copy, modify, distribute, sublicense or sell this
+software or any part of it, except as GitHub's Terms of Service allow for
+viewing and forking on GitHub, or with written permission from the copyright
+holder (legal@owen64.me).
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Versions published before 2026-10-31 under the MIT License remain available
+under that license to anyone who obtained them then. Everything after is
+covered only by this notice.
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+Files under extension/overlays/fonts/ are third-party fonts under the SIL Open
+Font License; see the OFL-*.txt files beside them.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.

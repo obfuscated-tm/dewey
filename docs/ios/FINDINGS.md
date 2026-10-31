@@ -110,6 +110,12 @@ Plan: `UIApplication.shared.open(url, options: [.universalLinksOnly: true])` so 
 - Not every district's username is a number, so the app only fills the ID in from Schoology when it is digits, warns (never blocks) when it isn't 7 long, and also offers scanning the card (VisionKit, Code 39 only) or typing it.
 - The app's own barcode (App/Store/Code39.swift, narrow:wide 1:3, 10-module quiet zones) decodes as Code 39 with the right number, both as a rendered image and from a simulator screenshot of the ID card. Still to check: the school's scanners reading it off a phone screen (older laser scanners may not).
 
+## iPhone Duo (simulator, checked 2026-10-24)
+- The `iPhone Duo` simulator (iOS 27.1, model iPhone19,4) has two displays: outer 1398 × 2034 px at 3× = 466 × 678 pt; inner 2007 × 2853 px at 3× = 669 × 951 pt, natively turned 270° (wider than tall: 951 × 669). The mockup's 890 × 626 guess was close.
+- It boots folded and Xcode 27 has no Simulator.app to unfold it, so the inner display can't be shown in the simulator here. The open layout was checked instead on an iPad mini simulator in landscape (1133 × 744, also regular width) with a throwaway `TARGETED_DEVICE_FAMILY=1,2` build; the committed app stays iPhone-only.
+- Folded, iOS 27 puts the status bar and the tab bar (and the Home Screen's Dock) down the right edge of the 466 × 678 screen, not along the top and bottom.
+- The app lists every orientation; `AppDelegate` keeps any screen under 600 pt either way in portrait, so phones are unchanged and the open Duo can turn.
+
 ## Other decisions
 
 - **Own tasks and Plan:** a task the student adds is an `ItemState` keyed `mine-<uuid>`: on the phone only, never on Schoology, and not on neo-plan (its extension API only takes Schoology items). Plan's sections and order are phone-only too.

@@ -44,12 +44,12 @@ const CHIP_CSS = `
 .sep { width: 1px; height: 14px; background: var(--line); flex: none; }
 .cls { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
 .num { font-family: var(--sans); font-variant-numeric: tabular-nums; }
-.pill { font: 500 12px/18px var(--sans); padding: 0 6px; border-radius: 4px; }
+.pill { font: 500 12px/18px var(--sans); padding: 0 6px; border-radius: var(--radius-sm); }
 .pill.bad { color: var(--bad); background: var(--bad-soft); }
 .pill.ok { color: var(--good); background: var(--good-soft); }
 .linkbtn { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
 /* The type switch: HW · Test · Task · CW, the current one filled. */
-.types { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.types { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
 .types button { font: 500 11px/18px var(--sans); padding: 0 7px; color: var(--dim); }
 .types button + button { border-left: 1px solid var(--line); }
 .types button[aria-pressed="true"] { color: var(--surface); background: var(--ink); }
@@ -67,7 +67,7 @@ const WHATIF_CSS = `
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
 }
 input {
-  width: 60px; margin: 0 2px; padding: 2px 6px; border: 1px dashed var(--accent); border-radius: 4px;
+  width: 60px; margin: 0 2px; padding: 2px 6px; border: 1px dashed var(--accent); border-radius: var(--radius-sm);
   background: var(--surface); color: var(--ink); text-align: right;
   font: 13px/18px var(--sans); font-variant-numeric: tabular-nums;
 }
@@ -78,7 +78,7 @@ input[type=number] { -moz-appearance: textfield; }
 input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
 .num { font-family: var(--sans); font-variant-numeric: tabular-nums; }
 b.num { font-weight: 500; color: var(--ink); }
-.imp { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 3px; font: 500 11px/16px var(--sans); font-variant-numeric: tabular-nums; }
+.imp { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: var(--radius-sm); font: 500 11px/16px var(--sans); font-variant-numeric: tabular-nums; }
 .imp.pos { color: var(--good); background: var(--good-soft); }
 .imp.neg { color: var(--bad); background: var(--bad-soft); }
 `;

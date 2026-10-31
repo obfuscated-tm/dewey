@@ -118,7 +118,7 @@ fieldset input[type="checkbox"] { width: 16px; height: 16px; min-width: 16px; ma
   font-family: var(--mono); font-size: 12px; line-height: 16px;
 }
 .log div + div { margin-top: 2px; }
-.log .warn { color: var(--np-warn); }
+.log .warn { color: var(--bad); }
 .log .error { color: var(--bad); font-weight: 600; }
 .log .done { color: var(--good); font-weight: 600; }
 .history ul { list-style: none; margin: 0; padding: 0; }
@@ -175,13 +175,6 @@ export function start({
   if (singleton) return singleton;
 
   const { host, root } = createHost('np-archive-card', CSS);
-  // The old amber warning colour, kept as a token local to this card (ui.js
-  // doesn't define one) so the log's `.warn` rule can reference it once. Like
-  // every other hardcoded colour in BASE_CSS (--bad, --good…), it's inside
-  // the shadow host, so a dark theme's page-wide invert filter still turns it
-  // into the right on-screen colour automatically.
-  host.style.setProperty('--np-warn', '#9a6700');
-
   const shade = el('div', 'dim-page');
   shade.hidden = true;
   const card = el('div', 'card');

@@ -9,11 +9,13 @@ struct DoneRipple: ViewModifier {
     @State private var wave = 0
 
     func body(content: Content) -> some View {
-        content
+        // Read here: the animator's closure isn't on the main actor.
+        let rested = wave == 0
+        return content
             .background {
                 Color.clear
                     .keyframeAnimator(initialValue: 1.0, trigger: wave) { view, p in
-                        view.overlay { RippleRings(p: wave == 0 ? 1 : p) }
+                        view.overlay { RippleRings(p: rested ? 1 : p) }
                     } keyframes: { _ in
                         MoveKeyframe(0.0)
                         CubicKeyframe(1.0, duration: 0.42)

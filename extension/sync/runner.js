@@ -66,6 +66,7 @@ export function requestSync({ isArchiveRunning, parse = offscreenParse, np = han
         parse,
         np: (op, args = {}) => np({ type: 'neoplan', op, ...args }),
         storage: chrome.storage.local,
+        byHand: reason === 'panel',
       });
     } finally {
       clearInterval(keepAlive);

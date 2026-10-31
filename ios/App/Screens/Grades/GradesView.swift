@@ -1,4 +1,3 @@
-import Charts
 import SwiftUI
 
 /// 2a · The report card (every class's letter in one row; Settings can hide it),
@@ -7,7 +6,7 @@ import SwiftUI
 /// work across classes. Rows sit on the background with hairlines, not in cards.
 struct GradesView: View {
     @Environment(AppModel.self) private var model
-    @AppStorage(GradesLook.reportCardKey) private var reportCard = true
+    @AppStorage(GradesLook.reportCardKey) private var reportCard = false
     @AppStorage(GradesLook.hiddenKey) private var hiddenRaw = ""
 
     /// The classes shown here; read from `hiddenRaw` so hiding one redraws the screen.
@@ -54,15 +53,20 @@ struct GradesView: View {
     @ViewBuilder
     private var classList: some View {
         if !model.classes.isEmpty {
-            // A bigger gap under New grades, so the classes never read as more new grades.
-            Text("Classes").font(Theme.headline).padding(.top, model.newGrades().isEmpty ? Theme.Space.s : Theme.Space.l)
-                .accessibilityAddTraits(.isHeader)
+            // A card, like a report card, with the red rule under its heading; a bigger gap
+            // under New grades, so the classes never read as more new grades.
             VStack(spacing: 0) {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("Report card").font(Theme.callNumber).accessibilityAddTraits(.isHeader)
+                    Spacer()
+                }
+                .padding(.bottom, Theme.Space.s)
+                .overlay(alignment: .bottom) { Theme.catalogRule.frame(height: 1.5) }
                 ForEach(Array(visible.enumerated()), id: \.element.sectionId) { i, c in
                     SplitLink(value: c) { ClassGradeRow(course: c, showLetter: !reportCard) }
                         .buttonStyle(.plain)
                         .coachTarget("grades.class.\(c.sectionId)")
-                        .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
+                        .overlay(alignment: .top) { if i > 0 { Theme.catalogLine.frame(height: 1) } }
                         .contextMenu {
                             Button("Hide from Grades", systemImage: "eye.slash") {
                                 withAnimation { hiddenRaw = GradesLook.toggled(hiddenRaw, c.sectionId) }
@@ -70,6 +74,11 @@ struct GradesView: View {
                         }
                 }
             }
+            .padding(.horizontal, Theme.Space.l)
+            .padding(.top, Theme.Space.m)
+            .padding(.bottom, Theme.Space.xs)
+            .card()
+            .padding(.top, model.newGrades().isEmpty ? 0 : Theme.Space.m)
             let hiddenCount = model.classes.count - visible.count
             if hiddenCount > 0 {
                 Text("\(hiddenCount) hidden. Show \(hiddenCount == 1 ? "it" : "them") again in Settings → Grades.")
@@ -85,12 +94,11 @@ struct GradesView: View {
         if !rows.isEmpty {
             HStack(alignment: .firstTextBaseline) {
                 Text("New").font(Theme.headline)
-                Text("\(rows.count)").font(Theme.footnote.weight(.bold).monospacedDigit()).foregroundStyle(Theme.onAccent)
-                    .padding(.horizontal, 7).padding(.vertical, 1).background(Theme.accent, in: Capsule())
+                Text("\(rows.count)").font(Theme.headline.monospacedDigit()).foregroundStyle(Theme.tertiary)
                     .accessibilityHidden(true)
                 Spacer()
                 Button("Mark all seen") { withAnimation(.snappy(duration: 0.25)) { model.markAllGradesSeen() } }
-                    .font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.accent)
+                    .font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.secondary)
             }
             .padding(.top, Theme.Space.s)
             .accessibilityElement(children: .contain)
@@ -145,7 +153,8 @@ struct GradesView: View {
 
 /// Settings → Grades.
 enum GradesLook {
-    /// Show every class's letter in one row at the top of Grades (on by default).
+    /// Show every class's letter in one row at the top of Grades (off by default: the
+    /// report card rows carry the letters).
     static let reportCardKey = "gradesReportCard"
     /// Section ids of classes hidden from Grades, comma-separated (a class with nothing worth tracking).
     static let hiddenKey = "gradesHidden"
@@ -213,14 +222,28 @@ struct ReportCardRow: View {
     }
 }
 
+/// A letter grade in New York with the + or − in its own slot, so A, A− and B+ line up.
+struct LetterGrade: View {
+    let letter: String?
+    var body: some View {
+        let l = letter ?? "–"
+        HStack(alignment: .firstTextBaseline, spacing: 0) {
+            Text(String(l.prefix(1))).font(Theme.displaySmall).frame(minWidth: 18)
+            Text(String(l.dropFirst())).font(Theme.headline.weight(.bold)).frame(width: 12, alignment: .leading)
+        }
+        .foregroundStyle(letter == nil ? Theme.tertiary : Theme.text)
+        .accessibilityHidden(true)
+    }
+}
+
 /// One graded item (2c), as a navigation value.
 struct GradeRoute: Hashable { let sectionId: String; let itemId: String }
 
-/// The small "NEW" capsule on a score the student hasn't looked at.
+/// The small "NEW" tag on a score the student hasn't looked at.
 struct NewTag: View {
     var body: some View {
         Text("NEW").font(Theme.caption.weight(.bold).monospacedDigit()).foregroundStyle(Theme.onAccent)
-            .padding(.horizontal, 5).padding(.vertical, 1).background(Theme.accent, in: Capsule())
+            .padding(.horizontal, 5).padding(.vertical, 1).background(Theme.accent, in: RoundedRectangle(cornerRadius: Theme.Radius.tag / 2, style: .continuous))
     }
 }
 
@@ -231,10 +254,12 @@ func scoreText(_ i: CourseGrade.Item) -> String {
     return g.isEmpty ? "—" : g
 }
 
-/// One class on Grades: colour tick, name and distance to the A line, the trend,
-/// the %, and under it the latest score and what it did to the grade.
+/// One class on Grades, a line on a report card: the call number up a spine label in the
+/// class colour, the name, then the period and the latest score; on the right the % with
+/// what that score did to it under it, and the letter (when the report card row is hidden).
 struct ClassGradeRow: View {
     @Environment(AppModel.self) private var model
+    @AppStorage(CallNumber.key) private var callRaw = ""
     let course: Course
     /// The letter, when the report card row above is hidden.
     var showLetter = false
@@ -243,78 +268,66 @@ struct ClassGradeRow: View {
         let g = model.grades[course.sectionId]
         let cutoff = model.courseState(course.sectionId).aCutoff ?? 93
         let newCount = model.newGradeCount(course.sectionId)
-        let d = g?.pct.map { $0 - cutoff }
-        HStack(alignment: .top, spacing: Theme.Space.m) {
-            RoundedRectangle(cornerRadius: Theme.Radius.tag / 3, style: .continuous)
-                .fill(model.classColor(course.sectionId)).frame(width: 4, height: 32)
-                .padding(.top, 2)
-            VStack(alignment: .leading, spacing: Theme.Space.xs) {
-                // Name and distance to the A line · trend · %.
-                HStack(alignment: .center, spacing: Theme.Space.m) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        HStack(spacing: 6) {
-                            Text(course.shortTitle).font(Theme.subhead.weight(.semibold)).oneLine()
-                            if newCount > 0 {
-                                Text("\(newCount) new").font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.onAccent)
-                                    .padding(.horizontal, 6).padding(.vertical, 1).background(Theme.accent, in: Capsule())
-                            }
-                        }
-                        if let d {
-                            (Text(String(format: d >= 0 ? "+%.1f over A" : "%.1f under A", abs(d))).fontWeight(.semibold)
-                                .foregroundStyle(d >= 0 ? Theme.good : Theme.late)
-                             + Text(" · \(course.periodLabel)").foregroundStyle(Theme.tertiary))
-                                .font(Theme.footnote.monospacedDigit()).oneLine()
-                        } else {
-                            Text(course.periodLabel).font(Theme.footnote).foregroundStyle(Theme.tertiary).oneLine()
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    if let g, g.pct != nil {
-                        let vals = g.history.compactMap(\.pct)
-                        if vals.count > 1 {
-                            Chart(Array(vals.enumerated()), id: \.offset) { i, v in
-                                LineMark(x: .value("n", i), y: .value("%", v)).foregroundStyle(Theme.accent).interpolationMethod(.monotone)
-                                RuleMark(y: .value("A", cutoff)).foregroundStyle(Theme.good.opacity(0.5)).lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
-                            }
-                            .chartXAxis(.hidden)
-                            .chartYAxis(.hidden)
-                            .chartYScale(domain: max(0, min(vals.min() ?? 80, cutoff) - 3)...max(100, vals.max() ?? 100))
-                            .frame(width: 80, height: 26)
-                            .accessibilityHidden(true)
-                        }
-                        HStack(alignment: .firstTextBaseline, spacing: 6) {
-                            if showLetter { Text(g.letter ?? "").font(Theme.displaySmall) }
-                            Text(Fmt.pct(g.pct)).font(Theme.subhead.weight(.semibold).monospacedDigit())
-                        }
-                        // Same width on every row, so the trend lines line up down the screen.
-                        .frame(minWidth: showLetter ? 84 : 56, alignment: .trailing)
-                    } else if model.gradeErrors[course.sectionId] != nil && g == nil {
-                        Text("Couldn't load").font(Theme.footnote).foregroundStyle(Theme.secondary)
-                    } else if g != nil {
-                        Text("No grades yet").font(Theme.footnote).foregroundStyle(Theme.secondary)
-                    } else {
-                        ProgressView().controlSize(.small)
+        let last = g?.items.filter { $0.earned != nil }.min(by: model.gradedFirst)
+        HStack(alignment: .center, spacing: Theme.Space.m) {
+            spine
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(course.shortTitle).font(Theme.body.weight(.medium)).oneLine()
+                    if newCount > 0 {
+                        Circle().fill(Theme.accent).frame(width: 7, height: 7).accessibilityHidden(true)
                     }
                 }
-                // The latest score and what it did to the grade.
-                if let g, g.pct != nil, let last = g.items.filter({ $0.earned != nil }).min(by: model.gradedFirst) {
-                    HStack(spacing: Theme.Space.s) {
-                        Text(last.title).oneLine().frame(maxWidth: .infinity, alignment: .leading)
-                        Text(scoreText(last))
-                        if let i = last.impact {
-                            Text(Fmt.signed(i)).fontWeight(.semibold).foregroundStyle(Fmt.impactColor(i))
-                        }
-                    }
-                    .font(Theme.footnote.monospacedDigit())
-                    .foregroundStyle(Theme.secondary)
+                // Period (only when the section title names one) · the latest score, then its
+                // title: the score comes first, so a long title is what gets cut, never the points.
+                let latest = last.map { (Text(scoreText($0)).fontWeight(.semibold).foregroundStyle(Theme.text) + Text("  " + $0.title)) }
+                let period = course.periodLabel.isEmpty ? nil : Text(course.periodLabel + (latest == nil ? "" : " · "))
+                if period != nil || latest != nil {
+                    ((period ?? Text("")) + (latest ?? Text("")))
+                        .font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary).oneLine()
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            if let g, g.pct != nil {
+                // The % with the latest score's effect under it, so the row never gets wider.
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text(Fmt.pct(g.pct)).font(Theme.subhead.monospacedDigit()).foregroundStyle(Theme.secondary)
+                    if let i = last?.impact {
+                        Text(Fmt.signed(i)).font(Theme.caption.weight(.semibold).monospacedDigit()).foregroundStyle(Fmt.impactColor(i))
+                    }
+                }
+                .frame(minWidth: 56, alignment: .trailing)
+                if showLetter { LetterGrade(letter: g.letter) }
+            } else if model.gradeErrors[course.sectionId] != nil && g == nil {
+                Text("Couldn't load").font(Theme.footnote).foregroundStyle(Theme.secondary)
+            } else if g != nil {
+                Text("No grades yet").font(Theme.footnote).foregroundStyle(Theme.secondary)
+            } else {
+                ProgressView().controlSize(.small)
+            }
         }
-        .padding(.vertical, Theme.Space.m)
+        .padding(.vertical, 10)
         .contentShape(Rectangle())
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(a11y(g, cutoff))
         .accessibilityHint("Shows every grade in this class")
+    }
+
+    /// The Dewey number set up the side like a book's spine label, with the class colour
+    /// as a stripe; just the stripe when the class has no number.
+    private var spine: some View {
+        HStack(spacing: 3) {
+            RoundedRectangle(cornerRadius: Theme.Radius.tag / 6, style: .continuous).fill(model.classColor(course.sectionId)).frame(width: 3)
+            if let n = CallNumber.number(for: course, raw: callRaw) {
+                Text(n).font(Theme.ribbon.monospacedDigit()).tracking(0.6)
+                    .foregroundStyle(model.classColor(course.sectionId))
+                    .fixedSize()
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 12, height: 30)
+            }
+        }
+        .frame(minHeight: 34)
+        .accessibilityHidden(true)
     }
 
     private func a11y(_ g: CourseGrade?, _ cutoff: Double) -> String {

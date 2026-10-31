@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Draft D · Library green</title>
+<meta name="theme-color" content="#0E3A31">
+<link rel="icon" href="/brand/icon.svg" type="image/svg+xml">
+<style>
+  /* Draft D, take 2. Three sizes of text and nothing else: the headline, one
+     title per feature, and short body lines. Each feature shows the one part
+     of the app it's about, cropped big, on the app's own dark background. */
+  :root {
+    --green: #0E3A31;
+    --line: #245A4B;
+    --text: #F1F0E9;
+    --soft: #A9C4B9;
+    --paper: #F6F4EE;
+    --ink: #1B1A17;
+    --app: #121211;
+    --teal: #5DCAA5;
+    --late: #FF9466;
+    --serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--green); color: var(--text); font: 18px/1.5 var(--sans); -webkit-font-smoothing: antialiased; }
+  a { color: var(--teal); text-underline-offset: 3px; }
+  img { display: block; max-width: 100%; height: auto; }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 24px; }
+
+  header { display: flex; align-items: center; justify-content: space-between; padding: 24px 0; }
+  header img { height: 32px; width: auto; }
+  header a { color: var(--soft); text-decoration: none; font-size: .95rem; }
+
+  /* 1 · the headline: the only big thing on the first screen */
+  .hero { padding: 48px 0 0; }
+  h1 { font: 700 clamp(3rem, 8.5vw, 6rem)/.98 var(--serif); letter-spacing: -.03em; margin: 0 0 24px; max-width: 10ch; }
+  .sub { font-size: 1.2rem; color: var(--soft); margin: 0 0 32px; max-width: 28em; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; min-height: 52px; padding: 0 26px; border-radius: 999px; font: 650 1rem var(--sans); text-decoration: none; background: var(--paper); color: var(--ink); }
+  .btn.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 1.5px var(--line); }
+  .shelf { margin: 56px 0 0; background: var(--app); border-radius: 28px 28px 0 0; padding: 40px 40px 0; }
+  .shelf img { margin: 0 auto; max-width: 820px; width: 100%; }
+
+  /* 2 · features: one title each, the picture does the explaining */
+  .feature { display: grid; grid-template-columns: 1fr 1.2fr; gap: 64px; align-items: center; padding: 72px 0; border-top: 1px solid var(--line); }
+  .feature:first-of-type { border-top: 0; }
+  .feature.flip > :first-child { order: 2; }
+  h2 { font: 700 clamp(2rem, 4.4vw, 3rem)/1.05 var(--serif); letter-spacing: -.02em; margin: 0 0 14px; }
+  .feature p { font-size: 1.15rem; color: var(--soft); margin: 0; max-width: 22em; }
+  .panel { background: var(--app); border-radius: 28px; padding: 28px; }
+  .panel img { margin: 0 auto; max-width: 420px; width: 100%; }
+
+  /* 3 · the smaller stuff: same panels, a step down in size */
+  .more { padding: 88px 0; border-top: 1px solid var(--line); }
+  .more h2 { margin-bottom: 40px; }
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px 28px; }
+  .grid .panel { padding: 16px; border-radius: 20px; height: 260px; display: grid; place-items: center; overflow: hidden; }
+  .grid .panel img { max-height: 228px; width: auto; max-width: 100%; object-fit: contain; }
+  .grid .panel img.top { width: 100%; height: 228px; max-height: none; object-fit: cover; object-position: top; border-radius: 10px; }
+  .grid h3 { font: 700 1.3rem/1.2 var(--serif); margin: 18px 0 4px; }
+  .grid p { color: var(--soft); margin: 0; font-size: 1rem; }
+  .grid .plain { align-self: end; }
+
+  /* 4 · the plain bit at the end */
+  .get { padding: 88px 0 72px; border-top: 1px solid var(--line); }
+  .get h2 { margin-bottom: 32px; }
+  .options { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; }
+  .options h3 { font: 700 1.3rem var(--serif); margin: 0 0 6px; }
+  .options p { color: var(--soft); margin: 0 0 18px; font-size: 1rem; }
+  .options .btn { min-height: 46px; }
+  details { color: var(--soft); font-size: .95rem; margin-top: 14px; }
+  summary { cursor: pointer; color: var(--text); }
+  details ol { padding-left: 18px; margin: 8px 0 0; }
+  code { font: .88em ui-monospace, Menlo, monospace; background: rgba(0, 0, 0, .25); padding: 1px 6px; border-radius: 5px; color: var(--text); }
+  .soon { color: var(--late); font-weight: 650; }
+
+  footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; padding: 24px 0 40px; border-top: 1px solid var(--line); color: var(--soft); font-size: .88rem; }
+  footer a { color: inherit; margin-left: 16px; }
+  :focus-visible { outline: 3px solid var(--teal); outline-offset: 3px; }
+
+  @media (max-width: 860px) {
+    .feature { grid-template-columns: 1fr; gap: 28px; padding: 64px 0; }
+    .feature.flip > :first-child { order: 0; }
+    .options { grid-template-columns: 1fr; }
+    .grid { grid-template-columns: 1fr 1fr; }
+    .shelf { padding: 24px 20px 0; border-radius: 20px 20px 0 0; }
+    .panel { padding: 18px; border-radius: 20px; }
+  }
+  @media (max-width: 560px) {
+    .grid { grid-template-columns: 1fr; }
+    .grid .panel { height: auto; }
+    .grid .panel img { max-height: none; width: 100%; }
+    .grid .panel img.top { height: 280px; }
+  }
+  @media (max-width: 480px) { .wrap { padding: 0 16px; } }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <img src="/brand/dewey-horizontal-dark.svg" alt="Dewey">
+      <a href="#get">Get Dewey</a>
+    </header>
+
+    <section class="hero">
+      <h1>Every class on one shelf.</h1>
+      <p class="sub">A free app and Chrome extension for Schoology, made by a high school student.</p>
+      <div class="ctas">
+        <a class="btn" href="#get">Get Dewey</a>
+        <a class="btn ghost" href="#todo">See how it works</a>
+      </div>
+      <div class="shelf"><img src="app/shelf.jpg" alt="Six classes as book spines on a shelf, each with its period and grade. Ribbons mark AP Biology due today, Spanish late, and Chemistry due tomorrow." width="1146" height="760"></div>
+    </section>
+
+    <section class="feature" id="todo">
+      <div>
+        <h2>Everything due, in one list.</h2>
+        <p>Sorted by class, with the time it's actually due.</p>
+      </div>
+      <div class="panel"><img src="app/todo.jpg" alt="To Do: the week across the top, then Algebra 2 with a test on Tuesday and homework marked done, ready to turn in" width="1146" height="1413" loading="lazy"></div>
+    </section>
+
+    <section class="feature flip">
+      <div>
+        <h2>Late work gets a stamp.</h2>
+        <p>Turned it in on paper? Mark it yourself.</p>
+      </div>
+      <div class="panel"><img src="app/late.jpg" alt="A Spanish assignment stamped 2 days late, not submitted on Schoology, with To do, Done and Turned in buttons" width="1146" height="1050" loading="lazy"></div>
+    </section>
+
+    <section class="feature">
+      <div>
+        <h2>Your grade to the decimal.</h2>
+        <p>And how much your last score moved it.</p>
+      </div>
+      <div class="panel"><img src="app/report.jpg" alt="Report card: six classes with percent, letter grade, the latest score and how much it changed the grade" width="1146" height="1180" loading="lazy"></div>
+    </section>
+
+    <section class="more">
+      <h2>And the rest of it.</h2>
+      <div class="grid">
+        <div>
+          <div class="panel"><img class="top" src="app/plan.jpg" alt="Plan: a numbered list, Spanish first because it's late, then AP Biology and Chemistry" width="1146" height="1336" loading="lazy"></div>
+          <h3>Put it in order</h3>
+          <p>Drag what you're doing first to the top.</p>
+        </div>
+        <div>
+          <div class="panel"><img src="app/quick.jpg" alt="New task: typing chem lab fri after school fills in Friday, 3:30 and Chemistry" width="1206" height="480" loading="lazy"></div>
+          <h3>Add a task how you'd say it</h3>
+          <p>"Chem lab fri after school" turns into Friday at 3:30, in Chemistry.</p>
+        </div>
+        <div>
+          <div class="panel"><img src="app/whatif.jpg" alt="What-if: a 12 out of 20 on Lab 2.2 would take the grade from A 94.7% to A- 92.6%" width="1206" height="876" loading="lazy"></div>
+          <h3>Try a score first</h3>
+          <p>Type in what you might get and see where your grade ends up.</p>
+        </div>
+        <div>
+          <div class="panel"><img class="top" src="app/graph.jpg" alt="A grade graph over the term, with a line at 93% and a note that the A holds down to 91.9%" width="1146" height="1290" loading="lazy"></div>
+          <h3>Your grade over the term</h3>
+          <p>With how far it can drop before the letter changes.</p>
+        </div>
+        <div>
+          <div class="panel"><img src="app/search.jpg" alt="Searching unit finds Unit 1, 2 and 3 slides across classes" width="1146" height="720" loading="lazy"></div>
+          <h3>Find any file</h3>
+          <p>Search the materials in every class at once.</p>
+        </div>
+        <div class="plain">
+          <h3>On your home screen</h3>
+          <p>Widgets for what's due and your next test. Reminders before things are due. Teacher messages in the Inbox.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="get" id="get">
+      <h2>Get Dewey</h2>
+      <div class="options">
+        <div>
+          <h3>Chrome</h3>
+          <p>Works right on Schoology, and can save a whole class to your computer.</p>
+          <a class="btn" href="/download/dewey-extension.zip">Download</a>
+          <details>
+            <summary>How to install</summary>
+            <ol>
+              <li>Unzip it somewhere it can stay.</li>
+              <li>Go to <code>chrome://extensions</code>, turn on Developer mode, click Load unpacked, pick the folder.</li>
+              <li>Open Schoology.</li>
+            </ol>
+          </details>
+        </div>
+        <div>
+          <h3>Android</h3>
+          <p>The app on this page. Android 8 or newer.</p>
+          <a class="btn" href="/download/dewey-android.apk">Download APK</a>
+        </div>
+        <div>
+          <h3>iPhone</h3>
+          <p>Being tested now. <span class="soon">Coming soon.</span></p>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <span>Only reads Schoology. Never asks for your password. Not affiliated with Schoology.</span>
+      <span><a href="/privacy">Privacy</a><a href="/terms">Terms</a></span>
+    </footer>
+  </div>
+</body>
+</html>

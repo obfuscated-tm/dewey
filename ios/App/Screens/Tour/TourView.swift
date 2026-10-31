@@ -383,7 +383,7 @@ private struct GradesCard: View {
                     Text("B+").font(Theme.display).foregroundStyle(Theme.classColor(2))
                     VStack(alignment: .leading, spacing: 1) {
                         Text("Chemistry").font(Theme.subhead.weight(.semibold))
-                        Text("88.4% · 1.6% to an A−").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
+                        Text("88.4% · Goal A− · 1.6 to go").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
                     }
                     Spacer()
                 }
@@ -399,10 +399,12 @@ private struct GradesCard: View {
                   detail: "New scores sit at the top until you've seen them. Tap a class for every item, its effect on your grade, comments and rubrics.")
             Point(symbol: "slider.horizontal.3", title: "What-if",
                   detail: "In a class, tap What-if (top right) and type a score for anything not graded yet to see your new grade.")
+            Point(symbol: "flag", title: "Your goal",
+                  detail: "The Goal chip under a class's grade: the letter you're aiming for and how far you are from it. The graph's line and the test planner follow it.")
             Point(symbol: "target", title: "Plan an upcoming test",
-                  detail: "Also in What-if: the score you need on a test to reach a grade.")
+                  detail: "Also in What-if: the score you need on a test to reach your goal, counting any what-if scores you typed.")
             Point(symbol: "lock", title: "Just a preview",
-                  detail: "Leaving the class clears it. Nothing is saved or sent anywhere.")
+                  detail: "Nothing is saved or sent anywhere. Show real hides your what-if scores and keeps them; ↺ or leaving the class clears them.")
         }
     }
 }
@@ -507,7 +509,7 @@ private struct PlanCard: View {
             Point(symbol: "plus", title: "Tasks of your own",
                   detail: "Tap + and type it in words: \u{201C}chem lab fri after school\u{201D} fills in the day, time and class. Tap your task later to change it.")
             Point(symbol: "calendar", title: "The month",
-                  detail: "On List, pull the week strip down. Swipe for other months; tap a day to see it and the next.")
+                  detail: "On To Do, pull the week strip down. Swipe or tap the arrows for other months; tap a day to see it and the next.")
         }
     }
 }

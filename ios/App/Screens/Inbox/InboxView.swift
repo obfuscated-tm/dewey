@@ -127,7 +127,7 @@ struct InboxView: View {
         VStack(spacing: 0) {
             Button { toggleFold(id) } label: {
                 HStack(spacing: 8) {
-                    Text(title).font(Theme.headline)
+                    Text(title).font(Theme.callNumber)
                     Text("\(all.count)").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.tertiary)
                     Spacer()
                     Image(systemName: "chevron.down")
@@ -145,7 +145,8 @@ struct InboxView: View {
             .accessibilityHint(folded ? "Shows \(title)" : "Hides \(title)")
 
             if !folded {
-                Theme.divider.frame(height: 1)
+                // The index card's red rule under its heading.
+                Theme.catalogRule.frame(height: 1.5).padding(.horizontal, 14)
                 if all.isEmpty, let empty { emptyRow(empty) }
                 ForEach(Array(all.prefix(limit).enumerated()), id: \.element.id) { i, row in
                     switch row {
@@ -162,7 +163,7 @@ struct InboxView: View {
                             Text(busy ? "Loading…" : "Show older")
                         }
                         .font(Theme.subhead.weight(.semibold))
-                        .foregroundStyle(Theme.accent)
+                        .foregroundStyle(Theme.secondary)
                         .frame(maxWidth: .infinity, minHeight: 44)
                         .contentShape(Rectangle())
                     }
@@ -203,7 +204,7 @@ struct InboxView: View {
     private func threadRow(_ t: MessageThread, divider: Bool) -> some View {
         SplitLink(value: t, inset: 0) {
             ThreadRow(thread: t, isNew: model.inbox.isNew(t))
-                .overlay(alignment: .top) { if divider { Theme.divider.frame(height: 1) } }
+                .overlay(alignment: .top) { if divider { Theme.catalogLine.frame(height: 1).padding(.horizontal, 14) } }
         }
         .buttonStyle(.plain)
     }
@@ -219,7 +220,7 @@ struct PostRow: View {
     var body: some View {
         Button { withAnimation(.snappy) { open.toggle() } } label: {
             HStack(alignment: .top, spacing: 10) {
-                Image(systemName: "megaphone").font(Theme.subhead).foregroundStyle(Theme.accent)
+                Image(systemName: "megaphone").font(Theme.subhead).foregroundStyle(Theme.secondary)
                     .frame(width: 22).padding(.top, 1)
                 VStack(alignment: .leading, spacing: 4) {
                     HStack(alignment: .firstTextBaseline) {
@@ -239,7 +240,7 @@ struct PostRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .overlay(alignment: .top) { if divider { Theme.divider.frame(height: 1) } }
+        .overlay(alignment: .top) { if divider { Theme.catalogLine.frame(height: 1).padding(.horizontal, 14) } }
         .accessibilityHint(open ? "Shows less" : "Shows the whole update")
     }
 
@@ -287,7 +288,7 @@ struct NoticeRow: View {
     var body: some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: notice.type == "grade" ? "checkmark.seal" : "doc.badge.plus")
-                .font(Theme.subhead).foregroundStyle(notice.type == "grade" ? Theme.good : Theme.accent)
+                .font(Theme.subhead).foregroundStyle(notice.type == "grade" ? Theme.good : Theme.secondary)
                 .frame(width: 22).padding(.top, 1)
             VStack(alignment: .leading, spacing: 4) {
                 HStack(alignment: .firstTextBaseline) {
@@ -304,12 +305,12 @@ struct NoticeRow: View {
             }
         }
         .padding(14)
-        .overlay(alignment: .top) { if divider { Theme.divider.frame(height: 1) } }
+        .overlay(alignment: .top) { if divider { Theme.catalogLine.frame(height: 1).padding(.horizontal, 14) } }
     }
 
     @ViewBuilder
     private func itemLink(_ item: Notice.Item) -> some View {
-        let label = Text(item.title).font(Theme.subhead).foregroundStyle(Theme.accent).maxLines(2)
+        let label = Text(item.title).font(Theme.subhead).foregroundStyle(Theme.text).underline(color: Theme.border).maxLines(2)
             .multilineTextAlignment(.leading)
         if case .assignment(let id)? = WebConfig.nativeRoute(for: URL(string: item.url)) {
             SplitLink(value: AssignmentLink(id: id)) { label }.buttonStyle(.plain)

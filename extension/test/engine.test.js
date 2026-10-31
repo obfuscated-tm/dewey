@@ -247,6 +247,14 @@ test('planTest: needFor on the current period', () => {
   assert.equal(planTest({ rows: ROWS, category: 'Tests', possible: 0 }).status, 'none');
 });
 
+test('planTest: counts the what-if scores in opts', () => {
+  const plain = planTest({ rows: ROWS, category: 'Tests', possible: 20, target: 93 });
+  const low = planTest({ rows: ROWS, category: 'Tests', possible: 20, target: 93, opts: { whatIf: { 2: { earned: 16, possible: 20 } } } });
+  assert.equal(plain.status, 'need');
+  assert.equal(low.status, 'need');
+  assert.ok(low.need > plain.need);
+});
+
 test('inbox ops: notifications, messages and one message, with page numbers', async () => {
   const kinds = [];
   const { eng, calls } = fakeEngine(new Map([

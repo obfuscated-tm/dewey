@@ -163,36 +163,44 @@ struct ToDoView: View {
         }
     }
 
-    /// The title is the List / Plan switch: the view you're on, large, and a chip beside it
-    /// for the other one. Tap the chip to swap.
+    /// The title is the To Do / Plan switch, like two headings on an index card: the view
+    /// you're on large, in ink, with the red rule under it; the other beside it, smaller and
+    /// grey. Tap it to swap.
     private var modeTitles: some View {
         let other: ToDoMode = mode == .list ? .plan : .list
-        return HStack(alignment: .center, spacing: Theme.Space.s) {
-            Text(mode == .list ? "To Do" : "Plan")
-                .font(Theme.display).foregroundStyle(Theme.text)
-                .lineLimit(1)
-                .fixedSize()
-                .contentTransition(.opacity)
-                .accessibilityAddTraits(.isHeader)
-            if split == nil { modeChip(other) }
+        return ViewThatFits(in: .horizontal) {
+            HStack(alignment: .firstTextBaseline, spacing: Theme.Space.l) {
+                currentTitle
+                if split == nil { modeSwitch(other) }
+            }
+            VStack(alignment: .leading, spacing: Theme.Space.xs) {
+                currentTitle
+                if split == nil { modeSwitch(other) }
+            }
         }
     }
 
-    private func modeChip(_ other: ToDoMode) -> some View {
+    private var currentTitle: some View {
+        Text(mode == .list ? "To Do" : "Plan")
+            .font(Theme.display).foregroundStyle(Theme.text)
+            .lineLimit(1)
+            .fixedSize()
+            .contentTransition(.opacity)
+            .padding(.bottom, Theme.Space.xs)
+            .overlay(alignment: .bottom) { Rectangle().fill(Theme.catalogRule).frame(height: 2) }
+            .accessibilityAddTraits(.isHeader)
+    }
+
+    private func modeSwitch(_ other: ToDoMode) -> some View {
         Button {
             withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { modeID = other.rawValue }
         } label: {
-            HStack(spacing: 4) {
-                Image(systemName: other == .plan ? "list.number" : "list.bullet")
-                Text(other == .plan ? "Plan" : "To Do")
-            }
-            .font(Theme.footnote.weight(.semibold))
-            .foregroundStyle(Theme.accent)
-            .padding(.horizontal, 10)
-            .frame(minHeight: 30)
-            .fixedSize()
-            .background(Theme.accentSoft, in: Capsule())
-            .contentShape(Capsule())
+            Text(other == .plan ? "Plan" : "To Do")
+                .font(Theme.displaySmall)
+                .foregroundStyle(Theme.tertiary)
+                .fixedSize()
+                .padding(.bottom, Theme.Space.xs)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.borderless)
         .lineLimit(1)
@@ -201,14 +209,14 @@ struct ToDoView: View {
         .coachTarget("todo.modeChip")
     }
 
-    /// New task: round, above the tab bar, on both List and Plan.
+    /// New task: round, above the tab bar, on both List and Plan, in ink.
     private var addButton: some View {
         Button { editing = TaskTarget() } label: {
             Image(systemName: "plus")
                 .font(Theme.title.weight(.semibold))
-                .foregroundStyle(Theme.onAccent)
+                .foregroundStyle(Theme.background)
                 .frame(width: 56, height: 56)
-                .background(Theme.accent, in: Circle())
+                .background(Theme.text, in: Circle())
                 .shadow(color: .black.opacity(0.18), radius: 8, y: 3)
         }
         .coachTarget("todo.add")
@@ -355,11 +363,15 @@ struct ToDoView: View {
             }
             Text(title).font(Theme.headline).foregroundStyle(Theme.text)
             if dueToday {
-                Text("Due today").font(Theme.caption.weight(.semibold)).foregroundStyle(Theme.accent)
-                    .padding(.horizontal, 7).padding(.vertical, 2).background(Theme.accentSoft, in: Capsule())
+                // A rubber stamp, a little crooked, in the rule's red.
+                Text("DUE TODAY").font(Theme.caption.weight(.heavy)).tracking(1).foregroundStyle(Theme.catalogRule)
+                    .padding(.horizontal, 5).padding(.vertical, 1)
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag / 2).strokeBorder(Theme.catalogRule, lineWidth: 1.5))
+                    .rotationEffect(.degrees(-4))
+                    .accessibilityLabel("Due today")
             }
             Spacer(minLength: 0)
-            Text([course?.periodLabel.count ?? 9 <= 3 ? course?.periodLabel : nil, "\(open.count) open"].compactMap { $0 }.joined(separator: " · "))
+            Text([(1...3).contains(course?.periodLabel.count ?? 0) ? course?.periodLabel : nil, "\(open.count) open"].compactMap { $0 }.joined(separator: " · "))
                 .font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
         }
         .padding(.bottom, Theme.Space.s)
@@ -648,10 +660,10 @@ struct TodoRow: View {
             PillButton(title: "Undo", color: Theme.secondary) { onSet(.done) }
                 .accessibilityLabel("Undo turned in for \(item.title)")
         } else if item.hasDropbox {
-            PillButton(title: "Submit", external: true, action: onSubmit)
+            PillButton.submit(onSubmit)
                 .accessibilityLabel("Submit \(item.title) on Schoology")
         } else if item.type != .exam {
-            PillButton(title: "Turn in", color: Theme.good) { onSet(.turnedIn) }
+            PillButton.turnIn { onSet(.turnedIn) }
                 .accessibilityLabel("Mark \(item.title) turned in")
                 .accessibilityHint("Only in this app. Use it when you handed it in on paper or another site.")
         }

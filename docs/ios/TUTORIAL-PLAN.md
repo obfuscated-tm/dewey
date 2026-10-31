@@ -1,5 +1,7 @@
 # Tutorial update: plan and brief
 
+> **Rechecked 2026-10-31** in the simulator, every step end to end: none broken. Fixed stale lines (Grades rows no longer show distance to an A; what-if's Done is now Show real, which keeps the scores), mentioned the done-today drop and the month arrows, added a Goal chip step (`grades.goal`), and `Coach.start` now watches for a lost target so `-DeweyTourStep` jumps offer Take me there.
+>
 > **Built 2026-10-22.** Decisions: a mid-length script (37 steps; tap-a-day,
 > fold, edit-your-task and the Inbox read note are lines in other steps or on
 > the Plan card), Student ID after the practice on the real account, Calendar

@@ -139,7 +139,7 @@ struct AssignmentView: View {
 
     /// "AP BIOL · P2 · 26-27 T1 · LABS & HOMEWORK".
     private func catalogLine(_ c: Course) -> String {
-        [GradesLook.abbreviation(c.shortTitle), c.periodLabel.count <= 3 ? c.periodLabel : nil,
+        [GradesLook.abbreviation(c.shortTitle), (1...3).contains(c.periodLabel.count) ? c.periodLabel : nil,
          model.grades[c.sectionId]?.period, gradeItem?.category]
             .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ").uppercased()
     }
@@ -271,7 +271,7 @@ struct AssignmentView: View {
             return .init(top: "DUE " + Fmt.short.string(from: due).uppercased(), main: main, color: Theme.late,
                          spoken: "Due \(Fmt.header.string(from: due)), \(main.lowercased())")
         }
-        return .init(top: "DUE", main: Fmt.short.string(from: due).uppercased(), color: Theme.accent,
+        return .init(top: "DUE", main: Fmt.short.string(from: due).uppercased(), color: Theme.text,
                      spoken: "Due \(Fmt.header.string(from: due))")
     }
 
@@ -492,10 +492,10 @@ struct AssignmentView: View {
                 Text("What if I get __ / \(Fmt.num(p))?")
                     .font(Theme.subhead.weight(.semibold))
                     .frame(maxWidth: .infinity, minHeight: 48)
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(Theme.accent, style: StrokeStyle(lineWidth: 1.2, dash: [5, 4])))
+                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(Theme.tertiary, style: StrokeStyle(lineWidth: 1.2, dash: [5, 4])))
             }
             .buttonStyle(.plain)
-            .foregroundStyle(Theme.accent)
+            .foregroundStyle(Theme.text)
         }
     }
 
@@ -504,7 +504,8 @@ struct AssignmentView: View {
     @ViewBuilder
     private var bottomBar: some View {
         if let (title, action) = mainAction {
-            WideButton(title: title, external: true, action: action)
+            // The one teal thing on the screen; the globe, like everywhere that opens Schoology.
+            WideButton(title: title, systemImage: "globe", external: true, action: action)
                 .padding(.horizontal, 16).padding(.vertical, 8)
                 .background(.bar)
         }

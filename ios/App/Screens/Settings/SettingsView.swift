@@ -19,7 +19,7 @@ struct SettingsView: View {
     @State private var confirmSignOut = false
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
     @AppStorage(ToDoLayout.key) private var todoLayout = ToDoLayout.week.rawValue
-    @AppStorage(GradesLook.reportCardKey) private var reportCard = true
+    @AppStorage(GradesLook.reportCardKey) private var reportCard = false
     @AppStorage(Shelf.offKey) private var offShelf = ""
     @AppStorage(Reminders.enabledKey) private var reminders = false
     @AppStorage(Reminders.soonKey) private var dueSoon = true
@@ -322,7 +322,7 @@ private struct ToDoSettings: View {
 
 private struct GradesSettings: View {
     @Environment(AppModel.self) private var model
-    @AppStorage(GradesLook.reportCardKey) private var reportCard = true
+    @AppStorage(GradesLook.reportCardKey) private var reportCard = false
     @AppStorage(GradesLook.hiddenKey) private var hiddenRaw = ""
 
     var body: some View {

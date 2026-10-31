@@ -111,7 +111,7 @@ struct RootView: View {
             }
         }
         .animation(.easeInOut, value: model.toast)
-        .tint(Theme.accent)
+        .tint(Theme.text)  // ink: links, toggles, the selected tab; teal is kept for the main action
         .preferredColorScheme(Theme.colorScheme(appearance))
     }
 }

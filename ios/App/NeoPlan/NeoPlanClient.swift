@@ -28,7 +28,17 @@ struct NeoPlanItem: Codable, Hashable {
 }
 
 enum NeoPlanError: Error {
-    case noToken, refused(Int), network
+    case noToken, network
+    /// The status, and neo-plan's `error` word when it sent one ("no_column", "token", …).
+    case refused(Int, String?)
+}
+
+/// A Schoology section and the neo-plan column it files into (enrich's `courses`).
+struct NeoPlanCourse: Decodable, Hashable {
+    var sectionId: String
+    var classId: String?
+
+    enum CodingKeys: String, CodingKey { case sectionId = "section_id", classId = "class_id" }
 }
 
 struct NeoPlanClient {
@@ -50,14 +60,15 @@ struct NeoPlanClient {
         if let t { Keychain.set("neoplanToken", t) } else { Keychain.delete("neoplanToken") }
     }
 
-    private func request(_ method: String, _ path: String, body: [String: Any]? = nil) async throws -> Data {
+    private func request(_ method: String, _ path: String, body: [String: Any]? = nil,
+                         base: String = "api/extension", timeout: TimeInterval = 15) async throws -> Data {
         guard let token else { throw NeoPlanError.noToken }
-        var r = URLRequest(url: Self.server.appendingPathComponent("api/extension").appendingPathComponent(path))
+        var r = URLRequest(url: Self.server.appendingPathComponent(base).appendingPathComponent(path))
         if path.contains("?") {
-            r.url = URL(string: Self.server.absoluteString + "/api/extension/" + path)
+            r.url = URL(string: Self.server.absoluteString + "/\(base)/" + path)
         }
         r.httpMethod = method
-        r.timeoutInterval = 15
+        r.timeoutInterval = timeout
         r.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         r.setValue("application/json", forHTTPHeaderField: "Accept")
         if let body {
@@ -67,8 +78,32 @@ struct NeoPlanClient {
         let data: Data, resp: URLResponse
         do { (data, resp) = try await URLSession.shared.data(for: r) } catch { throw NeoPlanError.network }
         let status = (resp as? HTTPURLResponse)?.statusCode ?? 0
-        guard (200..<300).contains(status) else { throw NeoPlanError.refused(status) }
+        guard (200..<300).contains(status) else {
+            struct E: Decodable { var error: String? }
+            throw NeoPlanError.refused(status, (try? JSONDecoder().decode(E.self, from: data))?.error)
+        }
         return data
+    }
+
+    /// Tells neo-plan the student's courses and which work is in which, so it
+    /// can file items by course and, for an account that started with no
+    /// columns, make a column per course with work (docs/ios/ENGINE.md,
+    /// "neo-plan"; api.js `enrich`). Returns the course map as neo-plan has it.
+    func enrich(courses: [Course], items: [(schoologyId: String, sectionId: String)], byHand: Bool) async throws -> [NeoPlanCourse] {
+        // One malformed entry refuses the whole request, so only digit ids go.
+        let digits = { (s: String) in s.firstMatch(of: /^\d{1,20}$/) != nil }
+        let courses = courses.filter { digits($0.sectionId) }
+        let items = items.filter { digits($0.schoologyId) && digits($0.sectionId) }
+        var body: [String: Any] = [
+            "fetched_at": Fmt.isoPlain.string(from: Date()),
+            "courses": courses.prefix(50).map { ["section_id": $0.sectionId, "title": String($0.title.prefix(500)),
+                                                 "section_title": String($0.sectionTitle.prefix(500))] },
+            "items": items.prefix(500).map { ["kind": "assignment", "schoology_id": $0.schoologyId, "section_id": $0.sectionId] },
+        ]
+        if byHand { body["by_hand"] = true }
+        let data = try await request("POST", "enrich", body: body, base: "api/import/schoology", timeout: 45)
+        struct R: Decodable { var courses: [NeoPlanCourse]? }
+        return (try? JSONDecoder().decode(R.self, from: data))?.courses ?? []
     }
 
     func today() async throws -> Data { try await request("GET", "today") }

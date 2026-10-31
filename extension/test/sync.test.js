@@ -146,6 +146,42 @@ test('runSync: with a token, neoplan stays true and lists are still filled', asy
   assert.deepEqual(snap.lists.upcoming, [HOME_LIST_ROW]);
 });
 
+test('runSync: an add with no column is tried again once the enrich files its course; Check now says by_hand', async () => {
+  const client = {
+    mode: 'direct',
+    abs: (p) => `https://x.schoology.com${p}`,
+    findSchoologyTab: async () => null,
+    getText: fakeGetText(new Map([
+      ['/iapi/course/active', {}],
+      ['/home/upcoming_submissions_ajax', {}],
+      ['/home/overdue_submissions_ajax', {}],
+      ['/home/upcoming_ajax', {}],
+    ])),
+  };
+  const calls = [];
+  let filed = false;
+  const np = async (op, args) => {
+    calls.push(op);
+    if (op === 'courses') return { ok: true, data: { courses: [] } };
+    if (op === 'items') return { ok: true, data: { items: [] } };
+    if (op === 'addItem') return filed ? { ok: true, status: 201, data: { item: { id: 'n1' } } } : { ok: false, status: 409, data: { error: 'no_column' } };
+    if (op === 'open') return { ok: true, data: { assignments: [] } };
+    if (op === 'enrich') {
+      assert.equal(args.body.by_hand, true);
+      filed = true; // a new account: neo-plan made the course a column
+      return { ok: true, data: { results: [], courses: [{ section_id: '1', class_id: 'c1', auto: true }] } };
+    }
+    throw new Error(`unexpected neo-plan op ${op}`);
+  };
+  const snap = await runSync({ client, parse: fakeSyncParse(), np, storage: fakeStorage(), byHand: true });
+
+  assert.equal(snap.ok, true);
+  assert.deepEqual(calls, ['courses', 'items', 'addItem', 'open', 'enrich', 'addItem']);
+  assert.equal(snap.counts.added, 1);
+  assert.deepEqual(snap.errors, []);
+  assert.equal(snap.courses[0].class_id, 'c1');
+});
+
 test('runSync: a token neo-plan refuses is still a token error, not the no-token path', async () => {
   const client = {
     mode: 'direct',

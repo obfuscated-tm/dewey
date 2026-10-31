@@ -83,7 +83,7 @@ enum WidgetBridge {
     static var activitiesAllowed: Bool { ActivityAuthorizationInfo().areActivitiesEnabled }
 
     /// iOS keeps an activity 8 h, then 4 h on the Lock Screen, so a countdown can only start 12 h out.
-    static let countdownLead: TimeInterval = 12 * 3600
+    nonisolated static let countdownLead: TimeInterval = 12 * 3600
 
     enum CountdownWindow: Equatable {
         case none                // no due time, or already past it

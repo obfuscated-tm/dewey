@@ -624,3 +624,27 @@ final class TaskParseTests: XCTestCase {
         XCTAssertNil(TaskParse.due(day: nil, time: nil, now: now, calendar: cal))
     }
 }
+
+@MainActor
+final class StoreUpkeepTests: XCTestCase {
+    func testMergePrunesRowsGoneForMonths() {
+        let m = AppModel(inMemory: true)
+        let now = Date(), longAgo = now.addingTimeInterval(-200 * 86400)
+        let gone = ItemState(schoologyId: "1", title: "Gone"); gone.lastSeen = longAgo
+        let paper = ItemState(schoologyId: "2", title: "Paper"); paper.lastSeen = now.addingTimeInterval(-10 * 86400)
+        let mineDone = ItemState(mineTitle: "Mine done"); mineDone.done = true; mineDone.updatedAt = longAgo
+        let mineOpen = ItemState(mineTitle: "Mine open"); mineOpen.updatedAt = longAgo
+        for it in [gone, paper, mineDone, mineOpen] { m.context.insert(it) }
+        try? m.context.save()
+        m.revision += 1
+        m.merge(TodoLists(overdue: [], upcoming: []), now: now)
+        m.revision += 1
+        XCTAssertEqual(Set(m.allItems().map(\.title)), ["Paper", "Mine open"])
+    }
+
+    func testNeoPlanOpsSurviveSaving() throws {
+        let ops: [AppModel.NeoPlanOp] = [.work(true), .turnedIn(false), .type("exam")]
+        let back = try JSONDecoder().decode([AppModel.NeoPlanOp].self, from: JSONEncoder().encode(ops))
+        XCTAssertEqual(back, ops)
+    }
+}

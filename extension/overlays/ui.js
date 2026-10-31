@@ -61,7 +61,7 @@ export const BASE_CSS = `
   --class-5: #a02c4a; --class-6: #3c6e71; --class-7: #7a6a1f; --class-8: #4a4e69; --class-none: #a8a49b;
   --sans: "ov Instrument Sans", "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
   --mono: "ov JetBrains Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
-  --radius: 6px;
+  --radius: 6px; --radius-sm: 4px; /* cards and buttons; chips, tags and pills */
   font-family: var(--sans);
   font-size: 13px;
   line-height: 18px;

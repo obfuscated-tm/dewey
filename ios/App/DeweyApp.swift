@@ -1,28 +1,45 @@
 import BackgroundTasks
+import os
 import SwiftUI
 
 @main
 struct DeweyApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var model = AppModel()
     @Environment(\.scenePhase) private var phase
 
     init() {
         Theme.styleNavigationBars()
         BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.refreshTask, using: nil) { task in
-            Task { @MainActor in
+            // Exactly once: when the work ends, or when iOS says time is up (it kills an app that doesn't answer).
+            let finished = OSAllocatedUnfairLock(initialState: false)
+            let complete = { (ok: Bool) in
+                if finished.withLock({ was in defer { was = true }; return !was }) { task.setTaskCompleted(success: ok) }
+            }
+            let work = Task { @MainActor in
                 Self.scheduleRefresh()
                 // Signed out: nothing to fetch until the student signs in again.
-                guard !Reminders.shared.sessionEnded else { task.setTaskCompleted(success: true); return }
-                // The model lives in the scene; a background launch refreshes from a fresh one.
-                let m = AppModel()
-                await m.boot()
+                guard !Reminders.shared.sessionEnded else { complete(true); return }
+                // The app only suspended: refresh its own model (its engine page is in the window,
+                // and a second model would race it on the same store). Otherwise a fresh one.
+                let m: AppModel
+                if let live = AppModel.live {
+                    m = live
+                } else {
+                    m = AppModel()
+                    await m.boot()
+                }
                 if m.session == .signedIn {
                     await m.refreshTodo()
-                    await m.refreshSomeGrades()
-                    await m.inbox.refresh(m, notify: true)
+                    if !Task.isCancelled { await m.refreshSomeGrades() }
+                    if !Task.isCancelled { await m.inbox.refresh(m, notify: true) }
                 }
                 await WidgetBridge.publishNow(m)
-                task.setTaskCompleted(success: true)
+                complete(!Task.isCancelled)
+            }
+            task.expirationHandler = {
+                work.cancel()
+                complete(false)
             }
         }
     }
@@ -52,8 +69,18 @@ struct DeweyApp: App {
     }
 }
 
+/// Portrait on a phone-sized screen, as always; any way up on a screen at least
+/// 600 pt both ways (the open iPhone Duo).
+final class AppDelegate: NSObject, UIApplicationDelegate {
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        guard let b = window?.windowScene?.screen.bounds else { return .portrait }
+        return min(b.width, b.height) >= 600 ? .allButUpsideDown : .portrait
+    }
+}
+
 struct RootView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var sizeClass
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
 
     var body: some View {
@@ -67,7 +94,8 @@ struct RootView: View {
             case .signedOut:
                 SignInView()
             case .signedIn:
-                MainTabs()
+                // The open iPhone Duo (regular width): sidebar, list and detail side by side.
+                if sizeClass == .regular { WideShell() } else { MainTabs() }
             }
         }
         .task { await model.boot() }
@@ -97,6 +125,7 @@ struct MainTabs: View {
     @State private var resets = [0, 0, 0, 0, 0]
     @State private var showTour = false
     @State private var showID = false
+    @Environment(\.scenePhase) private var phase
 
     var body: some View {
         TabView(selection: $tab) {
@@ -144,8 +173,13 @@ struct MainTabs: View {
             if let id = Demo.startAssignment { model.deepLinkAssignment = id }
             // Demo rows live only in memory, so a quick relaunch has none to show yet.
             if Demo.on || model.todoAsOf == nil || Date().timeIntervalSince(model.todoAsOf!) > 120 {
-                await model.refreshTodo()
+                await model.refreshTodo(quick: true)
             }
+        }
+        // Back from the background: a list older than 10 minutes refreshes by itself.
+        .onChange(of: phase) { _, p in
+            guard p == .active, !model.practice, Date().timeIntervalSince(model.todoAsOf ?? .distantPast) > 600 else { return }
+            Task { await model.refreshTodo(quick: true) }
         }
     }
 }

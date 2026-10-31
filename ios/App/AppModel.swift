@@ -98,7 +98,23 @@ final class AppModel {
         Reminders.shared.sessionDidStart()
         if Reminders.shared.signedOutAlert || Reminders.shared.gradeAlerts { _ = await Reminders.shared.requestPermission() }
         try? await loadCourses()
+        await forgetOtherAccount()
         await refreshTodo()
+    }
+
+    /// A different student signed in on this phone: the last one's rows and marks go.
+    func forgetOtherAccount() async {
+        guard let a: AccountInfo = try? await engine.call("account"), let user = a.username, !user.isEmpty else { return }
+        let key = "signedInUser"
+        let was = UserDefaults.standard.string(forKey: key)
+        UserDefaults.standard.set(user, forKey: key)
+        guard let was, was != user else { return }
+        try? context.delete(model: ItemState.self)
+        try? context.delete(model: CourseState.self)
+        courseStates = [:]
+        fetchedItems = nil
+        pendingPush = [:]
+        save()
     }
 
     func signOut() async {
@@ -228,7 +244,8 @@ final class AppModel {
     }
 
     /// Pull Schoology's lists, merge, then check a few dropboxes and neo-plan.
-    func refreshTodo() async {
+    /// `quick`: return once the list is merged (pull to refresh) and let the checks fill in after.
+    func refreshTodo(quick: Bool = false) async {
         guard !refreshingTodo else { return }
         refreshingTodo = true
         defer { refreshingTodo = false }
@@ -239,16 +256,31 @@ final class AppModel {
             todoError = nil
             todoAsOf = Date()
             Cache.save("todoAsOf", todoAsOf!)
-            // Show the merged list now; dropbox checks and neo-plan fill in after.
-            revision += 1
-            await checkStatuses()
-            await syncNeoPlan()
         } catch let e as EngineError {
             todoError = e
         } catch {
             todoError = .js(error.localizedDescription)
         }
         revision += 1
+        publishTodo()
+        guard todoError == nil else { return }
+        if quick { Task { await checkAfterRefresh() } } else { await checkAfterRefresh() }
+    }
+
+    @ObservationIgnored private var checking = false
+
+    /// Dropbox checks and neo-plan, after a refresh merged Schoology's lists.
+    private func checkAfterRefresh() async {
+        guard !checking else { return }
+        checking = true
+        defer { checking = false }
+        await checkStatuses()
+        await syncNeoPlan()
+        revision += 1
+        publishTodo()
+    }
+
+    private func publishTodo() {
         WidgetBridge.publish(self)
         Reminders.shared.schedule(items: todoItems(), courses: courses)
         CalendarSync.shared.schedule(self)
@@ -280,7 +312,23 @@ final class AppModel {
         for it in all where !seen.contains(it.schoologyId) && !it.mine {
             it.inSchoology = false
         }
+        prune(all, now: now)
         try? context.save()
+    }
+
+    /// Rows nobody will see again: Schoology work it stopped listing months ago, and the
+    /// student's own tasks finished months ago. Keeps the saved list from growing all year.
+    static let keepDays: Double = 120
+
+    private func prune(_ all: [ItemState], now: Date) {
+        let cutoff = now.addingTimeInterval(-Self.keepDays * 86400)
+        var gone = false
+        for it in all {
+            let old = it.mine ? (it.done || it.turnedIn || it.dismissed) && it.updatedAt < cutoff
+                              : !it.inSchoology && it.lastSeen < cutoff
+            if old { context.delete(it); gone = true }
+        }
+        if gone { fetchedItems = nil }
     }
 
     /// status({id}) for up to 10 rows that might have a dropbox, not checked in 30 min.
@@ -350,8 +398,7 @@ final class AppModel {
         if it.type == .exam { it.studied.toggle() } else { it.done.toggle() }
         it.touch()
         save()
-        let ready = it.type == .exam ? it.studied : it.done
-        pushNeoPlan(it) { np, id in try await np.setWork(id, ready: ready) }
+        pushNeoPlan(it, .work(it.type == .exam ? it.studied : it.done))
     }
 
     func setTurnedIn(_ it: ItemState, _ on: Bool) {
@@ -359,7 +406,7 @@ final class AppModel {
         if on { it.done = true }
         it.touch()
         save()
-        pushNeoPlan(it) { np, id in if on { try await np.turnIn(id) } else { try await np.putBack(id) } }
+        pushNeoPlan(it, .turnedIn(on))
     }
 
     enum Progress: String, CaseIterable { case todo, done, turnedIn
@@ -392,7 +439,7 @@ final class AppModel {
         it.type = t
         it.touch()
         save()
-        pushNeoPlan(it) { np, id in try await np.setType(id, t) }
+        pushNeoPlan(it, .type(t.rawValue))
     }
 
     func dismiss(_ it: ItemState) {
@@ -516,16 +563,40 @@ final class AppModel {
 
     // ── neo-plan ─────────────────────────────────────────────────────────
 
-    /// Pending neo-plan writes made offline: [schoologyId: description]; retried on refresh.
-    private var pendingPush: [String: (NeoPlanClient, String) async throws -> Void] = [:]
+    /// One change to send to neo-plan.
+    enum NeoPlanOp: Codable, Equatable {
+        case work(Bool), turnedIn(Bool), type(String)
+        var kind: Int { switch self { case .work: 0; case .turnedIn: 1; case .type: 2 } }
 
-    private func pushNeoPlan(_ it: ItemState, _ op: @escaping (NeoPlanClient, String) async throws -> Void) {
+        func run(_ np: NeoPlanClient, _ id: String) async throws {
+            switch self {
+            case .work(let ready): try await np.setWork(id, ready: ready)
+            case .turnedIn(true): try await np.turnIn(id)
+            case .turnedIn(false): try await np.putBack(id)
+            case .type(let t): if let ty = ItemType(rawValue: t) { try await np.setType(id, ty) }
+            }
+        }
+    }
+
+    /// neo-plan writes that failed (offline), by Schoology id, the newest of each kind;
+    /// saved, so a quit doesn't lose them, and retried on refresh.
+    private var pendingPush: [String: [NeoPlanOp]] = Cache.load("neoplanPending", as: [String: [NeoPlanOp]].self)?.value ?? [:] {
+        didSet { Cache.save("neoplanPending", pendingPush) }
+    }
+
+    private func queueNeoPlan(_ sid: String, _ op: NeoPlanOp) {
+        pendingPush[sid] = (pendingPush[sid] ?? []).filter { $0.kind != op.kind } + [op]
+    }
+
+    private func pushNeoPlan(_ it: ItemState, _ op: NeoPlanOp) {
         // neo-plan's extension API only takes Schoology items: the student's own tasks stay here.
         guard neoPlan.connected, !it.mine else { return }
         let sid = it.schoologyId
+        // Behind earlier failed writes: keep the order.
+        if pendingPush[sid] != nil { queueNeoPlan(sid, op); return }
         Task {
-            guard let id = await neoPlanId(for: sid) else { return }
-            do { try await op(neoPlan, id) } catch { pendingPush[sid] = op }
+            guard let id = await neoPlanId(for: sid) else { queueNeoPlan(sid, op); return }
+            do { try await op.run(neoPlan, id) } catch { queueNeoPlan(sid, op) }
         }
     }
 
@@ -544,17 +615,41 @@ final class AppModel {
         return nil
     }
 
-    /// neo-plan is the shared copy: the newer edit wins. Pulls its state for every listed item.
-    func syncNeoPlan() async {
+    /// What went wrong in the last neo-plan sync, for Settings → neo-plan; nil when all went through.
+    var neoPlanProblem: String?
+
+    /// neo-plan is the shared copy: the newer edit wins. Tells it the courses
+    /// (so it files work by class, and a new account gets a column per class),
+    /// adds new work it doesn't have, then pulls its state for every listed item.
+    func syncNeoPlan(byHand: Bool = false) async {
         guard neoPlan.connected else { return }
-        for (sid, op) in pendingPush {
-            if let id = await neoPlanId(for: sid), (try? await op(neoPlan, id)) != nil { pendingPush[sid] = nil }
-        }
+        var problem: String?
         let items = todoItems().filter { !$0.mine }
-        guard let got = try? await neoPlan.items(items.map(\.schoologyId)) else { return }
+        // Not on every return to the app: every 10 minutes, or when asked.
+        let enrichedAt = Cache.load("neoplanEnrichedAt", as: Date.self)?.value ?? .distantPast
+        if !courses.isEmpty, byHand || Date().timeIntervalSince(enrichedAt) > 10 * 60 {
+            let work = items.filter(\.isSchoologyAssignment).compactMap { it in it.sectionId.map { (schoologyId: it.schoologyId, sectionId: $0) } }
+            do {
+                _ = try await neoPlan.enrich(courses: courses, items: work, byHand: byHand)
+                Cache.save("neoplanEnrichedAt", Date())
+            } catch { problem = Self.neoPlanProblemText(error) }
+        }
+        for (sid, ops) in pendingPush {
+            guard let id = await neoPlanId(for: sid) else { continue }
+            var left = ops
+            while let op = left.first, (try? await op.run(neoPlan, id)) != nil { left.removeFirst() }
+            pendingPush[sid] = left.isEmpty ? nil : left
+        }
+        let got: [NeoPlanItem]
+        do { got = try await neoPlan.items(items.map(\.schoologyId)) } catch {
+            neoPlanProblem = Self.neoPlanProblemText(error)
+            return
+        }
+        let added = await addNewWork(items, have: Set(got.compactMap(\.sourceId)), problem: &problem)
+        neoPlanProblem = problem
         let bySource = Dictionary(got.compactMap { g in g.sourceId.map { ($0, g) } }, uniquingKeysWith: { a, _ in a })
         let lastSync = Cache.load("neoplanSyncedAt", as: Date.self)?.value ?? .distantPast
-        for it in items {
+        for it in items where !added.contains(it.schoologyId) {
             guard let g = bySource[it.schoologyId] else { continue }
             it.neoPlanId = g.id
             // Local edits since the last sync win; otherwise neo-plan's state.
@@ -570,6 +665,45 @@ final class AppModel {
         save()
     }
 
+    /// Open Schoology work neo-plan has no item for goes onto the board, as the
+    /// extension's sync does (sync.js step 5b): not overdue by more than two
+    /// weeks, at most 25 a sync, and once only (an item it removed comes back
+    /// in `have`). What the student already marked here goes with it. Returns
+    /// the ids added, which the pull below leaves alone.
+    private func addNewWork(_ items: [ItemState], have: Set<String>, problem: inout String?) async -> Set<String> {
+        let cutoff = Date().addingTimeInterval(-14 * 86_400)
+        let new = items.filter {
+            $0.isSchoologyAssignment && $0.neoPlanId == nil && !have.contains($0.schoologyId)
+                && !$0.submitted && !$0.dismissed && ($0.due.map { $0 >= cutoff } ?? true)
+        }
+        var added: Set<String> = []
+        var noColumn = 0
+        for it in new.prefix(25) {
+            do {
+                guard let item = try await neoPlan.addItem(schoologyId: it.schoologyId, sectionId: it.sectionId, title: it.title,
+                                                           due: it.due, type: it.isQuiz ? .exam : nil) else { continue }
+                it.neoPlanId = item.id
+                added.insert(it.schoologyId)
+                if it.type == .exam ? it.studied : it.done { try? await neoPlan.setWork(item.id, ready: true) }
+                if it.turnedIn { try? await neoPlan.turnIn(item.id) }
+            } catch NeoPlanError.refused(409, let word) where word == "no_column" {
+                noColumn += 1
+            } catch {
+                problem = problem ?? Self.neoPlanProblemText(error)
+            }
+        }
+        if noColumn > 0 { problem = "\(noColumn) not added: no column for its class" }
+        return added
+    }
+
+    nonisolated static func neoPlanProblemText(_ error: Error) -> String {
+        switch error {
+        case NeoPlanError.refused(401, _): "Token refused"
+        case NeoPlanError.refused: "neo-plan refused a change"
+        default: "Can’t reach neo-plan"
+        }
+    }
+
     // ── Grades ───────────────────────────────────────────────────────────
 
     func gradeRows(_ sectionId: String) -> Data? { Cache.loadRaw("grades-\(sectionId)")?.0 }
@@ -583,6 +717,9 @@ final class AppModel {
                 grades[sectionId] = s.value
             } else if let g = try? await summarize(rows: cached.0) {
                 grades[sectionId] = g
+            } else if let s = Cache.load(Self.anySummaryKey(sectionId), as: CourseGrade.self) {
+                // Offline, or the engine page won't load: an older build's summary beats nothing.
+                grades[sectionId] = s.value
             }
         }
         if !force, let at = gradesAsOf[sectionId], Date().timeIntervalSince(at) < 30 * 60, grades[sectionId] != nil { return }
@@ -591,6 +728,7 @@ final class AppModel {
             Cache.saveRaw("grades-\(sectionId)", raw)
             let g = try await summarize(rows: raw)
             Cache.save(Self.summaryKey(sectionId), g)
+            Cache.save(Self.anySummaryKey(sectionId), g)
             noteNewGrades(sectionId: sectionId, old: grades[sectionId], new: g)
             grades[sectionId] = g
             gradesAsOf[sectionId] = Date()
@@ -602,6 +740,9 @@ final class AppModel {
             gradeErrors[sectionId] = .js(error.localizedDescription)
         }
     }
+
+    /// The last summary whatever the build: the offline fallback.
+    nonisolated static func anySummaryKey(_ sectionId: String) -> String { "gradeSummaryLast-\(sectionId)" }
 
     /// Per build, so new grade math never shows an old summary.
     nonisolated static func summaryKey(_ sectionId: String) -> String {
@@ -642,7 +783,7 @@ final class AppModel {
     }
     var gradeLog: [String: GradeLogEntry] = Cache.load("gradeLog", as: [String: GradeLogEntry].self)?.value ?? [:]
     /// "New" wears off after a week even if never opened.
-    static let newGradeDays: Double = 7
+    nonisolated static let newGradeDays: Double = 7
 
     func isNewGrade(_ id: String) -> Bool { gradeLog[id].map { Self.isNew($0) } ?? false }
 

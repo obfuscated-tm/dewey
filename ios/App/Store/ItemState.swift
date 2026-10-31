@@ -84,6 +84,8 @@ final class ItemState {
     }
 
     var isQuiz: Bool { (url ?? "").contains("/assessment") }
+    /// Schoology work neo-plan can take: not the student's own, not an event.
+    var isSchoologyAssignment: Bool { !mine && !(url ?? "").contains("/event/") }
     var submitted: Bool { statusState == "submitted" }
     var hasDropbox: Bool { statusState == "submitted" || statusState == "not_submitted" }
 

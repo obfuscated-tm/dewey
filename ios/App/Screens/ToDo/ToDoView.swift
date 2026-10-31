@@ -13,6 +13,8 @@ enum ToDoLayout: String, CaseIterable {
 /// or (Urgent first) by how soon it's due.
 struct ToDoView: View {
     @Environment(AppModel.self) private var model
+    /// The open Duo: rows open on the right, and the sidebar can pick one class.
+    @Environment(\.split) private var split
     @AppStorage(ToDoLayout.key) private var layoutID = ToDoLayout.week.rawValue
     @State private var filter: DayFilter? = Demo.startDay
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -35,7 +37,8 @@ struct ToDoView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            let items = model.todoItems()
+            let classFilter = split?.classFilter
+            let items = model.todoItems().filter { classFilter == nil || $0.sectionId == classFilter }
             let now = Date()
             // The reader lets Plan's grip scroll the list while a row is held at an edge.
             ScrollViewReader { proxy in
@@ -58,7 +61,7 @@ struct ToDoView: View {
             // Room under the last row for the + button.
             .contentMargins(.bottom, 72, for: .scrollContent)
             .overlay(alignment: .bottomTrailing) { addButton }
-            .refreshable { await model.refreshTodo() }
+            .refreshable { await model.refreshTodo(quick: true) }
             .navigationDestination(for: AssignmentRoute.self) { r in AssignmentView(id: r.id) }
             .navigationDestination(isPresented: $showGuide) { StatusGuideView() }
             .toolbar(.hidden, for: .navigationBar)
@@ -69,7 +72,8 @@ struct ToDoView: View {
             }
         }
         .onChange(of: model.deepLinkAssignment, initial: true) { _, id in
-            guard let id else { return }
+            // The open Duo's shell opens it on the right.
+            guard let id, split == nil else { return }
             path = [AssignmentRoute(id: id)]
             model.deepLinkAssignment = nil
         }
@@ -85,7 +89,8 @@ struct ToDoView: View {
     }()
 
     private var layout: ToDoLayout { ToDoLayout(rawValue: layoutID) ?? .week }
-    private var mode: ToDoMode { ToDoMode(rawValue: modeID) ?? .list }
+    /// On the open Duo, Plan has the right half, so the list here is always List.
+    private var mode: ToDoMode { split != nil ? .list : ToDoMode(rawValue: modeID) ?? .list }
 
     // ── Header: date, title, gear, week strip ───────────────────
 
@@ -128,6 +133,16 @@ struct ToDoView: View {
                 // The strip and its chevron: the tour's month step points here.
                 .coachTarget("todo.calendar")
             }
+            if let sid = split?.classFilter, let c = model.course(sid) {
+                HStack(spacing: Theme.Space.s) {
+                    Circle().fill(model.classColor(sid)).frame(width: 9, height: 9)
+                    Text("Only \(c.shortTitle)").font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary).oneLine()
+                    Spacer()
+                    Button("Show all") { withAnimation(.snappy(duration: 0.2)) { split?.classFilter = nil } }
+                        .font(Theme.footnote.weight(.semibold))
+                }
+                .padding(.horizontal, 4)
+            }
             if let f = filter {
                 HStack(spacing: Theme.Space.s) {
                     Text(filterTitle(f, now: now)).font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary)
@@ -159,27 +174,31 @@ struct ToDoView: View {
                 .fixedSize()
                 .contentTransition(.opacity)
                 .accessibilityAddTraits(.isHeader)
-            Button {
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { modeID = other.rawValue }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: other == .plan ? "list.number" : "list.bullet")
-                    Text(other == .plan ? "Plan" : "To Do")
-                }
-                .font(Theme.footnote.weight(.semibold))
-                .foregroundStyle(Theme.accent)
-                .padding(.horizontal, 10)
-                .frame(minHeight: 30)
-                .fixedSize()
-                .background(Theme.accentSoft, in: Capsule())
-                .contentShape(Capsule())
-            }
-            .buttonStyle(.borderless)
-            .lineLimit(1)
-            .accessibilityLabel(other == .plan ? "Switch to Plan" : "Switch to To Do list")
-            .accessibilityHint(other == .plan ? "Your own order for the day" : "Everything due")
-            .coachTarget("todo.modeChip")
+            if split == nil { modeChip(other) }
         }
+    }
+
+    private func modeChip(_ other: ToDoMode) -> some View {
+        Button {
+            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { modeID = other.rawValue }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: other == .plan ? "list.number" : "list.bullet")
+                Text(other == .plan ? "Plan" : "To Do")
+            }
+            .font(Theme.footnote.weight(.semibold))
+            .foregroundStyle(Theme.accent)
+            .padding(.horizontal, 10)
+            .frame(minHeight: 30)
+            .fixedSize()
+            .background(Theme.accentSoft, in: Capsule())
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.borderless)
+        .lineLimit(1)
+        .accessibilityLabel(other == .plan ? "Switch to Plan" : "Switch to To Do list")
+        .accessibilityHint(other == .plan ? "Your own order for the day" : "Everything due")
+        .coachTarget("todo.modeChip")
     }
 
     /// New task: round, above the tab bar, on both List and Plan.
@@ -308,11 +327,13 @@ struct ToDoView: View {
         return out
     }
 
-    /// Unfinished first, then by due date (overdue oldest first, upcoming soonest first).
+    /// Unfinished first, then done but not handed in (it may still need turning in),
+    /// then turned in or submitted; each by due date (overdue oldest first, upcoming soonest first).
     private func sortItems(_ items: [ItemState]) -> [ItemState] {
-        items.sorted { a, b in
-            let fa = model.isFinished(a), fb = model.isFinished(b)
-            if fa != fb { return !fa }
+        func rank(_ it: ItemState) -> Int { !model.isFinished(it) ? 0 : (it.turnedIn || it.submitted) ? 2 : 1 }
+        return items.sorted { a, b in
+            let ra = rank(a), rb = rank(b)
+            if ra != rb { return ra < rb }
             return (a.due ?? .distantFuture) < (b.due ?? .distantFuture)
         }
     }
@@ -374,8 +395,11 @@ struct ToDoView: View {
             .coachTarget("todo.row.\(it.schoologyId)")
             // Every separator starts under the checkbox, whatever the row holds.
             .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
-            // A line on the class's catalog card.
-            .listRowBackground(Theme.card)
+            // A line on the class's catalog card; tinted while it's open on the right (the open Duo).
+            .listRowBackground(ZStack {
+                Theme.card
+                if split?.isOpen(AssignmentRoute(id: it.schoologyId, sectionId: it.sectionId)) == true { SelectedRow(inset: 0) }
+            })
             .listRowSeparatorTint(Theme.catalogLine)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if it.mine && it.type == .task {
@@ -428,7 +452,13 @@ struct ToDoView: View {
 
     /// A Schoology item opens its Assignment screen; the student's own task, its editor.
     private func open(_ it: ItemState) {
-        if it.mine { editing = TaskTarget(task: it) } else { path.append(AssignmentRoute(id: it.schoologyId)) }
+        if it.mine {
+            editing = TaskTarget(task: it)
+        } else if let split {
+            split.open(AssignmentRoute(id: it.schoologyId, sectionId: it.sectionId))
+        } else {
+            path.append(AssignmentRoute(id: it.schoologyId))
+        }
     }
 
     private func set(_ it: ItemState, _ p: AppModel.Progress) {
@@ -658,14 +688,15 @@ struct TodoRow: View {
         if item.turnedIn { return (item.mine ? "Turned in" : "Turned in · not on Schoology", Theme.good, true) }
         if item.mine { return item.notes.map { ($0, Theme.secondary, false) } }
         if item.type == .exam { return nil }
-        if item.external { return (item.done ? "Done · check it in Schoology" : "Google Assignment · turn in on Schoology", item.done ? Theme.accent : Theme.secondary, false) }
-        if item.done { return (item.hasDropbox ? "Done · not submitted yet" : "Done", Theme.accent, false) }
+        if item.external { return (item.done ? "Done · check it in Schoology" : "Google Assignment · turn in on Schoology", item.done ? Theme.accent : Theme.secondary, item.done) }
+        if item.done { return (item.hasDropbox ? "Done · not submitted yet" : "Done", Theme.accent, true) }
         if !item.inSchoology { return ("Not on Schoology anymore · tick when done", Theme.secondary, false) }
         return nil
     }
 }
 
-/// Accent ring with an accent check = done or studied (student) · solid green seal with
+/// Accent ring with a small up arrow = done, still to hand in · accent ring with an accent check =
+/// studied, or your own task done (student) · solid green seal with
 /// a check = turned in (submitted on Schoology, or marked): stamped, received. The seal's
 /// outline keeps them apart in every theme, even where the accent and green are close.
 /// Never a square: the type bar says it's a test.
@@ -682,10 +713,15 @@ struct CheckMark: View {
                     .fontWeight(.bold)
                     // The seal's points sit inside its box; this makes its body match the circles.
                     .scaleEffect(1.12)
-            } else if item.type == .exam ? item.studied : item.done {
+            } else if item.type == .exam ? item.studied : item.mine && item.done {
                 Circle().fill(Theme.accentSoft)
                 Circle().strokeBorder(Theme.accent, lineWidth: 2)
                 check(Theme.accent)
+            } else if item.done && item.type != .exam {
+                // Done but not handed in: a plain ring and a small arrow toward the hand-in,
+                // no fill and no check, so it never reads as turned in.
+                Circle().strokeBorder(Theme.accent, lineWidth: 1.6)
+                Image(systemName: "arrow.up").font(.system(size: size * 0.38, weight: .semibold)).foregroundStyle(Theme.accent)
             } else {
                 let unsynced = !item.mine && item.neoPlanId == nil && NeoPlanClient().connected
                 Circle().stroke(unsynced ? Theme.tertiary : Theme.secondary,

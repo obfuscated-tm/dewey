@@ -14,7 +14,9 @@
 //   neo-plan  GET  /api/extension/open             open Schoology assignments
 //   Schoology GET  /assignment/{id}/info           1 per open id, at most STATUS_CAP,
 //                                                  redirects reported, never followed
-//   neo-plan  POST /api/import/schoology/enrich
+//   neo-plan  POST /api/import/schoology/enrich      by_hand from "Check now"
+//   neo-plan  POST /api/extension/items            again, for an add refused for no
+//                                                  column whose course the enrich filed
 // and leaves a Snapshot in chrome.storage.local for the panel and overlays.
 //
 // Dependencies are passed in so the harness can run it without Chrome:
@@ -80,7 +82,7 @@ export function addCandidates({ upcoming = [], overdue = [] }, now = Date.now())
   return [...out.values()];
 }
 
-export async function runSync({ client, parse, np, storage, now = () => new Date(), log = () => {} }) {
+export async function runSync({ client, parse, np, storage, byHand = false, now = () => new Date(), log = () => {} }) {
   const started = now();
   const fetchedAt = started.toISOString();
   const prev = (await storage.get(KEY_SNAPSHOT))[KEY_SNAPSHOT] || null;
@@ -204,7 +206,21 @@ export async function runSync({ client, parse, np, storage, now = () => new Date
     // 5b. New work goes into neo-plan without a click: an upcoming (or
     //     recently overdue) assignment neo-plan has no item for at all. One
     //     it has, removed or not, is left alone. A refused add (no column to
-    //     put it in) is noted and the run goes on.
+    //     put it in) is noted and the run goes on; it is tried once more after
+    //     the enrich, which may have made its course a column (step 7).
+    const addItem = async (r) => {
+      snap.requests.neoplan++;
+      return np('addItem', {
+        item: {
+          schoology_id: String(r.schoology_id),
+          section_id: sectionForRealm(r.realm),
+          title: r.title,
+          due_at: r.due || null,
+          source_url: client.abs(`/assignment/${r.schoology_id}`),
+        },
+      });
+    };
+    const noColumn = [];
     if (!noToken) {
       const cands = addCandidates(snap.lists, started.getTime());
       const have = new Set();
@@ -213,18 +229,10 @@ export async function runSync({ client, parse, np, storage, now = () => new Date
         for (const it of (await npCall('items', { schoology_ids: ids }))?.items || []) have.add(String(it.source_id));
       }
       for (const r of cands.filter((c) => !have.has(String(c.schoology_id))).slice(0, ADD_CAP)) {
-        snap.requests.neoplan++;
-        const res = await np('addItem', {
-          item: {
-            schoology_id: String(r.schoology_id),
-            section_id: sectionForRealm(r.realm),
-            title: r.title,
-            due_at: r.due || null,
-            source_url: client.abs(`/assignment/${r.schoology_id}`),
-          },
-        });
+        const res = await addItem(r);
         if (res.ok) snap.counts.added++;
         else if (res.status === 401) throw new NeoplanError('addItem', res);
+        else if (res.data?.error === 'no_column' && sectionForRealm(r.realm)) noColumn.push(r);
         else snap.errors.push(`add ${r.schoology_id}: ${res.status || res.data?.error || 'network'}`);
       }
     }
@@ -267,6 +275,7 @@ export async function runSync({ client, parse, np, storage, now = () => new Date
     if (!noToken) {
       const payload = {
         fetched_at: fetchedAt,
+        ...(byHand ? { by_hand: true } : {}),
         courses: courses.map(({ section_id, title, section_title }) => ({ section_id, title, section_title })),
         items: [...items.values()].filter((i) => i.section_id || i.submission || i.gradebook),
       };
@@ -278,6 +287,12 @@ export async function runSync({ client, parse, np, storage, now = () => new Date
       for (const row of snap.courses) {
         const m = mapped.get(row.section_id);
         if (m) { row.class_id = m.class_id ?? null; row.auto = !!m.auto; }
+      }
+      // 7b. The adds that had no column, where the enrich gave their course one.
+      for (const r of noColumn) {
+        const res = mapped.get(sectionForRealm(r.realm))?.class_id ? await addItem(r) : { status: 409, data: { error: 'no_column' } };
+        if (res.ok) snap.counts.added++;
+        else snap.errors.push(`add ${r.schoology_id}: ${res.status || res.data?.error || 'network'}`);
       }
       snap.payload = payload; // the last thing sent, for the harness and for debugging
     }

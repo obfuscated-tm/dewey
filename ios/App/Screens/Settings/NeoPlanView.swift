@@ -22,6 +22,7 @@ struct NeoPlanView: View {
                     heading("What Dewey syncs")
                     VStack(alignment: .leading, spacing: 0) {
                         syncLine("plus", "New work from your To Do goes onto the board.")
+                        syncLine("plus", "A new board gets a column for each class with work in it.")
                         syncLine("checkmark", "Done, Studied and Turned in, both ways. The newer change wins.")
                         syncLine("checkmark", "Submitted on Schoology clears it from the board.")
                         syncLine("checkmark", "Type: HW, Test, Task or Classwork.")
@@ -70,13 +71,16 @@ struct NeoPlanView: View {
         VStack(alignment: .leading, spacing: Theme.Space.m) {
             Label(Self.statusText(), systemImage: "checkmark.circle.fill")
                 .font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.good)
+            if let problem = model.neoPlanProblem {
+                Text(problem).font(.footnote).foregroundStyle(Theme.late)
+            }
             LabeledContent("Token", value: NeoPlanClient.mask(model.neoPlan.token))
                 .font(Theme.subhead)
             HStack(spacing: Theme.Space.s) {
                 PillButton(title: syncing ? "Syncing…" : "Sync now") {
                     guard !syncing else { return }
                     syncing = true
-                    Task { await model.syncNeoPlan(); syncing = false }
+                    Task { await model.syncNeoPlan(byHand: true); syncing = false }
                 }
                 Spacer()
                 PillButton(title: "Disconnect", color: Theme.late) {
@@ -96,7 +100,7 @@ struct NeoPlanView: View {
         tokenField = ""
         tokenError = nil
         connected = true
-        Task { await model.syncNeoPlan() }
+        Task { await model.syncNeoPlan(byHand: true) }
     }
 
     /// "Connected · synced 2 min ago", or just "Connected" before the first sync.

@@ -19,8 +19,9 @@
 
   let page = null;
   if (/^\/assignment\/\d+(\/info)?\/?$/.test(p)) page = 'assignment';
-  // Schoology serves the home page at / too (where sign-in lands).
-  else if (p === '/' || /^\/home(\/assignments)?\/?$/.test(p)) page = 'home';
+  // Schoology serves the home page at / too (where sign-in lands), and each
+  // of its tabs at an address of its own.
+  else if (p === '/' || /^\/home(\/(assignments|course-dashboard|recent-activity))?\/?$/.test(p)) page = 'home';
   else if (/^\/course\/\d+(\/(materials|updates))?\/?$/.test(p)) page = 'course';
   else if (/^\/course\/\d+\/student_grades\/?$/.test(p) || /^\/grades\/grades\/?$/.test(p)) page = 'grades';
   if (page) load(page);

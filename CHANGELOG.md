@@ -4,6 +4,20 @@ The extension and the MCP server are versioned separately (see [Versioning and r
 
 Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git history. Apart from MCP 1.0.0 (tag `mcp-v1.0.0`), those versions were never tagged, so they're listed by date.
 
+## 2026-11-01 — Extension 1.14.0
+
+Tag: `ext-v1.14.0`
+
+### Extension
+- Schoology's own look is the default theme again (no page changes). **Dew** is in Settings: it follows your computer's light or dark mode, with Dew Light and Dew Dark taken from the iPhone app's paper-and-ink colours. The other themes stay.
+- Dew Dark darkens Schoology with a softer, warmer invert, so pages aren't pure black and white.
+- Class colours match the iPhone app (by Course Dashboard order on the home To Do). Serif titles and the iPhone app's corner sizes.
+- The To Do panel shows on `/` (where sign-in lands) and on the home page's Course Dashboard and Recent Activity tabs, and comes back when Schoology redraws its column.
+- neo-plan buttons retry a failed request (after 3, 10 and 30 seconds) instead of going missing. `plan.owen64.me` works as a neo-plan server alongside `neo-plan.vercel.app`.
+- The grade graph is open by default.
+- Fix: themes didn't reach To Do, the markers, Materials or grade cells after they redrew.
+- Accessibility: the Overlay switch's off track and the Other group's dot now reach 3:1 contrast.
+
 ## 2026-11-01 — Android 0.4
 
 Tag: `android-v0.4` (beta, sideloaded APK)

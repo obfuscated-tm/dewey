@@ -195,7 +195,7 @@ The extension and the MCP server each have their own [semantic version](https://
 
 | Component | Version lives in | Tag |
 |---|---|---|
-| Extension | `extension/manifest.json` | `ext-v1.13.0` |
+| Extension | `extension/manifest.json` | `ext-v1.14.0` |
 | MCP server | `mcp/package.json` | `mcp-v1.1.1` |
 
 If a change touches the bridge contract ([`docs/mcp/MCP-BRIDGE.md`](mcp/MCP-BRIDGE.md)), bump both.

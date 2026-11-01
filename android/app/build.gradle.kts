@@ -25,8 +25,8 @@ android {
         applicationId = "com.owenleung.dewey"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.3"
+        versionCode = 4
+        versionName = "0.4"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -66,6 +66,8 @@ dependencies {
     implementation("androidx.glance:glance-material3:1.1.1")
     // Scan my ID card: Google's code scanner (Play services draws the camera; the app needs no camera permission).
     implementation("com.google.android.gms:play-services-code-scanner:16.1.0")
+    // The scanner pulls in an old Fragment; 1.3+ is needed for registerForActivityResult to deliver results.
+    implementation("androidx.fragment:fragment-ktx:1.8.5")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.8.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
     debugImplementation("androidx.compose.ui:ui-tooling")

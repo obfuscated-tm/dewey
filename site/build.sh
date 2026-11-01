@@ -11,7 +11,7 @@ dist="$here/dist"
 rm -rf "$dist"
 mkdir -p "$dist/brand" "$dist/img/app" "$dist/download"
 
-cp "$here"/src/{style.css,site.js,404.html,privacy.html,terms.html} "$dist/"
+cp "$here"/src/{style.css,site.js,404.html,privacy.html,terms.html,web.html} "$dist/"
 cp "$root"/brand/logo/dewey-{horizontal,horizontal-dark,mark}.svg "$dist/brand/"
 cp "$root/brand/mascot/dewey-hello.svg" "$dist/brand/"
 cp "$root/brand/icons/chrome/icon.svg" "$root/brand/icons/chrome/icon32.png" "$dist/brand/"

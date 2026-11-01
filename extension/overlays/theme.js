@@ -13,7 +13,8 @@
 // negatives. A colour we want to *display* under that filter (a header, its
 // text) has to be written pre-inverted — preInvert() computes the exact
 // pre-image by running the same filter math forward (the combined operation
-// is its own inverse).
+// is its own inverse). Dew Dark uses a softer, warmer version of the filter
+// (softFilter, softPre): see below.
 //
 // ui.js keeps a style per host for our own tokens (--accent/--accent-soft)
 // and, in dark themes, the same re-invert rule for media inside shadow
@@ -32,7 +33,7 @@ import { onOverlay, onSettings, setThemeProvider, systemDark } from './ui.js';
 //   tokens      (Dew only) every overlay colour, not just the accent: the iOS
 //               app's paper-and-ink palette (Theme.swift, Palette.dew)
 //
-// 'dew' is the default and follows the computer's light or dark setting: it
+// 'dew' follows the computer's light or dark setting: it
 // stands for dewLight or dewDark (themeOf). Its own fields are dewLight's, so
 // it has a swatch and passes the "every theme has an accent" check.
 const DEW_LIGHT = {
@@ -40,7 +41,10 @@ const DEW_LIGHT = {
   tokens: { surface: '#FFFDF8', sunk: '#F6F4EE', line: '#E3DED3', ink: '#1B1A17', dim: '#5C5950', faint: '#6B675D', bad: '#A63A0B', badSoft: '#F8EBE3', good: '#3F6B12', goodSoft: '#EAF0DE' },
 };
 const DEW_DARK = {
-  name: 'Dew Dark', dark: true, header: '#04342C', page: '#121211', accent: '#5DCAA5', accentSoft: '#222D27',
+  name: 'Dew Dark', dark: true,
+  // A softer invert (softFilter): Schoology's white comes out the iOS app's
+  // background (#121211), its black text warm off-white, not #000 and #FFF.
+  soft: { contrast: 0.87, sepia: 0.05 }, header: '#04342C', page: '#121211', accent: '#5DCAA5', accentSoft: '#222D27',
   tokens: { surface: '#1B1A18', sunk: '#121211', line: '#2C2A27', ink: '#EDEAE2', dim: '#A9A59B', faint: '#9A968C', bad: '#FF9466', badSoft: '#35221A', good: '#B5DB6E', goodSoft: '#283318' },
 };
 export const THEMES = {
@@ -102,6 +106,72 @@ function invertThenHueRotate(hex, deg) {
   return rgbToHex(out.map((c) => c * 255));
 }
 
+// ── Dew Dark's softer invert ──────────────────────────────────────────────
+// invert(1) contrast(c) hue-rotate(180deg) sepia(s): the plain invert, pulled
+// in from black and white (contrast) and warmed a little (sepia). Every step
+// is a matrix plus an offset, so the pre-image of a colour is the steps
+// undone in reverse. Photos get invert, 1/c contrast and the hue turn back
+// (reinvertCss); the sepia stays on them, too faint to notice.
+
+const hueMatrix = (deg) => {
+  const rad = (deg * Math.PI) / 180, c = Math.cos(rad), s = Math.sin(rad);
+  return [
+    [0.213 + c * 0.787 - s * 0.213, 0.715 - c * 0.715 - s * 0.715, 0.072 - c * 0.072 + s * 0.928],
+    [0.213 - c * 0.213 + s * 0.143, 0.715 + c * 0.285 + s * 0.140, 0.072 - c * 0.072 - s * 0.283],
+    [0.213 - c * 0.213 - s * 0.787, 0.715 - c * 0.715 + s * 0.715, 0.072 + c * 0.928 + s * 0.072],
+  ];
+};
+const sepiaMatrix = (a) => {
+  const k = 1 - a;
+  return [
+    [0.393 + 0.607 * k, 0.769 - 0.769 * k, 0.189 - 0.189 * k],
+    [0.349 - 0.349 * k, 0.686 + 0.314 * k, 0.168 - 0.168 * k],
+    [0.272 - 0.272 * k, 0.534 - 0.534 * k, 0.131 + 0.869 * k],
+  ];
+};
+const apply = (m, v) => m.map((row) => row[0] * v[0] + row[1] * v[1] + row[2] * v[2]);
+function inverse3([[a, b, c], [d, e, f], [g, h, i]]) {
+  const A = e * i - f * h, B = -(d * i - f * g), C = d * h - e * g;
+  const det = a * A + b * B + c * C;
+  return [
+    [A / det, -(b * i - c * h) / det, (b * f - c * e) / det],
+    [B / det, (a * i - c * g) / det, -(a * f - c * d) / det],
+    [C / det, -(a * h - b * g) / det, (a * e - b * d) / det],
+  ];
+}
+const toUnit = (hex) => hexToRgb(hex).map((c) => c / 255);
+const fromUnit = (v) => rgbToHex(v.map((c) => clamp01(c) * 255));
+
+const softRaw = (v, { contrast, sepia }) => {
+  v = v.map((x) => clamp01(contrast * (1 - x) + 0.5 - 0.5 * contrast));
+  v = apply(hueMatrix(180), v).map(clamp01);
+  return apply(sepiaMatrix(sepia), v).map(clamp01);
+};
+
+/** What `hex` displays as under softFilter(soft). */
+export const softSeen = (hex, soft) => fromUnit(softRaw(toUnit(hex), soft));
+
+/**
+ * The colour that displays as `hex` under softFilter(soft), or as near as the
+ * filter can get: the steps undone exactly, then nudged (clamping cuts off
+ * the most saturated colours) until what it shows matches.
+ */
+export function softPre(hex, soft) {
+  const want = toUnit(hex);
+  const undo = (d) => apply(inverse3(hueMatrix(180)), apply(inverse3(sepiaMatrix(soft.sepia)), d)).map((x) => -x / soft.contrast);
+  let v = undo(want.map((x) => x - 0.5)).map((x) => clamp01(x + 0.5));
+  for (let i = 0; i < 40; i++) {
+    const got = softRaw(v, soft);
+    const step = undo(want.map((x, j) => x - got[j]));
+    v = v.map((x, j) => clamp01(x + 0.7 * step[j]));
+  }
+  return fromUnit(v);
+}
+
+const softFilter = ({ contrast, sepia }) => `invert(1) contrast(${contrast}) hue-rotate(180deg) sepia(${sepia})`;
+/** A dark theme's filter on html. */
+export const pageFilter = (t) => (t.soft ? softFilter(t.soft) : 'invert(1) hue-rotate(180deg)');
+
 /**
  * The colour that, once the page applies `invert(1) hue-rotate(180deg)`,
  * displays as `hex`. The filter is its own inverse, so running it forward
@@ -116,13 +186,25 @@ export function preInvert(hex) {
 // inverted twice — the `picture` selector already re-inverts it once.
 const REINVERT_SELECTOR = ':not(picture) > img, video, iframe, canvas, picture, svg image, embed, object, [style*="background-image"]';
 export const REINVERT_CSS = `${REINVERT_SELECTOR} { filter: invert(1) hue-rotate(180deg); }`;
+/** That rule for theme `t`'s page filter (a soft one needs its contrast undone too). */
+export const reinvertCss = (t) => (t.soft
+  ? `${REINVERT_SELECTOR} { filter: hue-rotate(180deg) contrast(${1 / t.soft.contrast}) invert(1); }`
+  : REINVERT_CSS);
 
-/** A colour as the page must write it: pre-inverted under a dark theme. */
-export const paint = (hex, dark) => (dark ? preInvert(hex) : hex);
+/**
+ * A colour as the page must write it to display as `hex`. `page` is the
+ * theme on the page (pre-inverted for its filter when dark), or just whether
+ * the page is dark (the plain invert).
+ */
+export function paint(hex, page) {
+  const t = page && typeof page === 'object' ? page : null;
+  if (!(t ? t.dark : page)) return hex;
+  return t?.soft ? softPre(hex, t.soft) : preInvert(hex);
+}
 
-/** A theme's header as a CSS background, painted for a page that is (or isn't) dark. */
-export function headerBackground(t, dark = t.dark) {
-  const stops = [].concat(t.header || t.accent).map((c) => paint(c, dark));
+/** A theme's header as a CSS background, painted for the page it's on (default: its own). */
+export function headerBackground(t, page = t) {
+  const stops = [].concat(t.header || t.accent).map((c) => paint(c, page));
   return stops.length === 1 ? stops[0] : `linear-gradient(90deg, ${stops.join(', ')})`;
 }
 
@@ -138,7 +220,7 @@ const each = (suffix) => ITEMS.map((s) => s + suffix).join(',\n');
 
 function headerCss(t) {
   const dark = t.dark;
-  const text = paint(t.headerText || '#FFFFFF', dark);
+  const text = paint(t.headerText || '#FFFFFF', t);
   // Icons are drawn in their own fills, not currentColor: flatten them to
   // the text colour (white, or black before a dark page's inversion).
   const icon = dark ? 'brightness(0)' : 'brightness(0) invert(1)';
@@ -173,9 +255,9 @@ export function themeCss(key, dark) {
     // like the page (so it's pre-inverted, as body's is), but the rubber-band
     // area past the page's edges isn't, and would flash light. No colour is
     // right in both, so dark themes turn the bounce off.
-    parts.push(`html { filter: invert(1) hue-rotate(180deg); background: ${preInvert(t.page)} !important; overscroll-behavior: none; }`);
-    parts.push(`body { background: ${preInvert(t.page)} !important; }`);
-    parts.push(REINVERT_CSS);
+    parts.push(`html { filter: ${pageFilter(t)}; background: ${paint(t.page, t)} !important; overscroll-behavior: none; }`);
+    parts.push(`body { background: ${paint(t.page, t)} !important; }`);
+    parts.push(reinvertCss(t));
   } else if (t.page) {
     parts.push(`html, body { background: ${t.page} !important; }`);
   }
@@ -195,10 +277,10 @@ export function hostThemeCss(key, dark) {
   if (!t || key === 'schoology') return '';
   if (t.tokens) {
     // Dew sets every colour, as seen (pre-inverted when dark, like the accent).
-    const k = t.tokens, p = (c) => paint(c, t.dark);
+    const k = t.tokens, p = (c) => paint(c, t);
     let css = `:host { --accent: ${p(t.accent)}; --accent-soft: ${p(t.accentSoft)}; --surface: ${p(k.surface)}; --sunk: ${p(k.sunk)}; --line: ${p(k.line)};`
       + ` --ink: ${p(k.ink)}; --dim: ${p(k.dim)}; --faint: ${p(k.faint)}; --bad: ${p(k.bad)}; --bad-soft: ${p(k.badSoft)}; --good: ${p(k.good)}; --good-soft: ${p(k.goodSoft)}; }`;
-    if (t.dark) css += `\n${REINVERT_CSS}`;
+    if (t.dark) css += `\n${reinvertCss(t)}`;
     return css;
   }
   // Our hosts get inverted right along with the page: their light tokens

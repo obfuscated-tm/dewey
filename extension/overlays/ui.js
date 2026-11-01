@@ -59,7 +59,7 @@ export const BASE_CSS = `
   --good: #23794A; --good-soft: #E6F3EC;
   /* The iOS app's class colours (Theme.classColors), in Course Dashboard order. */
   --class-1: #1D5EA8; --class-2: #23794A; --class-3: #6A4BA8; --class-4: #A8324A;
-  --class-5: #9A5B0C; --class-6: #16707A; --class-7: #5E6670; --class-8: #8A4B1D; --class-none: #a8a49b;
+  --class-5: #9A5B0C; --class-6: #16707A; --class-7: #5E6670; --class-8: #8A4B1D; --class-none: #8A857B; /* 3:1 on the card in every theme (WCAG non-text) */
   --sans: "ov Instrument Sans", "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
   /* Titles only (card names, page headings), like iOS's New York: the system serif. */
   --serif: ui-serif, "New York", Georgia, "Times New Roman", serif;
@@ -176,7 +176,7 @@ export function setOverlay(on) {
 //   theme    a key of THEMES (theme.js)
 //   percent  a small "95%" beside each graded score
 export const SETTINGS_KEY = 'overlaySettings';
-export const SETTINGS_DEFAULTS = { theme: 'dew', percent: true };
+export const SETTINGS_DEFAULTS = { theme: 'schoology', percent: true };
 let settings = { ...SETTINGS_DEFAULTS };
 let settingsRead = false;
 const settingsListeners = new Set();

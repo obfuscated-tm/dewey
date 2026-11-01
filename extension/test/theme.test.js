@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { THEMES, themeCss, hostThemeCss, themeOf, preInvert } from '../overlays/theme.js';
+import { THEMES, themeCss, hostThemeCss, themeOf, preInvert, paint, softSeen } from '../overlays/theme.js';
 import { SETTINGS_DEFAULTS } from '../overlays/ui.js';
 
 test('schoology: no page changes at all', () => {
@@ -80,8 +80,8 @@ test('every theme has a name and an accent', () => {
   assert.equal(THEMES.schoology.header, null);
 });
 
-test('dew is the default and follows the computer: light or dark', () => {
-  assert.equal(SETTINGS_DEFAULTS.theme, 'dew');
+test('schoology is the default; dew follows the computer: light or dark', () => {
+  assert.equal(SETTINGS_DEFAULTS.theme, 'schoology');
   assert.equal(themeOf('dew', false), THEMES.dewLight);
   assert.equal(themeOf('dew', true), THEMES.dewDark);
   assert.equal(themeCss('dew', false), themeCss('dewLight'));
@@ -95,9 +95,28 @@ test('dew sets every overlay colour: the iOS paper-and-ink palette, pre-inverted
   for (const v of ['#FFFDF8', '#1B1A17', '#0F6E56', '#A63A0B']) assert.match(light, new RegExp(v));
   assert.match(light, /--ink:/);
   const dark = hostThemeCss('dewDark');
-  assert.match(dark, new RegExp(preInvert('#1B1A18')));
-  assert.match(dark, new RegExp(preInvert('#5DCAA5')));
+  assert.match(dark, new RegExp(paint('#1B1A18', THEMES.dewDark)));
+  assert.match(dark, new RegExp(paint('#5DCAA5', THEMES.dewDark)));
   assert.doesNotMatch(dark, /#EDEAE2/);
   // Other themes still change only the accent (and a dark one's surfaces).
   assert.doesNotMatch(hostThemeCss('ocean'), /--ink:/);
+});
+
+// Within a few steps per channel: the filter clamps the most saturated colours.
+const near = (a, b, tol) => [1, 3, 5].every((i) => Math.abs(parseInt(a.slice(i, i + 2), 16) - parseInt(b.slice(i, i + 2), 16)) <= tol);
+
+test('dew dark: a softer, warmer invert, so Schoology shows the iOS dark colours, not black and white', () => {
+  const t = THEMES.dewDark;
+  const css = themeCss('dewDark');
+  assert.match(css, /html \{ filter: invert\(1\) contrast\(0\.87\) hue-rotate\(180deg\) sepia\(0\.05\)/);
+  // Photos: the contrast undone too.
+  assert.match(css, /img[^{]*\{ filter: hue-rotate\(180deg\) contrast\(1\.149\d*\) invert\(1\)/);
+  assert.ok(near(softSeen('#FFFFFF', t.soft), '#121211', 2), 'white cards → the iOS background');
+  assert.ok(near(softSeen('#000000', t.soft), '#EDEAE2', 12), 'black text → warm off-white');
+  // Painted colours come back as themselves (ink, cards, the page, the header).
+  for (const v of ['#1B1A18', '#121211', '#EDEAE2', '#A9A59B', '#2C2A27', '#04342C']) {
+    assert.ok(near(softSeen(paint(v, t), t.soft), v, 2), v);
+  }
+  // Other dark themes keep the plain invert.
+  assert.match(themeCss('dark'), /html \{ filter: invert\(1\) hue-rotate\(180deg\);/);
 });

@@ -46,7 +46,7 @@ const CSS = `
 .sw:hover { border-color: var(--dim); color: var(--ink); }
 .track {
   position: relative; width: 28px; height: 16px; border-radius: 8px; flex: none;
-  background: var(--line);
+  background: var(--faint); /* not --line: off has to be visible too (WCAG non-text 3:1) */
 }
 .track::after {
   content: ""; position: absolute; top: 2px; left: 2px;

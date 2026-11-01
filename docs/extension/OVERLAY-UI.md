@@ -42,7 +42,7 @@ Bundle both as local `.woff2` (400/500/600), not a Google Fonts link. Titles onl
 
 Class colours (`--class-1` … `--class-8`) are the iOS app's `Theme.classColors`. The home To Do colours a class by its place among the Course Dashboard's classes, as iOS does.
 
-The values above are the non-Dew themes'. The Dew themes (the default) set every token to the iOS app's paper-and-ink palette (`Palette.dew`); every other theme changes only `--accent` and `--accent-soft` (`overlays/theme.js`), and a dark one gets its dark look from inverting the whole page (below), not from swapping these tokens.
+The values above are the non-Dew themes'. The Dew themes set every token to the iOS app's paper-and-ink palette (`Palette.dew`); every other theme changes only `--accent` and `--accent-soft` (`overlays/theme.js`), and a dark one gets its dark look from inverting the whole page (below), not from swapping these tokens.
 
 ## Archive button and settings
 
@@ -144,10 +144,10 @@ the colour as seen, dark themes included; the code pre-inverts for dark themes.
 `header` is one colour or gradient stops; `page` is the backdrop behind
 Schoology's white cards and past the page's edges):
 
-- `dew` (default) — follows the computer's light or dark mode (`prefers-color-scheme`, followed live): it stands for `dewLight` or `dewDark` (`themeOf`). Both carry `tokens`, every overlay colour from the iOS app's `Palette.dew`, as seen.
+- `dew` — follows the computer's light or dark mode (`prefers-color-scheme`, followed live): it stands for `dewLight` or `dewDark` (`themeOf`). Both carry `tokens`, every overlay colour from the iOS app's `Palette.dew`, as seen.
 - `dewLight` — deep teal header (`#0F6E56`), paper page (`#F6F4EE`), teal accent.
-- `dewDark` — dark: the page inverted like the dark themes below, pine header (`#04342C`), the iOS dark palette (accent `#5DCAA5`).
-- `schoology` — no page changes at all. `header` is `null`; `accent`/
+- `dewDark` — dark, with a softer, warmer invert than the dark themes below (`invert(1) contrast(0.87) hue-rotate(180deg) sepia(0.05)`): Schoology's white comes out the iOS background (`#121211`) and its black text warm off-white, not `#000` and `#FFF`. Pine header (`#04342C`), the iOS dark palette (accent `#5DCAA5`, shown a little softer: the filter can't reach that saturated a teal). Colours are painted through `softPre()`, and photos get the contrast undone as well as the invert.
+- `schoology` (default) — no page changes at all. `header` is `null`; `accent`/
   `accentSoft` are the overlay's original blue.
 - `ocean`, `forest`, `plum`, `crimson`, `graphite` — light: a coloured header bar
   (white text and icons), a lightly tinted page, a matching accent.
@@ -256,7 +256,7 @@ row under each category. Owen found it too loud. It's now quiet by default:
 nothing but the percent shows until a row is hovered or focused, and an active
 what-if marks its row with a thin bar instead of a fill.
 
-- **Course row:** a small sparkline button ("Graph") that opens a row under it
+- **Course row:** a small sparkline button ("Hide graph" / "Graph"; open by default) that toggles a row under it
   with a step chart of the replayed history: y axis around the grade range, a
   dashed A-cutoff line, hover crosshair + tooltip (date, %, item that changed
   it), and a dashed projection when any what-if or drop is set. Right column:

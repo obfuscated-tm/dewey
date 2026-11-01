@@ -99,11 +99,11 @@ ${GUIDE_CSS}
  * the page it sits on: under a dark theme this card is inverted too, so the
  * colours are pre-inverted to still show as they will look.
  */
-function paintSwatch(s, theme, pageDark) {
+function paintSwatch(s, theme, pageTheme) {
   const [left, right] = s.children;
-  left.style.background = headerBackground(theme, pageDark);
-  right.style.background = paint(theme.accent, pageDark);
-  right.style.boxShadow = `inset 0 -6px 0 ${paint(theme.page || '#F1F4F4', pageDark)}`;
+  left.style.background = headerBackground(theme, pageTheme);
+  right.style.background = paint(theme.accent, pageTheme);
+  right.style.boxShadow = `inset 0 -6px 0 ${paint(theme.page || '#F1F4F4', pageTheme)}`;
 }
 
 function page(title, lede) {
@@ -265,10 +265,10 @@ export function start({ doc = document } = {}) {
   }
 
   const drawSettings = (s) => {
-    const pageDark = !!themeOf(s.theme)?.dark;
+    const pageTheme = themeOf(s.theme) || false;
     for (const [key, tb] of themeBtns) {
       tb.setAttribute('aria-pressed', String(s.theme === key));
-      paintSwatch(tb.firstChild, themeOf(key), pageDark);
+      paintSwatch(tb.firstChild, themeOf(key), pageTheme);
     }
     percentBox.checked = !!s.percent;
   };

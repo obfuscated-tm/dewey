@@ -305,7 +305,7 @@ async function mountCourse({ doc, root: scope, courseId }) {
   const whatIf = new Map(); // item id → { earned, possible } — ungraded rows, or a graded row's override
   const plans = new Map(); // category title → { name, possible, score } (null: none open)
   const dropped = new Set(); // item ids excluded from the math (a real decision, not a hypothetical)
-  let chartOpen = false;
+  let chartOpen = true; // the graph shows from the start; "Hide graph" closes it for this page
 
   const weights = () => {
     const w = {};
@@ -673,7 +673,7 @@ async function mountCourse({ doc, root: scope, courseId }) {
     const want = on && isOverlayOn();
     // Keyed by the theme's accent too, so a theme change repaints the bar.
     const t = themeOf(getSettings().theme) || THEMES.schoology;
-    const accent = paint(t.accent, t.dark);
+    const accent = paint(t.accent, t);
     const now = want ? accent : '';
     if ((tinted.get(tr) || '') === now) return;
     tinted.set(tr, now);

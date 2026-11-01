@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dewey on the web</title>
+<meta name="description" content="Dewey in a browser tab: your plan and grades from Schoology, nothing to install. Waiting on Schoology's approval; the apps work today.">
+<meta property="og:title" content="Dewey on the web">
+<meta property="og:description" content="Schoology, sorted, in a browser tab. Coming once Schoology approves it.">
+<meta property="og:image" content="https://dewey.owen64.me/img/hero.png">
+<meta name="theme-color" content="#F6F4EE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121211" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/brand/icon.svg" type="image/svg+xml">
+<link rel="icon" href="/brand/icon32.png" sizes="32x32">
+<script>try { var t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}</script>
+<style>
+  /* dewey.owen64.me/web, behind the home page's "Continue on the web". Same paper
+     and green cover as the landing page (whose tokens these copy), then a live
+     mockup of the web app you can flip between light/dark and Planning/Grade
+     check. Sign-in stays locked until Schoology approves OAuth; if it never
+     does, this page and that button come out. Self-contained, like
+     index.html. */
+  :root {
+    --bg: #F6F4EE;
+    --paper: #FFFCF5;
+    --text: #1B1A17;
+    --soft: #5F5C54;
+    --line: #E2DED3;
+    --chip: #ECE9E0;
+    --accent: #0F6E56;
+    --accent-text: #FFFFFF;
+    --stamp: #A63A0B;
+    --shadow: 0 1px 0 rgba(27, 26, 23, .05), 0 14px 34px -14px rgba(27, 26, 23, .3);
+    --cover: #1E3832;
+    --cover-text: #F1F0E9;
+    --cover-soft: #B0C1BA;
+    --cover-line: #3B5A52;
+    --serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #121211; --paper: #232220; --text: #F1F0E9; --soft: #A6A39A; --line: #34332F; --chip: #1C1C1A;
+      --accent: #5DCAA5; --accent-text: #04342C; --stamp: #FF9466;
+      --shadow: 0 14px 34px -14px rgba(0, 0, 0, .7); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #121211; --paper: #232220; --text: #F1F0E9; --soft: #A6A39A; --line: #34332F; --chip: #1C1C1A;
+    --accent: #5DCAA5; --accent-text: #04342C; --stamp: #FF9466;
+    --shadow: 0 14px 34px -14px rgba(0, 0, 0, .7); color-scheme: dark;
+  }
+
+  /* Home → web: the page slides in from the right; going back, index.html
+     slides it out the same way. Browsers without cross-document view
+     transitions just change page. */
+  @view-transition { navigation: auto; }
+  .top > a { view-transition-name: logo; }
+  .theme { view-transition-name: theme; }
+  @media (prefers-reduced-motion: no-preference) {
+    ::view-transition-old(root) { animation: .5s cubic-bezier(.3, .7, .2, 1) both to-left; }
+    ::view-transition-new(root) { animation: .5s cubic-bezier(.3, .7, .2, 1) both from-right; }
+  }
+  @keyframes to-left { to { transform: translateX(-100%); } }
+  @keyframes from-right { from { transform: translateX(100%); } }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.55 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  a { color: var(--accent); text-underline-offset: 3px; }
+  img { display: block; max-width: 100%; height: auto; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 24px; }
+  :focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 50px; padding: 0 24px; border-radius: 999px; border: 0; font: 650 1rem/1 var(--sans); text-decoration: none; cursor: pointer; background: var(--accent); color: var(--accent-text); transition: transform .15s ease; }
+  .btn:hover { transform: translateY(-1px); }
+  .btn[disabled] { cursor: not-allowed; transform: none; }
+  .stamp { display: inline-block; font: 700 .78rem/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--stamp); border: 2px solid currentColor; border-radius: 4px; padding: .42em .6em .38em; white-space: nowrap; transform: rotate(var(--r, -3deg)); }
+  @keyframes thunk { from { transform: scale(1.9) rotate(-2deg); opacity: 0; } 60% { opacity: 1; } to { transform: scale(1) rotate(var(--r, -3deg)); opacity: 1; } }
+
+  /* ---------- the cover ---------- */
+  .cover { margin-top: 16px; background: var(--cover); color: var(--cover-text); border-radius: 32px; padding: 0 48px 48px; position: relative; overflow: hidden; }
+  .cover::before {
+    content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
+  }
+  .cover > * { position: relative; }
+  .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 26px 0; }
+  .top > a img { height: 30px; width: auto; }
+  .top nav { display: flex; align-items: center; justify-content: flex-end; gap: 22px; }
+  .top nav a { color: var(--cover-soft); text-decoration: none; font-size: .95rem; }
+  .top nav a:hover { color: var(--cover-text); }
+  .theme { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--cover-line); border-radius: 50%; background: transparent; color: var(--cover-text); cursor: pointer; }
+  .top-signin { all: unset; cursor: pointer; color: var(--cover-text); font: 600 .9rem/1 var(--sans); padding: 10px 16px; border-radius: 999px; box-shadow: inset 0 0 0 1px var(--cover-line); }
+  .top-signin:hover { box-shadow: inset 0 0 0 1px var(--cover-soft); }
+  .top-signin:focus-visible { outline: 3px solid var(--cover-text); outline-offset: 3px; }
+  .theme span { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid currentColor; background: linear-gradient(90deg, currentColor 50%, transparent 50%); }
+
+  .hero { max-width: 640px; margin: 0 auto; text-align: center; padding-top: 12px; }
+  .kicker { margin: 0; }
+  .kicker .stamp { color: #FF9466; animation: thunk .45s cubic-bezier(.2, .9, .3, 1.3) .4s both; }
+  h1 { font: 700 clamp(2.6rem, 5.6vw, 4.4rem)/1 var(--serif); letter-spacing: -.03em; margin: 18px 0 20px; }
+  h1 em { color: #5DCAA5; }
+  .signin { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+  .cover .btn { background: var(--cover-text); color: #1B1A17; }
+  .cover .btn[disabled] { opacity: .6; }
+  .cover .btn.ghost { background: transparent; color: var(--cover-text); box-shadow: inset 0 0 0 1.5px var(--cover-line); }
+  .cover .btn.ghost:hover { box-shadow: inset 0 0 0 1.5px var(--cover-soft); }
+  .btn svg { width: 16px; height: 16px; }
+  .fine { margin: 14px 0 0; font-size: .875rem; color: var(--cover-soft); }
+  .fine a { color: var(--cover-text); }
+
+  /* on a phone, the app comes first */
+  .phone { background: var(--paper); color: var(--text); border-radius: 18px; padding: 20px; margin: 0 0 28px; text-align: left; }
+  .phone h2 { font: 700 1.3rem/1.2 var(--serif); margin: 0 0 4px; }
+  .phone p { margin: 0 0 14px; color: var(--soft); font-size: .95rem; }
+  .phone .btn { background: var(--accent); color: var(--accent-text); width: 100%; }
+  .phone .anyway { display: block; text-align: center; margin-top: 12px; font-size: .9rem; }
+
+  /* ---------- the picks: one question at a time, sign-in last ---------- */
+  .wiz { max-width: 560px; min-height: 330px; margin: 8px auto 0; text-align: center; } /* so the preview doesn't jump between steps */
+  .dots { display: flex; justify-content: center; gap: 6px; list-style: none; margin: 0 0 22px; padding: 0; counter-reset: dot; }
+  .dots li { counter-increment: dot; }
+  .dots button { all: unset; display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 999px; font: 600 .82rem/1 var(--sans); color: var(--cover-soft); opacity: .55; }
+  .dots button::before { content: counter(dot); display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid currentColor; font-size: .72rem; }
+  .dots button.done { opacity: 1; cursor: pointer; }
+  .dots button.done::before { content: "✓"; background: var(--cover-soft); color: var(--cover); border-color: var(--cover-soft); }
+  .dots button[aria-current="step"] { opacity: 1; color: var(--cover-text); }
+  .dots button[aria-current="step"]::before { background: var(--cover-text); color: var(--cover); border-color: var(--cover-text); }
+  .dots button:focus-visible { outline: 3px solid var(--cover-text); outline-offset: 2px; }
+  .wiz section { animation: rise .35s ease both; }
+  .wiz h2 { font: 700 clamp(1.5rem, 3vw, 1.9rem)/1.15 var(--serif); margin: 0 0 18px; outline: 0; }
+  .choices { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .choice { all: unset; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 16px; border-radius: 18px; cursor: pointer; text-align: center; color: var(--cover-text); font: 650 1rem/1.3 var(--sans); background: rgba(0, 0, 0, .22); box-shadow: inset 0 0 0 1.5px var(--cover-line); transition: transform .15s ease, box-shadow .15s ease; }
+  .choice:hover { transform: translateY(-2px); box-shadow: inset 0 0 0 1.5px var(--cover-soft); }
+  .choice:focus-visible { outline: 3px solid var(--cover-text); outline-offset: 3px; }
+  .choice[aria-pressed="true"] { box-shadow: inset 0 0 0 2.5px var(--cover-text); background: rgba(255, 255, 255, .07); }
+  .choice b { font: 700 1.2rem/1.2 var(--serif); }
+  .choice span { font: 400 .9rem/1.4 var(--sans); color: var(--cover-soft); }
+  [data-start] { justify-content: center; padding: 20px 18px; }
+  /* a tiny app window in each theme */
+  .thumb { display: grid; gap: 5px; align-content: start; width: 100%; aspect-ratio: 16 / 10; padding: 14% 12% 0; border-radius: 10px; background: #F6F4EE; }
+  .thumb i { height: 8px; border-radius: 3px; background: #E2DED3; }
+  .thumb i:first-child { width: 45%; height: 12px; background: #1B1A17; }
+  .thumb i:last-child { width: 70%; background: #0F6E56; }
+  .thumb[data-thumb="dark"] { background: #121211; }
+  .thumb[data-thumb="dark"] i { background: #2C2B27; }
+  .thumb[data-thumb="dark"] i:first-child { background: #F1F0E9; }
+  .thumb[data-thumb="dark"] i:last-child { background: #5DCAA5; }
+  .next { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px 18px; margin-top: 18px; }
+  .skip { all: unset; cursor: pointer; font-size: .9rem; color: var(--cover-soft); text-decoration: underline; text-underline-offset: 3px; }
+  .skip:hover { color: var(--cover-text); }
+  .skip:focus-visible { outline: 3px solid var(--cover-text); outline-offset: 3px; }
+  .later { flex-basis: 100%; font-size: .85rem; color: var(--cover-soft); }
+  .wiz .signin { margin-top: 4px; }
+
+  /* ---------- the mockup: its own light/dark, separate from the page ---------- */
+  .mock {
+    --m-bg: #F6F4EE; --m-card: #FFFCF5; --m-text: #1B1A17; --m-soft: #6B675E; --m-line: #E4E0D5; --m-chip: #ECE9E0;
+    --m-accent: #0F6E56; --m-accent-text: #FFFFFF; --m-late: #B8430F; --m-up: #3B7D23; --m-rule: #C8553D; --m-bar: #E9E6DD;
+    position: relative; margin: 48px auto 0; max-width: 1000px; border-radius: 16px; overflow: hidden;
+    background: var(--m-bg); color: var(--m-text); box-shadow: 0 40px 80px -30px rgba(0, 0, 0, .55), 0 0 0 1px rgba(0, 0, 0, .06);
+    transition: background-color .35s ease, color .35s ease;
+  }
+  .mock[data-look="dark"] {
+    --m-bg: #121211; --m-card: #1C1C1A; --m-text: #F1F0E9; --m-soft: #A6A39A; --m-line: #2C3340; --m-chip: #26251F;
+    --m-accent: #5DCAA5; --m-accent-text: #04342C; --m-late: #FF9466; --m-up: #A6D86E; --m-rule: #E07A6A; --m-bar: #1C1C1A;
+  }
+  .mock * { transition: background-color .35s ease, border-color .35s ease, color .35s ease; }
+  .bar { display: flex; align-items: center; gap: 8px; padding: 12px 16px; background: var(--m-bar); border-bottom: 1px solid var(--m-line); }
+  .bar i { width: 11px; height: 11px; border-radius: 50%; background: var(--m-line); }
+  .bar span { flex: 1; text-align: center; font: 500 .8rem var(--sans); color: var(--m-soft); margin-right: 49px; }
+  .app { display: grid; grid-template-columns: 190px 1fr; min-height: 520px; }
+  .side { padding: 22px 14px; border-right: 1px solid var(--m-line); }
+  .side img { width: 30px; height: 30px; margin: 0 0 22px 10px; }
+  .side ul { list-style: none; margin: 0; padding: 0; }
+  .side li { padding: 9px 12px; border-radius: 10px; color: var(--m-soft); font-weight: 600; font-size: .95rem; }
+  .side li.on { background: var(--m-chip); color: var(--m-text); }
+  .main { padding: 26px 30px 30px; min-width: 0; }
+  .date { margin: 0; font: 600 .8rem/1 var(--sans); letter-spacing: .1em; text-transform: uppercase; color: var(--m-soft); }
+  .mh { font: 700 2.4rem/1 var(--serif); margin: 10px 0 22px; letter-spacing: -.02em; }
+  .view[hidden] { display: none; }
+  .view { animation: rise .35s ease both; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } }
+  .cols { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; align-items: start; }
+  .card { background: var(--m-card); border-radius: 16px; padding: 18px 20px 6px; }
+  .card h3 { display: flex; justify-content: space-between; align-items: baseline; margin: 0; padding-bottom: 10px; border-bottom: 2px solid var(--m-rule); font: 700 1.15rem var(--serif); }
+  .card h3 small { font: 500 .9rem var(--sans); color: var(--m-soft); }
+
+  .todo { list-style: none; margin: 0; padding: 0; }
+  .todo li { display: grid; grid-template-columns: 22px 22px 1fr auto; gap: 12px; align-items: start; padding: 14px 0; border-bottom: 1px solid var(--m-line); }
+  .todo li:last-child { border-bottom: 0; }
+  .todo .n { font: 700 1.1rem/1.3 var(--serif); color: var(--m-soft); text-align: center; }
+  .todo li:first-child .n { color: var(--m-accent); }
+  .todo .o { width: 20px; height: 20px; border: 1.5px solid var(--m-soft); border-radius: 50%; margin-top: 2px; }
+  .todo p { margin: 0; line-height: 1.3; }
+  .todo .c { font-size: .8rem; color: var(--m-soft); font-weight: 600; }
+  .todo .t { font-size: 1rem; margin: 2px 0 3px; }
+  .todo .d { font-size: .82rem; color: var(--m-soft); }
+  .todo .d.late { color: var(--m-late); font-weight: 600; }
+  .todo .go { align-self: center; font: 650 .8rem/1 var(--sans); padding: 8px 12px; border-radius: 8px; background: var(--m-accent); color: var(--m-accent-text); white-space: nowrap; }
+
+  .report { list-style: none; margin: 0; padding: 0; }
+  .report li { display: grid; grid-template-columns: 4px 1fr auto auto; gap: 12px; align-items: center; padding: 11px 0; border-bottom: 1px solid var(--m-line); }
+  .report li:last-child { border-bottom: 0; }
+  .report li::before { content: ""; align-self: stretch; border-radius: 2px; background: var(--k); }
+  .report .nm { font-weight: 600; font-size: .95rem; line-height: 1.25; min-width: 0; }
+  .report .nm small { display: block; font-weight: 400; color: var(--m-soft); font-size: .78rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .report .pc { text-align: right; font-variant-numeric: tabular-nums; color: var(--m-soft); font-size: .9rem; line-height: 1.25; }
+  .report .pc b { display: block; font-weight: 650; font-size: .78rem; color: var(--m-up); }
+  .report .pc b.dn { color: var(--m-late); }
+  .report .lt { font: 700 1.35rem/1 var(--serif); min-width: 1.7em; }
+  .report.wide .nm { font-size: 1.05rem; }
+  .report.wide .nm small { font-size: .85rem; }
+  .report.wide .pc { font-size: 1rem; }
+  .report.wide .lt { font-size: 1.7rem; }
+
+  .detail .big { display: flex; align-items: baseline; gap: 10px; margin: 14px 0 6px; font-family: var(--serif); }
+  .detail .big b { font-size: 3rem; line-height: 1; color: var(--m-accent); }
+  .detail .big span { font: 600 1.35rem var(--sans); font-variant-numeric: tabular-nums; }
+  .detail ul { list-style: none; margin: 12px 0 0; padding: 0; }
+  .detail li { display: flex; justify-content: space-between; padding: 9px 0; border-top: 1px solid var(--m-line); font-size: .92rem; font-variant-numeric: tabular-nums; }
+  .detail li i { font-style: normal; color: var(--m-soft); font-size: .8rem; margin-left: 6px; }
+  .detail .holds { margin: 4px 0 14px; font-size: .88rem; color: var(--m-soft); }
+  .detail .holds b { color: var(--m-text); }
+
+  /* A laptop or wider: questions on the left, the preview beside them at
+     about three-quarter size, so picking never needs a scroll. */
+  @media (min-width: 1100px) {
+    .split { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 48px; align-items: center; padding: 8px 0 8px; }
+    .hero { text-align: left; padding-top: 0; }
+    .hero h1 { font-size: 3rem; margin: 12px 0 12px; }
+    .wiz { text-align: left; margin: 0; min-height: 300px; }
+    .wiz h2 { font-size: 1.55rem; margin-bottom: 14px; }
+    .thumb { aspect-ratio: 16 / 8; }
+    .dots { margin-bottom: 16px; }
+    .dots { justify-content: flex-start; margin-left: -10px; }
+    .signin, .next { justify-content: flex-start; }
+    .split .mock { margin: 0; zoom: .72; }
+    .split .side { display: none; }
+    .split .app { grid-template-columns: 1fr; }
+  }
+
+  footer { margin-top: 56px; display: flex; align-items: center; flex-wrap: wrap; gap: 14px; padding: 26px 0 44px; border-top: 1px solid var(--line); color: var(--soft); font-size: .9rem; }
+  footer p { margin: 0; flex: 1 1 280px; }
+  footer nav { display: flex; gap: 18px; flex-wrap: wrap; }
+  footer a { color: var(--soft); }
+
+  @media (max-width: 860px) {
+    .cover { border-radius: 0 0 28px 28px; margin: 0 -24px; padding: 0 24px 32px; }
+    .app { grid-template-columns: 1fr; }
+    .side { display: none; }
+    .cols { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 560px) {
+    .wrap { padding: 0 16px; }
+    .cover { margin: 0 -16px; padding: 0 16px 24px; }
+    .signin .btn { flex: 1 1 100%; }
+    .top nav a { display: none; }
+    .choices:has([data-start]) { grid-template-columns: 1fr; }
+    .mock { margin-top: 32px; border-radius: 12px; }
+    .main { padding: 20px 16px 20px; }
+    .mh { font-size: 2rem; }
+    .todo li { grid-template-columns: 18px 20px 1fr; }
+    .todo .go { display: none; }
+    .card { padding: 16px 14px 4px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before { animation: none !important; transition: none !important; }
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <section class="cover">
+      <header class="top">
+        <a href="/" aria-label="Dewey home"><img src="/brand/dewey-horizontal-dark.svg" alt="Dewey"></a>
+        <nav>
+          <button class="top-signin" type="button" data-skip>Sign in</button>
+          <button class="theme" type="button" aria-label="Switch light or dark"><span aria-hidden="true"></span></button>
+        </nav>
+      </header>
+      <div class="split">
+      <div class="lead">
+        <div class="hero">
+          <div class="phone" data-phone hidden>
+            <h2>On a phone, the app is better.</h2>
+            <p data-phone-note>Reminders, widgets, and it opens straight to your plan.</p>
+            <a class="btn" data-phone-btn href="/#install">Get the app</a>
+            <a class="anyway" href="#preview">See the web version anyway ↓</a>
+          </div>
+          <p class="kicker"><span class="stamp">Coming to the web</span></p>
+          <h1>Dewey, in a <em>browser tab.</em></h1>
+        </div>
+
+        <div class="wiz" id="preview" data-wiz>
+          <ol class="dots">
+            <li><button type="button" data-goto="1">Look</button></li>
+            <li><button type="button" data-goto="2">Focus</button></li>
+            <li><button type="button" data-goto="3">Sign in</button></li>
+          </ol>
+
+          <section data-step="1">
+            <h2 tabindex="-1">Light or dark?</h2>
+            <div class="choices">
+              <button type="button" class="choice" data-look="light" aria-pressed="false"><span class="thumb" data-thumb="light" aria-hidden="true"><i></i><i></i><i></i></span>Light</button>
+              <button type="button" class="choice" data-look="dark" aria-pressed="false"><span class="thumb" data-thumb="dark" aria-hidden="true"><i></i><i></i><i></i></span>Dark</button>
+            </div>
+            <div class="next">
+              <button class="btn" type="button" data-next>Next →</button>
+            </div>
+          </section>
+
+          <section data-step="2" hidden>
+            <h2 tabindex="-1">What do you open Dewey for?</h2>
+            <div class="choices">
+              <button type="button" class="choice" data-start="plan" aria-pressed="false"><b>Planning</b><span>What's due, in the order you'll do it, with your grades on the side.</span></button>
+              <button type="button" class="choice" data-start="grades" aria-pressed="false"><b>Just grades</b><span>Every class to the decimal, and what your last score did.</span></button>
+            </div>
+            <div class="next">
+              <button class="btn" type="button" data-next>Next →</button>
+              <button class="skip" type="button" data-back>← Back</button>
+              <span class="later">You can change both later in Settings.</span>
+            </div>
+          </section>
+
+          <section data-step="3" hidden>
+            <h2 tabindex="-1">Sign in</h2>
+            <div class="signin">
+              <button class="btn" type="button" disabled aria-describedby="why-locked">
+                <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="7" width="10" height="7.5" rx="1.5"/><path d="M5.5 7V5a2.5 2.5 0 0 1 5 0v2"/></svg>
+                Sign in with Schoology
+              </button>
+              <a class="btn ghost" href="/">← Download the app</a>
+            </div>
+            <p class="fine" id="why-locked">Waiting on Schoology to approve Dewey. Your picks are saved in this browser for when it opens. The apps work today.</p>
+            <div class="next"><button class="skip" type="button" data-back>← Back</button></div>
+          </section>
+      </div>
+      </div>
+
+      <div class="mock" data-mock data-look="dark" aria-label="Preview of Dewey on the web, with made-up classes" role="img">
+        <div class="bar" aria-hidden="true"><i></i><i></i><i></i><span>Dewey</span></div>
+        <div class="app">
+          <aside class="side">
+            <img src="/brand/dewey-mark.svg" alt="">
+            <ul>
+              <li data-nav="plan" class="on">Plan</li>
+              <li>To Do</li>
+              <li data-nav="grades">Grades</li>
+              <li>Materials</li>
+            </ul>
+          </aside>
+          <div class="main">
+            <p class="date" data-date>Saturday, Nov 1</p>
+
+            <section class="view" data-view="plan">
+              <p class="mh">Plan</p>
+              <div class="cols">
+                <div class="card">
+                  <h3>To do <small>4</small></h3>
+                  <ol class="todo">
+                    <li><span class="n">1</span><span class="o"></span><div><p class="c">Spanish 2</p><p class="t">Vocabulario 2.3 Practice</p><p class="d late">2 days late</p></div><span class="go">Submit ↗</span></li>
+                    <li><span class="n">2</span><span class="o"></span><div><p class="c">Biology</p><p class="t">Lab 2.2 Cell Size and Diffusion</p><p class="d">Today, 11:59 pm</p></div><span class="go">Submit ↗</span></li>
+                    <li><span class="n">3</span><span class="o"></span><div><p class="c">AP Lang</p><p class="t">Rhetorical analysis draft</p><p class="d">Tomorrow, 8:00 am</p></div></li>
+                    <li><span class="n">4</span><span class="o"></span><div><p class="c">Algebra II</p><p class="t">Unit 4 Test</p><p class="d" data-due="3">Wednesday · test</p></div></li>
+                  </ol>
+                </div>
+                <div class="card">
+                  <h3>Grades</h3>
+                  <ul class="report">
+                    <li style="--k:#6FA0F0"><span class="nm">Algebra II</span><span class="pc">88.5%</span><span class="lt">B+</span></li>
+                    <li style="--k:#4FC98E"><span class="nm">Biology</span><span class="pc">94.7%</span><span class="lt">A</span></li>
+                    <li style="--k:#B59BF5"><span class="nm">AP Lang</span><span class="pc">95.1%</span><span class="lt">A</span></li>
+                    <li style="--k:#F07A9A"><span class="nm">Spanish 2</span><span class="pc">91.8%</span><span class="lt">A-</span></li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            <section class="view" data-view="grades" hidden>
+              <p class="mh">Grades</p>
+              <div class="cols">
+                <div class="card">
+                  <h3>Report card</h3>
+                  <ul class="report wide">
+                    <li style="--k:#6FA0F0"><span class="nm">Algebra II<small>Quiz 4.2 · 18 / 20</small></span><span class="pc">88.5%<b>+0.75%</b></span><span class="lt">B+</span></li>
+                    <li style="--k:#4FC98E"><span class="nm">Biology<small>Unit 2 Test · 47 / 50</small></span><span class="pc">94.7%<b>+0.24%</b></span><span class="lt">A</span></li>
+                    <li style="--k:#B59BF5"><span class="nm">AP Lang<small>Participation, weeks 1–6</small></span><span class="pc">95.1%<b>+2.11%</b></span><span class="lt">A</span></li>
+                    <li style="--k:#F07A9A"><span class="nm">Spanish 2<small>Prueba 2.2 · 17 / 20</small></span><span class="pc">91.8%<b class="dn">−1.00%</b></span><span class="lt">A-</span></li>
+                    <li style="--k:#F2A64A"><span class="nm">Chemistry<small>Lab: Flame Test · 18 / 20</small></span><span class="pc">87.0%<b class="dn">−0.62%</b></span><span class="lt">B+</span></li>
+                  </ul>
+                </div>
+                <div class="card detail">
+                  <h3>Biology</h3>
+                  <p class="big"><b>A</b><span>94.7</span></p>
+                  <p class="holds">The A holds down to <b>92.6%</b>.</p>
+                  <ul>
+                    <li><span>Tests <i>50%</i></span><span>93.0%</span></li>
+                    <li><span>Labs <i>30%</i></span><span>95.5%</span></li>
+                    <li><span>Homework <i>20%</i></span><span>97.8%</span></li>
+                  </ul>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </div>
+      </div>
+    </section>
+
+    <footer>
+      <img src="/brand/dewey-mark.svg" alt="" width="28" height="28">
+      <p>Made by Owen, a high school student, for students. Not affiliated with Schoology or PowerSchool.</p>
+      <nav><a href="/privacy">Privacy</a><a href="/terms">Terms</a><a href="mailto:legal@owen64.me">legal@owen64.me</a></nav>
+    </footer>
+  </div>
+
+<script>
+  // The two picks and sign-in (the picks are remembered in this browser, for
+  // the web app to start from once it exists), and the phone card.
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const pageDark = () => {
+    const t = document.documentElement.dataset.theme;
+    return t ? t === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+  };
+
+  // ---------- the preview ----------
+  {
+    const mock = $('[data-mock]');
+    const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const today = new Date();
+    $('[data-date]').textContent = `${DAYS[today.getDay()]}, ${MONTHS[today.getMonth()]} ${today.getDate()}`;
+    const test = $('[data-due="3"]');
+    test.textContent = `${DAYS[(today.getDay() + 3) % 7]} · test`;
+
+    let pick = {};
+    try { pick = JSON.parse(localStorage.getItem('web-preview')) || {}; } catch { /* private window */ }
+    // Light or dark is the page's own theme: the pick and the header's theme
+    // button both change the whole page, preview included. Focus starts on
+    // Planning, or a returning visitor's last pick. Tapping a choice only
+    // previews it; Next is what saves it for the app.
+    const state = { look: pageDark() ? 'dark' : 'light', start: pick.start || 'plan' };
+    const setLook = (look) => {
+      state.look = look;
+      document.documentElement.dataset.theme = look;
+      try { localStorage.setItem('theme', look); } catch { /* private window */ }
+      render();
+    };
+    $('.theme').onclick = () => setLook(state.look === 'dark' ? 'light' : 'dark');
+    const render = () => {
+      mock.dataset.look = state.look;
+      $$('button[data-look]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.look === state.look)));
+      $$('button[data-start]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.start === state.start)));
+      $$('[data-view]', mock).forEach((v) => { v.hidden = v.dataset.view !== state.start; });
+      $$('[data-nav]', mock).forEach((n) => n.classList.toggle('on', n.dataset.nav === state.start));
+    };
+
+    // one question at a time; a dot goes back to any step already answered
+    const wiz = $('[data-wiz]');
+    const steps = $$('[data-step]', wiz), dots = $$('.dots button', wiz);
+    let at = 1;
+    const go = (n, focus = true) => {
+      at = n;
+      steps.forEach((s) => { s.hidden = Number(s.dataset.step) !== n; });
+      dots.forEach((d) => {
+        const k = Number(d.dataset.goto);
+        d.classList.toggle('done', k < n);
+        d.tabIndex = k < n ? 0 : -1;
+        if (k === n) d.setAttribute('aria-current', 'step'); else d.removeAttribute('aria-current');
+      });
+      if (focus) $('h2', steps[n - 1]).focus({ preventScroll: true });
+    };
+    $$('button[data-look]').forEach((b) => { b.onclick = () => setLook(b.dataset.look); });
+    $$('button[data-start]').forEach((b) => { b.onclick = () => { state.start = b.dataset.start; render(); }; });
+    $$('[data-next]', wiz).forEach((b) => {
+      b.onclick = () => {
+        try { localStorage.setItem('web-preview', JSON.stringify(state)); } catch { /* private window */ }
+        go(at + 1);
+      };
+    });
+    $$('[data-back]', wiz).forEach((b) => { b.onclick = () => go(at - 1); });
+    dots.forEach((d) => { d.onclick = () => { if (Number(d.dataset.goto) < at) go(Number(d.dataset.goto)); }; });
+    $('[data-skip]').onclick = () => go(3);
+    render();
+    go(1, false);
+  }
+
+  // ---------- on a phone, point at the app first ----------
+  {
+    const ua = navigator.userAgent;
+    const card = $('[data-phone]'), btn = $('[data-phone-btn]'), note = $('[data-phone-note]');
+    if (/Android/.test(ua)) {
+      btn.textContent = 'Download for Android';
+      btn.href = '/download/dewey-android.apk';
+      card.hidden = false;
+    } else if (/iPhone|iPod/.test(ua)) {
+      note.textContent = "The iPhone app is in testing and coming soon. Until then, the Chrome extension works on your computer.";
+      btn.textContent = 'See the apps';
+      card.hidden = false;
+    }
+  }
+</script>
+</body>
+</html>

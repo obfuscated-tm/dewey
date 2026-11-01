@@ -32,12 +32,12 @@
     --accent-text: #FFFFFF;
     --stamp: #A63A0B;
     --stamp-ok: #0F6E56;
-    --app: #121211;
+    --stage: #ECE9E0; /* the tour's backdrop: warm paper here, the app's own dark in dark mode */
     --shadow: 0 1px 0 rgba(27, 26, 23, .05), 0 14px 34px -14px rgba(27, 26, 23, .3);
-    --cover: #0E3A31;
+    --cover: #1E3832;
     --cover-text: #F1F0E9;
-    --cover-soft: #A9C4B9;
-    --cover-line: #2B6253;
+    --cover-soft: #B0C1BA;
+    --cover-line: #3B5A52;
     --serif: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
     --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
@@ -46,15 +46,28 @@
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
       --bg: #121211; --paper: #232220; --text: #F1F0E9; --soft: #A6A39A; --line: #34332F; --chip: #1C1C1A;
-      --accent: #5DCAA5; --accent-text: #04342C; --stamp: #FF9466; --stamp-ok: #5DCAA5; --app: #1C1C1A;
+      --accent: #5DCAA5; --accent-text: #04342C; --stamp: #FF9466; --stamp-ok: #5DCAA5; --stage: #1C1C1A;
       --shadow: 0 14px 34px -14px rgba(0, 0, 0, .7); color-scheme: dark;
     }
   }
   :root[data-theme="dark"] {
     --bg: #121211; --paper: #232220; --text: #F1F0E9; --soft: #A6A39A; --line: #34332F; --chip: #1C1C1A;
-    --accent: #5DCAA5; --accent-text: #04342C; --stamp: #FF9466; --stamp-ok: #5DCAA5; --app: #1C1C1A;
+    --accent: #5DCAA5; --accent-text: #04342C; --stamp: #FF9466; --stamp-ok: #5DCAA5; --stage: #1C1C1A;
     --shadow: 0 14px 34px -14px rgba(0, 0, 0, .7); color-scheme: dark;
   }
+
+  /* Continue on the web: web.html slides in from the right, and coming back this page
+     slides in from the left. Browsers without cross-document view
+     transitions just change page. */
+  @view-transition { navigation: auto; }
+  .top > a { view-transition-name: logo; }
+  .theme { view-transition-name: theme; }
+  @media (prefers-reduced-motion: no-preference) {
+    ::view-transition-old(root) { animation: .5s cubic-bezier(.3, .7, .2, 1) both to-right; }
+    ::view-transition-new(root) { animation: .5s cubic-bezier(.3, .7, .2, 1) both from-left; }
+  }
+  @keyframes to-right { to { transform: translateX(100%); } }
+  @keyframes from-left { from { transform: translateX(-100%); } }
 
   * { box-sizing: border-box; }
   html { scroll-behavior: smooth; }
@@ -77,7 +90,22 @@
   @keyframes thunk { from { transform: scale(1.9) rotate(-2deg); opacity: 0; } 60% { opacity: 1; } to { transform: scale(1) rotate(var(--r, -3deg)); opacity: 1; } }
 
   /* ---------- 1 · the cover ---------- */
+  /* On a computer the cover fills the window, inset by a 28px margin all round, with a
+     cue at the bottom to go down; the text inside keeps the width it had. */
   .cover { margin-top: 16px; background: var(--cover); color: var(--cover-text); border-radius: 32px; padding: 0 48px 56px; position: relative; overflow: hidden; }
+  @media (min-width: 861px) and (min-height: 600px) {
+    .cover { margin: 28px calc(50% - 50vw + 28px) 0; padding: 0 max(48px, calc(50vw - 28px - 488px)) 28px; min-height: calc(100svh - 56px); display: flex; flex-direction: column; }
+    .cover .hero { flex: 1; }
+  }
+  .more { display: none; }
+  @media (min-width: 861px) and (min-height: 600px) {
+    .more { display: flex; flex-direction: column; align-items: center; gap: 10px; align-self: center; margin-top: 24px; color: var(--cover-text); text-decoration: none; font: 600 .95rem/1 var(--sans); animation: bob 1.6s cubic-bezier(.45, 0, .55, 1) 1.2s infinite; }
+    .more span { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: var(--cover-text); color: var(--cover); font-size: 1.25rem; box-shadow: 0 0 0 0 rgba(241, 240, 233, .45); animation: ring 1.6s ease-out 1.2s infinite; }
+    .more:hover span { transform: scale(1.08); }
+  }
+  /* a hop down then a pause, with a ring going out from the arrow, so it reads as "this way" */
+  @keyframes bob { 0%, 60%, 100% { transform: translateY(0); } 20% { transform: translateY(10px); } 40% { transform: translateY(2px); } }
+  @keyframes ring { 0% { box-shadow: 0 0 0 0 rgba(241, 240, 233, .45); } 70%, 100% { box-shadow: 0 0 0 14px rgba(241, 240, 233, 0); } }
   .cover::before { /* faint cloth grain, so it reads as a book cover and not a flat fill */
     content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .5; mix-blend-mode: overlay;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.35'/%3E%3C/svg%3E");
@@ -85,7 +113,7 @@
   .cover > * { position: relative; }
   .top { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 26px 0; }
   .top > a img { height: 30px; width: auto; }
-  .top nav { display: flex; align-items: center; gap: 22px; }
+  .top nav { display: flex; align-items: center; justify-content: flex-end; gap: 22px; }
   .top nav a { color: var(--cover-soft); text-decoration: none; font-size: .95rem; }
   .top nav a:hover { color: var(--cover-text); }
   .theme { width: 36px; height: 36px; display: grid; place-items: center; border: 1px solid var(--cover-line); border-radius: 50%; background: transparent; color: var(--cover-text); cursor: pointer; }
@@ -97,10 +125,10 @@
   h1 { font: 700 clamp(3rem, 6.4vw, 5rem)/1 var(--serif); letter-spacing: -.03em; margin: 18px 0 20px; }
   h1 em { color: #5DCAA5; }
   .lede { font-size: 1.15rem; color: var(--cover-soft); margin: 0 0 28px; max-width: 27em; }
-  .get { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .get { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
   .cover .btn { background: var(--cover-text); color: #1B1A17; }
-  .fine { margin: 14px 0 0; font-size: .875rem; color: var(--cover-soft); }
-  .quiet { color: var(--cover-text); padding: 0 12px; min-height: 50px; display: inline-flex; align-items: center; }
+  .cover .btn.ghost { background: transparent; color: var(--cover-text); box-shadow: inset 0 0 0 1.5px var(--cover-line); }
+  .cover .btn.ghost:hover { box-shadow: inset 0 0 0 1.5px var(--cover-soft); }
 
   /* the library due-date card: a To Do you can tick off */
   .card-stage { display: flex; justify-content: center; }
@@ -140,13 +168,21 @@
   .playing.paused .ftab[aria-selected="true"]::before { animation-play-state: paused; }
   @keyframes fill { from { height: 0; } to { height: 100%; } }
 
-  .stage { position: sticky; top: 24px; display: grid; background: var(--app); border-radius: 28px; height: 540px; padding: 28px 32px 32px; overflow: hidden; transition: transform .3s ease; transform: perspective(1400px) rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg)); }
+  .stage { position: sticky; top: 24px; display: grid; background: var(--stage); border-radius: 28px; height: 540px; padding: 28px 32px 32px; overflow: hidden; transition: transform .3s ease; transform: perspective(1400px) rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg)); }
   .stage figure { grid-area: 1 / 1; margin: 0; display: grid; grid-template-rows: auto 1fr; justify-items: center; align-items: center; min-height: 0; opacity: 0; visibility: hidden; transform: translateY(14px) scale(.98); transition: opacity .35s ease, transform .45s cubic-bezier(.2, .8, .2, 1), visibility 0s .35s; }
   .stage figure.on { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
-  .stage img { max-height: 380px; width: auto; max-width: 100%; object-fit: contain; border-radius: 12px; }
-  .stage figcaption { order: -1; justify-self: stretch; padding-bottom: 18px; margin-bottom: 4px; border-bottom: 1px solid #2E2D2A; }
-  .stage figcaption b { display: block; font: 700 1.35rem/1.2 var(--serif); color: #F1F0E9; }
-  .stage figcaption span { display: block; color: #A6A39A; font-size: .98rem; margin-top: 2px; }
+  /* each screenshot comes in the app's dark and light looks; show the page's */
+  .stage img.dk { display: none; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .stage img.dk { display: block; }
+    :root:not([data-theme="light"]) .stage img.lt { display: none; }
+  }
+  :root[data-theme="dark"] .stage img.dk { display: block; }
+  :root[data-theme="dark"] .stage img.lt { display: none; }
+  .stage img { max-height: 380px; width: auto; max-width: 100%; object-fit: contain; border-radius: 12px; box-shadow: 0 18px 40px -18px rgba(0, 0, 0, .5); }
+  .stage figcaption { order: -1; justify-self: stretch; padding-bottom: 18px; margin-bottom: 4px; border-bottom: 1px solid var(--line); }
+  .stage figcaption b { display: block; font: 700 1.35rem/1.2 var(--serif); color: var(--text); }
+  .stage figcaption span { display: block; color: var(--soft); font-size: .98rem; margin-top: 2px; }
   .demo .books { height: 120px; }
   .demo > div { width: 100%; max-width: 440px; }
 
@@ -211,17 +247,16 @@
     .ftabs { display: none; }
     .stage { position: static; display: block; height: auto; padding: 0; background: none; border-radius: 0; transform: none !important; overflow: visible; }
     .stage figure { opacity: 1; visibility: visible; transform: none; display: block; margin-bottom: 48px; }
-    .stage figure > img { background: var(--app); border-radius: 20px; padding: 16px; max-height: none; width: 100%; }
+    .stage figure > img { background: var(--stage); border-radius: 20px; padding: 16px; max-height: none; width: 100%; }
     .demo > div { max-width: none; }
     .stage figcaption { margin-top: 16px; padding: 0; border: 0; }
-    .stage figcaption b { color: var(--text); }
-    .stage figcaption span { color: var(--soft); }
     .steps, #pane-android .steps { grid-template-columns: 1fr; }
     .install { padding: 56px 0 48px; }
   }
   @media (max-width: 560px) {
     .wrap { padding: 0 16px; }
     .cover { margin: 0 -16px; padding: 0 16px 36px; }
+    .get .btn { flex: 1 1 100%; }
     .top nav a { display: none; }
     .libcard { transform: none; }
     .rows button { grid-template-columns: 88px 1fr; padding-right: 14px; }
@@ -249,11 +284,10 @@
           <p class="kicker"><span class="stamp" data-today>Today</span></p>
           <h1>Schoology, <em>sorted.</em></h1>
           <p class="lede">Dewey puts everything that's due on one list, shows your grade to the decimal, and saves your classes before the term takes them away.</p>
-          <div class="get" data-get data-ext="{{EXT_VERSION}}" data-android="{{ANDROID_VERSION}}">
-            <a class="btn" data-get-btn href="/download/dewey-extension.zip">Add to Chrome, free</a>
-            <a class="quiet" href="#install">Other devices</a>
+          <div class="get">
+            <a class="btn" data-get-btn href="#install">Add to Chrome, free</a>
+            <a class="btn ghost" href="/web">Continue on the web →</a>
           </div>
-          <p class="fine" data-get-note>Version {{EXT_VERSION}} · no account · no password</p>
         </div>
         <div class="card-stage">
           <div class="libcard" role="group" aria-labelledby="libcard-title">
@@ -273,6 +307,7 @@
           </div>
         </div>
       </div>
+      <a class="more" href="#tour">What's in it <span aria-hidden="true">↓</span></a>
     </section>
 
     <section class="tour" id="tour">
@@ -290,9 +325,9 @@
           <button class="ftab" role="tab" aria-selected="false" aria-controls="f9" id="t9" tabindex="-1"><b>Keep your classes <em>Try it</em></b><span><i>On Chrome, save a whole class to a folder you own before the term ends.</i></span></button>
         </div>
         <div class="stage" data-stage>
-          <figure class="on" role="tabpanel" id="f1" aria-labelledby="t1"><img src="/img/app/todo.jpg" alt="To Do: the week across the top, then Algebra 2 with a test on Tuesday and homework marked done, ready to turn in" width="1146" height="1413"><figcaption><b>Everything due, in one list</b><span>Sorted by class, with the time it's actually due.</span></figcaption></figure>
-          <figure role="tabpanel" id="f2" aria-labelledby="t2"><img src="/img/app/late.jpg" alt="A Spanish assignment stamped 2 days late, not submitted on Schoology, with To do, Done and Turned in buttons" width="1146" height="1050" loading="lazy"><figcaption><b>Late work gets a stamp</b><span>Turned it in on paper? Mark it yourself.</span></figcaption></figure>
-          <figure role="tabpanel" id="f3" aria-labelledby="t3"><img src="/img/app/report.jpg" alt="Report card: six classes with percent, letter grade, the latest score and how much it changed the grade" width="1146" height="1180" loading="lazy"><figcaption><b>Your grade to the decimal</b><span>And how much your last score moved it.</span></figcaption></figure>
+          <figure class="on" role="tabpanel" id="f1" aria-labelledby="t1"><img class="dk" src="/img/app/todo.jpg" alt="To Do: the week across the top, then Algebra 2 with a test on Wednesday and homework marked done, ready to turn in" width="1146" height="1417"><img class="lt" src="/img/app/todo-light.jpg" alt="To Do: the week across the top, then Algebra 2 with a test on Wednesday and homework marked done, ready to turn in" width="1146" height="1417"><figcaption><b>Everything due, in one list</b><span>Sorted by class, with the time it's actually due.</span></figcaption></figure>
+          <figure role="tabpanel" id="f2" aria-labelledby="t2"><img class="dk" src="/img/app/late.jpg" alt="A Spanish assignment stamped 2 days late, not submitted on Schoology, with To do, Done and Turned in buttons" width="1146" height="1060" loading="lazy"><img class="lt" src="/img/app/late-light.jpg" alt="A Spanish assignment stamped 2 days late, not submitted on Schoology, with To do, Done and Turned in buttons" width="1146" height="1060" loading="lazy"><figcaption><b>Late work gets a stamp</b><span>Turned it in on paper? Mark it yourself.</span></figcaption></figure>
+          <figure role="tabpanel" id="f3" aria-labelledby="t3"><img class="dk" src="/img/app/report.jpg" alt="Report card: six classes with percent, letter grade, the latest score and how much it changed the grade" width="1146" height="1190" loading="lazy"><img class="lt" src="/img/app/report-light.jpg" alt="Report card: six classes with percent, letter grade, the latest score and how much it changed the grade" width="1146" height="1190" loading="lazy"><figcaption><b>Your grade to the decimal</b><span>And how much your last score moved it.</span></figcaption></figure>
           <figure class="demo" role="tabpanel" id="f4" aria-labelledby="t4">
             <div class="gradecard" data-grade>
               <div class="gc-top">
@@ -310,10 +345,10 @@
             </div>
             <figcaption><b>Try a score first</b><span>Drag the slider and see what one test does to your grade.</span></figcaption>
           </figure>
-          <figure role="tabpanel" id="f5" aria-labelledby="t5"><img src="/img/app/graph.jpg" alt="A grade graph over the term, with a line at 93% and a note that the A holds down to 91.9%" width="1146" height="1290" loading="lazy"><figcaption><b>Your grade over the term</b><span>With how far it can drop before the letter changes.</span></figcaption></figure>
-          <figure role="tabpanel" id="f6" aria-labelledby="t6"><img src="/img/app/quick.jpg" alt="New task: typing chem lab fri after school fills in Friday, 3:30 and Chemistry" width="1206" height="480" loading="lazy"><figcaption><b>Add a task how you'd say it</b><span>"Chem lab fri after school" turns into Friday at 3:30, in Chemistry.</span></figcaption></figure>
-          <figure role="tabpanel" id="f7" aria-labelledby="t7"><img src="/img/app/plan.jpg" alt="Plan: a numbered list, Spanish first because it's late, then AP Biology and Chemistry" width="1146" height="1336" loading="lazy"><figcaption><b>Put it in order</b><span>Drag what you're doing first to the top.</span></figcaption></figure>
-          <figure role="tabpanel" id="f8" aria-labelledby="t8"><img src="/img/app/search.jpg" alt="Searching unit finds Unit 1, 2 and 3 slides across classes" width="1146" height="720" loading="lazy"><figcaption><b>Find any file</b><span>Search the materials in every class at once.</span></figcaption></figure>
+          <figure role="tabpanel" id="f5" aria-labelledby="t5"><img class="dk" src="/img/app/graph.jpg" alt="A grade graph over the term, with a line at 93% and a note that the A holds down to 91.9%" width="1146" height="1275" loading="lazy"><img class="lt" src="/img/app/graph-light.jpg" alt="A grade graph over the term, with a line at 93% and a note that the A holds down to 91.9%" width="1146" height="1275" loading="lazy"><figcaption><b>Your grade over the term</b><span>With how far it can drop before the letter changes.</span></figcaption></figure>
+          <figure role="tabpanel" id="f6" aria-labelledby="t6"><img class="dk" src="/img/app/quick.jpg" alt="New task: typing chem lab fri after school fills in Friday, 3:30 and Chemistry" width="1206" height="480" loading="lazy"><img class="lt" src="/img/app/quick-light.jpg" alt="New task: typing chem lab fri after school fills in Friday, 3:30 and Chemistry" width="1206" height="480" loading="lazy"><figcaption><b>Add a task how you'd say it</b><span>"Chem lab fri after school" turns into Friday at 3:30, in Chemistry.</span></figcaption></figure>
+          <figure role="tabpanel" id="f7" aria-labelledby="t7"><img class="dk" src="/img/app/plan.jpg" alt="Plan: a numbered list, Spanish first because it's late, then AP Biology and Chemistry" width="1146" height="1445" loading="lazy"><img class="lt" src="/img/app/plan-light.jpg" alt="Plan: a numbered list, Spanish first because it's late, then AP Biology and Chemistry" width="1146" height="1445" loading="lazy"><figcaption><b>Put it in order</b><span>Drag what you're doing first to the top.</span></figcaption></figure>
+          <figure role="tabpanel" id="f8" aria-labelledby="t8"><img class="dk" src="/img/app/search.jpg" alt="Searching unit finds Unit 1, 2 and 3 slides across classes" width="1146" height="725" loading="lazy"><img class="lt" src="/img/app/search-light.jpg" alt="Searching unit finds Unit 1, 2 and 3 slides across classes" width="1146" height="725" loading="lazy"><figcaption><b>Find any file</b><span>Search the materials in every class at once.</span></figcaption></figure>
           <figure class="demo" role="tabpanel" id="f9" aria-labelledby="t9">
             <div class="archive">
               <div class="books" aria-hidden="true">
@@ -545,17 +580,15 @@
         select(next); next.focus();
       };
     });
-    const get = $('[data-get]'), btn = $('[data-get-btn]'), note = $('[data-get-note]'), ua = navigator.userAgent;
+    // On a computer the button scrolls to the install steps, since the ZIP
+    // needs them anyway; Android gets the APK directly.
+    const btn = $('[data-get-btn]'), ua = navigator.userAgent;
     if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) {
       btn.textContent = 'iPhone app: coming soon'; btn.href = '#install';
-      note.textContent = "It's in testing. The Chrome extension works on your computer today.";
       select($('#tab-iphone'));
     } else if (/Android/.test(ua)) {
       btn.textContent = 'Download for Android'; btn.href = '/download/dewey-android.apk';
-      note.textContent = `Beta ${get.dataset.android} · Android 8.0 or newer · free`;
       select($('#tab-android'));
-    } else if (!/Chrome\//.test(ua) || /Firefox\//.test(ua)) {
-      note.textContent = `Version ${get.dataset.ext} · free · needs Google Chrome`;
     }
   }
 </script>

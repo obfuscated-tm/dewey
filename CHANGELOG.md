@@ -4,6 +4,22 @@ The extension and the MCP server are versioned separately (see [Versioning and r
 
 Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git history. Apart from MCP 1.0.0 (tag `mcp-v1.0.0`), those versions were never tagged, so they're listed by date.
 
+## 2026-11-01 — Android 0.4
+
+Tag: `android-v0.4` (beta, sideloaded APK)
+
+### Android
+- Catches up with the iPhone app again.
+- To Do: a **Plan** view (To do / Later / Done) you can sort by dragging the grip or swiping, aware of the school day. Pull the week strip down for a month calendar.
+- Your own tasks: the floating + opens quick add, which reads things like "chem lab fri after school"; tap a task to edit it.
+- **Student ID**: a barcode card you can show at school. Fill it in from Schoology or scan your card in Settings → Student ID; a launcher shortcut and a button on Classes open it.
+- School day times, and an optional "Dewey" calendar in your phone's Calendar app.
+- Grades: set a goal per class (Goal chip, a line on the graph, and "You need" for what's left). What-if keeps its scores: "Show real" and "Back to what-if" switch between them.
+- The paper-and-ink look; Inbox shows index cards.
+- Refreshes when you come back after 10 minutes. neo-plan changes made offline are saved and sent in order.
+- A different student signing in clears the last one's rows; old rows are pruned after 120 days.
+- The tour covers the month, Plan, new tasks, goals and Student ID.
+
 ## 2026-10-18 — Android 0.3
 
 Tag: `android-v0.3` (beta, sideloaded APK)

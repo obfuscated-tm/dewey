@@ -18,8 +18,9 @@ import androidx.compose.ui.unit.sp
 import com.owenleung.dewey.store.Prefs
 
 /**
- * Dewey's one palette, Dew (the brand teal), with a light and a dark value for
- * every colour (WCAG AA: text ≥ 4.5:1 on every surface; ThemeTest checks).
+ * Dewey's one palette, paper and ink: warm off-white paper, near-black ink, and
+ * the brand teal kept for the one main action on a screen (docs/ios/design/paper-and-ink.md).
+ * A light and a dark value for every colour (WCAG AA: text ≥ 4.5:1 on every surface; ThemeTest checks).
  * Settings → Appearance picks light, dark or the system's. The same values as
  * ios/App/Screens/Shared/Theme.swift's Palette.dew.
  */
@@ -36,8 +37,8 @@ class Palette(light: String, dark: String) {
             "late", "lateSoft", "good", "goodSoft", "tagSoft", "accent")
 
         val dew = Palette(
-            "#EEF6F2 #FFFFFF #CFE3DA #E0EDE7 #0E2A24 #3F5A53 #52685F #A63A0B #FBEDE5 #426E10 #E9F2DC #E1F0E9 #0F6E56",
-            "#0F1A18 #172623 #27403A #1F332E #E1F5EE #A9C7BD #8FB0A5 #FF9466 #3A2219 #B5DB6E #2B3A17 #21352F #5DCAA5",
+            "#F6F4EE #FFFDF8 #E3DED3 #ECE7DC #1B1A17 #5C5950 #6B675D #A63A0B #F8EBE3 #3F6B12 #EAF0DE #ECE8DF #0F6E56",
+            "#121211 #1B1A18 #2C2A27 #252421 #EDEAE2 #A9A59B #9A968C #FF9466 #35221A #B5DB6E #283318 #2A2926 #5DCAA5",
         )
     }
 }
@@ -96,7 +97,8 @@ object Theme {
     /** Settings → Developer only: raw engine JSON. Never in the student-facing UI. */
     val code = TextStyle(fontSize = 12.sp, fontFamily = FontFamily.Monospace)
 
-    object Radius { val tag = 6.dp; val card = 14.dp }
+    /** Every card, sheet, field and button: small corners, like an index card. Checkboxes are circles. */
+    object Radius { val tag = 6.dp; val card = 8.dp }
     object Space { val xs = 4.dp; val s = 8.dp; val m = 12.dp; val l = 16.dp; val xl = 24.dp }
 }
 
@@ -145,7 +147,7 @@ fun colors(dark: Boolean, palette: Palette = Palette.dew): DeweyColors {
         goodSoft = p("goodSoft"),
         tagSoft = p("tagSoft"),
         onAccent = Theme.hex(if (dark) "#101418" else "#FFFFFF"),
-        catalogRule = Theme.hex(if (dark) "#D9706B" else "#C94B4B"),
+        catalogRule = Theme.hex(if (dark) "#D9706B" else "#C24A42"),
         catalogLine = Theme.hex(if (dark) "#2E4258" else "#C9DDF0"),
     )
 }
@@ -160,12 +162,13 @@ fun DeweyTheme(content: @Composable () -> Unit) {
     Prefs.revision.intValue // re-read the appearance when Settings change it
     val dark = when (Theme.appearance) { "light" -> false; "dark" -> true; else -> isSystemInDarkTheme() }
     val c = colors(dark)
+    // Ink for links, switches and the selected tab; teal is kept for the main action (C.accent, used by name).
     val scheme = (if (dark) darkColorScheme() else lightColorScheme()).copy(
-        primary = c.accent, onPrimary = c.onAccent, background = c.background, surface = c.card,
+        primary = c.text, onPrimary = c.background, background = c.background, surface = c.card,
         onSurface = c.text, onBackground = c.text, surfaceVariant = c.tagSoft, onSurfaceVariant = c.secondary,
         outline = c.border, outlineVariant = c.divider, error = c.late, surfaceContainer = c.card,
-        surfaceContainerHigh = c.card, surfaceContainerLow = c.background, secondaryContainer = c.accentSoft,
-        onSecondaryContainer = c.accent,
+        surfaceContainerHigh = c.card, surfaceContainerLow = c.background, secondaryContainer = c.divider,
+        onSecondaryContainer = c.text,
     )
     CompositionLocalProvider(LocalColors provides c) {
         MaterialTheme(colorScheme = scheme, content = content)

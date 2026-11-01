@@ -1,5 +1,8 @@
 package com.owenleung.dewey.ui.classes
 
+import com.owenleung.dewey.ui.tour.coachTarget
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.outlined.Badge
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -77,9 +80,15 @@ import java.util.Date
 @Composable
 fun ClassesScreen() {
     val model = model
+    val nav = nav
     var query by rememberSaveable { mutableStateOf("") }
     ScrollPage(refresh = { runCatching { model.loadCourses() } }, spacing = 14.dp) {
-        ScreenHeader("Classes") { ScreenOptions(SettingsPage.CLASSES) }
+        ScreenHeader("Classes") {
+            IconButton(onClick = { nav.showID = true }, modifier = Modifier.size(44.dp).coachTarget("classes.id")) {
+                Icon(Icons.Outlined.Badge, "Student ID", tint = C.secondary)
+            }
+            ScreenOptions(SettingsPage.CLASSES)
+        }
         SearchField(query) { q ->
             query = q
             if (q.isNotEmpty()) MaterialIndex.build(model)
@@ -135,7 +144,7 @@ fun MaterialLink(sectionId: String, row: MaterialRow, subtitle: String? = null, 
     when (row.kind) {
         "folder" -> LinkRow(Icons.Outlined.Folder, row, subtitle, ">", C.secondary) { nav.push(Route.Materials(sectionId, row.id, row.title, trail)) }
         "assignment" -> if (row.id != null) LinkRow(Icons.Outlined.Description, row, subtitle, ">") {
-            RecentMaterials.add(sectionId, row); nav.push(Route.Assignment(row.id))
+            RecentMaterials.add(sectionId, row); nav.push(Route.Assignment(row.id, sectionId))
         } else LinkRow(Icons.Outlined.Language, row, subtitle, external) { web() }
         "page", "other" -> if (abs != null && isMaterialPage(abs)) LinkRow(if (row.kind == "page") Icons.Outlined.Article else Icons.Outlined.Link, row, subtitle, ">") {
             RecentMaterials.add(sectionId, row); nav.push(Route.MaterialPage(row))

@@ -40,7 +40,8 @@ data class NeoPlanItem(
 
 sealed class NeoPlanError : Exception() {
     data object NoToken : NeoPlanError()
-    data class Refused(val status: Int) : NeoPlanError()
+    /** The status, and neo-plan's `error` word when it sent one ("no_column", "token", …). */
+    data class Refused(val status: Int, val word: String? = null) : NeoPlanError()
     data object Network : NeoPlanError()
 }
 
@@ -63,13 +64,14 @@ object NeoPlanClient {
 
     fun setToken(t: String?) = Secrets.set("neoplanToken", t)
 
-    private suspend fun request(method: String, path: String, body: Map<String, Any?>? = null): String = withContext(Dispatchers.IO) {
+    private suspend fun request(method: String, path: String, body: Map<String, Any?>? = null,
+                                base: String = "api/extension", timeout: Int = 15_000): String = withContext(Dispatchers.IO) {
         val tok = token ?: throw NeoPlanError.NoToken
         val c = try {
-            (URL("$SERVER/api/extension/$path").openConnection() as HttpURLConnection).apply {
+            (URL("$SERVER/$base/$path").openConnection() as HttpURLConnection).apply {
                 requestMethod = method
                 connectTimeout = 15_000
-                readTimeout = 15_000
+                readTimeout = timeout
                 setRequestProperty("Authorization", "Bearer $tok")
                 setRequestProperty("Accept", "application/json")
                 if (body != null) {
@@ -83,7 +85,11 @@ object NeoPlanClient {
         }
         try {
             val status = c.responseCode
-            if (status !in 200..299) throw NeoPlanError.Refused(status)
+            if (status !in 200..299) {
+                val err = runCatching { c.errorStream?.bufferedReader()?.use { it.readText() } }.getOrNull()
+                val word = runCatching { (Json.parseToJsonElement(err!!).jsonObject["error"] as? JsonPrimitive)?.content }.getOrNull()
+                throw NeoPlanError.Refused(status, word)
+            }
             c.inputStream.bufferedReader().use { it.readText() }
         } catch (e: NeoPlanError) {
             throw e
@@ -92,6 +98,28 @@ object NeoPlanClient {
         } finally {
             c.disconnect()
         }
+    }
+
+    /**
+     * Tells neo-plan the student's courses and which work is in which, so it
+     * can file items by course and, for an account that started with no
+     * columns, make a column per course with work (docs/ios/ENGINE.md,
+     * "neo-plan"; api.js `enrich`).
+     */
+    suspend fun enrich(courses: List<com.owenleung.dewey.engine.Course>, items: List<Pair<String, String>>, byHand: Boolean) {
+        // One malformed entry refuses the whole request, so only digit ids go.
+        val digits = Regex("""^\d{1,20}$""")
+        val body = mutableMapOf<String, Any?>(
+            "fetched_at" to Fmt.iso(Date()),
+            "courses" to courses.filter { digits.matches(it.sectionId) }.take(50).map {
+                mapOf("section_id" to it.sectionId, "title" to it.title.take(500), "section_title" to it.sectionTitle.take(500))
+            },
+            "items" to items.filter { digits.matches(it.first) && digits.matches(it.second) }.take(500).map {
+                mapOf("kind" to "assignment", "schoology_id" to it.first, "section_id" to it.second)
+            },
+        )
+        if (byHand) body["by_hand"] = true
+        request("POST", "enrich", body, base = "api/import/schoology", timeout = 45_000)
     }
 
     suspend fun today(): String = request("GET", "today")

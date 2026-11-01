@@ -54,11 +54,11 @@ fun DetailScaffold(
                 TopAppBar(
                     title = { Text(title, style = Theme.headline, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     navigationIcon = {
-                        IconButton(onClick = { nav.pop() }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = C.accent) }
+                        IconButton(onClick = { nav.pop() }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = C.text) }
                     },
                     actions = actions,
                     windowInsets = TopAppBarDefaults.windowInsets,
-                    colors = TopAppBarDefaults.topAppBarColors(containerColor = C.background, titleContentColor = C.text, actionIconContentColor = C.accent),
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = C.background, titleContentColor = C.text, actionIconContentColor = C.text),
                 )
                 topExtra()
             }
@@ -76,13 +76,18 @@ fun ScrollPage(
     refresh: (suspend () -> Unit)? = null,
     horizontal: Dp = 16.dp,
     spacing: Dp = 14.dp,
+    /** The page's scroller, for a screen that scrolls it itself (Plan's grip at an edge). */
+    scroll: androidx.compose.foundation.ScrollState? = null,
+    /** Room under the last row (To Do's + button). */
+    bottom: Dp = 24.dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val scope = rememberCoroutineScope()
     var refreshing by remember { mutableStateOf(false) }
+    val state = scroll ?: rememberScrollState()
     val body: @Composable () -> Unit = {
         Column(
-            Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = horizontal).padding(top = 8.dp, bottom = 24.dp),
+            Modifier.fillMaxSize().verticalScroll(state).padding(horizontal = horizontal).padding(top = 8.dp, bottom = bottom),
             verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(spacing),
             content = content,
         )

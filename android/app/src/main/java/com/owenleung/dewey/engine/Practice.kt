@@ -34,6 +34,8 @@ object Practice {
         submitted.clear()
         // A practice the app was killed in the middle of left its settings behind.
         clearSettings()
+        restoreView()
+        saveView()
         active = true
         Cache.clearPractice()
     }
@@ -43,6 +45,41 @@ object Practice {
         submitted.clear()
         Cache.clearPractice()
         clearSettings()
+        restoreView()
+    }
+
+    // ── How To Do looks ──────────────────────────────────────────────────
+    // Shared with the real app (Prefs). The steps need List by class with the week
+    // strip and Plan as it starts, so practice sets them and puts the student's own
+    // back when it ends (or, after a practice the app was killed in, when the next begins).
+
+    private const val SAVED_VIEW_KEY = "practiceSavedView"
+    private val viewKeys: Map<String, Any> = mapOf(
+        "todoMode" to "list", "todoLayout" to "week", "todoMonth" to false, "planCollapsed" to "done", "planHintClosed" to true,
+    )
+
+    private fun saveView() {
+        val all = Prefs.sp.all
+        // Keys that weren't set are saved as missing, so they go back to their defaults.
+        val saved = viewKeys.keys.associateWith { k -> all[k]?.let { "${if (it is Boolean) "b" else "s"}:$it" } ?: "" }
+        Prefs.set(SAVED_VIEW_KEY, kotlinx.serialization.json.Json.encodeToString(saved))
+        for ((k, v) in viewKeys) Prefs.set(k, v)
+    }
+
+    fun restoreView() {
+        val raw = Prefs.string(SAVED_VIEW_KEY) ?: return
+        val saved = runCatching { kotlinx.serialization.json.Json.decodeFromString<Map<String, String>>(raw) }.getOrNull() ?: emptyMap()
+        val all = Prefs.sp.all
+        for ((k, v) in saved) {
+            // One the student changed during practice (Settings › To Do › View) is theirs now.
+            if (all[k] != viewKeys[k]) continue
+            when {
+                v.isEmpty() -> Prefs.set(k, null)
+                v.startsWith("b:") -> Prefs.set(k, v.removePrefix("b:").toBoolean())
+                else -> Prefs.set(k, v.removePrefix("s:"))
+            }
+        }
+        Prefs.set(SAVED_VIEW_KEY, null)
     }
 
     /** Settings the pretend classes left behind: shelf, hidden in Grades, call numbers. */
@@ -55,7 +92,7 @@ object Practice {
         Prefs.set(CallNumber.KEY, raw)
     }
 
-    // ── The pretend week: three classes, four things due ─────────────────
+    // ── The pretend week: three classes, seven things due ────────────────
 
     data class PCourse(val id: String, val title: String, val section: String)
 
@@ -71,6 +108,9 @@ object Practice {
     const val WORKSHEET = "9502"
     const val QUIZ = "9503"
     const val FLAME_TEST = "9504"
+    /** Plan's steps: two things due tomorrow (reorder one, send one to Later). */
+    const val READING = "9702"
+    const val PROBLEMS = "9701"
     val chem = course("Chem").id
     val english = course("English").id
 
@@ -82,6 +122,9 @@ object Practice {
         Event(WORKSHEET, "Stoichiometry Worksheet", course("Chem"), -1, 8, 30),
         Event(QUIZ, "Unit 2 Quiz", course("Chem"), 3, 9, 40),
         Event("9304", "Essay Draft: The Crucible", course("English"), 2, 23, status = "submitted"),
+        Event(READING, "Reading Notes 3.1", course("AP Bio"), 1, 8, 0),
+        Event(PROBLEMS, "Ch. 4 Practice Problems", course("Chem"), 1, 23),
+        Event("9703", "Vocab Unit 5", course("English"), 5, 23),
     )
 
     /** Today at `hour:minute`, `day` days away. */

@@ -1,5 +1,6 @@
 package com.owenleung.dewey.ui.grades
 
+import com.owenleung.dewey.store.Goal
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -191,7 +192,8 @@ fun WhatIfSheet(itemId: String, sectionId: String?, onClose: () -> Unit) {
     val model = model
     val scope = rememberCoroutineScope()
     val item = sectionId?.let { s -> model.grades[s]?.items?.firstOrNull { it.id == itemId } }
-    val cutoff = sectionId?.let(model::cutoff) ?: 93.0
+    // The class's goal (Course grades' Goal chip).
+    val cutoff = sectionId?.let(model::goal) ?: 93.0
     var score by remember { mutableStateOf("") }
     var result by remember { mutableStateOf<CourseGrade?>(null) }
     var needForA by remember { mutableStateOf<PlanResult?>(null) }
@@ -267,10 +269,12 @@ fun WhatIfSheet(itemId: String, sectionId: String?, onClose: () -> Unit) {
                     }
                 }
                 if (item.earned == null) needForA?.let { n ->
+                    val name = "${Goal.letter(cutoff)} (${Fmt.num(cutoff)}%)"
+                    val reach = (real?.pct ?: 0.0) < cutoff
                     val text = when (n.status) {
-                        "any" -> "Any score here keeps you at ${Fmt.num(cutoff)}% or above."
-                        "out" -> "Even ${Fmt.num(possible)} / ${Fmt.num(possible)} leaves you under ${Fmt.num(cutoff)}%."
-                        "need" -> { val need = minOf(ceil(n.need ?: 0.0), possible); "You need ${Fmt.num(need)} / ${Fmt.num(possible)} (${Fmt.pct(need / possible * 100, 0)}) to stay at ${Fmt.num(cutoff)}%." }
+                        "any" -> if (reach) "Any score here gets you to $name." else "Any score here keeps your $name."
+                        "out" -> "Even ${Fmt.num(possible)} / ${Fmt.num(possible)} leaves you under $name."
+                        "need" -> { val need = minOf(ceil(n.need ?: 0.0), possible); "You need ${Fmt.num(need)} / ${Fmt.num(possible)} (${Fmt.pct(need / possible * 100, 0)}) to ${if (reach) "reach" else "keep"} $name." }
                         else -> ""
                     }
                     if (text.isNotEmpty()) Card(padding = 16.dp) { Text(text, style = Theme.subhead.copy(fontWeight = FontWeight.Medium), color = if (n.status == "out") C.late else C.good) }

@@ -1,5 +1,6 @@
 package com.owenleung.dewey.ui.inbox
 
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -187,16 +188,17 @@ private fun InboxBox(id: String, title: String, shown: MutableMap<String, Int>, 
                 .padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(title, style = Theme.headline, color = C.text)
+            Text(title, style = Theme.callNumber, color = C.text)
             Spacer(Modifier.width(8.dp))
             Text("${all.size}", style = Theme.footnote, color = C.tertiary, modifier = Modifier.weight(1f))
             Icon(if (isFolded) Icons.Outlined.ExpandMore else Icons.Outlined.ExpandLess, null, tint = C.tertiary)
         }
         if (!isFolded) {
-            Divider()
+            // The index card's red rule under its heading.
+            Box(Modifier.padding(horizontal = 14.dp).fillMaxWidth().height(1.5.dp).background(C.catalogRule))
             if (all.isEmpty() && empty != null) EmptyRow(empty)
             all.take(limit).forEachIndexed { i, row ->
-                if (i > 0) Divider()
+                if (i > 0) Box(Modifier.padding(horizontal = 14.dp).fillMaxWidth().height(1.dp).background(C.catalogLine))
                 when (row) {
                     is InboxRow.Thread -> ThreadRow(row.t, inbox.isNew(row.t))
                     is InboxRow.Notice -> NoticeRow(row.n)
@@ -209,8 +211,8 @@ private fun InboxBox(id: String, title: String, shown: MutableMap<String, Int>, 
                     Modifier.fillMaxWidth().heightIn(min = 44.dp).clickable(enabled = !busy) { showOlder() },
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
                 ) {
-                    if (busy) { CircularProgressIndicator(Modifier.size(16.dp), color = C.accent, strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)) }
-                    Text(if (busy) "Loading…" else "Show older", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.accent)
+                    if (busy) { CircularProgressIndicator(Modifier.size(16.dp), color = C.secondary, strokeWidth = 2.dp); Spacer(Modifier.width(8.dp)) }
+                    Text(if (busy) "Loading…" else "Show older", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.secondary)
                 }
             }
         }
@@ -244,7 +246,7 @@ private fun ThreadRow(t: MessageThread, isNew: Boolean) {
 private fun NoticeRow(n: Notice) {
     val nav = nav
     Row(Modifier.fillMaxWidth().padding(14.dp), verticalAlignment = Alignment.Top) {
-        Icon(if (n.type == "grade") Icons.Outlined.Verified else Icons.Outlined.NoteAdd, null, tint = if (n.type == "grade") C.good else C.accent,
+        Icon(if (n.type == "grade") Icons.Outlined.Verified else Icons.Outlined.NoteAdd, null, tint = if (n.type == "grade") C.good else C.secondary,
             modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -254,7 +256,7 @@ private fun NoticeRow(n: Notice) {
                 n.time?.let { Text(Fmt.ago(it), style = Theme.footnote, color = C.tertiary) }
             }
             for (item in n.items.take(4)) {
-                Text(item.title, style = Theme.subhead, color = C.accent, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                Text(item.title, style = Theme.subhead.copy(textDecoration = androidx.compose.ui.text.style.TextDecoration.Underline), color = C.text, maxLines = 2, overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.clickable {
                         val route = WebConfig.nativeRoute(item.url)
                         // Quizzes and everything else open in Schoology, by the student's tap.
@@ -275,7 +277,7 @@ private fun PostRow(p: GroupPost) {
     var open by remember { mutableStateOf(false) }
     Row(Modifier.fillMaxWidth().clickable(onClickLabel = if (open) "Show less" else "Show the whole update") { open = !open }.padding(14.dp),
         verticalAlignment = Alignment.Top) {
-        Icon(Icons.Outlined.Campaign, null, tint = C.accent, modifier = Modifier.size(20.dp))
+        Icon(Icons.Outlined.Campaign, null, tint = C.secondary, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

@@ -56,9 +56,11 @@ class RefreshWorker(ctx: Context, params: WorkerParameters) : CoroutineWorker(ct
         val t0 = System.currentTimeMillis()
         m.boot()
         if (m.session == AppModel.Session.SIGNED_IN) {
+            // The app only went to the background: this is its own model (one per process),
+            // so there's no second engine racing it. Stops early when Android says time is up.
             m.refreshTodo()
-            m.refreshSomeGrades()
-            m.inbox.refresh(m, notify = true)
+            if (!isStopped) m.refreshSomeGrades()
+            if (!isStopped) m.inbox.refresh(m, notify = true)
         }
         WidgetBridge.publishNow(m)
         android.util.Log.d("DeweyRefresh", "background refresh ${System.currentTimeMillis() - t0} ms, ${m.session}")

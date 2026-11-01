@@ -1,5 +1,11 @@
 package com.owenleung.dewey.ui.grades
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.draw.clip
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.KeyboardArrowDown
+import com.owenleung.dewey.store.Goal
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -118,17 +124,17 @@ fun CourseGradesScreen(sectionId: String) {
     val real = model.grades[sectionId]
     val shown = if (whatIfOn) (preview ?: real) else real
     val cutoff = model.cutoff(sectionId)
+    val goal = model.goal(sectionId)
     fun possibleOf(it: CourseGrade.Item) = it.possible ?: outOf[it.id]?.toDoubleOrNull()?.takeIf { p -> p > 0 }
     val changeCount = (real?.items ?: emptyList()).count { whatIf[it.id]?.toDoubleOrNull() != null && possibleOf(it) != null } +
         dropped.size + extras.count { it.earned.toDoubleOrNull() != null }
 
-    fun recompute() {
-        val rows = model.gradeRows(sectionId) ?: return
-        val g = real ?: return
+    /** The what-if scores as grademath opts: typed scores, made-up items, drops. */
+    fun scenario(): Scenario {
         val w = HashMap<String, Map<String, Double>>()
         for ((id, s) in whatIf) {
             val v = s.toDoubleOrNull() ?: continue
-            val it = g.items.firstOrNull { it.id == id } ?: continue
+            val it = real?.items?.firstOrNull { it.id == id } ?: continue
             val p = possibleOf(it) ?: continue
             w[id] = mapOf("earned" to v, "possible" to p)
         }
@@ -136,14 +142,20 @@ fun CourseGradesScreen(sectionId: String) {
             val e = x.earned.toDoubleOrNull(); val p = x.possible.toDoubleOrNull()
             if (e == null || p == null || p <= 0) null else mapOf<String, Any>("category" to x.category, "earned" to e, "possible" to p)
         }
+        return Scenario(w, extra, dropped.toList())
+    }
+    fun recompute() {
+        val rows = model.gradeRows(sectionId) ?: return
+        if (real == null) return
+        val sc = scenario()
         val mine = ++gen
-        val drop = dropped.toList()
         scope.launch {
-            val r = runCatching { model.summarize(rows, w, extra, drop) }.getOrNull()
+            val r = runCatching { model.summarize(rows, sc.whatIf, sc.extra, sc.drop) }.getOrNull()
             if (mine == gen) preview = r
         }
     }
-    fun clearWhatIf() { whatIf.clear(); outOf.clear(); dropped.clear(); extras.clear(); preview = null }
+    /** Reset clears the what-if scores; "Show real" only hides them. */
+    fun clearWhatIf() { whatIf.clear(); outOf.clear(); dropped.clear(); extras.clear(); preview = null; gen++ }
 
     LaunchedEffect(sectionId) {
         model.loadGrades(sectionId)
@@ -152,7 +164,6 @@ fun CourseGradesScreen(sectionId: String) {
         newIds += fresh
         model.markGradesSeen(fresh)
     }
-    DisposableEffect(Unit) { onDispose { clearWhatIf() } }
     // The tour waits for a typed score.
     LaunchedEffect(changeCount) { if (model.practice && changeCount > 0) Coach.note("whatif") }
 
@@ -160,21 +171,21 @@ fun CourseGradesScreen(sectionId: String) {
     DetailScaffold(
         title = course?.shortTitle ?: "Grades",
         actions = {
-            TextButton(onClick = { whatIfOn = !whatIfOn; if (!whatIfOn) clearWhatIf() }) {
-                Text(if (whatIfOn) "Done" else "What-if", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.accent)
+            TextButton(onClick = { whatIfOn = !whatIfOn }) {
+                Text(if (whatIfOn) "Show real" else "What-if", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text)
             }
         },
         topExtra = { if (whatIfOn) Box(Modifier.coachTarget("grades.whatifbar")) { WhatIfBar(real, if (changeCount > 0) preview else null, changeCount) { clearWhatIf() } } },
     ) { pad ->
         ScrollPage(pad, refresh = { model.loadGrades(sectionId, force = true) }) {
-            if (!whatIfOn) Summary(sectionId, real) { whatIfOn = true }
-            if (real != null) GradeHistoryChart(real.history, cutoff, if (whatIfOn && changeCount > 0) preview?.pct else null)
+            if (!whatIfOn) Summary(sectionId, real, changeCount) { whatIfOn = true }
+            if (real != null) GradeHistoryChart(real.history, goal, if (whatIfOn && changeCount > 0) preview?.pct else null)
             if (shown != null) {
                 if (shown.categories.size > 1 && !whatIfOn) {
                     val allShut = shown.categories.none { it.title in expanded }
                     Row(Modifier.padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                         Text("Categories", style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.secondary, modifier = Modifier.weight(1f))
-                        Text(if (allShut) "Expand all" else "Collapse all", style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.accent,
+                        Text(if (allShut) "Expand all" else "Collapse all", style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.secondary,
                             modifier = Modifier.clickable { setExpanded(if (allShut) shown.categories.map { it.title }.toSet() else emptySet()) }.padding(4.dp))
                     }
                 }
@@ -213,7 +224,7 @@ fun CourseGradesScreen(sectionId: String) {
                         }
                     }
                 }
-                if (whatIfOn && shown.categories.isNotEmpty()) Planner(sectionId, real, cutoff)
+                if (whatIfOn && shown.categories.isNotEmpty()) Planner(sectionId, real, preview, goal, gen, changeCount, ::scenario)
                 if (shown.categories.isEmpty()) EmptyState("No grades yet", icon = Icons.Outlined.GridOn)
             } else {
                 val e = model.gradeErrors[sectionId]
@@ -226,7 +237,7 @@ fun CourseGradesScreen(sectionId: String) {
 }
 
 @Composable
-private fun Summary(sectionId: String, real: CourseGrade?, startWhatIf: () -> Unit) {
+private fun Summary(sectionId: String, real: CourseGrade?, changeCount: Int, startWhatIf: () -> Unit) {
     val model = model
     val course = model.course(sectionId)
     Card(padding = 16.dp) {
@@ -241,7 +252,15 @@ private fun Summary(sectionId: String, real: CourseGrade?, startWhatIf: () -> Un
                     Text(Fmt.pct(real?.pct, 2), style = Theme.title.copy(fontWeight = FontWeight.Medium), color = C.text, modifier = Modifier.padding(bottom = 4.dp))
                 }
                 if (real != null) Text(if (real.mode == "weighted") "Weighted by category" else "Total points", style = Theme.footnote, color = C.tertiary)
-                if (real?.pct != null) PillButton("Try what-if scores", modifier = Modifier.padding(top = 4.dp).coachTarget("grades.whatif"), onClick = startWhatIf)
+                if (real?.pct != null) {
+                    val goal = model.goal(sectionId)
+                    Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        GoalChip(sectionId, Modifier.coachTarget("grades.goal"))
+                        Text(if (real.pct >= goal - 0.005) "At your goal" else String.format(java.util.Locale.US, "%.2f to go", goal - real.pct),
+                            style = Theme.caption, color = C.secondary)
+                    }
+                }
+                if (real?.pct != null) PillButton(if (changeCount > 0) "Back to what-if · $changeCount change${if (changeCount == 1) "" else "s"}" else "Try what-if scores", modifier = Modifier.padding(top = 4.dp).coachTarget("grades.whatif"), onClick = startWhatIf)
             }
             model.gradesAsOf[sectionId]?.let { Text(Fmt.ago(it), style = Theme.caption, color = C.tertiary) }
         }
@@ -438,9 +457,33 @@ private fun ExtraRow(x: Extra, onChange: (Extra) -> Unit, onDelete: () -> Unit) 
     }
 }
 
-/** Plan an upcoming test (needFor). */
+/** The what-if scores as grademath opts. */
+private class Scenario(val whatIf: Map<String, Map<String, Double>>, val extra: List<Map<String, Any>>, val drop: List<String>)
+
+/** The grade to aim for: a small chip, saved per class. */
 @Composable
-private fun Planner(sectionId: String, real: CourseGrade?, cutoff: Double) {
+private fun GoalChip(sectionId: String, modifier: Modifier = Modifier) {
+    val model = model
+    val goal = model.goal(sectionId)
+    var open by remember { mutableStateOf(false) }
+    Box(modifier) {
+        Row(Modifier.clip(RoundedCornerShape(50)).background(C.accentSoft).clickable { open = true }
+            .semantics(mergeDescendants = true) { contentDescription = "Goal ${Goal.letter(goal)}, ${Fmt.num(goal)} percent. Changes the grade you're aiming for in this class" }
+            .padding(horizontal = 8.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text("Goal ${Goal.letter(goal)}", style = Theme.caption.copy(fontWeight = FontWeight.SemiBold), color = C.accent)
+            Icon(Icons.Outlined.KeyboardArrowDown, null, Modifier.size(14.dp), tint = C.accent)
+        }
+        DropdownMenu(open, { open = false }) {
+            for ((l, pct) in Goal.scale) DropdownMenuItem(text = { Text("$l  ·  ${Fmt.num(pct)}%") },
+                trailingIcon = { if (abs(pct - goal) < 1e-9) Icon(Icons.Outlined.Check, null) },
+                onClick = { open = false; model.setGoal(sectionId, pct) })
+        }
+    }
+}
+
+/** Plan an upcoming test (needFor), with the what-if scores on screen and the goal. */
+@Composable
+private fun Planner(sectionId: String, real: CourseGrade?, preview: CourseGrade?, goal: Double, gen: Int, changeCount: Int, scenario: () -> Scenario) {
     val model = model
     val scope = rememberCoroutineScope()
     val cats = real?.categories?.map { it.title } ?: emptyList()
@@ -449,14 +492,27 @@ private fun Planner(sectionId: String, real: CourseGrade?, cutoff: Double) {
     val category = picked.takeIf { it in cats } ?: cats.firstOrNull { it.contains("test", true) } ?: cats.firstOrNull() ?: ""
     var points by remember { mutableStateOf("100") }
     var plan by remember { mutableStateOf<PlanResult?>(null) }
+    var planGen by remember { mutableIntStateOf(0) }
     var menu by remember { mutableStateOf(false) }
+    fun run() {
+        val sc = scenario(); val pts = points.toDoubleOrNull() ?: 0.0; val mine = ++planGen
+        scope.launch {
+            val r = model.plan(sectionId, category, pts, goal, sc.whatIf, sc.extra, sc.drop)
+            if (mine == planGen) plan = r
+        }
+    }
+    // An answer on screen follows the scores and the goal; none appears until "Work it out".
+    LaunchedEffect(gen, goal) { if (plan != null) run() }
     Card(padding = 16.dp) {
-        Text("Plan an upcoming test", style = Theme.headline, color = C.text)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Plan an upcoming test", style = Theme.headline, color = C.text, modifier = Modifier.weight(1f))
+            GoalChip(sectionId)
+        }
         Spacer(Modifier.height(10.dp))
         Box {
             Row(Modifier.clickable { menu = true }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Category: ", style = Theme.subhead, color = C.secondary)
-                Text(category, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.accent)
+                Text(category, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text)
             }
             DropdownMenu(menu, { menu = false }) { for (c in cats) DropdownMenuItem(text = { Text(c) }, onClick = { picked = c; menu = false }) }
         }
@@ -464,18 +520,21 @@ private fun Planner(sectionId: String, real: CourseGrade?, cutoff: Double) {
             Text("Worth ", style = Theme.subhead, color = C.text)
             ScoreBox(points, "100", false, 70) { points = it }
             Text(" points", style = Theme.subhead, color = C.text, modifier = Modifier.weight(1f))
-            PillButton("Work it out", filled = true) { scope.launch { plan = model.plan(sectionId, category, points.toDoubleOrNull() ?: 0.0, cutoff) } }
+            PillButton("Work it out", filled = true) { run() }
         }
         plan?.let { p ->
             val pts = points.toDoubleOrNull() ?: 0.0
+            val name = "${Goal.letter(goal)} (${Fmt.num(goal)}%)"
+            val reach = (preview?.pct ?: real?.pct ?: 0.0) < goal
             val text = when (p.status) {
-                "any" -> "Even a zero keeps you at ${Fmt.num(cutoff)}%."
-                "out" -> "A full score still leaves you under ${Fmt.num(cutoff)}%."
-                "need" -> { val need = ceil(p.need ?: 0.0); "You need ${Fmt.num(need)} / ${Fmt.num(pts)} (${Fmt.pct(if (pts > 0) need / pts * 100 else null, 0)}) to stay at ${Fmt.num(cutoff)}%." }
+                "any" -> if (reach) "Even a zero gets you to $name." else "Even a zero keeps your $name."
+                "out" -> "A full score still leaves you under $name."
+                "need" -> { val need = ceil(p.need ?: 0.0); "You need ${Fmt.num(need)} / ${Fmt.num(pts)} (${Fmt.pct(if (pts > 0) need / pts * 100 else null, 0)}) to ${if (reach) "reach" else "keep"} $name." }
                 else -> "Pick a category with grades."
             }
             Spacer(Modifier.height(8.dp))
             Text(text, style = Theme.subhead.copy(fontWeight = FontWeight.Medium), color = if (p.status == "out") C.late else C.good)
+            if (changeCount > 0) Text("Counts your what-if scores above.", style = Theme.caption, color = C.secondary)
         }
     }
 }

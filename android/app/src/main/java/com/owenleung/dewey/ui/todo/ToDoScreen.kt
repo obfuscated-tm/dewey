@@ -57,6 +57,25 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.Canvas
 import com.owenleung.dewey.AppModel
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ArrowUpward
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.unit.sp
+import com.owenleung.dewey.ui.SubmitButton
+import com.owenleung.dewey.ui.TaskTarget
+import com.owenleung.dewey.ui.TurnInButton
+import java.time.YearMonth
 import com.owenleung.dewey.engine.Engine
 import com.owenleung.dewey.neoplan.NeoPlanClient
 import com.owenleung.dewey.store.DayFilter
@@ -130,30 +149,58 @@ fun setFromRow(m: AppModel, it: ItemState, p: AppModel.Progress) {
 @Composable
 fun ToDoScreen() {
     val model = model
+    val nav = nav
     Prefs.revision.intValue
     val layout = ToDoLayout.current
-    var filter by remember(layout) { mutableStateOf<DayFilter?>(null) }
+    val mode = ToDoMode.current
+    var filter by remember(layout, mode) { mutableStateOf<DayFilter?>(null) }
     var showOlder by rememberSaveable { mutableStateOf(false) }
+    // The week strip opened up to a month (MonthGrid), and the month it shows.
+    val showMonth = Prefs.bool(MONTH_KEY)
+    var shownMonth by remember { mutableStateOf(YearMonth.now(Fmt.zone)) }
+    var monthForward by remember { mutableStateOf(true) }
+    val scroll = rememberScrollState()
     val items = model.todoItems()
     val now = Date()
     val big = LocalDensity.current.fontScale >= 1.6f
+    // Leaving Plan (another tab, or List) lets work finished there go to Done.
+    DisposableEffect(mode) { onDispose { model.planKeep.clear() } }
 
-    ScrollPage(refresh = { model.refreshTodo() }, spacing = 12.dp) {
+    Box(Modifier.fillMaxSize()) {
+    ScrollPage(refresh = { model.refreshTodo(quick = true) }, spacing = 12.dp, scroll = scroll, bottom = 96.dp) {
         // Header: date, title, ripple progress, gear, week strip.
         val open = items.filter { !model.isFinished(it) }
         val today = items.filter { TodoLogic.bucket(it.due, now) == TodoLogic.Bucket.TODAY }
-        val ripple: (@Composable () -> Unit)? = if (today.isEmpty()) null else { { RippleProgress(today.count { model.isFinished(it) }, today.size) } }
-        ScreenHeader("To Do", kicker = Fmt.header(now)) {
+        // Plan has its own Done section and count; two different "done today" counts would read as a mistake.
+        val ripple: (@Composable () -> Unit)? = if (today.isEmpty() || mode == ToDoMode.PLAN) null else { { RippleProgress(today.count { model.isFinished(it) }, today.size) } }
+        ScreenHeader("To Do", kicker = Fmt.header(now), titleView = { ModeTitles(mode) }) {
             if (!big && ripple != null) Box(Modifier.padding(bottom = Theme.Space.xs, end = Theme.Space.xs)) { ripple() }
             ScreenOptions(SettingsPage.TODO)
         }
         if (big && ripple != null) Box(Modifier.padding(horizontal = Theme.Space.xs)) { ripple() }
         // Late, today and the next six days, a dot per item still to do; tap one to show only it.
-        if (layout == ToDoLayout.WEEK) WeekStrip(open, now, filter) { filter = it }
+        // Pull it down (anywhere on it, or its chevron) for the month; slide the month sideways.
+        if (mode == ToDoMode.LIST && layout == ToDoLayout.WEEK) {
+            CalendarPull(showMonth, set = { on ->
+                if (on != showMonth) {
+                    if (on) shownMonth = YearMonth.now(Fmt.zone)
+                    Prefs.set(MONTH_KEY, on)
+                    filter = null
+                }
+            }, swipe = { n -> monthForward = n > 0; shownMonth = shownMonth.plusMonths(n.toLong()) },
+                // The strip and its chevron: the tour's month step points here.
+                modifier = Modifier.coachTarget("todo.calendar")) {
+                AnimatedContent(showMonth, transitionSpec = { fadeIn() togetherWith fadeOut() }, label = "calendar") { m ->
+                    if (m) Box(Modifier.coachTarget("todo.month")) {
+                        MonthGrid(open, now, filter, { filter = it }, shownMonth, monthForward) { n -> monthForward = n > 0; shownMonth = shownMonth.plusMonths(n.toLong()) }
+                    } else WeekStrip(open, now, filter) { filter = it }
+                }
+            }
+        }
         filter?.let { f ->
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(filterTitle(f, now), style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.secondary, modifier = Modifier.weight(1f))
-                Text("Show all", style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.accent,
+                Text(filterTitle(f, now), style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.secondary, modifier = Modifier.weight(1f), maxLines = 1)
+                Text("Show all", style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.text,
                     modifier = Modifier.clickable { filter = null }.padding(4.dp))
             }
         }
@@ -169,6 +216,10 @@ fun ToDoScreen() {
         if (model.todoAsOf == null && items.isEmpty()) {
             val e = model.todoError
             if (e != null) ErrorState(e, retry = { model.scope.launch { model.refreshTodo() } }) else SkeletonRows()
+            return@ScrollPage
+        }
+        if (mode == ToDoMode.PLAN) {
+            PlanContent(now, scroll) { nav.task = TaskTarget() }
             return@ScrollPage
         }
         val filtered = items.filter { filter == null || (!model.isFinished(it) && filter!!.matches(it, now)) }
@@ -201,6 +252,39 @@ fun ToDoScreen() {
             }
         }
     }
+    // New task: round, above the tab bar, on both List and Plan, in ink.
+    Box(Modifier.align(Alignment.BottomEnd).padding(end = Theme.Space.l, bottom = Theme.Space.l).coachTarget("todo.add")
+        .shadow(6.dp, CircleShape).size(56.dp).clip(CircleShape).background(C.text)
+        .clickable(role = Role.Button) { nav.task = TaskTarget() }.semantics { contentDescription = "New task" },
+        contentAlignment = Alignment.Center) {
+        Icon(Icons.Outlined.Add, null, tint = C.background, modifier = Modifier.size(28.dp))
+    }
+    }
+}
+
+private const val MONTH_KEY = "todoMonth"
+
+/**
+ * The title is the To Do / Plan switch, like two headings on an index card: the view
+ * you're on large, in ink, with the red rule under it; the other beside it, smaller and
+ * grey. Tap it to swap.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ModeTitles(mode: ToDoMode) {
+    val other = if (mode == ToDoMode.LIST) ToDoMode.PLAN else ToDoMode.LIST
+    val rule = C.catalogRule
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(Theme.Space.l), verticalArrangement = Arrangement.Bottom) {
+        Text(if (mode == ToDoMode.LIST) "To Do" else "Plan", style = Theme.display, color = C.text, maxLines = 1,
+            modifier = Modifier.alignByBaseline().semantics { heading() }
+                .drawBehind { drawLine(rule, Offset(0f, size.height), Offset(size.width, size.height), 2.dp.toPx()) }
+                .padding(bottom = Theme.Space.xs))
+        Text(if (other == ToDoMode.PLAN) "Plan" else "To Do", style = Theme.displaySmall, color = C.tertiary, maxLines = 1,
+            modifier = Modifier.alignByBaseline().coachTarget("todo.modeChip")
+                .clickable(role = Role.Button) { Prefs.set(ToDoMode.KEY, other.raw) }
+                .semantics { contentDescription = if (other == ToDoMode.PLAN) "Switch to Plan" else "Switch to To Do list" }
+                .padding(bottom = Theme.Space.xs))
+    }
 }
 
 /** A card's rows on pale blue ruled lines, with the status tip under the row it belongs to. */
@@ -224,18 +308,20 @@ private fun RowList(items: List<ItemState>, now: Date, layout: ToDoLayout) {
 private fun filterTitle(f: DayFilter, now: Date) = when (f) {
     DayFilter.Late -> "Late"
     is DayFilter.Day -> when (f.k) { 0 -> "Today"; 1 -> "Tomorrow"; else -> Fmt.header(Fmt.addDays(Fmt.startOfDay(now), f.k)) }
+    is DayFilter.Span -> Date(f.start).let { "${Fmt.dayShort(it)} and ${Fmt.dayShort(Fmt.addDays(it, 1))}" }
 }
 
 /** `sectionId` is set for a class's card (Week); Urgent first's sections have none. */
 private data class Group(val key: String, val title: String, val items: List<ItemState>, val sectionId: String? = null)
 
 private fun grouped(m: AppModel, items: List<ItemState>): List<Group> {
-    val bySection = items.groupBy { it.sectionId ?: "" }.toMutableMap()
+    val bySection = items.groupBy { it.sectionId ?: if (it.mine) "mine" else "" }.toMutableMap()
     val out = mutableListOf<Group>()
     for (c in m.courses) {
         val list = bySection.remove(c.sectionId)
         if (!list.isNullOrEmpty()) out += Group(c.sectionId, c.shortTitle, sortItems(m, list), c.sectionId)
     }
+    bySection.remove("mine")?.takeIf { it.isNotEmpty() }?.let { out += Group("mine", "My tasks", sortItems(m, it)) }
     val rest = bySection.values.flatten()
     if (rest.isNotEmpty()) out += Group("other", "Other", sortItems(m, rest))
     return out
@@ -254,9 +340,12 @@ private fun urgentGroups(m: AppModel, items: List<ItemState>, now: Date): List<G
     return out
 }
 
-/** Unfinished first, then by due date (overdue oldest first, upcoming soonest first). */
+/**
+ * Unfinished first, then done but not handed in (it may still need turning in),
+ * then turned in or submitted; each by due date (overdue oldest first, upcoming soonest first).
+ */
 private fun sortItems(m: AppModel, items: List<ItemState>) =
-    items.sortedWith(compareBy<ItemState> { m.isFinished(it) }.thenBy { it.dueAt ?: Long.MAX_VALUE })
+    items.sortedWith(compareBy<ItemState> { if (!m.isFinished(it)) 0 else if (it.turnedIn || it.submitted) 2 else 1 }.thenBy { it.dueAt ?: Long.MAX_VALUE })
 
 /**
  * The top of a catalog card: the class's call number in its colour (none when Dewey
@@ -287,10 +376,12 @@ private fun CardHeading(g: Group, now: Date, layout: ToDoLayout) {
             if (number != null) Text(number, style = Theme.callNumber, color = color,
                 modifier = Modifier.semantics { contentDescription = "Call number $number" })
             Text(g.title, style = Theme.headline, color = C.text, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-            if (dueToday) Text("Due today", style = Theme.caption.copy(fontWeight = FontWeight.SemiBold), color = C.accent,
-                modifier = Modifier.clip(CircleShape).background(C.accentSoft).padding(horizontal = 7.dp, vertical = 2.dp))
+            // A rubber stamp, a little crooked, in the rule's red.
+            if (dueToday) Text("DUE TODAY", style = Theme.caption.copy(fontWeight = FontWeight.Black, letterSpacing = 1.sp), color = rule,
+                modifier = Modifier.rotate(-4f).border(1.5.dp, rule, RoundedCornerShape(Theme.Radius.tag / 2)).padding(horizontal = 5.dp, vertical = 1.dp)
+                    .semantics { contentDescription = "Due today" })
             Spacer(Modifier.weight(1f))
-            val period = course?.periodLabel?.takeIf { it.length <= 3 }
+            val period = course?.periodLabel?.takeIf { it.length in 1..3 }
             Text(listOfNotNull(period, "${open.size} open").joinToString(" · "), style = Theme.footnote, color = C.secondary, maxLines = 1)
         }
         if (course != null) CallNumberMenu(course, menu) { menu = false }
@@ -299,8 +390,9 @@ private fun CardHeading(g: Group, now: Date, layout: ToDoLayout) {
 
 // ── One row ──────────────────────────────────────────────────────────────
 
+/** `inPlan`: a Plan row, whose hold starts a drag (no menu); `beforeSet` runs before a mark from the row (Plan keeps the row in place). */
 @Composable
-fun TodoRowItem(item: ItemState, now: Date, course: String? = null) {
+fun TodoRowItem(item: ItemState, now: Date, course: String? = null, inPlan: Boolean = false, beforeSet: () -> Unit = {}) {
     // ItemState is mutable and the same instance: read the revision so a mark redraws this.
     model.revision.intValue
     val model = model
@@ -315,7 +407,9 @@ fun TodoRowItem(item: ItemState, now: Date, course: String? = null) {
         // matches it. Not IntrinsicSize.Min: that asks the weighted title for its height first and gets a huge one.
         Box(
             Modifier.fillMaxWidth().coachTarget("todo.row.${item.schoologyId}")
-                .combinedClickable(onClick = { nav.push(Route.Assignment(item.schoologyId)) }, onLongClick = { menu = true })
+                .then(if (inPlan) Modifier.clickable(onClickLabel = if (item.mine) "Edit your task" else "Open the assignment") { nav.open(item) }
+                      else Modifier.combinedClickable(onClick = { nav.open(item) }, onLongClick = { menu = true },
+                          onClickLabel = if (item.mine) "Edit your task" else "Open the assignment"))
                 .padding(start = 12.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
         ) {
             Column(Modifier.matchParentSize(), horizontalAlignment = Alignment.Start) {
@@ -325,6 +419,7 @@ fun TodoRowItem(item: ItemState, now: Date, course: String? = null) {
                         .clip(CircleShape).clickable(role = Role.Checkbox) {
                         // One tap: to do ↔ done (a turned-in row goes back to done), like the extension.
                         haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        beforeSet()
                         setFromRow(model, item, if (progress == AppModel.Progress.TODO) AppModel.Progress.DONE else if (progress == AppModel.Progress.DONE) AppModel.Progress.TODO else AppModel.Progress.DONE)
                     }.semantics { contentDescription = "Status: ${if (item.submitted) "Submitted on Schoology" else label(item, progress)}" },
                     contentAlignment = Alignment.Center,
@@ -340,7 +435,7 @@ fun TodoRowItem(item: ItemState, now: Date, course: String? = null) {
                 // The one-tap action (Submit / Turn in / Undo) sits at the right end of the due line.
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     DueText(item, now, Modifier.weight(1f))
-                    RowAction(item, submitUrl)
+                    RowAction(item, submitUrl, beforeSet)
                 }
                 statusNote(item)?.let { (text, color, strong) ->
                     Text(text, style = Theme.footnote.copy(fontWeight = if (strong) FontWeight.Bold else FontWeight.Medium), color = color)
@@ -357,12 +452,17 @@ fun TodoRowItem(item: ItemState, now: Date, course: String? = null) {
                 )
             }
             HorizontalDivider()
-            if (item.labUrl != null) DropdownMenuItem(text = { Text("Lab site ↗") }, onClick = { menu = false; nav.openSheet(SheetTarget(item.labUrl!!)) })
-            DropdownMenuItem(text = { Text("Open in Schoology ↗") }, onClick = {
-                menu = false
-                nav.openSheet(SheetTarget(Engine.ORIGIN + (item.url ?: "/assignment/${item.schoologyId}"), item.schoologyId))
-            })
-            if (!item.inSchoology) DropdownMenuItem(text = { Text("Remove from my list", color = C.late) }, onClick = { menu = false; model.dismiss(item) })
+            if (item.mine) {
+                DropdownMenuItem(text = { Text("Edit task") }, onClick = { menu = false; nav.open(item) })
+                DropdownMenuItem(text = { Text("Delete task", color = C.late) }, onClick = { menu = false; model.deleteTask(item) })
+            } else {
+                if (item.labUrl != null) DropdownMenuItem(text = { Text("Lab site ↗") }, onClick = { menu = false; nav.openSheet(SheetTarget(item.labUrl!!)) })
+                DropdownMenuItem(text = { Text("Open in Schoology ↗") }, onClick = {
+                    menu = false
+                    nav.openSheet(SheetTarget(Engine.ORIGIN + (item.url ?: "/assignment/${item.schoologyId}"), item.schoologyId))
+                })
+            }
+            if (!item.inSchoology && !item.mine) DropdownMenuItem(text = { Text("Remove from my list", color = C.late) }, onClick = { menu = false; model.dismiss(item) })
         }
     }
 }
@@ -371,17 +471,18 @@ private fun label(item: ItemState, p: AppModel.Progress) =
     if (item.isExam && p != AppModel.Progress.TURNED_IN) (if (p == AppModel.Progress.DONE) "Studied" else "Not studied") else p.label
 
 @Composable
-private fun RowAction(item: ItemState, submitUrl: String) {
+private fun RowAction(item: ItemState, submitUrl: String, beforeSet: () -> Unit) {
     // ItemState is mutable and the same instance: read the revision so a mark redraws this.
     model.revision.intValue
     val model = model
     val nav = nav
     val m = Modifier.coachTarget("todo.action.${item.schoologyId}")
     when {
+        item.mine && item.type == ItemType.TASK -> {}
         item.submitted -> {}
         item.turnedIn -> PillButton("Undo", color = C.secondary, modifier = m) { model.setProgress(item, AppModel.Progress.DONE) }
-        item.hasDropbox -> PillButton("Submit", external = true, modifier = m) { nav.openSheet(SheetTarget(submitUrl, item.schoologyId)) }
-        !item.isExam -> PillButton("Turn in", color = C.good, modifier = m) { setFromRow(model, item, AppModel.Progress.TURNED_IN) }
+        item.hasDropbox -> SubmitButton(m) { beforeSet(); nav.openSheet(SheetTarget(submitUrl, item.schoologyId)) }
+        !item.isExam -> TurnInButton(m) { beforeSet(); setFromRow(model, item, AppModel.Progress.TURNED_IN) }
     }
 }
 
@@ -413,18 +514,20 @@ private fun DueText(item: ItemState, now: Date, modifier: Modifier) {
 @Composable
 private fun statusNote(item: ItemState): Triple<String, Color, Boolean>? {
     if (item.submitted) return Triple("Submitted on Schoology${if (item.statusLate == true) " · late" else ""}", C.good, true)
-    if (item.turnedIn) return Triple("Turned in · not on Schoology", C.good, true)
+    if (item.turnedIn) return Triple(if (item.mine) "Turned in" else "Turned in · not on Schoology", C.good, true)
+    if (item.mine) return item.notes?.let { Triple(it, C.secondary, false) }
     if (item.isExam) return null
     if (item.external) return Triple(if (item.done) "Done · check it in Schoology" else "Google Assignment · turn in on Schoology",
-        if (item.done) C.accent else C.secondary, false)
-    if (item.done) return Triple(if (item.hasDropbox) "Done · not submitted yet" else "Done", C.accent, false)
+        if (item.done) C.accent else C.secondary, item.done)
+    if (item.done) return Triple(if (item.hasDropbox) "Done · not submitted yet" else "Done", C.accent, true)
     if (!item.inSchoology) return Triple("Not on Schoology anymore · tick when done", C.secondary, false)
     return null
 }
 
 /**
- * Accent ring with an accent check = done or studied (student) · solid green
- * seal = turned in (submitted on Schoology, or marked). Dashed = not in neo-plan yet.
+ * Accent ring with a small up arrow = done, still to hand in · accent ring with an
+ * accent check = studied, or your own task done (student) · solid green seal =
+ * turned in (submitted on Schoology, or marked). Dashed = not in neo-plan yet.
  */
 @Composable
 fun CheckMark(item: ItemState, size: androidx.compose.ui.unit.Dp = 24.dp) {
@@ -433,7 +536,7 @@ fun CheckMark(item: ItemState, size: androidx.compose.ui.unit.Dp = 24.dp) {
     val good = C.good
     val accent = C.accent
     val accentSoft = C.accentSoft
-    val dashed = item.neoPlanId == null && NeoPlanClient.connected
+    val dashed = !item.mine && item.neoPlanId == null && NeoPlanClient.connected
     val ring = if (dashed) C.tertiary else C.secondary
     Box(Modifier.size(size), contentAlignment = Alignment.Center) {
         when {
@@ -441,13 +544,21 @@ fun CheckMark(item: ItemState, size: androidx.compose.ui.unit.Dp = 24.dp) {
             // The seal's outline keeps it apart from done in every theme, even where the accent and green are close.
             item.submitted || item.turnedIn ->
                 Icon(Icons.Filled.Verified, null, tint = good, modifier = Modifier.size(size * 1.12f))
-            // Accent ring with an accent check = done or studied (student).
-            if (item.isExam) item.studied else item.done -> {
+            // Accent ring with an accent check = studied, or your own task done.
+            if (item.isExam) item.studied else item.mine && item.done -> {
                 Canvas(Modifier.size(size)) {
                     drawCircle(accentSoft)
                     drawCircle(accent, style = Stroke(width = 2.dp.toPx()), radius = this.size.minDimension / 2 - 1.dp.toPx())
                 }
                 Icon(Icons.Outlined.Check, null, tint = accent, modifier = Modifier.size(size * 0.62f))
+            }
+            // Done but not handed in: a plain ring and a small arrow toward the hand-in,
+            // no fill and no check, so it never reads as turned in.
+            item.done && !item.isExam -> {
+                Canvas(Modifier.size(size)) {
+                    drawCircle(accent, style = Stroke(width = 1.6.dp.toPx()), radius = this.size.minDimension / 2 - 1.dp.toPx())
+                }
+                Icon(Icons.Outlined.ArrowUpward, null, tint = accent, modifier = Modifier.size(size * 0.5f))
             }
             else -> Canvas(Modifier.size(size)) {
                 drawCircle(ring, style = Stroke(width = 1.6.dp.toPx(), pathEffect = if (dashed) PathEffect.dashPathEffect(floatArrayOf(6f, 5f)) else null),

@@ -35,6 +35,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.outlined.Check
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
@@ -156,13 +158,15 @@ fun EmptyState(title: String, detail: String? = null, art: Boolean = false, icon
 
 /** The large-title header used by the tab screens: date line + title + trailing buttons. */
 @Composable
-fun ScreenHeader(title: String, kicker: String? = null, trailing: @Composable () -> Unit = {}) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = Theme.Space.xs), verticalAlignment = Alignment.Bottom) {
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            if (kicker != null) Text(kicker.uppercase(), style = Theme.caption.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp), color = C.secondary)
-            Text(title, style = Theme.display, color = C.text)
+fun ScreenHeader(title: String, kicker: String? = null, titleView: (@Composable () -> Unit)? = null, trailing: @Composable () -> Unit = {}) {
+    // The kicker gets the whole width, so a long date never wraps beside the buttons.
+    Column(Modifier.fillMaxWidth().padding(horizontal = Theme.Space.xs), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (kicker != null) Text(kicker.uppercase(), style = Theme.caption.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp), color = C.secondary,
+            maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Box(Modifier.weight(1f)) { if (titleView != null) titleView() else Text(title, style = Theme.display, color = C.text) }
+            trailing()
         }
-        trailing()
     }
 }
 
@@ -238,13 +242,21 @@ fun TypeTag(type: ItemType) {
 
 /** A pill button. `external` adds the ↗ arrow for anything that leaves the app. */
 @Composable
+/**
+ * A small button with index-card corners: filled for the one action that leaves for
+ * Schoology (Submit), outlined in `color` for everything that stays in Dewey (Turn in,
+ * Undo). `icon` goes before the title; `external` adds the ↗ arrow for anything that leaves the app.
+ */
 fun PillButton(title: String, color: Color = C.accent, filled: Boolean = false, external: Boolean = false, modifier: Modifier = Modifier,
-               onClick: () -> Unit) {
+               icon: ImageVector? = null, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(Theme.Radius.tag)
     Row(
-        modifier.heightIn(min = 30.dp).clip(CircleShape).background(if (filled) color else color.copy(alpha = 0.1f))
-            .clickable(role = Role.Button, onClick = onClick).padding(horizontal = Theme.Space.m, vertical = 5.dp),
+        modifier.heightIn(min = 30.dp).clip(shape).background(if (filled) color else Color.Transparent)
+            .then(if (filled) Modifier else Modifier.border(1.5.dp, color, shape))
+            .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (icon != null) { Icon(icon, null, tint = if (filled) C.onAccent else color, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(4.dp)) }
         Text(title, style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = if (filled) C.onAccent else color, maxLines = 1)
         if (external) {
             Spacer(Modifier.width(3.dp))
@@ -253,13 +265,25 @@ fun PillButton(title: String, color: Color = C.accent, filled: Boolean = false, 
     }
 }
 
-/** A full-width capsule button, 48 dp tall. */
+/**
+ * To Do's two one-tap actions, so they never look alike: Turn in stays in Dewey
+ * (outlined ink, a check), Submit leaves for Schoology's dropbox (filled, the globe, ↗).
+ */
+@Composable
+fun TurnInButton(modifier: Modifier = Modifier, onClick: () -> Unit) =
+    PillButton("Turn in", color = C.text, icon = Icons.Outlined.Check, modifier = modifier, onClick = onClick)
+
+@Composable
+fun SubmitButton(modifier: Modifier = Modifier, onClick: () -> Unit) =
+    PillButton("Submit", filled = true, external = true, icon = Icons.Outlined.Language, modifier = modifier, onClick = onClick)
+
+/** A full-width button, 48 dp tall, with card corners. */
 @Composable
 fun WideButton(title: String, icon: ImageVector? = null, filled: Boolean = true, color: Color = C.accent, external: Boolean = false,
                modifier: Modifier = Modifier, onClick: () -> Unit) {
     Row(
-        modifier.fillMaxWidth().heightIn(min = 48.dp).clip(CircleShape).background(if (filled) color else C.card)
-            .then(if (filled) Modifier else Modifier.border(BorderStroke(1.dp, C.border), CircleShape))
+        modifier.fillMaxWidth().heightIn(min = 48.dp).clip(RoundedCornerShape(Theme.Radius.card)).background(if (filled) color else C.card)
+            .then(if (filled) Modifier else Modifier.border(BorderStroke(1.dp, C.border), RoundedCornerShape(Theme.Radius.card)))
             .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
     ) {

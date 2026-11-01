@@ -1,5 +1,22 @@
 package com.owenleung.dewey.ui.tour
 
+import com.owenleung.dewey.ui.settings.StudentIDSettings
+import com.owenleung.dewey.ui.Route
+import com.owenleung.dewey.ui.LocalNav
+import com.owenleung.dewey.store.StudentID
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.material.icons.outlined.School
+import androidx.compose.material.icons.outlined.QrCode2
+import androidx.compose.material.icons.outlined.CalendarMonth
+import androidx.compose.material.icons.outlined.Add
+import androidx.compose.material.icons.outlined.ExpandMore
+import androidx.compose.material.icons.outlined.PanTool
+import androidx.compose.material.icons.outlined.FormatListNumbered
+import androidx.compose.material.icons.outlined.DragHandle
+import androidx.compose.material.icons.outlined.Badge
+import androidx.compose.material.icons.outlined.Flag
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.background
@@ -98,12 +115,12 @@ object Tour {
     var mode by mutableStateOf<Mode?>(null)
 }
 
-private enum class TourCard { WELCOME, PLACES, MARKING, TURNING_IN, GRADES, SETTINGS, NEOPLAN }
+private enum class TourCard { WELCOME, PLACES, MARKING, PLAN, TURNING_IN, GRADES, SETTINGS, STUDENT_ID, NEOPLAN }
 
 @Composable
 fun TourScreen(model: AppModel, nav: Nav, mode: Tour.Mode) {
-    val cards = if (mode == Tour.Mode.TOUR) listOf(TourCard.WELCOME, TourCard.NEOPLAN)
-        else listOf(TourCard.PLACES, TourCard.MARKING, TourCard.TURNING_IN, TourCard.GRADES, TourCard.SETTINGS)
+    val cards = if (mode == Tour.Mode.TOUR) listOf(TourCard.WELCOME, TourCard.STUDENT_ID, TourCard.NEOPLAN)
+        else listOf(TourCard.PLACES, TourCard.MARKING, TourCard.PLAN, TourCard.TURNING_IN, TourCard.GRADES, TourCard.SETTINGS)
     var practicing by remember { mutableStateOf(false) }
     var page by remember { mutableIntStateOf(0) }
     val pager = rememberPagerState { cards.size }
@@ -116,7 +133,7 @@ fun TourScreen(model: AppModel, nav: Nav, mode: Tour.Mode) {
     }
 
     if (practicing) {
-        PracticeScreen(model) { page = cards.size - 1; practicing = false }
+        PracticeScreen(model) { page = cards.indexOf(TourCard.STUDENT_ID).takeIf { it >= 0 } ?: (cards.size - 1); practicing = false }
         return
     }
     BackHandler(onBack = finish)
@@ -161,6 +178,8 @@ private fun CardFor(c: TourCard, model: AppModel, nav: Nav, finish: () -> Unit) 
     TourCard.WELCOME -> WelcomeCard()
     TourCard.PLACES -> PlacesCard()
     TourCard.MARKING -> MarkingCard()
+    TourCard.PLAN -> PlanCard()
+    TourCard.STUDENT_ID -> StudentIDTourCard(model)
     TourCard.TURNING_IN -> TurningInCard()
     TourCard.GRADES -> GradesCard()
     TourCard.SETTINGS -> SettingsCard(model)
@@ -216,7 +235,7 @@ private fun WelcomeCard() = CardLayout("Welcome to Dewey",
 @Composable
 private fun PlacesCard() {
     val tabs = listOf(
-        Triple(Icons.AutoMirrored.Outlined.FormatListBulleted, "To Do", "Everything due, by class. Start here."),
+        Triple(Icons.AutoMirrored.Outlined.FormatListBulleted, "To Do", "Everything due, by class, or Plan: your own order. Start here."),
         Triple(Icons.Outlined.BarChart, "Grades", "Every class's letter, new scores, what-if."),
         Triple(Icons.Outlined.Inbox, "Inbox", "Messages from teachers, school updates, new materials and grades."),
         Triple(Icons.Outlined.GridView, "Classes", "Your classes on a shelf: materials, files, search."),
@@ -303,7 +322,7 @@ private fun GradesCard() = CardLayout("Grades and what-if", "Your real grade fir
         Spacer(Modifier.width(Theme.Space.m))
         Column {
             Text("Chemistry", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text)
-            Text("88.4% · 1.6% to an A−", style = Theme.footnote, color = C.secondary)
+            Text("88.4% · Goal A− · 1.6 to go", style = Theme.footnote, color = C.secondary)
         }
     }
     Spacer(Modifier.height(Theme.Space.m))
@@ -313,8 +332,10 @@ private fun GradesCard() = CardLayout("Grades and what-if", "Your real grade fir
     Point(Icons.Outlined.AutoAwesome, "New grades first",
         "New scores sit at the top until you've seen them. Tap a class for every item, its effect on your grade, comments and rubrics.")
     Point(Icons.Outlined.Tune, "What-if", "In a class, tap Try what-if scores and type a score for anything not graded yet to see your new grade.")
-    Point(Icons.Outlined.TrackChanges, "Plan an upcoming test", "Also in what-if: the score you need on a test to reach a grade.")
-    Point(Icons.Outlined.Lock, "Just a preview", "Leaving the class clears it. Nothing is saved or sent anywhere.")
+    Point(Icons.Outlined.Flag, "Your goal",
+        "The Goal chip under a class's grade: the letter you're aiming for and how far you are from it. The graph's line and the test planner follow it.")
+    Point(Icons.Outlined.TrackChanges, "Plan an upcoming test", "Also in what-if: the score you need on a test to reach your goal, counting any what-if scores you typed.")
+    Point(Icons.Outlined.Lock, "Just a preview", "Nothing is saved or sent anywhere. Show real hides your what-if scores and keeps them; ↺ or leaving the class clears them.")
 }
 
 @Composable
@@ -348,8 +369,10 @@ private fun SettingsCard(model: AppModel) {
     }) {
         Point(Icons.Outlined.NotificationsActive, "Notifications",
             "2 hours before work that isn't submitted, the night before a test, new grades and messages. Pick which in Settings → Notifications.")
-        Point(Icons.AutoMirrored.Outlined.FormatListBulleted, "To Do view",
-            "Week (by class, under the week strip) or Urgent first (one list: late, today, this week, later).")
+        Point(Icons.AutoMirrored.Outlined.FormatListBulleted, "To Do",
+            "View: Week (by class, under the week strip) or Urgent first. School day: the times behind Before and After school. Show in the Calendar app: your work in a Dewey calendar.")
+        Point(Icons.Outlined.Badge, "Student ID",
+            "Your number for the barcode on Classes. Also a launcher shortcut: press and hold Dewey's icon.")
         Point(Icons.Outlined.MenuBook, "Your classes",
             "Press and hold a book on the Classes shelf to take it off (study hall, advisory). Press and hold a class heading on To Do to change its call number.")
     }
@@ -377,6 +400,69 @@ private fun NeoPlanCard(onConnect: () -> Unit) {
                 Text("Connect neo-plan", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.accent)
             }
             Text("Not using it? Tap Done. It's always in Settings → Help → neo-plan.", style = Theme.footnote, color = C.secondary)
+        }
+    }
+}
+
+// ── Plan and your own tasks ─────────────────────────────────────────────
+
+@Composable
+private fun PlanCard() = CardLayout("Plan and your own tasks", "Tap Plan beside To Do's title to put today in your own order.", art = {
+    Column(Modifier.fillMaxWidth().clearAndSetSemantics { }) {
+        listOf("Ch. 4 problems", "Reading notes", "Lab write-up").forEachIndexed { i, t ->
+            if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(C.divider))
+            Row(Modifier.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Space.m)) {
+                Text("${i + 1}", style = Theme.callNumber, color = if (i == 0) C.accent else C.secondary, modifier = Modifier.widthIn(min = 18.dp))
+                Text(t, style = Theme.body, color = C.text, modifier = Modifier.weight(1f))
+                Icon(Icons.Outlined.DragHandle, null, tint = C.tertiary)
+            }
+        }
+    }
+}) {
+    Point(Icons.Outlined.FormatListNumbered, "To do, Later, Done",
+        "To do is today, numbered. Later is another day. Done fills up as you finish. New work goes where its due date puts it.")
+    Point(Icons.Outlined.PanTool, "Drag by the dots",
+        "At once, no holding, even into Later or Done. Hold near the top or bottom of the screen to keep going. Swipe left for Later, right for Done.")
+    Point(Icons.Outlined.ExpandMore, "Fold Later and Done",
+        "Tap the heading. Work you finish in Plan stays in its row until you leave Plan.")
+    Point(Icons.Outlined.Add, "Tasks of your own",
+        "Tap + and type it in words: \u201Cchem lab fri after school\u201D fills in the day, time and class. Tap your task later to change it.")
+    Point(Icons.Outlined.CalendarMonth, "The month",
+        "On To Do, pull the week strip down. Swipe or tap the arrows for other months; tap a day to see it and the next.")
+}
+
+// ── Student ID (after the practice: the real account) ───────────────────
+
+@Composable
+private fun StudentIDTourCard(model: AppModel) {
+    Prefs.revision.intValue
+    val number = StudentID.number
+    var adding by remember { mutableStateOf(false) }
+    CardLayout("Your student ID", "Keep your ID's barcode on your phone, for the library and attendance.", art = {
+        Icon(Icons.Outlined.QrCode2, null, tint = C.text, modifier = Modifier.size(96.dp).padding(vertical = 12.dp))
+    }) {
+        if (number != null) Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(Icons.Filled.CheckCircle, null, tint = C.good, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Added: $number", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.good)
+        } else OutlinedButton(onClick = { adding = true }, modifier = Modifier.fillMaxWidth()) {
+            Icon(Icons.Outlined.Add, null, tint = C.text, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text("Add my student ID", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text)
+        }
+        Point(Icons.Outlined.School, "Fill in from Schoology, or scan your card", "It stays on this phone. Dewey never sends it anywhere.")
+        Point(Icons.Outlined.GridView, "Where it shows", "The card button on Classes, and a launcher shortcut: press and hold Dewey's icon.")
+        if (number == null) Text("Not now? Tap Next. It's in Settings → Student ID.", style = Theme.footnote, color = C.secondary)
+    }
+    if (adding) {
+        // Settings › Student ID on a nav of its own: its Back and Save close it.
+        val local = remember { Nav(model).also { it.push(Route.SettingsPage(SettingsPage.STUDENT_ID)) } }
+        val open = local.stacks[local.tab].isNotEmpty()
+        LaunchedEffect(open) { if (!open) adding = false }
+        androidx.compose.ui.window.Dialog({ adding = false }, androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+            CompositionLocalProvider(LocalNav provides local) {
+                Box(Modifier.fillMaxSize().background(C.background)) { if (open) StudentIDSettings() }
+            }
         }
     }
 }

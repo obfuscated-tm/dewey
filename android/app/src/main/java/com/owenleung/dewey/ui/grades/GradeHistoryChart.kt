@@ -1,5 +1,6 @@
 package com.owenleung.dewey.ui.grades
 
+import com.owenleung.dewey.store.Goal
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -50,7 +51,7 @@ import kotlin.math.floor
  * what-if grade.
  */
 @Composable
-fun GradeHistoryChart(history: List<CourseGrade.Point>, cutoff: Double, whatIfPct: Double?) {
+fun GradeHistoryChart(history: List<CourseGrade.Point>, cutoff: Double, whatIfPct: Double?, cutoffLabel: String = Goal.letter(cutoff)) {
     data class Pt(val date: Date, val pct: Double, val items: List<String>, val undated: Boolean = false)
     val pts = remember(history) {
         val out = history.mapNotNull { p -> val d = Fmt.wallDate(p.day) ?: return@mapNotNull null; p.pct?.let { Pt(d, it, p.items) } }.toMutableList()
@@ -131,7 +132,7 @@ fun GradeHistoryChart(history: List<CourseGrade.Point>, cutoff: Double, whatIfPc
             }
             // The A line.
             drawLine(good.copy(alpha = 0.6f), Offset(0f, y(cutoff)), Offset(w, y(cutoff)), 1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(10f, 10f)))
-            drawText(measurer, "A ${Fmt.num(cutoff)}%", Offset(2f, y(cutoff) - 16.dp.toPx()), Theme.caption.copy(color = good, fontWeight = FontWeight.SemiBold))
+            drawText(measurer, "$cutoffLabel ${Fmt.num(cutoff)}%", Offset(2f, y(cutoff) - 16.dp.toPx()), Theme.caption.copy(color = good, fontWeight = FontWeight.SemiBold))
             // Area and line.
             val line = Path()
             pts.forEachIndexed { n, p -> if (n == 0) line.moveTo(x(p.date.time), y(p.pct)) else line.lineTo(x(p.date.time), y(p.pct)) }

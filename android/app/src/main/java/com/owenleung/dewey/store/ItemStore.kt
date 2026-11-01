@@ -22,6 +22,8 @@ enum class ItemType(val raw: String, val label: String, val display: String) {
  * The student's own state for one Schoology item, plus what the app last saw
  * of it on Schoology. Keyed by the Schoology id. Survives relaunch; keeps
  * paper work Schoology dropped from its lists (docs/ios/FINDINGS.md).
+ * A task the student added (`mine`) is a row too, keyed `mine-<uuid>`: it
+ * never reaches Schoology or neo-plan, and lives only on the phone.
  * Dates are epoch milliseconds so the file stays plain JSON.
  */
 @Serializable
@@ -48,6 +50,13 @@ class ItemState(
     var labUrl: String? = null,            // an outside submit page from the instructions
     var external: Boolean = false,         // a Google Assignment
     var neoPlanId: String? = null,
+    // The student's own task (TaskEditor), never on Schoology.
+    var mine: Boolean = false,
+    var notes: String? = null,
+    // Plan (PlanLogic): the section the student dragged it to (null = by due date)
+    // and its place there (null = not placed yet, slotted in by due date).
+    var planSection: String? = null,
+    var planRank: Double? = null,
     var firstSeen: Long = System.currentTimeMillis(),
     var lastSeen: Long = System.currentTimeMillis(),
     var updatedAt: Long = System.currentTimeMillis(),
@@ -57,6 +66,8 @@ class ItemState(
         set(v) { dueAt = v?.time }
 
     val isQuiz: Boolean get() = (url ?: "").contains("/assessment")
+    /** Schoology work neo-plan can take: not the student's own, not an event. */
+    val isSchoologyAssignment: Boolean get() = !mine && !(url ?: "").contains("/event/")
     val submitted: Boolean get() = statusState == "submitted"
     val hasDropbox: Boolean get() = statusState == "submitted" || statusState == "not_submitted"
 
@@ -67,6 +78,24 @@ class ItemState(
     val isExam: Boolean get() = type == ItemType.EXAM
 
     fun touch() { updatedAt = System.currentTimeMillis() }
+
+    companion object {
+        const val MINE_PREFIX = "mine-"
+        fun isMine(id: String) = id.startsWith(MINE_PREFIX)
+
+        /** A new task of the student's own. */
+        fun mine(title: String) = ItemState(schoologyId = MINE_PREFIX + java.util.UUID.randomUUID().toString().uppercase(), title = title).apply {
+            mine = true
+            typeOverride = ItemType.TASK.raw
+        }
+    }
+}
+
+/** The letters a goal can be, from grademath's SCALE (A down to C-). */
+object Goal {
+    val scale = listOf("A" to 93.0, "A-" to 90.0, "B+" to 87.0, "B" to 83.0, "B-" to 80.0, "C+" to 77.0, "C" to 73.0, "C-" to 70.0)
+
+    fun letter(pct: Double): String = scale.firstOrNull { pct >= it.second - 1e-9 }?.first ?: "D"
 }
 
 /**
@@ -75,10 +104,12 @@ class ItemState(
  * widgets' taps and the background refresh share it. The tour's pretend week
  * gets its own in-memory store that is never written.
  */
-class ItemStore private constructor(private val file: File?, private val courseFile: File?) {
+class ItemStore private constructor(private val file: File?, private val courseFile: File?, private val goalFile: File? = null) {
     private val items = LinkedHashMap<String, ItemState>()
     /** Per class: the A line the student set (CourseState.aCutoff on iOS). */
     private val cutoffs = HashMap<String, Double>()
+    /** Per class: the grade the student aims for (CourseState.goal on iOS). */
+    private val goals = HashMap<String, Double>()
     private val lock = Any()
 
     companion object {
@@ -87,7 +118,7 @@ class ItemStore private constructor(private val file: File?, private val courseF
 
         fun init(dir: File) {
             if (this::real.isInitialized) return
-            real = ItemStore(File(dir, "items.json"), File(dir, "courses-state.json")).also { it.load() }
+            real = ItemStore(File(dir, "items.json"), File(dir, "courses-state.json"), File(dir, "goals-state.json")).also { it.load() }
         }
 
         /** The tour's pretend week: in memory only. */
@@ -99,6 +130,7 @@ class ItemStore private constructor(private val file: File?, private val courseF
             Cache.json.decodeFromString(ListSerializer(ItemState.serializer()), file!!.readText()).forEach { items[it.schoologyId] = it }
         }
         runCatching { cutoffs.putAll(Cache.json.decodeFromString(MapSerializer(String.serializer(), Double.serializer()), courseFile!!.readText())) }
+        runCatching { goals.putAll(Cache.json.decodeFromString(MapSerializer(String.serializer(), Double.serializer()), goalFile!!.readText())) }
     }
 
     fun item(id: String): ItemState? = synchronized(lock) { items[id] }
@@ -106,6 +138,19 @@ class ItemStore private constructor(private val file: File?, private val courseF
 
     fun getOrCreate(id: String, title: String): ItemState = synchronized(lock) {
         items.getOrPut(id) { ItemState(schoologyId = id, title = title) }
+    }
+
+    fun insert(it: ItemState) = synchronized(lock) { items[it.schoologyId] = it }
+    fun remove(id: String) = synchronized(lock) { items.remove(id) }
+
+    /** A different student signed in: every row and class setting goes. */
+    fun clearAll() = synchronized(lock) {
+        items.clear()
+        cutoffs.clear()
+        goals.clear()
+        courseFile?.delete()
+        goalFile?.delete()
+        Unit
     }
 
     fun save() = synchronized(lock) {
@@ -118,6 +163,13 @@ class ItemStore private constructor(private val file: File?, private val courseF
         if (v == null) cutoffs.remove(sectionId) else cutoffs[sectionId] = v
         val f = courseFile ?: return@synchronized
         runCatching { Cache.atomicWrite(f, Cache.json.encodeToString(MapSerializer(String.serializer(), Double.serializer()), cutoffs)) }
+    }
+
+    fun goal(sectionId: String): Double? = synchronized(lock) { goals[sectionId] }
+    fun setGoal(sectionId: String, v: Double) = synchronized(lock) {
+        goals[sectionId] = v
+        val f = goalFile ?: return@synchronized
+        runCatching { Cache.atomicWrite(f, Cache.json.encodeToString(MapSerializer(String.serializer(), Double.serializer()), goals)) }
     }
 }
 
@@ -139,16 +191,23 @@ object TodoLogic {
     data class Snapshot(
         val inSchoology: Boolean, val done: Boolean, val turnedIn: Boolean,
         val submitted: Boolean, val graded: Boolean, val dismissed: Boolean,
+        /** The student's own task, and (for one) whether it was finished today. */
+        val mine: Boolean = false, val finishedToday: Boolean = false,
     )
 
-    /** On the list: everything Schoology still lists, plus work it dropped that the student hasn't finished. */
+    /**
+     * On the list: everything Schoology still lists, plus work it dropped that the student hasn't finished.
+     * The student's own tasks stay until done, and a done one until the day ends.
+     */
     fun isVisible(s: Snapshot): Boolean {
+        if (s.mine) return !s.dismissed && (!(s.done || s.turnedIn) || s.finishedToday)
         if (s.dismissed || s.graded) return false
         if (s.inSchoology) return true
         return !(s.done || s.turnedIn || s.submitted)
     }
 
-    fun isVisible(it: ItemState) = isVisible(Snapshot(it.inSchoology, it.done, it.turnedIn, it.submitted, it.graded, it.dismissed))
+    fun isVisible(it: ItemState, now: Date = Date()) = isVisible(Snapshot(it.inSchoology, it.done, it.turnedIn, it.submitted, it.graded, it.dismissed,
+        it.mine, Fmt.sameDay(Date(it.updatedAt), now)))
 
     /**
      * Whether a past-due row may say "late": only while Schoology still lists it
@@ -156,6 +215,7 @@ object TodoLogic {
      * handed in), and not once it's handed in or marked done. A test is late only
      * as an online quiz not marked studied: Schoology keeps quizzes given in class
      * on its overdue list, and a past test you studied for is one you took.
+     * The student's own tasks always count as listed (`inSchoology: true`).
      */
     fun showsLate(type: ItemType, isQuiz: Boolean, done: Boolean, turnedIn: Boolean, submitted: Boolean, inSchoology: Boolean = true): Boolean {
         if (submitted || turnedIn || !inSchoology) return false
@@ -182,10 +242,12 @@ object TodoLogic {
     }
 }
 
-/** Which part of the To Do list is showing: overdue work, or one day of the coming week (0 = today). */
+/** Which part of the To Do list is showing: overdue work, one day of the coming week (0 = today), or a day picked on the month and the day after it. */
 sealed class DayFilter {
     data object Late : DayFilter()
     data class Day(val k: Int) : DayFilter()
+    /** `start`: a day's start, epoch ms. */
+    data class Span(val start: Long) : DayFilter()
 
     fun matches(it: ItemState, now: Date): Boolean {
         val b = TodoLogic.bucket(it.due, now)
@@ -195,6 +257,11 @@ sealed class DayFilter {
             is Day -> {
                 val due = it.due ?: return false
                 b != TodoLogic.Bucket.OVERDUE && Fmt.sameDay(due, Fmt.addDays(Fmt.startOfDay(now), k))
+            }
+            is Span -> {
+                val due = it.due ?: return false
+                val s = Fmt.startOfDay(Date(start))
+                !due.before(s) && due.before(Fmt.addDays(s, 2))
             }
         }
     }

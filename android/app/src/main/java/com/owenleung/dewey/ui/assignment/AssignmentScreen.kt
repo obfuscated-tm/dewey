@@ -1,5 +1,6 @@
 package com.owenleung.dewey.ui.assignment
 
+import com.owenleung.dewey.ui.todo.MineTaskScreen
 import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -123,7 +124,13 @@ fun labLink(a: Assignment): String? {
 
 /** 1b · One assignment: the Submission card, your status, grade, instructions, type, what-if, and the main action. */
 @Composable
-fun AssignmentScreen(id: String) {
+fun AssignmentScreen(id: String, sectionId: String? = null) {
+    // The student's own task (from a widget, a reminder or a class page): never Schoology's.
+    if (ItemState.isMine(id)) MineTaskScreen(id) else AssignmentPage(id, sectionId)
+}
+
+@Composable
+private fun AssignmentPage(id: String, sectionId: String?) {
     val model = model
     val nav = nav
     val ctx = LocalContext.current
@@ -133,7 +140,9 @@ fun AssignmentScreen(id: String) {
     var error by remember { mutableStateOf<EngineError?>(null) }
     val it = model.item(id)
     val pageUrl = "${Engine.ORIGIN}/assignment/$id"
-    val gradeItem: CourseGrade.Item? = it?.sectionId?.let { s -> model.grades[s]?.items?.firstOrNull { g -> g.id == id } }
+    // The class: the saved row's, else the link's, else whichever loaded gradebook has this item.
+    val section = it?.sectionId ?: sectionId ?: model.grades.entries.firstOrNull { e -> e.value.items.any { g -> g.id == id } }?.key
+    val gradeItem: CourseGrade.Item? = section?.let { s -> model.grades[s]?.items?.firstOrNull { g -> g.id == id } }
 
     suspend fun load() {
         try {
@@ -168,7 +177,7 @@ fun AssignmentScreen(id: String) {
         } catch (e: Exception) {
             error = EngineError.Js(e.message ?: "$e")
         }
-        model.item(id)?.sectionId?.let { model.loadGrades(it) }
+        (model.item(id)?.sectionId ?: sectionId)?.let { model.loadGrades(it) }
     }
 
     LaunchedEffect(id) { load() }
@@ -202,7 +211,7 @@ fun AssignmentScreen(id: String) {
         title = "",
         actions = { IconButton(onClick = { nav.openSheet(SheetTarget(pageUrl, id)) }) { Icon(Icons.Outlined.Language, "Open in Schoology") } },
         bottomBar = {
-            if (main != null) WideButton(main.first, external = true, modifier = Modifier.background(C.background).navigationBarsPadding()
+            if (main != null) WideButton(main.first, icon = Icons.Outlined.Language, external = true, modifier = Modifier.background(C.background).navigationBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 8.dp), onClick = main.second)
         },
     ) { pad ->
@@ -210,8 +219,8 @@ fun AssignmentScreen(id: String) {
             // Header.
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 // A library catalog line: class · period · term · category, in the class colour.
-                model.course(it?.sectionId)?.let { c ->
-                    val line = listOfNotNull(GradesLook.abbreviation(c.shortTitle), c.periodLabel.takeIf { p -> p.length <= 3 },
+                model.course(section)?.let { c ->
+                    val line = listOfNotNull(GradesLook.abbreviation(c.shortTitle), c.periodLabel.takeIf { p -> p.length in 1..3 },
                         model.grades[c.sectionId]?.period, gradeItem?.category).filter { s -> s.isNotEmpty() }.joinToString(" · ").uppercase()
                     Text(line, style = Theme.caption.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.6.sp), color = classColor(c.sectionId), maxLines = 2)
                 }
@@ -225,17 +234,17 @@ fun AssignmentScreen(id: String) {
             }
             val asg = a
             if (asg != null && kind != null) {
-                SubmissionCard(kind, asg, status, checkedAt, it)
+                SubmissionCard(kind, asg, status, checkedAt, it, section)
                 if (it != null) ProgressCard(it.schoologyId)
-                gradeItem?.let { g -> GradeCard(g, it?.sectionId ?: "") }
+                gradeItem?.let { g -> GradeCard(g, section ?: "") }
                 Instructions(asg)
                 if (it != null) TypeSwitch(it.schoologyId)
                 if (gradeItem != null && gradeItem.earned == null && gradeItem.possible != null) {
-                    Text("What if I get __ / ${Fmt.num(gradeItem.possible)}?", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.accent,
+                    Text("What if I get __ / ${Fmt.num(gradeItem.possible)}?", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text,
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                            .border(1.2.dp, C.accent, RoundedCornerShape(Theme.Radius.card))
-                            .clickable { nav.whatIf = id to it?.sectionId }.padding(14.dp))
+                            .border(1.2.dp, C.tertiary, RoundedCornerShape(Theme.Radius.card))
+                            .clickable { nav.whatIf = id to section }.padding(14.dp))
                 }
             } else if (error != null) {
                 ErrorState(error!!, pageUrl, retry = null, open = { u -> nav.openSheet(SheetTarget(u, id)) })
@@ -279,7 +288,7 @@ private fun stamp(kind: Kind, a: Assignment, item: ItemState?, due: Date?): Stam
         val main = if (n == 0) "LATE" else if (n == 1) "1 DAY LATE" else "$n DAYS LATE"
         return Stamp("DUE " + Fmt.short(due).uppercase(), main, C.late, "Due ${Fmt.header(due)}, ${main.lowercase()}")
     }
-    return Stamp("DUE", Fmt.short(due).uppercase(), C.accent, "Due ${Fmt.header(due)}")
+    return Stamp("DUE", Fmt.short(due).uppercase(), C.text, "Due ${Fmt.header(due)}")
 }
 
 @Composable
@@ -307,14 +316,14 @@ private fun place(k: Kind) = when (k) {
  * and where it's turned in, what Schoology says under them, and a stamp.
  */
 @Composable
-private fun SubmissionCard(kind: Kind, a: Assignment, status: SubmissionStatus?, checkedAt: Date?, item: ItemState?) {
+private fun SubmissionCard(kind: Kind, a: Assignment, status: SubmissionStatus?, checkedAt: Date?, item: ItemState?, section: String?) {
     // ItemState is mutable and the same instance: read the revision so a mark redraws this.
     model.revision.intValue
     val model = model
     val due = Fmt.date(a.due) ?: item?.due
     val s = stamp(kind, a, item, due)
     val big = LocalDensity.current.fontScale >= 1.6f
-    val band = if (item?.sectionId != null) classColor(item.sectionId) else null
+    val band = section?.let { classColor(it) }
     val text = C.text
     val divider = C.divider
     Box(Modifier.fillMaxWidth().padding(top = if (big) 0.dp else 36.dp)) {

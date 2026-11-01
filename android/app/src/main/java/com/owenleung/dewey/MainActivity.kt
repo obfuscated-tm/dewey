@@ -1,5 +1,7 @@
 package com.owenleung.dewey
 
+import com.owenleung.dewey.store.CalendarSync
+import kotlinx.coroutines.launch
 import android.Manifest
 import android.content.Intent
 import com.owenleung.dewey.ui.tour.Tour
@@ -39,6 +41,17 @@ class MainActivity : ComponentActivity() {
             return d.await()
         }
 
+        /** The Calendar permissions (read and write), asked through the open activity. */
+        suspend fun requestCalendar(): Boolean {
+            val a = current.get() ?: return false
+            if (CalendarSync.hasAccess(a)) return true
+            val d = CompletableDeferred<Boolean>()
+            calendarWaiter = d
+            a.calendarPermission.launch(CalendarSync.permissions)
+            return d.await()
+        }
+        private var calendarWaiter: CompletableDeferred<Boolean>? = null
+
         /** A web page's <input type=file>: Files / Photos, plus the camera (spike S1 on iOS). */
         fun chooseFiles(callback: ValueCallback<Array<Uri>>, params: WebChromeClient.FileChooserParams): Boolean {
             val a = current.get() ?: return false
@@ -70,6 +83,11 @@ class MainActivity : ComponentActivity() {
     private var fileCallback: ValueCallback<Array<Uri>>? = null
     private var cameraUri: Uri? = null
 
+    private val calendarPermission = registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { got ->
+        calendarWaiter?.complete(got.values.all { it } && CalendarSync.hasAccess(this))
+        calendarWaiter = null
+    }
+
     private val notifyPermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         permissionWaiter?.complete(ok)
         permissionWaiter = null
@@ -98,7 +116,14 @@ class MainActivity : ComponentActivity() {
         setContent { RootView(model) }
         model.engine.attach(findViewById(android.R.id.content))
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) { WidgetBridge.publish(model) }
+            override fun onStart(owner: LifecycleOwner) {
+                WidgetBridge.publish(model)
+                // Back after 10 minutes away: To Do refreshes by itself.
+                val at = model.todoAsOf
+                if (model.session == AppModel.Session.SIGNED_IN && !model.practice && at != null && System.currentTimeMillis() - at.time > 600_000) {
+                    model.scope.launch { model.refreshTodo(quick = true) }
+                }
+            }
             override fun onStop(owner: LifecycleOwner) { WebConfig.keepSession() }
         })
     }

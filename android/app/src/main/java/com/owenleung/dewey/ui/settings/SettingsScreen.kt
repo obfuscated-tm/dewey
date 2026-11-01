@@ -1,5 +1,6 @@
 package com.owenleung.dewey.ui.settings
 
+import androidx.compose.foundation.layout.height
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -32,6 +33,14 @@ import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.AccountCircle
 import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.Badge
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
+import com.owenleung.dewey.store.CalendarSync
+import com.owenleung.dewey.store.SchoolDay
+import com.owenleung.dewey.store.StudentID
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Contrast
@@ -117,7 +126,7 @@ import java.util.Date
 // ── Small form parts ─────────────────────────────────────────────────────
 
 @Composable
-private fun Section(header: String, footer: String? = null, content: @Composable () -> Unit) {
+internal fun Section(header: String, footer: String? = null, content: @Composable () -> Unit) {
     Column {
         Text(header.uppercase(), style = Theme.caption.copy(fontWeight = FontWeight.SemiBold), color = C.secondary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
         Card { content() }
@@ -126,32 +135,32 @@ private fun Section(header: String, footer: String? = null, content: @Composable
 }
 
 @Composable
-private fun RowLine(divider: Boolean, content: @Composable () -> Unit) {
+internal fun RowLine(divider: Boolean, content: @Composable () -> Unit) {
     if (divider) Divider()
     Box(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 16.dp, vertical = 8.dp), contentAlignment = Alignment.CenterStart) { content() }
 }
 
 @Composable
-private fun Toggle(label: String, key: String, def: Boolean, divider: Boolean = true, onChange: (Boolean) -> Unit = {}) {
+internal fun Toggle(label: String, key: String, def: Boolean, divider: Boolean = true, onChange: (Boolean) -> Unit = {}) {
     Prefs.revision.intValue
     val on = Prefs.bool(key, def)
     RowLine(divider) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(label, style = Theme.body, color = C.text, modifier = Modifier.weight(1f))
-            Switch(on, { Prefs.set(key, it); onChange(it) }, colors = SwitchDefaults.colors(checkedTrackColor = C.accent))
+            Switch(on, { Prefs.set(key, it); onChange(it) }, colors = SwitchDefaults.colors(checkedTrackColor = C.text, checkedThumbColor = C.background))
         }
     }
 }
 
 @Composable
-private fun Value(label: String, value: String, divider: Boolean = true) = RowLine(divider) {
+internal fun Value(label: String, value: String, divider: Boolean = true) = RowLine(divider) {
     Row { Text(label, style = Theme.body, color = C.text, modifier = Modifier.weight(1f)); Text(value, style = Theme.body, color = C.secondary) }
 }
 
 @Composable
-private fun Action(label: String, divider: Boolean = true, destructive: Boolean = false, onClick: () -> Unit) {
+internal fun Action(label: String, divider: Boolean = true, destructive: Boolean = false, onClick: () -> Unit) {
     if (divider) Divider()
-    Text(label, style = Theme.body, color = if (destructive) C.late else C.accent,
+    Text(label, style = Theme.body, color = if (destructive) C.late else C.text,
         modifier = Modifier.fillMaxWidth().clickable(onClick = onClick).heightIn(min = 48.dp).padding(horizontal = 16.dp, vertical = 13.dp))
 }
 
@@ -212,7 +221,7 @@ private fun PageRow(icon: ImageVector, color: Int, title: String, value: String?
 
 /** A row that opens another page inside a Settings page. */
 @Composable
-private fun LinkLine(label: String, value: String? = null, divider: Boolean = true, onClick: () -> Unit) {
+internal fun LinkLine(label: String, value: String? = null, divider: Boolean = true, onClick: () -> Unit) {
     if (divider) Divider()
     Row(Modifier.fillMaxWidth().clickable(onClick = onClick).heightIn(min = 48.dp).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically) {
@@ -253,6 +262,8 @@ fun SettingsScreen() {
     val onShelf = model.classes.count { it.sectionId !in ShelfLook.off() }
     DetailScaffold("Settings") { pad ->
         ScrollPage(pad, spacing = 22.dp) {
+            // Where the tour's step for this page points.
+            Spacer(Modifier.fillMaxWidth().height(1.dp).coachTarget("settings.sheet"))
             Card {
                 PageRow(Icons.Outlined.School, 5, "Schoology", subtitle = Engine.HOST, divider = false) { nav.push(Route.SettingsPage(SettingsPage.SCHOOLOGY)) }
             }
@@ -268,6 +279,11 @@ fun SettingsScreen() {
                         Text("Appearance", style = Theme.body, color = C.text)
                     }
                     AppearancePicker()
+                }
+            }
+            Card {
+                PageRow(Icons.Outlined.Badge, 2, "Student ID", if (StudentID.number == null) "Not added" else "Added", divider = false) {
+                    nav.push(Route.SettingsPage(SettingsPage.STUDENT_ID))
                 }
             }
             Card {
@@ -292,6 +308,7 @@ fun SettingsPageScreen(page: SettingsPage) {
     when (page) {
         SettingsPage.SCHOOLOGY -> SchoologySettings()
         SettingsPage.NOTIFICATIONS -> NotificationSettings()
+        SettingsPage.STUDENT_ID -> StudentIDSettings()
         SettingsPage.TODO -> ToDoSettings()
         SettingsPage.GRADES -> GradesSettings()
         SettingsPage.CLASSES -> ShelfSettings()
@@ -351,6 +368,8 @@ private fun NotificationSettings() {
     }
     DetailScaffold("Notifications") { pad ->
         ScrollPage(pad, spacing = 22.dp) {
+            // Where the tour's step for this page points.
+            Spacer(Modifier.fillMaxWidth().height(1.dp).coachTarget("settings.page.notifications"))
             Section("Due work", "Each stops once the work is done, turned in or (for a test) studied. The 2-hour one is for Schoology dropboxes only." +
                 if (exact) "" else " Without exact times, Android may send each one up to 10 minutes late.") {
                 Toggle("2 hours before, if not submitted", Reminders.SOON_KEY, true, divider = false) { dueChanged(model, it) }
@@ -380,20 +399,83 @@ private fun ToDoSettings() {
     val layout = ToDoLayout.current
     DetailScaffold("To Do") { pad ->
         ScrollPage(pad, spacing = 22.dp) {
-            Section("View", if (layout == ToDoLayout.URGENT) "One list, late and due today at the top." else "Work grouped by class, under a strip of days.") {
+            // Where the tour's step for this page points.
+            Spacer(Modifier.fillMaxWidth().height(1.dp).coachTarget("settings.page.todo"))
+            Section("View", if (layout == ToDoLayout.URGENT) "List shows one list, late and due today at the top. Plan, beside it, is your own order."
+                else "List groups work by class, under a strip of days (pull it down for the month). Plan, beside it, is your own order.") {
                 RowLine(false) {
                     SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
                         ToDoLayout.entries.forEachIndexed { i, l ->
                             SegmentedButton(layout == l, { Prefs.set(ToDoLayout.KEY, l.raw) }, SegmentedButtonDefaults.itemShape(i, ToDoLayout.entries.size),
-                                colors = SegmentedButtonDefaults.colors(activeContainerColor = C.accentSoft, activeContentColor = C.accent)) { Text(l.title) }
+                                colors = SegmentedButtonDefaults.colors(activeContainerColor = C.divider, activeContentColor = C.text)) { Text(l.title) }
                         }
                     }
                 }
                 LinkLine("Call numbers") { nav.push(Route.SettingsPage(SettingsPage.CALL_NUMBERS)) }
             }
+            Section("School day", "A new task's \u201CBefore school\u201D and \u201CAfter school\u201D use these.") {
+                MinutePicker("School starts", SchoolDay.START_KEY, SchoolDay.DEFAULT_START, divider = false, modifier = Modifier.coachTarget("settings.schoolDay"))
+                MinutePicker("School ends", SchoolDay.END_KEY, SchoolDay.DEFAULT_END)
+            }
             Section("Reminders", "More in Settings › Notifications.") {
                 Toggle("2 hours before, if not submitted", Reminders.SOON_KEY, true, divider = false) { dueChanged(model, it) }
                 Toggle("Night before a test", Reminders.TEST_NIGHT_KEY, true) { dueChanged(model, it) }
+            }
+            CalendarSection()
+        }
+    }
+}
+
+/** A time of day stored as minutes after midnight, picked on a clock. */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun MinutePicker(label: String, key: String, def: Int, divider: Boolean = true, modifier: Modifier = Modifier) {
+    Prefs.revision.intValue
+    val m = if (Prefs.has(key)) Prefs.int(key) else def
+    var open by remember { mutableStateOf(false) }
+    Box(modifier) {
+        RowLine(divider) {
+            Row(Modifier.fillMaxWidth().clickable { open = true }) {
+                Text(label, style = Theme.body, color = C.text, modifier = Modifier.weight(1f))
+                Text(Fmt.clock(m / 60, m % 60), style = Theme.body, color = C.secondary)
+            }
+        }
+    }
+    if (open) {
+        val state = rememberTimePickerState(initialHour = m / 60, initialMinute = m % 60, is24Hour = false)
+        AlertDialog(onDismissRequest = { open = false }, title = { Text(label) }, text = { TimePicker(state) },
+            confirmButton = { TextButton({ Prefs.set(key, state.hour * 60 + state.minute); open = false }) { Text("Done") } },
+            dismissButton = { TextButton({ open = false }) { Text("Cancel") } })
+    }
+}
+
+/** The phone's Calendar app: a "Dewey" calendar with open work, tests and own tasks. */
+@Composable
+private fun CalendarSection() {
+    val model = model
+    val ctx = LocalContext.current
+    Prefs.revision.intValue
+    val on = CalendarSync.enabled
+    var note by remember { mutableStateOf<String?>(null) }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { got ->
+        if (got.values.all { it } && CalendarSync.hasAccess(ctx)) {
+            Prefs.set(CalendarSync.ENABLED_KEY, true); note = null; CalendarSync.schedule(model)
+        } else {
+            Prefs.set(CalendarSync.ENABLED_KEY, false)
+            note = "Dewey isn't allowed to use Calendar. Turn it on in the phone's Settings › Apps › Dewey › Permissions."
+        }
+    }
+    Section("Phone calendar", note ?: if (on) "Your open work, tests and own tasks are in a calendar called Dewey. Done work drops off. Turning this off removes that calendar."
+        else "Puts your open work, tests and own tasks in a \u201CDewey\u201D calendar. Dewey never touches your other calendars.") {
+        RowLine(false) {
+            Row(Modifier.coachTarget("settings.calendar"), verticalAlignment = Alignment.CenterVertically) {
+                Text("Show in the Calendar app", style = Theme.body, color = C.text, modifier = Modifier.weight(1f))
+                Switch(on, { want ->
+                    if (want) {
+                        if (CalendarSync.hasAccess(ctx)) { Prefs.set(CalendarSync.ENABLED_KEY, true); note = null; CalendarSync.schedule(model) }
+                        else ask.launch(CalendarSync.permissions)
+                    } else { CalendarSync.disable(ctx); note = null }
+                }, colors = SwitchDefaults.colors(checkedTrackColor = C.text, checkedThumbColor = C.background))
             }
         }
     }
@@ -454,7 +536,7 @@ private fun GradesSettings() {
         ScrollPage(pad, spacing = 22.dp) {
             Section("Look", if (GradesLook.reportCard) "Grades starts with every class's letter in one row, like a report card."
                 else "Grades starts straight with the list; each class shows its letter.") {
-                Toggle("Letters across the top", GradesLook.REPORT_CARD_KEY, true, divider = false)
+                Toggle("Letters across the top", GradesLook.REPORT_CARD_KEY, false, divider = false)
             }
             Section("Classes in Grades", "A hidden class leaves the list, the letters, New and Recently graded, and sends no grade alerts. You can also press and hold a class in Grades.") {
                 model.classes.forEachIndexed { i, c -> ClassToggle(c, c.sectionId !in hidden, i > 0) { GradesLook.toggle(c.sectionId) } }

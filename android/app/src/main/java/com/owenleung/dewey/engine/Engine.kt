@@ -234,6 +234,9 @@ class Engine(
         try {
             withTimeout(30_000) { d.await() }
         } catch (e: kotlinx.coroutines.TimeoutCancellationException) {
+            // A page that never finishes loading: give up, and let the next call load it again.
+            waiters.remove(d)
+            loading = false
             throw EngineError.NotReady
         }
     }

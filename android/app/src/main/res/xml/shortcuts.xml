@@ -16,4 +16,12 @@
         <intent android:action="android.intent.action.VIEW" android:data="dewey://grades"
             android:targetPackage="com.owenleung.dewey" android:targetClass="com.owenleung.dewey.MainActivity" />
     </shortcut>
+    <shortcut
+        android:shortcutId="studentid"
+        android:enabled="true"
+        android:icon="@mipmap/ic_launcher"
+        android:shortcutShortLabel="@string/shortcut_student_id">
+        <intent android:action="android.intent.action.VIEW" android:data="dewey://id"
+            android:targetPackage="com.owenleung.dewey" android:targetClass="com.owenleung.dewey.MainActivity" />
+    </shortcut>
 </shortcuts>

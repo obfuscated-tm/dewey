@@ -41,10 +41,13 @@ object Fmt {
         f(p).format(d.toInstant().atZone(zone)).replace("AM", "am").replace("PM", "pm")
 
     fun time(d: Date) = fmt("h:mm a", d)
+    /** A clock time with no date: "8:00 AM". */
+    fun clock(hour: Int, minute: Int): String = java.time.LocalTime.of(hour, minute).format(java.time.format.DateTimeFormatter.ofPattern("h:mm a", java.util.Locale.US)).replace("AM", "am").replace("PM", "pm")
     fun weekdayTime(d: Date) = fmt("EEE h:mm a", d)
     fun dayTime(d: Date) = fmt("EEE MMM d, h:mm a", d)
     fun header(d: Date) = fmt("EEEE, MMM d", d)
     fun short(d: Date) = fmt("MMM d", d)
+    fun dayShort(d: Date) = fmt("EEE, MMM d", d)
     fun weekday(d: Date) = fmt("EEE", d)
     fun dayNumber(d: Date) = fmt("d", d)
 

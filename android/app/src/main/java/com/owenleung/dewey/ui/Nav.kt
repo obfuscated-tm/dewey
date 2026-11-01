@@ -19,7 +19,9 @@ import com.owenleung.dewey.web.WebConfig
 /** A screen pushed on a tab (NavigationStack destinations on iOS). */
 sealed class Route {
     open val key: String get() = toString()
-    data class Assignment(val id: String) : Route()
+    data class Assignment(val id: String, val sectionId: String? = null) : Route()
+    /** The student's own task, opened from somewhere other than To Do (a widget, a class page). */
+    data class MineTask(val id: String) : Route()
     data class CourseGrades(val sectionId: String) : Route()
     data class GradeDetail(val sectionId: String, val itemId: String) : Route()
     data class Materials(val sectionId: String, val folderId: String?, val title: String, val trail: List<String>) : Route()
@@ -31,10 +33,13 @@ sealed class Route {
 }
 
 /** A page in Settings. The gear on To Do, Grades, Inbox and Classes opens Settings on its own page. */
-enum class SettingsPage { SCHOOLOGY, NOTIFICATIONS, TODO, GRADES, CLASSES, INBOX, HELP, ABOUT, CALL_NUMBERS, STATUS_GUIDE, NEOPLAN }
+enum class SettingsPage { SCHOOLOGY, NOTIFICATIONS, STUDENT_ID, TODO, GRADES, CLASSES, INBOX, HELP, ABOUT, CALL_NUMBERS, STATUS_GUIDE, NEOPLAN }
 
 /** What the Schoology sheet (1c) opens. `assignmentId`: re-check its dropbox on close. `google`: offer the full-screen frame. */
 data class SheetTarget(val url: String, val assignmentId: String? = null, val google: Boolean = false)
+
+/** The task editor: a new task (optionally for a class), or one of the student's own (`id`). */
+data class TaskTarget(val id: String? = null, val sectionId: String? = null)
 
 /** A file to show natively (3c). */
 data class FileTarget(val url: String, val title: String)
@@ -56,8 +61,17 @@ class Nav(val model: AppModel) {
     var file by mutableStateOf<FileTarget?>(null)
     /** "What if I get __ / N?" for one item: (itemId, sectionId). */
     var whatIf by mutableStateOf<Pair<String, String?>?>(null)
+    /** To Do's +, or tapping one of the student's own tasks. */
+    var task by mutableStateOf<TaskTarget?>(null)
+    /** The student ID card, full screen. */
+    var showID by mutableStateOf(false)
 
     fun push(r: Route) { stacks[tab] += r }
+
+    /** A To Do row: a Schoology item opens its Assignment screen; the student's own task, its editor. */
+    fun open(it: com.owenleung.dewey.store.ItemState) {
+        if (it.mine) task = TaskTarget(it.schoologyId) else push(Route.Assignment(it.schoologyId))
+    }
 
     /** The gear: Settings already on `page`, with the full list one Back away. */
     fun openSettings(page: SettingsPage) {

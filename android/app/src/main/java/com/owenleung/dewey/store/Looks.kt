@@ -17,7 +17,7 @@ object GradesLook {
     /** Section ids of classes hidden from Grades, comma-separated (a class with nothing worth tracking). */
     const val HIDDEN_KEY = "gradesHidden"
 
-    val reportCard: Boolean get() = Prefs.bool(REPORT_CARD_KEY, true)
+    val reportCard: Boolean get() = Prefs.bool(REPORT_CARD_KEY, false)
     fun hidden(): Set<String> = IdSet.parse(Prefs.string(HIDDEN_KEY))
     fun toggle(id: String) = Prefs.set(HIDDEN_KEY, IdSet.toggled(Prefs.string(HIDDEN_KEY), id))
 

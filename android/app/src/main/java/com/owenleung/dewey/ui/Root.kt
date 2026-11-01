@@ -1,5 +1,6 @@
 package com.owenleung.dewey.ui
 
+import com.owenleung.dewey.store.StudentID
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -130,6 +131,9 @@ fun MainScreen() {
         val parts = link.removePrefix("dewey://").split("/")
         when (parts.firstOrNull()) {
             "assignment" -> parts.getOrNull(1)?.let { nav.tab = Nav.TODO; nav.stacks[Nav.TODO].clear(); nav.push(Route.Assignment(it)) }
+            // The barcode, from the launcher shortcut (set up first if there's no number).
+            "id" -> if (StudentID.number != null) nav.showID = true
+                else { nav.tab = Nav.CLASSES; nav.openSettings(SettingsPage.STUDENT_ID) }
             "todo" -> nav.tab = Nav.TODO
             "grades" -> nav.tab = Nav.GRADES
             "inbox" -> nav.tab = Nav.INBOX
@@ -143,7 +147,7 @@ fun MainScreen() {
     LaunchedEffect(Unit) {
         if (!model.practice && !Prefs.bool(Tour.SHOWN_KEY)) Tour.mode = Tour.Mode.TOUR
         val at = model.todoAsOf
-        if (at == null || System.currentTimeMillis() - at.time > 120_000) model.refreshTodo()
+        if (at == null || System.currentTimeMillis() - at.time > 120_000) model.refreshTodo(quick = true)
     }
 
     Scaffold(
@@ -167,7 +171,7 @@ fun MainScreen() {
                         },
                         label = { Text(t.title, style = Theme.caption) },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = C.accent, selectedTextColor = C.accent, indicatorColor = C.accentSoft,
+                            selectedIconColor = C.text, selectedTextColor = C.text, indicatorColor = C.divider,
                             unselectedIconColor = C.secondary, unselectedTextColor = C.secondary,
                         ),
                     )
@@ -199,12 +203,15 @@ fun MainScreen() {
     }
     nav.file?.let { FileViewer(it) { nav.file = null } }
     nav.whatIf?.let { (item, section) -> WhatIfSheet(item, section) { nav.whatIf = null } }
+    com.owenleung.dewey.ui.todo.TaskSheets()
+    if (nav.showID) com.owenleung.dewey.ui.settings.StudentIDCard { nav.showID = false }
 }
 
 @Composable
 fun RouteScreen(r: Route) {
     when (r) {
-        is Route.Assignment -> AssignmentScreen(r.id)
+        is Route.Assignment -> AssignmentScreen(r.id, r.sectionId)
+        is Route.MineTask -> com.owenleung.dewey.ui.todo.MineTaskScreen(r.id)
         is Route.CourseGrades -> CourseGradesScreen(r.sectionId)
         is Route.GradeDetail -> GradeDetailScreen(r.sectionId, r.itemId)
         is Route.Materials -> MaterialsScreen(r.sectionId, r.folderId, r.title, r.trail)

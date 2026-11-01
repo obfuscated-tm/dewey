@@ -14,9 +14,12 @@ data class Course(val sectionId: String, val title: String, val sectionTitle: St
     /** "Chemistry H - 12345: P3" → "Chemistry H" (the course code goes). */
     val shortTitle: String get() = short(title)
 
-    /** "P3", "Period 3" … from the section title, or the section title itself. */
+    /**
+     * "P3" from "P3", "Per 3", "Period 3" … in the section title, else "" (districts name
+     * sections differently, and a raw title like "1404: GarciaJ T1" is noise next to a class).
+     */
     val periodLabel: String
-        get() = Regex("""(?i)\b(?:p(?:er(?:iod)?)?\.?\s*)(\d)\b""").find(sectionTitle)?.let { "P${it.groupValues[1]}" } ?: sectionTitle
+        get() = Regex("""(?i)\b(?:p(?:er(?:iod)?)?\.?\s*)(\d)\b""").find(sectionTitle)?.let { "P${it.groupValues[1]}" } ?: ""
 
     /** A class, not a hub or advisory: the student's choice in Settings, else the guess from the name. */
     val isClass: Boolean
@@ -134,6 +137,10 @@ data class CourseGrade(
     @Serializable
     data class Point(val day: String? = null, val pct: Double? = null, val items: List<String> = emptyList())
 }
+
+/** The engine's account op (/settings/account): studentId is the username when it is a number. */
+@Serializable
+data class AccountInfo(val username: String? = null, val studentId: String? = null)
 
 @Serializable
 data class PlanResult(val status: String, val need: Double? = null) // any | out | need | none

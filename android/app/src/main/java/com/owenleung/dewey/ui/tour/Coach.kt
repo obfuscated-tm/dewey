@@ -1,5 +1,7 @@
 package com.owenleung.dewey.ui.tour
 
+import androidx.compose.foundation.border
+import kotlinx.coroutines.launch
 import android.view.accessibility.AccessibilityManager
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -96,6 +98,10 @@ object Coach {
         val hint: Hint = Hint.TAP,
         /** A button in the bubble moves on (and the hole takes no taps). */
         val button: String? = null,
+        /** What the button does before moving on (asking for a permission, saving a choice). */
+        val action: (suspend () -> Unit)? = null,
+        /** A second, plain button that moves on without `action` ("Not now"). */
+        val other: String? = null,
         /** Moves on by itself once this is true. */
         val done: ((AppModel) -> Boolean)? = null,
         /** The hole spans the screen's width: a list row. */
@@ -112,6 +118,7 @@ object Coach {
 
     /** Where each `coachTarget` is, in root pixels. */
     val frames = mutableStateMapOf<String, Rect>()
+    internal val owners = HashMap<String, Any>()
     /** Things a screen says happened that the model doesn't hold (`note`), e.g. a what-if score typed. */
     val flags = mutableStateListOf<String>()
 
@@ -146,8 +153,22 @@ object Coach {
         if (running && flag !in flags) flags += flag
     }
 
-    /** The bubble's button. */
-    fun next() { if (step?.button != null) move() }
+    private val scope = kotlinx.coroutines.MainScope()
+
+    /** The bubble's button: its action first (a permission prompt waits for the answer). */
+    fun next() {
+        val s = step ?: return
+        if (s.button == null) return
+        val action = s.action ?: return move()
+        val at = index
+        scope.launch {
+            action()
+            if (running && index == at) move()
+        }
+    }
+
+    /** The bubble's second button: on without the action. */
+    fun pass() { if (step?.other != null) move() }
 
     fun move() {
         index += 1
@@ -170,6 +191,7 @@ object Coach {
         if (!running) return
         running = false
         frames.clear()
+        owners.clear()
         flags.clear()
         lost = false
         cheering = false
@@ -182,8 +204,11 @@ object Coach {
 /** Where the tour's spotlight can point. Does nothing outside practice. */
 fun Modifier.coachTarget(key: String): Modifier = composed {
     if (!model.practice) return@composed this
-    DisposableEffect(key) { onDispose { Coach.frames.remove(key) } }
-    onGloballyPositioned { Coach.frames[key] = it.boundsInRoot() }
+    // Which composable set the frame: a list that rebuilds its rows (Plan, after a drop) shows the
+    // new row before the old one goes, and the old one's leaving mustn't clear the new one's frame.
+    val id = remember { Any() }
+    DisposableEffect(key) { onDispose { if (Coach.owners[key] === id) { Coach.frames.remove(key); Coach.owners.remove(key) } } }
+    onGloballyPositioned { Coach.frames[key] = it.boundsInRoot(); Coach.owners[key] = id }
 }
 
 /** Swallows every touch on it. */
@@ -298,7 +323,13 @@ private fun Bubble(step: Coach.Step, cheering: Boolean, lost: Boolean, still: Bo
             if (lost) {
                 Text("Lost your place? I'll take you back.", style = Theme.footnote, color = C.secondary)
                 CoachButton("Take me there") { Coach.recover() }
-            } else if (step.button != null && !cheering) CoachButton(step.button) { Coach.next() }
+            } else if (step.button != null && !cheering) Row(horizontalArrangement = Arrangement.spacedBy(Theme.Space.s)) {
+                CoachButton(step.button) { Coach.next() }
+                step.other?.let { o ->
+                    Text(o, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text,
+                        modifier = Modifier.clip(CircleShape).border(1.dp, C.border, CircleShape).clickable { Coach.pass() }.padding(horizontal = 16.dp, vertical = 8.dp))
+                }
+            }
         }
         // Skip lives in the bubble, so it never covers a target.
         Box(Modifier.heightIn(min = 32.dp).widthIn(min = 44.dp).clip(RoundedCornerShape(Theme.Radius.tag)).clickable(onClickLabel = "Skip tour") { Coach.finish() },

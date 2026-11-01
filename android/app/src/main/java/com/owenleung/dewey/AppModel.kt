@@ -18,7 +18,13 @@ import com.owenleung.dewey.engine.PlanResult
 import com.owenleung.dewey.engine.QuizInfo
 import com.owenleung.dewey.engine.SubmissionStatus
 import com.owenleung.dewey.engine.TodoLists
+import com.owenleung.dewey.engine.AccountInfo
 import com.owenleung.dewey.neoplan.NeoPlanClient
+import com.owenleung.dewey.neoplan.NeoPlanError
+import com.owenleung.dewey.store.CalendarSync
+import com.owenleung.dewey.store.PlanLogic
+import androidx.compose.runtime.mutableStateListOf
+import kotlinx.serialization.SerialName
 import com.owenleung.dewey.store.Cache
 import com.owenleung.dewey.store.Fmt
 import com.owenleung.dewey.store.GradesLook
@@ -73,6 +79,14 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
 
         /** "New" wears off after a week even if never opened. */
         const val NEW_GRADE_DAYS = 7.0
+        /** Rows kept this many days after they're gone (prune). */
+        const val KEEP_DAYS = 120L
+
+        fun neoPlanProblemText(e: Throwable): String = when {
+            e is NeoPlanError.Refused && e.status == 401 -> "Token refused"
+            e is NeoPlanError.Refused -> "neo-plan refused a change"
+            else -> "Can’t reach neo-plan"
+        }
 
         fun isNew(e: GradeLogEntry, now: Date = Date()): Boolean {
             if (e.seen) return false
@@ -187,7 +201,23 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         Reminders.sessionDidStart()
         if (Reminders.signedOutAlert || Reminders.gradeAlerts) Reminders.requestPermission()
         runCatching { loadCourses() }
+        forgetOtherAccount()
         refreshTodo()
+    }
+
+    /** A different student signed in on this phone: the last one's rows and marks go. */
+    suspend fun forgetOtherAccount() {
+        if (practice) return
+        val a: AccountInfo = runCatching { engine.call<AccountInfo>("account") }.getOrNull() ?: return
+        val user = a.username?.takeIf { it.isNotEmpty() } ?: return
+        val key = "signedInUser"
+        val was = Prefs.string(key)
+        Prefs.set(key, user)
+        if (was == null || was == user) return
+        store.clearAll()
+        pendingPush.clear()
+        savePending()
+        save()
     }
 
     suspend fun signOut() {
@@ -239,7 +269,8 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     /** The To Do list: visible items (TodoLogic.isVisible). */
     fun todoItems(): List<ItemState> {
         revision.intValue
-        return store.all().filter(TodoLogic::isVisible)
+        val now = Date()
+        return store.all().filter { TodoLogic.isVisible(it, now) }
     }
 
     /** Open (not finished) overdue work: the tab badge. */
@@ -263,8 +294,11 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
 
     fun isFinished(it: ItemState) = it.submitted || it.turnedIn || (if (it.isExam) false else it.done)
 
-    /** Pull Schoology's lists, merge, then check a few dropboxes and neo-plan. */
-    suspend fun refreshTodo() {
+    /**
+     * Pull Schoology's lists, merge, then check a few dropboxes and neo-plan.
+     * `quick`: return once the list is merged (pull to refresh) and let the checks fill in after.
+     */
+    suspend fun refreshTodo(quick: Boolean = false) {
         if (refreshingTodo) return
         refreshingTodo = true
         try {
@@ -273,10 +307,6 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
             merge(lists)
             todoError = null
             todoAsOf = Date().also { Cache.saveDate("todoAsOf", it) }
-            // Show the merged list now; dropbox checks and neo-plan fill in after.
-            revision.intValue++
-            checkStatuses()
-            syncNeoPlan()
         } catch (e: EngineError) {
             todoError = e
         } catch (e: Exception) {
@@ -285,8 +315,31 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
             refreshingTodo = false
         }
         revision.intValue++
+        publishTodo()
+        if (todoError != null) return
+        if (quick) scope.launch { checkAfterRefresh() } else checkAfterRefresh()
+    }
+
+    private var checking = false
+
+    /** Dropbox checks and neo-plan, after a refresh merged Schoology's lists. */
+    private suspend fun checkAfterRefresh() {
+        if (checking) return
+        checking = true
+        try {
+            checkStatuses()
+            syncNeoPlan()
+        } finally {
+            checking = false
+        }
+        revision.intValue++
+        publishTodo()
+    }
+
+    private fun publishTodo() {
         WidgetBridge.publish(this)
         Reminders.schedule(todoItems(), courses)
+        CalendarSync.schedule(this)
     }
 
     fun merge(lists: TodoLists, now: Date = Date()) {
@@ -303,15 +356,30 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
             it.inSchoology = true
             it.lastSeen = now.time
         }
-        for (it in store.all()) if (it.schoologyId !in seen) it.inSchoology = false
+        // The student's own tasks are never on Schoology's lists.
+        for (it in store.all()) if (it.schoologyId !in seen && !it.mine) it.inSchoology = false
+        prune(now)
         store.save()
+    }
+
+    /**
+     * Rows nobody will see again: Schoology work it stopped listing months ago, and the
+     * student's own tasks finished months ago. Keeps the saved list from growing all year.
+     */
+    private fun prune(now: Date) {
+        val cutoff = now.time - KEEP_DAYS * 86_400_000L
+        for (it in store.all()) {
+            val old = if (it.mine) (it.done || it.turnedIn || it.dismissed) && it.updatedAt < cutoff
+                      else !it.inSchoology && it.lastSeen < cutoff
+            if (old) store.remove(it.schoologyId)
+        }
     }
 
     /** status({id}) for up to 10 rows that might have a dropbox, not checked in 30 min. A quiz is checked on its landing page instead, until it says submitted. */
     suspend fun checkStatuses(cap: Int = 10) {
         val cutoff = System.currentTimeMillis() - 30 * 60_000
         val candidates = todoItems()
-            .filter { !it.external && it.statusState != "no_dropbox" && (it.statusCheckedAt ?: 0) < cutoff }
+            .filter { !it.mine && !it.external && it.statusState != "no_dropbox" && (it.statusCheckedAt ?: 0) < cutoff }
             .filter { !it.isQuiz || !it.submitted }
             .sortedBy { it.statusCheckedAt ?: 0 }
             .take(cap)
@@ -381,8 +449,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         if (it.isExam) it.studied = !it.studied else it.done = !it.done
         it.touch()
         save()
-        val ready = if (it.isExam) it.studied else it.done
-        pushNeoPlan(it) { id -> NeoPlanClient.setWork(id, ready) }
+        pushNeoPlan(it, NeoPlanOp.Work(if (it.isExam) it.studied else it.done))
     }
 
     fun setTurnedIn(it: ItemState, on: Boolean) {
@@ -390,7 +457,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         if (on) it.done = true
         it.touch()
         save()
-        pushNeoPlan(it) { id -> if (on) NeoPlanClient.turnIn(id) else NeoPlanClient.putBack(id) }
+        pushNeoPlan(it, NeoPlanOp.TurnedIn(on))
     }
 
     /** One switch for the student's own state: to do → done (worked on) → turned in (handed in). */
@@ -407,7 +474,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         it.type = t
         it.touch()
         save()
-        pushNeoPlan(it) { id -> NeoPlanClient.setType(id, t) }
+        pushNeoPlan(it, NeoPlanOp.Type(t.raw))
     }
 
     fun dismiss(it: ItemState) {
@@ -419,21 +486,152 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     fun save() {
         store.save()
         revision.intValue++
-        WidgetBridge.publish(this)
-        Reminders.schedule(todoItems(), courses)
+        publishTodo()
+    }
+
+    // ── The student's own tasks ──────────────────────────────────────────
+
+    /** Adds a task of the student's own (TaskEditor, quick add). Never sent anywhere. */
+    fun addTask(title: String, type: ItemType = ItemType.TASK, sectionId: String? = null, due: Date? = null, notes: String? = null): ItemState {
+        val it = ItemState.mine(title)
+        it.typeOverride = type.raw
+        it.sectionId = sectionId
+        it.courseName = course(sectionId)?.shortTitle
+        it.due = due
+        it.notes = notes
+        store.insert(it)
+        save()
+        return it
+    }
+
+    fun updateTask(it: ItemState, title: String, type: ItemType, sectionId: String?, due: Date?, notes: String?) {
+        it.title = title
+        it.typeOverride = type.raw
+        it.sectionId = sectionId
+        it.courseName = course(sectionId)?.shortTitle
+        it.due = due
+        it.notes = notes
+        it.touch()
+        save()
+    }
+
+    fun deleteTask(it: ItemState) {
+        if (!it.mine) return
+        store.remove(it.schoologyId)
+        save()
+    }
+
+    // ── Plan ─────────────────────────────────────────────────────────────
+
+    data class PlanLists(val todo: List<ItemState>, val later: List<ItemState>, /** Finished today. */ val done: List<ItemState>) {
+        val rows: List<PlanLogic.Row> get() = PlanLogic.rows(todo.map { it.schoologyId }, later.map { it.schoologyId }, done.map { it.schoologyId })
+    }
+
+    /** For a plan row: finished, as Plan counts it (a test you studied for is done). */
+    fun planFinished(it: ItemState) = isFinished(it) || (it.isExam && it.studied)
+
+    /**
+     * Work finished while Plan is open (a tick, a swipe, Submit): it stays where it
+     * was, ticked, instead of dropping into Done at the bottom, until Plan closes.
+     */
+    val planKeep = mutableStateListOf<String>()
+
+    /** Every open item in To do or Later (PlanLogic), plus what was finished today. */
+    fun planLists(now: Date = Date()): PlanLists {
+        val todo = mutableListOf<ItemState>(); val later = mutableListOf<ItemState>(); val done = mutableListOf<ItemState>()
+        for (it in todoItems()) {
+            val kept = it.schoologyId in planKeep
+            if (planFinished(it) && !kept) {
+                if (Fmt.sameDay(Date(it.updatedAt), now)) done += it
+                continue
+            }
+            val late = isOverdue(it, now)
+            if (!kept) {
+                if (TodoLogic.isOlder(it.due, now)) continue
+                // A past test that isn't an online quiz isn't work any more (TodoLogic.showsLate).
+                if ((it.due?.before(now) == true) && !late && !it.mine) continue
+            }
+            val auto = PlanLogic.autoBucket(it.due, late, it.isExam, it.mine, now)
+            val b = PlanLogic.Bucket.of(it.planSection) ?: auto
+            if (b == PlanLogic.Bucket.LATER) later += it else todo += it
+        }
+        fun ordered(list: List<ItemState>): List<ItemState> {
+            val byId = list.associateBy { it.schoologyId }
+            return PlanLogic.order(list.map { PlanLogic.Entry(it.schoologyId, it.planRank, it.dueAt) }).mapNotNull { byId[it.id] }
+        }
+        return PlanLists(ordered(todo), ordered(later), done.sortedBy { it.updatedAt })
+    }
+
+    /**
+     * Saves a drag (PlanLogic.place): every item's place, and for the item that
+     * changed section, that section. Into Done = done; out of Done = to do again.
+     */
+    fun applyPlan(placed: Map<String, PlanLogic.Place>, moved: String?, now: Date = Date()) {
+        val lists = planLists(now)
+        val was = lists.todo.associate { it.schoologyId to PlanLogic.Bucket.TODO } + lists.later.associate { it.schoologyId to PlanLogic.Bucket.LATER } +
+            lists.done.associate { it.schoologyId to PlanLogic.Bucket.DONE }
+        for (it in lists.todo + lists.later + lists.done) {
+            val p = placed[it.schoologyId] ?: continue
+            if (p.bucket != PlanLogic.Bucket.DONE) it.planRank = p.rank
+            val from = was[it.schoologyId]
+            if (it.schoologyId != moved || from == null || from == p.bucket) continue
+            when (p.bucket) {
+                PlanLogic.Bucket.DONE -> {
+                    planKeep.remove(it.schoologyId)
+                    setProgress(it, Progress.DONE)
+                }
+                else -> {
+                    if (from == PlanLogic.Bucket.DONE) setProgress(it, Progress.TODO)
+                    // By due date it would be here anyway: leave it to follow its due date.
+                    val auto = PlanLogic.autoBucket(it.due, isOverdue(it, now), it.isExam, it.mine, now)
+                    it.planSection = if (p.bucket == auto) null else p.bucket.raw
+                }
+            }
+        }
+        save()
     }
 
     // ── neo-plan ─────────────────────────────────────────────────────────
 
-    /** Pending neo-plan writes made offline, by Schoology id; retried on refresh. */
-    private val pendingPush = HashMap<String, suspend (String) -> Unit>()
+    /** One change to send to neo-plan. */
+    @Serializable
+    sealed class NeoPlanOp {
+        abstract val kind: Int
+        @Serializable @SerialName("work") data class Work(val ready: Boolean) : NeoPlanOp() { override val kind get() = 0 }
+        @Serializable @SerialName("turnedIn") data class TurnedIn(val on: Boolean) : NeoPlanOp() { override val kind get() = 1 }
+        @Serializable @SerialName("type") data class Type(@SerialName("value") val type: String) : NeoPlanOp() { override val kind get() = 2 }
 
-    private fun pushNeoPlan(it: ItemState, op: suspend (String) -> Unit) {
-        if (!NeoPlanClient.connected) return
+        suspend fun run(id: String) {
+            when (this) {
+                is Work -> NeoPlanClient.setWork(id, ready)
+                is TurnedIn -> if (on) NeoPlanClient.turnIn(id) else NeoPlanClient.putBack(id)
+                is Type -> ItemType.of(type)?.let { NeoPlanClient.setType(id, it) }
+            }
+        }
+    }
+
+    private val pendingSerializer = MapSerializer(String.serializer(), ListSerializer(NeoPlanOp.serializer()))
+
+    /** neo-plan writes that failed (offline), by Schoology id, the newest of each kind; saved, so a quit doesn't lose them, and retried on refresh. */
+    private val pendingPush: MutableMap<String, List<NeoPlanOp>> =
+        (if (practice) null else Cache.load("neoplanPending", pendingSerializer)?.first)?.toMutableMap() ?: mutableMapOf()
+
+    private fun savePending() { if (!practice) Cache.save("neoplanPending", pendingSerializer, pendingPush.toMap()) }
+
+    private fun queueNeoPlan(sid: String, op: NeoPlanOp) {
+        pendingPush[sid] = (pendingPush[sid] ?: emptyList()).filter { it.kind != op.kind } + op
+        savePending()
+    }
+
+    private fun pushNeoPlan(it: ItemState, op: NeoPlanOp) {
+        // neo-plan's extension API only takes Schoology items: the student's own tasks stay here.
+        if (!NeoPlanClient.connected || it.mine) return
         val sid = it.schoologyId
+        // Behind earlier failed writes: keep the order.
+        if (pendingPush[sid] != null) { queueNeoPlan(sid, op); return }
         scope.launch {
-            val id = neoPlanId(sid) ?: return@launch
-            try { op(id) } catch (e: Exception) { pendingPush[sid] = op }
+            val id = neoPlanId(sid) ?: run { queueNeoPlan(sid, op); return@launch }
+            try { op.run(id) } catch (e: Exception) { queueNeoPlan(sid, op) }
         }
     }
 
@@ -447,18 +645,44 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         return null
     }
 
-    /** neo-plan is the shared copy: the newer edit wins. Pulls its state for every listed item. */
-    suspend fun syncNeoPlan() {
+    /** What went wrong in the last neo-plan sync, for Settings → neo-plan; null when all went through. */
+    var neoPlanProblem by mutableStateOf<String?>(null)
+
+    /**
+     * neo-plan is the shared copy: the newer edit wins. Tells it the courses
+     * (so it files work by class, and a new account gets a column per class),
+     * adds new work it doesn't have, then pulls its state for every listed item.
+     */
+    suspend fun syncNeoPlan(byHand: Boolean = false) {
         if (!NeoPlanClient.connected) return
-        for ((sid, op) in pendingPush.toMap()) {
-            val id = neoPlanId(sid) ?: continue
-            if (runCatching { op(id) }.isSuccess) pendingPush.remove(sid)
+        var problem: String? = null
+        val items = todoItems().filter { !it.mine }
+        // Not on every return to the app: every 10 minutes, or when asked.
+        val enrichedAt = Cache.loadDate("neoplanEnrichedAt")?.time ?: 0
+        if (courses.isNotEmpty() && (byHand || System.currentTimeMillis() - enrichedAt > 10 * 60_000)) {
+            val work = items.filter { it.isSchoologyAssignment }.mapNotNull { it.sectionId?.let { s -> it.schoologyId to s } }
+            try {
+                NeoPlanClient.enrich(courses, work, byHand)
+                Cache.saveDate("neoplanEnrichedAt", Date())
+            } catch (e: Exception) { problem = neoPlanProblemText(e) }
         }
-        val items = todoItems()
-        val got = runCatching { NeoPlanClient.items(items.map { it.schoologyId }) }.getOrNull() ?: return
+        for ((sid, ops) in pendingPush.toMap()) {
+            val id = neoPlanId(sid) ?: continue
+            val left = ops.toMutableList()
+            while (left.isNotEmpty() && runCatching { left.first().run(id) }.isSuccess) left.removeAt(0)
+            if (left.isEmpty()) pendingPush.remove(sid) else pendingPush[sid] = left
+        }
+        savePending()
+        val got = try { NeoPlanClient.items(items.map { it.schoologyId }) } catch (e: Exception) {
+            neoPlanProblem = neoPlanProblemText(e)
+            return
+        }
+        val (added, addProblem) = addNewWork(items, got.mapNotNull { it.sourceId }.toSet())
+        neoPlanProblem = addProblem ?: problem
         val bySource = got.filter { it.sourceId != null }.associateBy { it.sourceId!! }
         val lastSync = Cache.loadDate("neoplanSyncedAt")?.time ?: 0
         for (it in items) {
+            if (it.schoologyId in added) continue
             val g = bySource[it.schoologyId] ?: continue
             it.neoPlanId = g.id
             // Local edits since the last sync win; otherwise neo-plan's state.
@@ -472,7 +696,51 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         save()
     }
 
+    /**
+     * Open Schoology work neo-plan has no item for goes onto the board, as the
+     * extension's sync does (sync.js step 5b): not overdue by more than two
+     * weeks, at most 25 a sync, and once only (an item it removed comes back
+     * in `have`). What the student already marked here goes with it. Returns
+     * the ids added, which the pull leaves alone, and a problem to show.
+     */
+    private suspend fun addNewWork(items: List<ItemState>, have: Set<String>): Pair<Set<String>, String?> {
+        val cutoff = System.currentTimeMillis() - 14 * 86_400_000L
+        val new = items.filter {
+            it.isSchoologyAssignment && it.neoPlanId == null && it.schoologyId !in have &&
+                !it.submitted && !it.dismissed && (it.dueAt?.let { d -> d >= cutoff } ?: true)
+        }
+        val added = HashSet<String>()
+        var noColumn = 0
+        var problem: String? = null
+        for (it in new.take(25)) {
+            try {
+                val item = NeoPlanClient.addItem(it.schoologyId, it.sectionId, it.title, it.due, if (it.isQuiz) ItemType.EXAM else null) ?: continue
+                it.neoPlanId = item.id
+                added += it.schoologyId
+                if (if (it.isExam) it.studied else it.done) runCatching { NeoPlanClient.setWork(item.id, true) }
+                if (it.turnedIn) runCatching { NeoPlanClient.turnIn(item.id) }
+            } catch (e: com.owenleung.dewey.neoplan.NeoPlanError.Refused) {
+                if (e.status == 409 && e.word == "no_column") noColumn += 1 else problem = problem ?: neoPlanProblemText(e)
+            } catch (e: Exception) {
+                problem = problem ?: neoPlanProblemText(e)
+            }
+        }
+        if (noColumn > 0) problem = "$noColumn not added: no column for its class"
+        return added to problem
+    }
+
     // ── Grades ───────────────────────────────────────────────────────────
+
+    /** The grade the student aims for in a class (the Goal chip): saved, and the A line until they pick one. */
+    fun goal(sectionId: String): Double {
+        revision.intValue
+        return store.goal(sectionId) ?: cutoff(sectionId)
+    }
+
+    fun setGoal(sectionId: String, pct: Double) {
+        store.setGoal(sectionId, pct)
+        revision.intValue++
+    }
 
     fun gradeRows(sectionId: String): String? = Cache.loadRaw("grades-$sectionId")?.first
 
@@ -485,6 +753,8 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
                 val saved = Cache.load(summaryKey(sectionId), CourseGrade.serializer())
                 if (saved != null && saved.second.time >= at.time - 5_000) grades[sectionId] = saved.first
                 else runCatching { summarize(raw) }.getOrNull()?.let { grades[sectionId] = it }
+                    // Offline, or the engine page won't load: an older build's summary beats nothing.
+                    ?: Cache.load(anySummaryKey(sectionId), CourseGrade.serializer())?.let { grades[sectionId] = it.first }
             }
         }
         val at = gradesAsOf[sectionId]
@@ -494,6 +764,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
             Cache.saveRaw("grades-$sectionId", raw)
             val g = summarize(raw)
             Cache.save(summaryKey(sectionId), CourseGrade.serializer(), g)
+            Cache.save(anySummaryKey(sectionId), CourseGrade.serializer(), g)
             noteNewGrades(sectionId, grades[sectionId], g)
             grades[sectionId] = g
             gradesAsOf[sectionId] = Date()
@@ -508,6 +779,8 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
 
     /** Per build, so new grade math never shows an old summary. */
     private fun summaryKey(sectionId: String) = "gradeSummary-$sectionId-$buildCode"
+    /** The last summary whatever the build: the offline fallback. */
+    private fun anySummaryKey(sectionId: String) = "gradeSummaryLast-$sectionId"
 
     private val buildCode: Long by lazy {
         runCatching { androidx.core.content.pm.PackageInfoCompat.getLongVersionCode(context.packageManager.getPackageInfo(context.packageName, 0)) }
@@ -523,11 +796,14 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         return engine.call("courseGrade", mapOf("rows" to rowsEl, "opts" to opts))
     }
 
-    suspend fun plan(sectionId: String, category: String, possible: Double, target: Double): PlanResult? {
+    /** The score a planned item needs, counting the what-if scores on screen (same opts as `summarize`). */
+    suspend fun plan(sectionId: String, category: String, possible: Double, target: Double,
+                     whatIf: Map<String, Map<String, Double>> = emptyMap(), extra: List<Map<String, Any>> = emptyList(),
+                     drop: List<String> = emptyList()): PlanResult? {
         val raw = gradeRows(sectionId) ?: return null
         return runCatching {
             engine.call<PlanResult>("planTest", mapOf("rows" to EngineJson.json.parseToJsonElement(raw), "category" to category,
-                "possible" to possible, "target" to target))
+                "possible" to possible, "target" to target, "opts" to mapOf("whatIf" to whatIf, "extra" to extra, "drop" to drop)))
         }.getOrNull()
     }
 

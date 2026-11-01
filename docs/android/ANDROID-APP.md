@@ -93,6 +93,10 @@ Dewey's one signature motion, on iOS (`ios/App/Screens/Shared/DoneRipple.swift`)
 - Plays only when the box turns on, never on undo, never when a list first loads (key it on the change, e.g. `LaunchedEffect` on a counter bumped in the tap handler that sets done). Drawn behind the checkbox (`Modifier.drawBehind` + one `Animatable`), not clipped by the row.
 - Off when the system has animations turned off (`Settings.Global.ANIMATOR_DURATION_SCALE == 0`, Android's Reduce Motion).
 
+**Caught up with iOS (2026-10-31):** the iOS changes since `e517c70` (through `4551b5f`) are ported: Plan (To do / Later / Done, drag by the grip, swipe, fold, school-day aware), the student's own tasks (quick add that reads "chem lab fri after school", the task editor), the month calendar pulled down from the week strip, the floating +, Student ID (barcode card, Settings page with Fill in from Schoology and the Code 39 scanner, a launcher shortcut `dewey://id`, the button on Classes), the "Dewey" calendar in the phone's Calendar app, School day times, the paper-and-ink look, the report card rows (spine labels, period only when a section names one), a goal per class (Goal chip, graph line, planner, "You need"), what-if that keeps its scores ("Show real" / "Back to what-if · N changes", planner counts them), Inbox index cards, the Assignment page taking its class from the link (and opening own tasks), refresh on return after 10 minutes, saved neo-plan writes replayed in order, a different student signing in clearing the last one's rows, pruning after 120 days, and the tour (month, Plan, new-task, goal and student-ID steps, Settings set for real with Allow / Not now, the Student ID card after practice, the Plan reference card). The engine's 20 s request timeout comes free with engine.js. Unit tests (iOS's PlanTests, TaskParseTests and CalendarAndIDTests ported) and `npm test` pass. On the emulator the tour was run through To Do, the month, Plan (grip drag, swipe to Later), quick add and Grades' Goal chip; the rest (Settings steps, Student ID scan, Calendar writes) was built but not run live.
+
+Not ported: iOS's wide layout for iPad / Duo (WideShell): the activity stays portrait. The swipe-left hint on the tour's Later step is plain text (Android's coach has no swipe hint mark).
+
 ## Android-only facts
 
 - **Google refuses sign-in in a WebView whose user agent has `; wv` or `Version/x.y`.** Login compatibility mode (Settings → Sign-in) removes both and is **on by default** on Android. The `X-Requested-With` header is also stripped (androidx.webkit allow-list) where the WebView supports it. On the emulator (API 36), Google's sign-in page loads with this user agent. Nobody has finished a sign-in yet.
@@ -144,5 +148,7 @@ Still to check:
 | Widgets, background refresh, reminders, countdown | done, checked on emulator |
 | Design refresh (Dew palette, settings pages, catalog cards, shelf, status guide) | done, seen in the tour on the emulator |
 | Guided tour, practice mode, tour cards | done, run start to finish on emulator (signed out) |
-| Tour update from iOS (2026-10-22): month, Plan and new-task steps, settings set during the tour (notifications, school day, Calendar), Student ID card after practice, Plan reference card | **to port** (see docs/ios/SCREENS.md, Tour; needs Plan and quick add on Android first) |
-| Unit tests | 17 pass (Dew contrast, call numbers, logic) |
+| Plan, own tasks, quick add, month, Student ID, Calendar, goals (2026-10-31) | done; Plan, quick add, month and Goal run in the tour on the emulator |
+| Tour update from iOS: month, Plan and new-task steps, settings set during the tour (notifications, school day, Calendar), Student ID card after practice, Plan reference card | done; run on the emulator up to Grades |
+| Wide layout (iPad / Duo on iOS) | not ported |
+| Unit tests | pass (Dew contrast, call numbers, logic, Plan, quick add, calendar events, Code 39, student ID, neo-plan ops) |

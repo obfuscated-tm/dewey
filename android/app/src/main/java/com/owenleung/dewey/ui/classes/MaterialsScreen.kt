@@ -157,7 +157,7 @@ private fun ClassOpenWork(sectionId: String) {
             items.forEachIndexed { i, it ->
                 if (i > 0) Divider()
                 val late = model.isOverdue(it, now)
-                Row(Modifier.fillMaxWidth().clickable { nav.push(Route.Assignment(it.schoologyId)) }.heightIn(min = 44.dp)
+                Row(Modifier.fillMaxWidth().clickable { nav.push(Route.Assignment(it.schoologyId, sectionId)) }.heightIn(min = 44.dp)
                     .padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                         Text(it.title, style = Theme.body, color = C.text)

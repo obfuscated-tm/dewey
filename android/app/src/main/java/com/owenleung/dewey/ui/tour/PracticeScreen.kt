@@ -1,5 +1,8 @@
 package com.owenleung.dewey.ui.tour
 
+import com.owenleung.dewey.MainActivity
+import com.owenleung.dewey.store.Prefs
+import com.owenleung.dewey.store.CalendarSync
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -76,6 +79,8 @@ fun PracticeScreen(real: AppModel, onDone: () -> Unit) {
             Practice.end()
             WidgetBridge.publish(real)
             Reminders.schedule(real.todoItems(), real.courses)
+            // Turned on in the tour's Settings steps: fill the Dewey calendar from the real week.
+            CalendarSync.schedule(real)
             onDone()
         }
     }
@@ -122,20 +127,46 @@ object TourScript {
             done = { it.item(Practice.WORKSHEET)?.turnedIn == true }, wide = true, tab = 0),
         Coach.Step("todo.check.${Practice.QUIZ}", "Tests are never turned in. Tap the circle once you've studied, and the night-before reminder stops.",
             done = { it.item(Practice.QUIZ)?.studied == true }, tab = 0),
-        Coach.Step(text = "That's To Do! Circle = done for you. Submit or Turn in = handed in. Press and hold any row to pick its status. Now, grades.",
+        Coach.Step(text = "That's your list. Circle = done for you. Submit or Turn in = handed in. Press and hold any row to pick its status. The drop at the top fills as you finish today's work.",
             hint = Coach.Hint.NONE, button = "Next"),
+        Coach.Step("todo.calendar", "Your next 7 days, with a dot for each thing due. Pull the days down to see the whole month.",
+            done = { seen("todo.month") }, tab = 0),
+        Coach.Step("todo.calendar", "Swipe sideways, or tap the arrows, for other months. Tap a day to see it and the next. Push the month back up when you're done.",
+            hint = Coach.Hint.NONE, done = { !seen("todo.month") }, tab = 0, rewind = 1),
+    )
+
+    /** Plan: your own order for the day, and tasks of your own. */
+    private val plan = listOf(
+        Coach.Step("todo.modeChip", "To Do lists everything. Plan is your own order for today. Tap Plan.",
+            done = { seen("plan.heading.later") }, tab = 0),
+        Coach.Step(text = "Plan has three parts. To do is numbered: today's work, in the order you'll do it. Later is for another day. Done fills up as you finish. New work goes where its due date puts it.",
+            hint = Coach.Hint.NONE, button = "Next"),
+        Coach.Step("plan.grip.${Practice.PROBLEMS}", "Drag a row by its dots, at once, no holding. Drag the Chem problems up to number 1.",
+            done = { it.planLists().todo.firstOrNull()?.schoologyId == Practice.PROBLEMS }, tab = 0, rewind = 2),
+        Coach.Step("plan.row.${Practice.READING}", "Not for today? Swipe it left for Later, or drag it below the Later heading. Hold near the top or bottom of the screen to keep it moving.",
+            hint = Coach.Hint.NONE, done = { m -> m.planLists().later.any { it.schoologyId == Practice.READING } }, wide = true, tab = 0, rewind = 3),
+        Coach.Step("todo.add", "Something that isn't on Schoology? Tap + to add a task of your own.",
+            done = { seen("quick.field") }, tab = 0),
+        Coach.Step("quick.field", "Type it the way you'd say it. Try: chem lab fri after school",
+            hint = Coach.Hint.NONE, done = { "quickParsed" in Coach.flags }, tab = 0, rewind = 1),
+        Coach.Step("quick.sheet", "Dewey filled in the day, time and class. The buttons change them, and the row under them is one tap for the usual ones. Tap ↑ to add it.",
+            hint = Coach.Hint.NONE, done = { m -> m.todoItems().any { it.mine } }, tab = 0, rewind = 2),
+        Coach.Step("todo.modeChip", "Your task is on your list now. Tap it any time to change it or add notes. Tap To Do to go back to everything.",
+            done = { seen("todo.calendar") }, tab = 0),
     )
 
     private val grades = listOf(
-        Coach.Step("tab.1", "Tap Grades to see every class's letter.", done = { seen("grades.class.${Practice.chem}") }, tab = 1),
-        Coach.Step("grades.class.${Practice.chem}", "Every class, and how far it is from an A. Tap Chemistry to see every grade in it.",
+        Coach.Step("tab.1", "Now grades. Tap Grades to see every class's letter.", done = { seen("grades.class.${Practice.chem}") }, tab = 1),
+        Coach.Step("grades.class.${Practice.chem}", "Your report card: every class's %, letter and latest score, and what that score did to your grade. Tap Chemistry to see every grade in it.",
             done = { seen("grades.whatif") }, tab = 1),
+        Coach.Step("grades.goal", "Your goal for this class, and how far you are from it. Tap it any time to aim for another letter: the graph's line and the test planner follow it.",
+            hint = Coach.Hint.NONE, button = "Next", tab = 1, rewind = 1),
         Coach.Step("grades.whatif", "What-if lets you try scores before they happen. Tap Try what-if scores.",
-            done = { seen("grades.whatifbar") }, tab = 1, rewind = 1),
+            done = { seen("grades.whatifbar") }, tab = 1, rewind = 2),
         Coach.Step("grades.score.${Practice.FLAME_TEST}", "Your Flame Test lab got 18 / 20. Tap the box and type 20 to see what full marks would do.",
-            done = { "whatif" in Coach.flags }, tab = 1, rewind = 2),
-        Coach.Step("grades.whatifbar", "Real → what-if, right here. It's only a preview: nothing is saved, and leaving the class clears it.",
-            hint = Coach.Hint.NONE, button = "Next", tab = 1, rewind = 3),
+            done = { "whatif" in Coach.flags }, tab = 1, rewind = 3),
+        Coach.Step("grades.whatifbar", "Real → what-if, right here. Nothing is saved. Show real (top right) hides your scores and keeps them; ↺ or leaving the class clears them.",
+            hint = Coach.Hint.NONE, button = "Next", tab = 1, rewind = 4),
     )
 
     private val classes = listOf(
@@ -143,10 +174,13 @@ object TourScript {
             done = { seen("shelf.book.${Practice.english}") || seen("shelf.flat.any") }, tab = 3),
         Coach.Step("shelf.book.${Practice.english}", "Not a real class, like study hall? Press and hold English 10, then tap Take off the shelf. (A tap opens its materials.)",
             done = { seen("shelf.flat.any") }, free = true, tab = 3),
-        Coach.Step("shelf.flat.any", "It lies flat under the shelf now. Press and hold it again to put it back.",
+        Coach.Step("shelf.flat.any", "It lies flat under the shelf now. Press and hold it any time to put it back.",
+            hint = Coach.Hint.NONE, button = "Next", tab = 3),
+        Coach.Step("classes.id", "Your student ID's barcode lives here, for the library and attendance. You'll add your number right after the tour.",
             hint = Coach.Hint.NONE, button = "Next", tab = 3),
     )
 
+    /** Settings: the ones worth setting now, set for real (they're shared with the real app). */
     private val settings = listOf(
         Coach.Step("gear.classes", "Last stop: the gear. It opens Settings for the tab you're on. Tap it.",
             done = { seen("settings.page.classes") }, tab = 3),
@@ -154,13 +188,22 @@ object TourScript {
             hint = Coach.Hint.NONE, done = { !seen("settings.page.classes") && seen("settings.appearance") }, free = true),
         Coach.Step("settings.appearance", "Appearance: System, Light or Dark. Change it any time.",
             hint = Coach.Hint.NONE, button = "Next", wide = true, tab = 3, rewind = 2),
-        Coach.Step("settings.notifications", "Notifications: reminders before work is due, the night before a test, and new grades. Pick which ones here.",
-            hint = Coach.Hint.NONE, button = "Next", wide = true, tab = 3, rewind = 3),
-        Coach.Step(text = "That's the tour. You can take this again from Settings → Help.",
+        Coach.Step("settings.notifications", "Reminders are what keep work from slipping. Let's set them up for real. Tap Notifications.",
+            done = { seen("settings.page.notifications") }, wide = true, tab = 3, rewind = 3),
+        Coach.Step("settings.page.notifications", "Switch on the ones you want. Your phone will ask once if Dewey may send notifications: tap Allow, or none of them arrive.",
+            hint = Coach.Hint.NONE, button = "Allow", action = { Reminders.requestPermission() }, other = "Not now", free = true, tab = 3, rewind = 4),
+        Coach.Step("settings.sheet", "Now tap the back arrow, then To Do.",
+            hint = Coach.Hint.NONE, done = { seen("settings.page.todo") }, free = true, tab = 3, rewind = 5),
+        Coach.Step("settings.schoolDay", "When does your school day start and end? Before school and After school in new tasks use these times. Fix them if they're off. (View, at the top, picks how List looks.)",
+            hint = Coach.Hint.NONE, button = "Looks right", free = true, tab = 3, rewind = 6),
+        Coach.Step("settings.calendar", "Want your work in your phone's Calendar app too? It goes in its own Dewey calendar, which you can hide any time.",
+            hint = Coach.Hint.NONE, button = "Turn on", action = { if (MainActivity.requestCalendar()) Prefs.set(CalendarSync.ENABLED_KEY, true) },
+            other = "Not now", wide = true, tab = 3, rewind = 7),
+        Coach.Step(text = "That's the practice. One last thing on your real account: your student ID. You can take this tour again from Settings → Help.",
             hint = Coach.Hint.NONE, button = "Finish"),
     )
 
-    val all: List<Coach.Step> get() = todo + grades + classes + settings
+    val all: List<Coach.Step> get() = todo + plan + grades + classes + settings
 }
 
 /** The Schoology sheet during practice: a pretend dropbox, so the real page (and the student's real session) is never loaded. */

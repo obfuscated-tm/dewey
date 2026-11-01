@@ -8,7 +8,8 @@
 
 // The only origins the manifest grants. Anything else would fail at fetch time,
 // so it is refused when saved instead.
-export const SERVERS = ['https://neo-plan.vercel.app', 'http://localhost:3000'];
+// plan.owen64.me is the same Vercel deployment under its own domain; either works.
+export const SERVERS = ['https://neo-plan.vercel.app', 'https://plan.owen64.me', 'http://localhost:3000'];
 export const DEFAULT_SERVER = SERVERS[0];
 
 const KEY_SERVER = 'neoplanServer';

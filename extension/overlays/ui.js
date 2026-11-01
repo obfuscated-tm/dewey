@@ -57,11 +57,14 @@ export const BASE_CSS = `
   --line: #DCE0E5; --sunk: #F6F7F9; --surface: #FFFFFF;
   --bad: #B8430F; --bad-soft: #FBEDE5;
   --good: #23794A; --good-soft: #E6F3EC;
-  --class-1: #2f6f4e; --class-2: #1f5d8c; --class-3: #6b4a2f; --class-4: #6b3fa0;
-  --class-5: #a02c4a; --class-6: #3c6e71; --class-7: #7a6a1f; --class-8: #4a4e69; --class-none: #a8a49b;
+  /* The iOS app's class colours (Theme.classColors), in Course Dashboard order. */
+  --class-1: #1D5EA8; --class-2: #23794A; --class-3: #6A4BA8; --class-4: #A8324A;
+  --class-5: #9A5B0C; --class-6: #16707A; --class-7: #5E6670; --class-8: #8A4B1D; --class-none: #a8a49b;
   --sans: "ov Instrument Sans", "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  /* Titles only (card names, page headings), like iOS's New York: the system serif. */
+  --serif: ui-serif, "New York", Georgia, "Times New Roman", serif;
   --mono: "ov JetBrains Mono", "JetBrains Mono", ui-monospace, Menlo, monospace;
-  --radius: 6px; --radius-sm: 4px; /* cards and buttons; chips, tags and pills */
+  --radius: 8px; --radius-sm: 6px; /* cards and buttons; chips, tags and pills (iOS Theme.Radius) */
   font-family: var(--sans);
   font-size: 13px;
   line-height: 18px;
@@ -82,6 +85,7 @@ button:disabled { cursor: default; color: var(--dim); }
 .good { color: var(--good); }
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .link { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
+.serif { font-family: var(--serif); font-weight: 700; }
 [hidden] { display: none !important; }
 `;
 
@@ -103,10 +107,10 @@ function applyOverlay() {
 // ── Per-host theme tokens ───────────────────────────────────────────────
 // theme.js owns THEMES and hands us a (themeKey) => css function, so this
 // file doesn't need to import theme.js (no cycle: theme.js imports this one
-// for onOverlay/onSettings). Each host gets a second <style data-np-theme>
-// holding :host { --accent; --accent-soft } and, in dark themes, the same
-// media re-invert rule theme.js writes on the page (a page stylesheet can't
-// reach into a shadow root).
+// for onOverlay/onSettings). Each host's one <style> ends with the theme's
+// :host tokens (--accent, --accent-soft; every colour for Dew) and, in dark
+// themes, the same media re-invert rule theme.js writes on the page (a page
+// stylesheet can't reach into a shadow root).
 let themeProvider = null;
 
 function hostThemeCss() {
@@ -115,7 +119,7 @@ function hostThemeCss() {
 
 function refreshHostThemes() {
   const css = hostThemeCss();
-  for (const { themeStyle } of hosts) themeStyle.textContent = css;
+  for (const { style, ownCss } of hosts) style.textContent = ownCss + css;
 }
 
 /** theme.js registers its (themeKey) => css function here once, on import. */
@@ -172,7 +176,7 @@ export function setOverlay(on) {
 //   theme    a key of THEMES (theme.js)
 //   percent  a small "95%" beside each graded score
 export const SETTINGS_KEY = 'overlaySettings';
-export const SETTINGS_DEFAULTS = { theme: 'schoology', percent: true };
+export const SETTINGS_DEFAULTS = { theme: 'dew', percent: true };
 let settings = { ...SETTINGS_DEFAULTS };
 let settingsRead = false;
 const settingsListeners = new Set();
@@ -183,6 +187,14 @@ function applySettings(next) {
   refreshHostThemes();
   for (const fn of settingsListeners) fn(settings);
 }
+
+// The computer's light/dark setting, for the 'dew' theme. A change re-sends
+// the settings, so every host and listener redraws as if the theme changed.
+let darkQuery = null;
+try { darkQuery = globalThis.matchMedia?.('(prefers-color-scheme: dark)') || null; } catch { /* tests */ }
+/** Is the computer in dark mode? (false outside a browser) */
+export const systemDark = () => !!darkQuery?.matches;
+darkQuery?.addEventListener?.('change', () => { if (settingsRead) applySettings(settings); });
 
 try {
   chrome.storage.local.get(SETTINGS_KEY).then((got) => applySettings(got?.[SETTINGS_KEY]), () => applySettings(null));
@@ -219,14 +231,13 @@ export function createHost(tag, css, { keep = false } = {}) {
   const host = document.createElement(tag);
   host.toggleAttribute(OFF_ATTR, !keep && overlayOn !== true);
   const root = host.attachShadow({ mode: 'closed' });
+  // One <style>, the theme last: overlays redraw with
+  // root.replaceChildren(root.firstChild, …), which keeps only the first node.
   const style = document.createElement('style');
-  style.textContent = BASE_CSS + (css || '');
+  const ownCss = BASE_CSS + (css || '') + '\n';
+  style.textContent = ownCss + hostThemeCss();
   root.append(style);
-  const themeStyle = document.createElement('style');
-  themeStyle.setAttribute('data-np-theme', '');
-  themeStyle.textContent = hostThemeCss();
-  root.append(themeStyle);
-  hosts.add({ host, keep, themeStyle });
+  hosts.add({ host, keep, style, ownCss });
   return { host, root };
 }
 

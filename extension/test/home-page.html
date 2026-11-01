@@ -147,6 +147,7 @@ async function call(op, args) {
 }
 
 globalThis.__npNoAutoStart = true;
+await import('../overlays/theme.js').then((t) => t.start()); // as theme-early.js does on Schoology
 const { start } = await import('../overlays/home.js');
 const now = () => new Date('2026-09-27T12:00:00');
 window.overlay = await start({ loc: { pathname: '/home' }, call, getEvents, todoStore: store, now });

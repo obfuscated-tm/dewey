@@ -17,7 +17,7 @@
 // The sidebar's foot ("Welcome tour") brings back the Welcome card (overlays/intro.js).
 
 import { el, onClick, getSettings, onSettings, setSetting } from './ui.js';
-import { THEMES, headerBackground, paint } from './theme.js';
+import { THEMES, themeOf, headerBackground, paint } from './theme.js';
 import { createDialog, neoplanFrame, folderInfo, folderText, pickFolder, useDownloads, onFolderChange } from './dialog.js';
 import { GUIDE_CSS, guideNodes } from './statusguide.js';
 
@@ -41,7 +41,7 @@ const CSS = `
 
 .body > .page { flex: 1 1 auto; min-width: 0; min-height: 0; overflow: auto; padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 18px; }
 .page > * { flex: none; } /* never squeezed: the page scrolls instead */
-.page > header h3 { margin: 0; font-size: 17px; line-height: 22px; font-weight: 600; }
+.page > header h3 { margin: 0; font-family: var(--serif); font-size: 19px; line-height: 24px; font-weight: 700; }
 .page > header p { margin: 4px 0 0; font-size: 12px; line-height: 16px; color: var(--dim); }
 .page h4 {
   margin: 0 0 8px; font-size: 11px; font-weight: 600; color: var(--dim);
@@ -154,6 +154,7 @@ export function start({ doc = document } = {}) {
     const sw = el('span', 'swatch');
     sw.append(el('span'), el('span'));
     tb.append(sw, el('span', null, theme.name));
+    if (theme.system) tb.title = 'Light or dark, following your computer';
     onClick(tb, () => setSetting('theme', key));
     themeBtns.set(key, tb);
     grid.append(tb);
@@ -264,10 +265,10 @@ export function start({ doc = document } = {}) {
   }
 
   const drawSettings = (s) => {
-    const pageDark = !!THEMES[s.theme]?.dark;
+    const pageDark = !!themeOf(s.theme)?.dark;
     for (const [key, tb] of themeBtns) {
       tb.setAttribute('aria-pressed', String(s.theme === key));
-      paintSwatch(tb.firstChild, THEMES[key], pageDark);
+      paintSwatch(tb.firstChild, themeOf(key), pageDark);
     }
     percentBox.checked = !!s.percent;
   };

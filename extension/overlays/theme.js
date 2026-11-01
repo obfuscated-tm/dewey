@@ -21,7 +21,7 @@
 // import cycle, ui.js knows nothing about THEMES: theme.js hands it a
 // `hostThemeCss(key)` function via setThemeProvider().
 
-import { onOverlay, onSettings, setThemeProvider } from './ui.js';
+import { onOverlay, onSettings, setThemeProvider, systemDark } from './ui.js';
 
 // Every colour here is what the eye should see, dark themes included:
 // themeCss() and hostThemeCss() pre-invert them for dark themes (paint()).
@@ -29,7 +29,24 @@ import { onOverlay, onSettings, setThemeProvider } from './ui.js';
 //   headerText  the header's text and icons (default white)
 //   page        the page behind Schoology's white cards, and past its edges
 //               (null: Schoology's own grey)
+//   tokens      (Dew only) every overlay colour, not just the accent: the iOS
+//               app's paper-and-ink palette (Theme.swift, Palette.dew)
+//
+// 'dew' is the default and follows the computer's light or dark setting: it
+// stands for dewLight or dewDark (themeOf). Its own fields are dewLight's, so
+// it has a swatch and passes the "every theme has an accent" check.
+const DEW_LIGHT = {
+  name: 'Dew Light', dark: false, header: '#0F6E56', page: '#F6F4EE', accent: '#0F6E56', accentSoft: '#E5EDE6',
+  tokens: { surface: '#FFFDF8', sunk: '#F6F4EE', line: '#E3DED3', ink: '#1B1A17', dim: '#5C5950', faint: '#6B675D', bad: '#A63A0B', badSoft: '#F8EBE3', good: '#3F6B12', goodSoft: '#EAF0DE' },
+};
+const DEW_DARK = {
+  name: 'Dew Dark', dark: true, header: '#04342C', page: '#121211', accent: '#5DCAA5', accentSoft: '#222D27',
+  tokens: { surface: '#1B1A18', sunk: '#121211', line: '#2C2A27', ink: '#EDEAE2', dim: '#A9A59B', faint: '#9A968C', bad: '#FF9466', badSoft: '#35221A', good: '#B5DB6E', goodSoft: '#283318' },
+};
 export const THEMES = {
+  dew: { ...DEW_LIGHT, name: 'Dew', system: true },
+  dewLight: DEW_LIGHT,
+  dewDark: DEW_DARK,
   schoology: { name: 'Schoology', dark: false, header: null, page: null, accent: '#1D5EA8', accentSoft: '#E7EFF8' },
   ocean: { name: 'Ocean', dark: false, header: '#0B5E77', page: '#EEF5F7', accent: '#0B5E77', accentSoft: '#E3F0F4' },
   forest: { name: 'Forest', dark: false, header: '#1E6B3A', page: '#EFF5F0', accent: '#1E6B3A', accentSoft: '#E5F2EA' },
@@ -48,6 +65,12 @@ export const THEMES = {
   synthwave: { name: 'Synthwave', dark: true, header: ['#F72585', '#7209B7', '#3A0CA3'], page: '#170F2B', accent: '#FF5FB0', accentSoft: '#3A1740' },
   ember: { name: 'Ember', dark: true, header: ['#7C2D12', '#C2410C'], page: '#1B1411', accent: '#FB923C', accentSoft: '#3B2418' },
 };
+
+/** The theme `key` stands for now: 'dew' is dewDark when the computer is in dark mode. */
+export function themeOf(key, dark = systemDark()) {
+  if (THEMES[key]?.system) return dark ? THEMES.dewDark : THEMES.dewLight;
+  return THEMES[key];
+}
 
 // ── Colour math ────────────────────────────────────────────────────────────
 
@@ -141,8 +164,8 @@ ${each(' svg')} {
 }
 
 /** The page-level stylesheet for `key` ('' for 'schoology' — no page changes). */
-export function themeCss(key) {
-  const t = THEMES[key];
+export function themeCss(key, dark) {
+  const t = themeOf(key, dark);
   if (!t || key === 'schoology') return '';
   const parts = [];
   if (t.dark) {
@@ -167,9 +190,17 @@ export function themeCss(key) {
  * themes only) the same re-invert rule as the page, since a shadow root's
  * media (the launcher's iframe) isn't reached by a page stylesheet.
  */
-function hostThemeCss(key) {
-  const t = THEMES[key];
+export function hostThemeCss(key, dark) {
+  const t = themeOf(key, dark);
   if (!t || key === 'schoology') return '';
+  if (t.tokens) {
+    // Dew sets every colour, as seen (pre-inverted when dark, like the accent).
+    const k = t.tokens, p = (c) => paint(c, t.dark);
+    let css = `:host { --accent: ${p(t.accent)}; --accent-soft: ${p(t.accentSoft)}; --surface: ${p(k.surface)}; --sunk: ${p(k.sunk)}; --line: ${p(k.line)};`
+      + ` --ink: ${p(k.ink)}; --dim: ${p(k.dim)}; --faint: ${p(k.faint)}; --bad: ${p(k.bad)}; --bad-soft: ${p(k.badSoft)}; --good: ${p(k.good)}; --good-soft: ${p(k.goodSoft)}; }`;
+    if (t.dark) css += `\n${REINVERT_CSS}`;
+    return css;
+  }
   // Our hosts get inverted right along with the page: their light tokens
   // (ink, surface…) are what come out dark. The accents are given as seen,
   // so they're pre-inverted like the page's colours.
@@ -190,7 +221,7 @@ setThemeProvider(hostThemeCss);
 let styleEl = null;
 let halted = false; // stop(): this page is a quiz attempt now; never theme it again
 function applyPageStyle(key, overlayOn) {
-  const show = !halted && overlayOn && key !== 'schoology' && THEMES[key];
+  const show = !halted && overlayOn && key !== 'schoology' && themeOf(key);
   if (!show) {
     if (styleEl) { styleEl.remove(); styleEl = null; }
     return;

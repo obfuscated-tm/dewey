@@ -44,7 +44,7 @@ const CSS = `
   min-height: 48px; padding: 8px 8px 8px 14px; background: var(--sunk); border-bottom: 1px solid var(--line);
 }
 .bar .titles { display: flex; flex-direction: column; min-width: 0; margin-right: auto; gap: 1px; }
-.bar .brand { font-weight: 600; font-size: 14px; }
+.bar .brand { font-family: var(--serif); font-weight: 700; font-size: 16px; }
 .bar .sub { color: var(--dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .close {
   flex: none; width: 32px; height: 32px; border-radius: var(--radius);

@@ -27,7 +27,7 @@ export {
 export const ROW_CSS = `
 :host { display: block; }
 .panel { background: var(--sunk); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; margin: 0 0 16px; }
-.todo-h { font-size: 15px; font-weight: 600; padding: 0 0 6px; margin: 0 0 10px; border-bottom: 1px solid var(--line); }
+.todo-h { font-family: var(--serif); font-size: 17px; font-weight: 700; padding: 0 0 6px; margin: 0 0 10px; border-bottom: 1px solid var(--line); }
 .nothing { color: var(--faint); padding: 8px 0 2px; }
 .row {
   display: grid; grid-template-columns: 14px 1fr auto; grid-template-rows: auto auto auto;

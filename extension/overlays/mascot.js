@@ -7,7 +7,7 @@
 // <img> shows its file's own colours: the -dark file (light outline) there.
 
 import { getSettings, onSettings } from './ui.js';
-import { THEMES } from './theme.js';
+import { themeOf } from './theme.js';
 
 export const POSES = ['hello', 'caught-up', 'archiving', 'uh-oh'];
 
@@ -20,7 +20,7 @@ export function mascotSrc(pose, dark = false) {
   }
 }
 
-const isDark = (s) => !!THEMES[s?.theme]?.dark;
+const isDark = (s) => !!themeOf(s?.theme)?.dark;
 
 /** An <img> of Dewey in `pose`, `size` px square, following the theme. Decorative. */
 export function mascot(pose, { size = 56, doc = document } = {}) {

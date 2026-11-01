@@ -212,3 +212,9 @@ test('autoAddable / typeFor: what the To Do rows add by themselves, and as what'
   assert.equal(typeFor({ url: '/assignment/700' }), undefined);
   assert.equal(typeFor({}), undefined);
 });
+
+test('groupEvents: class colours go by place among the classes, like the iOS app', () => {
+  const groups = groupEvents({ overdue: OVERDUE, upcoming: UPCOMING, cards: CARDS, now: NOW });
+  const classes = groups.filter((g) => g.isClass);
+  assert.deepEqual(classes.map((g) => g.colorIndex), classes.map((_, i) => (i % 8) + 1));
+});

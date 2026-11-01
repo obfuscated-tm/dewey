@@ -122,12 +122,15 @@ export function groupEvents({ overdue = [], upcoming = [], cards = [], now = new
   const byKey = new Map(); // cardKey → group
   const bySection = new Map(); // section id → group
   const order = [];
+  let classes = 0; // the iOS app colours a class by its place among the classes
   for (const c of cards) {
     const name = cardKey(c.name);
     // Two sections of one course share a name, so a section id keys its own group.
     const key = c.section_id ? `s${c.section_id}` : name;
     if (!name || byKey.has(key) || bySection.has(String(c.section_id))) continue;
-    const g = { key, name: shortName(c.name), colorIndex: colorIndexOf(shortName(c.name)), isClass: isClassCard(c.name), items: [] };
+    const isClass = isClassCard(c.name);
+    const colorIndex = isClass ? (classes++ % 8) + 1 : colorIndexOf(shortName(c.name));
+    const g = { key, name: shortName(c.name), colorIndex, isClass, items: [] };
     if (!byKey.has(name)) byKey.set(name, g);
     byKey.set(key, g);
     if (c.section_id) bySection.set(String(c.section_id), g);

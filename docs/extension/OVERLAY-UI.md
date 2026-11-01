@@ -38,11 +38,11 @@ instructions).
 | `--good` / `--good-soft` | `#23794A` / `#E6F3EC` | Submitted, positive impact |
 
 Type: Instrument Sans for text and numbers; numbers use tabular digits (`font-variant-numeric: tabular-nums`) so columns line up. No monospace in the UI (it reads as a dev tool); JetBrains Mono is bundled only for the archive log.
-Bundle both as local `.woff2` (400/500/600), not a Google Fonts link. 6px radius. No shadows.
+Bundle both as local `.woff2` (400/500/600), not a Google Fonts link. Titles only (card names, settings and Welcome page headings, the To Do heading) use `--serif`, the system serif (New York on a Mac, like the iOS app's display style; Georgia elsewhere), bold. 8px radius on cards and buttons, 6px on chips and tags (iOS `Theme.Radius`). No shadows.
 
-Only `--accent` and `--accent-soft` change with the theme (`overlays/theme.js`); everything
-else above is constant regardless of theme, light or dark — a dark theme gets its dark
-look from inverting the whole page (below), not from swapping these tokens.
+Class colours (`--class-1` … `--class-8`) are the iOS app's `Theme.classColors`. The home To Do colours a class by its place among the Course Dashboard's classes, as iOS does.
+
+The values above are the non-Dew themes'. The Dew themes (the default) set every token to the iOS app's paper-and-ink palette (`Palette.dew`); every other theme changes only `--accent` and `--accent-soft` (`overlays/theme.js`), and a dark one gets its dark look from inverting the whole page (below), not from swapping these tokens.
 
 ## Archive button and settings
 
@@ -144,7 +144,10 @@ the colour as seen, dark themes included; the code pre-inverts for dark themes.
 `header` is one colour or gradient stops; `page` is the backdrop behind
 Schoology's white cards and past the page's edges):
 
-- `schoology` (default) — no page changes at all. `header` is `null`; `accent`/
+- `dew` (default) — follows the computer's light or dark mode (`prefers-color-scheme`, followed live): it stands for `dewLight` or `dewDark` (`themeOf`). Both carry `tokens`, every overlay colour from the iOS app's `Palette.dew`, as seen.
+- `dewLight` — deep teal header (`#0F6E56`), paper page (`#F6F4EE`), teal accent.
+- `dewDark` — dark: the page inverted like the dark themes below, pine header (`#04342C`), the iOS dark palette (accent `#5DCAA5`).
+- `schoology` — no page changes at all. `header` is `null`; `accent`/
   `accentSoft` are the overlay's original blue.
 - `ocean`, `forest`, `plum`, `crimson`, `graphite` — light: a coloured header bar
   (white text and icons), a lightly tinted page, a matching accent.

@@ -18,7 +18,7 @@ export const INTRO_KEY = 'introSeen';
 
 const CSS = `
 .step { display: flex; flex-direction: column; gap: 12px; }
-.step h3 { margin: 0; font-size: 17px; line-height: 22px; font-weight: 600; }
+.step h3 { margin: 0; font-family: var(--serif); font-size: 19px; line-height: 24px; font-weight: 700; }
 .step p { margin: 0; font-size: 13px; color: var(--ink); }
 .hello { display: flex; align-items: center; gap: 12px; }
 .hello .mascot { flex: none; }

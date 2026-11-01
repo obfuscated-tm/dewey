@@ -37,7 +37,7 @@ import {
   createHost, el, onOverlay, isOverlayOn, debounce, keepEvents, getSettings, onSettings,
 } from './ui.js';
 import { loadWeights, saveWeights } from './coursedata.js';
-import { THEMES, paint } from './theme.js';
+import { THEMES, themeOf, paint } from './theme.js';
 
 const EPS = 0.005;
 
@@ -672,7 +672,7 @@ async function mountCourse({ doc, root: scope, courseId }) {
     wantTint.set(tr, on);
     const want = on && isOverlayOn();
     // Keyed by the theme's accent too, so a theme change repaints the bar.
-    const t = THEMES[getSettings().theme] || THEMES.schoology;
+    const t = themeOf(getSettings().theme) || THEMES.schoology;
     const accent = paint(t.accent, t.dark);
     const now = want ? accent : '';
     if ((tinted.get(tr) || '') === now) return;

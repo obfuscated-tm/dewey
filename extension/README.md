@@ -45,7 +45,7 @@ Closing the card, or leaving the page, does **not** stop the run — it keeps go
 Settings live only in the overlay: the gear beside the Overlay switch (or the toolbar icon on a Schoology tab) opens the Settings card, with a page each for Appearance, Archive and neo-plan. The neo-plan page (token, the Schoology line, Courses, and Advanced: server and Claude) is `panel/neoplan.html`, framed in the card. The first time the overlay shows, a Welcome card offers the archive folder and the neo-plan token, both optional.
 
 1. In neo-plan, open Settings and make a new extension token (it starts with `np_`).
-2. Open Settings (the gear, or the toolbar icon), paste it on the **neo-plan** page, **Connect**. **Advanced → Server** is `neo-plan.vercel.app` (or `localhost:3000` while developing neo-plan).
+2. Open Settings (the gear, or the toolbar icon), paste it on the **neo-plan** page, **Connect**. **Advanced → Server** is `neo-plan.vercel.app` or `plan.owen64.me` (the same neo-plan under two names; your token works on both), or `localhost:3000` while developing neo-plan. The neo-plan card keeps you signed in only on the one you picked, since sign-in is per domain.
 
 The token is kept in the extension and only the background worker sends it to neo-plan; a Schoology page never sees it, even with Settings framed right on it.
 

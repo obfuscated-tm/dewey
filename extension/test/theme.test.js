@@ -6,7 +6,8 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { THEMES, themeCss, preInvert } from '../overlays/theme.js';
+import { THEMES, themeCss, hostThemeCss, themeOf, preInvert } from '../overlays/theme.js';
+import { SETTINGS_DEFAULTS } from '../overlays/ui.js';
 
 test('schoology: no page changes at all', () => {
   assert.equal(themeCss('schoology'), '');
@@ -77,4 +78,26 @@ test('every theme has a name and an accent', () => {
     assert.match(t.accentSoft, /^#[0-9a-fA-F]{6}$/, key);
   }
   assert.equal(THEMES.schoology.header, null);
+});
+
+test('dew is the default and follows the computer: light or dark', () => {
+  assert.equal(SETTINGS_DEFAULTS.theme, 'dew');
+  assert.equal(themeOf('dew', false), THEMES.dewLight);
+  assert.equal(themeOf('dew', true), THEMES.dewDark);
+  assert.equal(themeCss('dew', false), themeCss('dewLight'));
+  assert.equal(themeCss('dew', true), themeCss('dewDark'));
+  assert.match(themeCss('dew', true), /html \{ filter: invert/);
+  assert.equal(themeOf('ocean', true), THEMES.ocean);
+});
+
+test('dew sets every overlay colour: the iOS paper-and-ink palette, pre-inverted when dark', () => {
+  const light = hostThemeCss('dewLight');
+  for (const v of ['#FFFDF8', '#1B1A17', '#0F6E56', '#A63A0B']) assert.match(light, new RegExp(v));
+  assert.match(light, /--ink:/);
+  const dark = hostThemeCss('dewDark');
+  assert.match(dark, new RegExp(preInvert('#1B1A18')));
+  assert.match(dark, new RegExp(preInvert('#5DCAA5')));
+  assert.doesNotMatch(dark, /#EDEAE2/);
+  // Other themes still change only the accent (and a dark one's surfaces).
+  assert.doesNotMatch(hostThemeCss('ocean'), /--ink:/);
 });

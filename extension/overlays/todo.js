@@ -262,13 +262,19 @@ export function start({
   function ensureHost() {
     const block = findSchoologyBlock();
     if (!block) return null;
+    let fresh = false;
     if (!host || !host.isConnected) {
       const created = createHost('np-todo', CSS);
       host = created.host;
       root = created.root;
       keepEvents(host);
+      fresh = true;
     }
     if (host.nextSibling !== block) block.before(host);
+    // A new host is empty: the lists loaded before Schoology's block was on
+    // screen, or Schoology redrew its column (taking our old host with it).
+    // Without this, its own block is hidden and ours shows nothing.
+    if (fresh && loaded) render();
     return host;
   }
 

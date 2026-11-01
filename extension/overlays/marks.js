@@ -34,6 +34,7 @@ const CSS = MARK_CSS + `
 :host([data-status]) .right { display: flex; flex-wrap: wrap; gap: 4px 8px; height: auto; }
 `;
 const TAG = 'np-mark';
+const RETRY_MS = [3_000, 10_000, 30_000]; // after a failed items request; then wait for the next redraw
 
 /**
  * rowsIn(doc) → [{ el, schoology_id, title, due?, realm?, section_id?, titleEl?,
@@ -57,6 +58,7 @@ export function startMarks({ rowsIn, doc = document, loc = location, call = np }
   const autoTried = new Set(); // ids added without a click, once per page
   const ours = new WeakSet(); // the markers made here, not copies of them
   let failed = false;
+  let retries = 0; // failed items requests in a row (not 401s)
 
   /** The row's title (its own, or its assignment link), whose first line the marker lines up with. */
   const titleOf = (row) => row.titleEl || [...row.el.querySelectorAll('a[href]')].find((a) => /\/assignment\/\d+/.test(a.getAttribute('href'))) || null;
@@ -222,7 +224,16 @@ export function startMarks({ rowsIn, doc = document, loc = location, call = np }
     for (let i = 0; i < want.length; i += 100) {
       const ids = want.slice(i, i + 100);
       const r = await call('items', { schoology_ids: ids });
-      if (!r.ok) { failed = r.status === 401; for (const id of ids) asked.delete(id); return; } // no token: stay quiet
+      if (!r.ok) {
+        failed = r.status === 401; // no token: stay quiet
+        for (const id of ids) asked.delete(id);
+        // Anything else (the service worker waking up, neo-plan slow or down)
+        // is worth another go: on /home nothing else would ask again, since
+        // the rows sit in todo.js's shadow root, out of the observer's sight.
+        if (!failed && retries < RETRY_MS.length) setTimeout(scan, RETRY_MS[retries++]);
+        return;
+      }
+      retries = 0;
       const got = new Map((r.data?.items || []).map((it) => [String(it.source_id), it]));
       for (const id of ids) known.set(id, got.get(id) || null);
     }

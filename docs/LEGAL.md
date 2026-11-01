@@ -30,8 +30,12 @@ If one of these stops being true, the policies are wrong.
 - To neo-plan, Dewey sends course names and section IDs; assignment and event
   titles, links, IDs and due dates; submitted and late; the gradebook's
   **Missing** flag only (`extension/sync/sync.js`, `gradebook = { missing }`);
-  assignment description text; and the user's own changes. **No scores.**
-  neo-plan's parser also keeps only `missing` (`src/lib/enrich.ts` in neo-plan).
+  and the user's own changes. **No scores, and no description text**: enrich
+  accepts an item `body`, but no Dewey build sends one yet. Sending it is a
+  policy change. neo-plan's parser also keeps only `missing` (`src/lib/enrich.ts`
+  in neo-plan).
+- Chordy (Owen's dictation app) can also use a neo-plan extension token, to add
+  or turn in items by voice. It sends the spoken line as text, not audio.
 - The Claude add-on runs locally, gets data from the extension over
   127.0.0.1, and fetches public course pages itself (`mcp/src/fetchpage.js`).
 - neo-plan stores accounts (email, password hash, and for Google sign-in a name and

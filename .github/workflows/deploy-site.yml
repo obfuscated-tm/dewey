@@ -1,0 +1,54 @@
+# Builds site/ and deploys it to dewey.owen64.me (the Cloudflare Worker
+# `dewey-site`), so the download buttons always offer the newest releases.
+#
+# Runs when:
+#   - a release is published by hand (e.g. an Android APK made with `gh release create`)
+#   - release-extension.yml finishes a release (it calls this workflow, because
+#     a release made with the Actions token doesn't fire the `release` event)
+#   - the site, brand files or screenshots change on main
+#   - by hand from the Actions tab
+#
+# Needs the repo secret CLOUDFLARE_API_TOKEN (Cloudflare template "Edit Cloudflare Workers").
+name: Deploy site
+
+on:
+  release:
+    types: [published]
+  push:
+    branches: [main]
+    paths: ["site/**", "brand/**", "docs/images/**"]
+  workflow_dispatch:
+  workflow_call:
+
+permissions:
+  contents: read
+
+# One deploy at a time; a newer one replaces a queued one.
+concurrency:
+  group: deploy-site
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - name: Install wrangler
+        working-directory: site
+        run: npm ci
+
+      - name: Build and deploy
+        working-directory: site
+        env:
+          # build.sh reads the latest releases with gh.
+          GH_TOKEN: ${{ github.token }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: 89339abddc053ef4f27356b8db448866
+        run: npm run deploy

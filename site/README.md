@@ -13,4 +13,6 @@ dewey.owen64.me, deployed as the Cloudflare Worker `dewey-site` (static assets o
 
 From `site/`: `npm run build`, `npm run preview` (local), or `npm run deploy`.
 
+You rarely need to deploy by hand: [deploy-site.yml](../.github/workflows/deploy-site.yml) redeploys on every published release and on site changes pushed to main. It needs the repo secret `CLOUDFLARE_API_TOKEN`.
+
 What the Privacy and Terms pages say, and the rule for keeping them true, is in [docs/LEGAL.md](../docs/LEGAL.md).

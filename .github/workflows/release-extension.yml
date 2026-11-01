@@ -46,3 +46,10 @@ jobs:
               --title "Dewey extension $VERSION" \
               --notes "Download **dewey-extension.zip**, unzip it, and load the \`dewey-extension\` folder in \`chrome://extensions\`. See the [README](https://github.com/obfuscated-tm/dewey#-install-the-extension-2-minutes) for the steps and [CHANGELOG.md](https://github.com/obfuscated-tm/dewey/blob/main/CHANGELOG.md) for what's new."
           fi
+
+  # The release above doesn't fire deploy-site.yml's `release` trigger
+  # (GitHub skips events made with the Actions token), so call it directly.
+  deploy-site:
+    needs: release
+    uses: ./.github/workflows/deploy-site.yml
+    secrets: inherit

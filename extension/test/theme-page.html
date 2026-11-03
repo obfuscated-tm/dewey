@@ -65,7 +65,7 @@
     import('../overlays/theme.js'),
   ]);
   startSwitch();
-  startLauncher();
+  startLauncher({ send: async () => ({ ok: true, server: 'https://neo-plan.vercel.app', hasToken: true }) });
   theme.start();
 </script>
 </body></html>

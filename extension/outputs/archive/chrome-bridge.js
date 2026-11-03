@@ -45,11 +45,12 @@ export async function tabFetch(tabId, url, redirect, headers) {
     const [res] = await chrome.scripting.executeScript({
       target: { tabId },
       func: async (u, redir, hdrs) => {
-        const r = await fetch(u, { credentials: 'include', redirect: redir, headers: hdrs });
+        const r = await fetch(u, { credentials: 'include', redirect: redir, ...(hdrs ? { headers: hdrs } : {}) });
         if (r.type === 'opaqueredirect') return { status: 0, url: u, text: '', redirected: true };
         return { status: r.status, url: r.url, text: await r.text() };
       },
-      args: [url, redirect, headers],
+      // Every arg must be JSON-serialisable: Chrome refuses the whole call over an `undefined`.
+      args: [url, redirect, headers ?? null],
     });
     return res?.result ?? null;
   }

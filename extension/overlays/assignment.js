@@ -24,7 +24,7 @@
 import { parseAssignmentPage, parseSubmissionStatus, assignmentIdOf } from '../reader/parse/sync.js';
 import { clearedWord } from '../panel/today-format.js';
 import { cleanText } from '../util.js';
-import { np, createHost, el, classDot, onClick, debounce, failText, keepEvents } from './ui.js';
+import { np, pageUserId, createHost, el, classDot, onClick, debounce, failText, keepEvents } from './ui.js';
 import { periodsFromRows, impact, grade as courseGrade } from './grademath.js';
 import { openCourse, chromeStore, fetchDoc, loadWeights } from './coursedata.js';
 import {
@@ -195,17 +195,17 @@ export function start({
         if (r) seg(el('span', 'dim', rankText(r, f.category.title)));
       }
     } else if (kind === 'removed') {
-      seg(el('span', 'dim', 'Removed'), button('Add back', 'Add back to neo-plan', () => change('restore')));
+      seg(el('span', 'dim', 'Removed'), button('Add back', 'Add back to your list', () => change('restore')));
     } else if (kind === 'submitted') {
       const word = state.submitted || !it ? 'Submitted' : clearedWord(it);
       seg(el('span', 'pill ok', word));
-      if (it?.cleared) seg(el('span', 'dim', 'Cleared in neo-plan'));
+      if (it?.cleared) seg(el('span', 'dim', it.local ? 'Cleared from your list' : 'Cleared in neo-plan'));
       const due = page.due_at || it?.due?.at || null;
       const at = state.submittedAt ?? (it?.cleared_at ? Date.parse(it.cleared_at) : null);
       const days = lateDays(due, at);
       if (state.late === true || (state.late !== false && days > 0)) seg(el('span', 'dim', lateText(days)));
     } else if (kind === 'none') {
-      seg(button('Add to neo-plan', 'Add to neo-plan', add));
+      seg(button('Add to list', 'Add to your list', add));
     } else if (kind === 'open') {
       if (it.missing) seg(el('span', 'pill bad', 'Missing'));
       const f = found();
@@ -215,7 +215,7 @@ export function start({
         s.append(el('span', 'num bad', signed(z)));
         seg(s);
       }
-      seg(button('Remove from neo-plan', 'Remove from neo-plan', () => change('remove'), 'linkbtn dim'));
+      seg(button('Remove from list', 'Remove from your list', () => change('remove'), 'linkbtn dim'));
     }
     // HW / Test / Task / CW, for any item neo-plan has and hasn't removed.
     if (it && kind !== 'removed' && it.type !== 'meeting') seg(typeSwitch(it));
@@ -233,7 +233,7 @@ export function start({
   function typeSwitch(it) {
     const box = el('span', 'types');
     box.setAttribute('role', 'group');
-    box.setAttribute('aria-label', 'Type in neo-plan');
+    box.setAttribute('aria-label', 'Type');
     for (const [type, word] of TYPE_CHOICES) {
       const b = el('button', '', word);
       b.setAttribute('aria-pressed', String(it.type === type));
@@ -361,7 +361,8 @@ export function start({
     if (reported) return;
     reported = true;
     let r = null;
-    try { r = await send({ type: 'submitted', schoology_id: id, ...(typeof st.late === 'boolean' ? { late: st.late } : {}) }); } catch { /* worker asleep */ }
+    const uid = pageUserId(doc);
+    try { r = await send({ type: 'submitted', schoology_id: id, ...(typeof st.late === 'boolean' ? { late: st.late } : {}), ...(uid ? { uid } : {}) }); } catch { /* worker asleep */ }
     if (!r?.ok) { reported = false; return; }
     if (!r.data?.already) load(); // neo-plan may have just cleared it
   }

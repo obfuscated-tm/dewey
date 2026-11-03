@@ -215,7 +215,7 @@ export function start({ doc = document } = {}) {
   ]) syncs.append(el('li', cls, text));
   neoplan.append(
     explain('What it is', el('p', null, 'A planner website (neo-plan.vercel.app) that lays your week out as a board, one column per class. Dewey fills it from Schoology for you.')),
-    explain('Who it’s for', el('p', null, 'People who already plan in neo-plan, or want one board shared between this computer and the Dewey iPhone app. It also turns on Done and Turn in on the To Do list here. No account? Skip this.')),
+    explain('Who it’s for', el('p', null, 'People who already plan in neo-plan, or want one board shared between this computer and the Dewey iPhone app. No account? Skip this: Done, Studied and Turn in still work, saved in this browser for your Schoology account.')),
     explain('What Dewey syncs', syncs),
     explain('Connect', el('p', null, 'Sign in at neo-plan.vercel.app, open its Settings and make an extension token (it starts with np_). Paste it below.')),
   );

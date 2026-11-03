@@ -128,9 +128,9 @@ export function markerFor(s, opts = {}) {
       : iconBtn('check', word, '', toggleLabel(s.kind, s.exam), onToggle, busy));
   }
   if (onTurnIn && (s.kind === 'missing' || s.kind === 'todo' || s.kind === 'ready')) {
-    btns.push(iconBtn('turnIn', 'Turn in', 'go', 'Turn in (neo-plan)', onTurnIn, busy));
+    btns.push(iconBtn('turnIn', 'Turn in', 'go', 'Turn in', onTurnIn, busy));
   } else if (onPutBack && s.kind === 'submitted') {
-    btns.push(iconBtn('undo', 'Undo', '', 'Undo turn in (neo-plan)', onPutBack, busy));
+    btns.push(iconBtn('undo', 'Undo', '', 'Undo turn in', onPutBack, busy));
   }
   return { kids: btns, status, label };
 }
@@ -143,13 +143,13 @@ function markerKids(s, { item, rowDue, busy = false, onAdd, onRestore, onToggle 
     case 'submitted':
       return { kids: [st('cleared', false, [s.word])], label: s.word };
     case 'removed':
-      return { kids: [el('span', 'removed', 'Removed'), linkBtn('Add back', 'Add back to neo-plan', onRestore, busy)], label: 'Removed from neo-plan' };
+      return { kids: [el('span', 'removed', 'Removed'), linkBtn('Add back', 'Add back to your list', onRestore, busy)], label: 'Removed from your list' };
     case 'missing':
       return { kids: [el('span', 'pill', 'Missing'), circle(s.exam)], label: s.exam ? 'Missing, not studied' : 'Missing, not done' };
     case 'ready':
       return s.exam
-        ? { kids: [st('done', true, ['Studied'], toggleFor('ready', true))], label: 'Studied (neo-plan)' }
-        : { kids: [st('done', false, ['Done, not submitted'], toggleFor('ready', false))], label: 'Marked done in neo-plan, not submitted' };
+        ? { kids: [st('done', true, ['Studied'], toggleFor('ready', true))], label: 'Studied' }
+        : { kids: [st('done', false, ['Done, not submitted'], toggleFor('ready', false))], label: 'Marked done, not submitted' };
     case 'todo': {
       const due = shortDue(item, rowDue);
       const dueEl = due ? el('span', 'num', due) : null;
@@ -158,7 +158,7 @@ function markerKids(s, { item, rowDue, busy = false, onAdd, onRestore, onToggle 
       return { kids: [st('', false, [dueEl || 'To do'], toggleFor('todo', false))], label: due ? `Not done, due ${due}` : 'Not done' };
     }
     case 'none':
-      return { kids: [linkBtn('+ Add to neo-plan', 'Add to neo-plan', onAdd, busy)], label: 'Not in neo-plan' };
+      return { kids: [linkBtn('+ Add to list', 'Add to your list', onAdd, busy)], label: 'Not on your list' };
     default:
       return { kids: [], label: '' };
   }

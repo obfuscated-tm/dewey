@@ -7,7 +7,7 @@
 // Also the neo-plan frame both cards hold: the extension's own
 // panel/neoplan.html in an <iframe>, so a Schoology page never sees the token.
 
-import { createHost, el, onClick } from './ui.js';
+import { createHost, el, onClick, pageUserId } from './ui.js';
 
 export const DIALOG_CSS = `
 .dim-page { position: fixed; inset: 0; z-index: 2147483001; background: rgba(31, 36, 41, 0.4); }
@@ -159,7 +159,10 @@ export function neoplanFrame(view, { doc = document } = {}) {
   frame.title = 'neo-plan';
   frame.setAttribute('scrolling', 'no');
   frame.style.height = '120px';
-  try { frame.src = chrome.runtime.getURL(`panel/neoplan.html?view=${view}`); } catch { /* tests: no chrome */ }
+  // The page's user id goes along, so a token saved here moves this user's
+  // local marks (outputs/local/port.js). An extension URL: it never leaves Chrome.
+  const uid = pageUserId(doc);
+  try { frame.src = chrome.runtime.getURL(`panel/neoplan.html?view=${view}${uid ? `&uid=${uid}` : ''}`); } catch { /* tests: no chrome */ }
   (doc.defaultView || globalThis).addEventListener('message', (e) => {
     if (e.source !== frame.contentWindow || e.data?.type !== 'np-frame-height') return;
     let origin = null;

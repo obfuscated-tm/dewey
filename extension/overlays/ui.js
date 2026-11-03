@@ -5,10 +5,35 @@
 // Overlay on/off switch every host obeys, and the message to the service
 // worker. Content scripts never see the neo-plan token.
 
-/** { ok, status, data } from the service worker; never throws. */
+/**
+ * The signed-in user's Schoology id, from the page itself: the site
+ * navigation's data (`siteNavigationUiProps … "user":{… "uid":N`, an inline
+ * script), else the session-tracker frame's `?id=`. Both name the same user
+ * (checked live on /home, Materials and an assignment page, 2026-11-03), so
+ * it's always whoever is signed in on this page. null when neither is there
+ * (a page fragment, or signed out). Read from the HTML, not page variables:
+ * a content script can't see the page's own JS.
+ */
+export function pageUserId(doc = document) {
+  try {
+    for (const s of doc.scripts) {
+      const t = s.textContent || '';
+      if (!t.includes('siteNavigationUiProps')) continue;
+      const m = t.match(/"user":\{[^{}]*?"uid":"?(\d{1,20})\b/);
+      if (m) return m[1];
+    }
+    const f = doc.querySelector('iframe[src*="session-tracker"]');
+    const id = f && new URL(f.getAttribute('src'), 'https://x/').searchParams.get('id');
+    if (id && /^\d{1,20}$/.test(id)) return id;
+  } catch { /* no document (tests) */ }
+  return null;
+}
+
+/** { ok, status, data } from the service worker; never throws. The page's user id rides along (local marks, outputs/local/). */
 export async function np(op, args = {}) {
   try {
-    const r = await chrome.runtime.sendMessage({ type: 'neoplan', op, ...args });
+    const uid = pageUserId();
+    const r = await chrome.runtime.sendMessage({ type: 'neoplan', op, ...args, ...(uid ? { uid } : {}) });
     return r && typeof r === 'object' ? r : { ok: false, status: 0, data: { error: 'extension' } };
   } catch {
     return { ok: false, status: 0, data: { error: 'extension' } };

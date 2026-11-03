@@ -7,6 +7,7 @@
 
 import { np } from './np.js';
 import { createSyncSettings } from './sync-settings.js';
+import { portText } from '../outputs/local/port.js';
 
 const $ = (id) => document.getElementById(id);
 const view = new URLSearchParams(location.search).get('view') === 'connect' ? 'connect' : 'settings';
@@ -30,6 +31,22 @@ async function drawMcp() {
   $('npMcpStatus').textContent = r?.connected ? 'Connected' : 'Not running';
 }
 
+// Under Connected: how moving this browser's marks onto the board went
+// (outputs/local/port.js's portText). Redrawn while it runs, for a minute at most.
+let portTimer = null;
+let portTries = 0;
+async function drawPort(hasToken, again = false) {
+  clearTimeout(portTimer);
+  portTries = again ? portTries + 1 : 0;
+  const p = $('npPortHint');
+  let r = null;
+  if (hasToken) { try { r = await chrome.runtime.sendMessage({ type: 'localPort' }); } catch { /* worker restarting */ } }
+  const text = r?.ok ? portText(r.port, r.running) : '';
+  p.textContent = text;
+  p.hidden = !text;
+  if (r?.ok && r.port?.state === 'waiting' && (r.running || r.port.account) && portTries < 40) portTimer = setTimeout(() => drawPort(true, true), 1500);
+}
+
 async function draw(s) {
   s = s || (await np('settings')).data || {};
   const sel = $('npServer');
@@ -44,13 +61,16 @@ async function draw(s) {
   $('npTokenNew').hidden = !!s.hasToken;
   $('npTokenMasked').textContent = s.masked || '';
   hint(s.hasToken ? '' : TOKEN_HINT);
+  drawPort(!!s.hasToken);
   if (view === 'settings') await syncSettings.draw({ hasToken: !!s.hasToken });
 }
 
 async function saveToken() {
   const token = $('npTokenInput').value.trim();
   if (!token) { $('npTokenInput').focus(); return; }
-  const r = await np('setToken', { token });
+  // The Schoology page's user id (dialog.js): whose local marks move to neo-plan.
+  const uid = new URLSearchParams(location.search).get('uid');
+  const r = await np('setToken', { token, ...(uid && /^\d{1,20}$/.test(uid) ? { uid } : {}) });
   if (!r.ok) {
     // Only a bad format is the token's fault. No reply at all means the service
     // worker is still the old one: Chrome swaps it only on a reload.

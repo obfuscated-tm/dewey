@@ -4,6 +4,11 @@ The extension and the MCP server are versioned separately (see [Versioning and r
 
 Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git history. Apart from MCP 1.0.0 (tag `mcp-v1.0.0`), those versions were never tagged, so they're listed by date.
 
+## Unreleased
+
+### Extension
+- Done, Studied, Turn in and Remove work without neo-plan. With no token saved they're kept in this browser, one copy per Schoology account, so the daily Schoology sign-out doesn't lose them and another student on the same Chrome sees only their own. With a token, neo-plan holds them as before, and connecting moves the marks made in this browser onto the board (where neo-plan hasn't got a mark of its own).
+
 ## 2026-11-01 — Extension 1.14.0
 
 Tag: `ext-v1.14.0`

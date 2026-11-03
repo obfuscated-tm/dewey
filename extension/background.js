@@ -8,6 +8,8 @@ import { isValidCourseId, sanitizeOptions, reduceProgress } from './outputs/arch
 import { getSavedFolder, clearFolder } from './outputs/archive/folder.js';
 import { connectBridge, pushSnapshot, closeBridge, bridgeConnected, setBridgePaused } from './outputs/mcp/bridge.js';
 import { isQuizPageUrl, quizTabOpen, noteQuizPage } from './sync/quiet.js';
+import { handleLocal, markSubmittedLocal, LOCAL_OPS, storeKey, readRecord, setPortedAt } from './outputs/local/marks.js';
+import { toPort, portItems } from './outputs/local/port.js';
 
 const SYNC_ALARM = 'neoplan-sync';
 const SYNC_SOON_ALARM = 'neoplan-sync-soon';
@@ -95,14 +97,95 @@ function origin(sender) {
   return null;
 }
 
-async function contentNeoplan(msg) {
+async function contentNeoplan(msg, sender) {
   if (!CONTENT_OPS.has(msg.op)) return { ok: false, status: 403, data: { error: 'op' } };
   // A content script may only flip work between the two states the marker shows; never Turn in.
   if (msg.op === 'work' && !isWorkValue(msg.work)) return { ok: false, status: 400, data: { error: 'work' } };
   if (msg.op === 'addItem' && msg.item && !msg.item.section_id && msg.item.realm) {
     msg = { ...msg, item: { ...msg.item, section_id: await sectionForRealm(msg.item.realm) } };
   }
+  const hasToken = !!(await getConfig()).token;
+  // No neo-plan token: the marks live in this browser instead (outputs/local/).
+  if (!hasToken && LOCAL_OPS.has(msg.op)) {
+    const who = accountOf(sender, msg);
+    if (!who.uid) return who.reply;
+    return handleLocal(msg, who);
+  }
+  if (hasToken) resumePort(sender, msg).catch(() => {});
   return handleNeoplan(msg);
+}
+
+// ── Local marks → neo-plan, when a token is saved (outputs/local/port.js) ──
+// `localPort` in chrome.storage.local: { state: 'waiting' | 'done' | 'stopped',
+// account: { host, uid } | null, savedAt, at?, result? }. Whose marks: the
+// Schoology user on the page the Settings card was on when the token was saved
+// (dialog.js hands the frame that page's user id). Saved from anywhere else:
+// the first user to open a Schoology page within the hour after.
+const KEY_PORT = 'localPort';
+const PORT_CLAIM_MS = 60 * 60_000;
+let porting = null;
+
+async function startPort(sender, msg) {
+  const tabUrl = sender?.tab?.url || '';
+  const who = SCHOOLOGY_URL.test(tabUrl) ? accountOf({ url: tabUrl }, msg) : {};
+  await chrome.storage.local.set({
+    [KEY_PORT]: { state: 'waiting', account: who.uid ? { host: who.host, uid: who.uid } : null, savedAt: Date.now() },
+  });
+  return runPort();
+}
+
+// Any Schoology page's item op with a token: finish a port the worker was
+// stopped in the middle of, or one still waiting to learn whose marks they are.
+async function resumePort(sender, msg) {
+  if (porting) return;
+  const p = (await chrome.storage.local.get(KEY_PORT))[KEY_PORT];
+  if (p?.state !== 'waiting') return;
+  if (!p.account) {
+    if (Date.now() - p.savedAt > PORT_CLAIM_MS) {
+      await chrome.storage.local.set({ [KEY_PORT]: { ...p, state: 'done', at: Date.now(), result: null } });
+      return;
+    }
+    const who = accountOf(sender, msg);
+    if (!who.uid) return;
+    await chrome.storage.local.set({ [KEY_PORT]: { ...p, account: { host: who.host, uid: who.uid } } });
+  }
+  await runPort();
+}
+
+function runPort() {
+  porting ||= (async () => {
+    const p = (await chrome.storage.local.get(KEY_PORT))[KEY_PORT];
+    if (p?.state !== 'waiting' || !p.account?.uid || !(await getConfig()).token) return;
+    const key = storeKey(p.account.host, p.account.uid);
+    const rec = await readRecord(chrome.storage.local, key);
+    const startedAt = Date.now();
+    const result = await portItems(toPort(rec.items, rec.portedAt || 0), (op, args = {}) => handleNeoplan({ type: 'neoplan', op, ...args }));
+    // Everything took: next time, only what's marked after this. Some refused:
+    // they go again next time (what took is then "neo-plan has it").
+    if (!result.stopped && !result.failed) await setPortedAt(key, startedAt);
+    await chrome.storage.local.set({ [KEY_PORT]: { ...p, state: result.stopped ? 'stopped' : 'done', at: Date.now(), result } });
+  })().finally(() => { porting = null; });
+  return porting;
+}
+
+// Whose marks: the Schoology user id the page itself names (ui.js pageUserId,
+// sent with the message), on the sender's Schoology host. A page that names
+// none (signed out, or a page Schoology changed): nothing is read or saved.
+function accountOf(sender, msg) {
+  const uid = String(msg?.uid ?? '');
+  if (!/^\d{1,20}$/.test(uid)) {
+    return { reply: { ok: false, status: 503, data: { error: 'account', problem: 'Couldn’t tell who’s signed in' } } };
+  }
+  return { host: new URL(sender.url).host.toLowerCase(), uid };
+}
+
+// Schoology took a submission: neo-plan clears the item, or with no token the local copy does.
+async function submitted(msg, sender) {
+  if ((await getConfig()).token) return reportSubmitted(msg);
+  const who = accountOf(sender, msg);
+  if (!who.uid) return who.reply;
+  await markSubmittedLocal(msg?.schoology_id, who);
+  return { ok: true, status: 200, data: {} };
 }
 
 async function syncState() {
@@ -152,8 +235,13 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (msg?.type === 'neoplan') {
     // Only this extension's own pages drive neo-plan with the stored token;
     // content scripts get a few item ops, through here.
-    if (from === 'page') handleNeoplan(msg).then(reply);
-    else if (from === 'content') contentNeoplan(msg).then(reply);
+    if (from === 'page') {
+      handleNeoplan(msg).then((r) => {
+        reply(r);
+        if (msg.op === 'setToken' && r.ok) startPort(sender, msg).catch(() => {});
+      });
+    }
+    else if (from === 'content') contentNeoplan(msg, sender).then(reply);
     else return false;
     return true; // async reply
   }
@@ -165,13 +253,19 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   }
   if (msg?.type === 'submitted') {
     if (from !== 'content') return false;
-    reportSubmitted(msg).then(reply, (e) => reply({ ok: false, status: 0, data: { error: String(e?.message || e) } }));
+    submitted(msg, sender).then(reply, (e) => reply({ ok: false, status: 0, data: { error: String(e?.message || e) } }));
+    return true;
+  }
+  if (msg?.type === 'localPort') {
+    // The neo-plan settings page: how moving this browser's marks went.
+    if (from !== 'page') return false;
+    chrome.storage.local.get(KEY_PORT).then((g) => reply({ ok: true, port: g[KEY_PORT] || null, running: !!porting }), () => reply({ ok: false }));
     return true;
   }
   if (msg?.type === 'neoplanServer') {
-    // Where the neo-plan card's frame points. The server, never the token.
+    // Where the neo-plan card's frame points, and whether a token is saved. Never the token.
     if (from !== 'content' && from !== 'page') return false;
-    getConfig().then(({ server }) => reply({ ok: true, server }), () => reply({ ok: false }));
+    getConfig().then(({ server, token }) => reply({ ok: true, server, hasToken: !!token }), () => reply({ ok: false }));
     return true;
   }
   if (msg?.type === 'archiveFolderPick') {

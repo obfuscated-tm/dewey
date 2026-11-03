@@ -118,7 +118,9 @@
         "panel/neoplan.js",
         "panel/neoplan.css",
         "panel/sync-settings.js",
-        "panel/np.js"
+        "panel/np.js",
+        "outputs/local/port.js",
+        "outputs/local/marks.js"
       ],
       "matches": [
         "https://*.schoology.com/*"

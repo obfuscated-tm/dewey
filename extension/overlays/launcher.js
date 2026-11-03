@@ -1,5 +1,9 @@
 // The neo-plan button: fixed at the bottom right of Schoology's pages (not on
-// assignments or tests; boot.js decides). It opens neo-plan itself in a card
+// assignments or tests; boot.js decides), and only while a neo-plan token is
+// saved: without one, Done and Turn in are kept in this browser
+// (outputs/local/) and there's no board to open. Checked when the page loads,
+// when its tab comes back into view, and every half minute (a token saved or
+// removed in Settings shows here without a reload). It opens neo-plan itself in a card
 // over the page, CARD_MARGIN in from each edge, with the page dimmed behind.
 // Close with ×, Esc, or a click on the dimmed page. The frame is kept while
 // the page is open, so a second open is instant and keeps neo-plan's place.
@@ -105,6 +109,19 @@ export function start({ doc = document, send = (m) => chrome.runtime.sendMessage
     b.focus();
   }
 
+  // No token: no button (and no card left open).
+  async function check() {
+    let r = null;
+    try { r = await send({ type: 'neoplanServer' }); } catch { return; } // worker restarting: leave it as it is
+    const on = !!(r?.ok && r.hasToken);
+    host.hidden = !on;
+    if (!on) shut();
+  }
+  host.hidden = true;
+  check();
+  doc.addEventListener('visibilitychange', () => { if (doc.visibilityState === 'visible') check(); });
+  const timer = setInterval(() => { if (doc.visibilityState !== 'hidden') check(); }, 30_000);
+
   onClick(b, open);
   onClick(close, shut);
   onClick(shade, shut);
@@ -115,7 +132,7 @@ export function start({ doc = document, send = (m) => chrome.runtime.sendMessage
   }, true);
 
   doc.body.append(host);
-  return { host, root, button: b, card, open, close: shut, get frame() { return frame; } };
+  return { host, root, button: b, card, open, close: shut, check, stop: () => clearInterval(timer), get frame() { return frame; } };
 }
 
 if (typeof chrome !== 'undefined' && chrome.runtime?.id && typeof location !== 'undefined' && !globalThis.__npNoAutoStart) start();

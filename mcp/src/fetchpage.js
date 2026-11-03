@@ -96,12 +96,25 @@ async function buildResult(finalUrl, contentType, buf) {
   return { kind, title, text, links: links.slice(0, LINK_CAP), images: images.slice(0, LINK_CAP) };
 }
 
+export class HostNotAllowedError extends Error {
+  constructor(host) {
+    super(
+      `refusing to fetch ${host}: it isn't a course site (sites.json) or a site a teacher linked in a material or assignment. ` +
+        "Open the material or assignment that links it first, or ask the user to add it as a course site.",
+    );
+    this.name = "HostNotAllowedError";
+    this.host = host;
+  }
+}
+
 /**
  * Fetch a public web page (or .md/.txt/.pdf) and return readable content.
+ * `allowHost(hostname)`, when given, must say yes for the first URL and every
+ * redirect hop (fetch_page passes the course-site / teacher-link check).
  * `guard` (default: the real DNS-backed address guard) and `fetchImpl`
  * (default: global fetch) are injectable for tests.
  */
-export async function fetchPage(url, { guard = assertPublicHost, fetchImpl = fetch } = {}) {
+export async function fetchPage(url, { guard = assertPublicHost, fetchImpl = fetch, allowHost } = {}) {
   const cached = await readCachedFile(url);
   if (cached && Date.now() - new Date(cached.meta.fetchedAt).getTime() < CACHE_TTL_MS) {
     const result = await buildResult(cached.meta.finalUrl, cached.meta.contentType, cached.data);
@@ -115,6 +128,7 @@ export async function fetchPage(url, { guard = assertPublicHost, fetchImpl = fet
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
       throw new Error(`unsupported protocol: ${parsed.protocol}`);
     }
+    if (allowHost && !allowHost(parsed.hostname)) throw new HostNotAllowedError(parsed.hostname);
     await guard(parsed.hostname);
 
     res = await fetchWithTimeout(fetchImpl, current);

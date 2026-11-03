@@ -112,6 +112,17 @@ class WebController(context: Context, startUrl: String? = null) {
                 // mailto:, intent:, tel: … go to the system.
                 return try {
                     val i = if (scheme == "intent") Intent.parseUri(u, Intent.URI_INTENT_SCHEME) else Intent(Intent.ACTION_VIEW, request.url)
+                    // A page wrote this intent: only let it open what a browser
+                    // link could. No named component (or selector) — that could
+                    // reach this app's own components — and no URI grants,
+                    // which could hand another app files from our FileProvider.
+                    i.addCategory(Intent.CATEGORY_BROWSABLE)
+                    i.component = null
+                    i.selector = null
+                    i.flags = i.flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or
+                        Intent.FLAG_GRANT_WRITE_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION or
+                        Intent.FLAG_GRANT_PREFIX_URI_PERMISSION).inv()
                     i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                     view.context.startActivity(i)
                     true

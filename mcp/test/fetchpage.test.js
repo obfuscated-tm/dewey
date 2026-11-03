@@ -60,6 +60,12 @@ before(async () => {
       res.end();
       return;
     }
+    if (req.url === "/offsite") {
+      // Same server, another host name: a hop the course-site check must see.
+      res.writeHead(302, { location: `http://localhost:${server.address().port}/page.html` });
+      res.end();
+      return;
+    }
     if (req.url === "/loop1") {
       res.writeHead(302, { location: "/loop2" });
       res.end();
@@ -166,12 +172,35 @@ test("fetch_page: an image URL comes back as an image", async () => {
   assert.ok(r.data.length > 0);
 });
 
+// The tool only opens course sites and teacher-linked sites; this one is a course site.
+const siteCtx = () => ({ sites: [{ course: "Test", url: `${baseUrl}/` }] });
+const toolFetch = (u, opts) => fetchPage(u, { ...opts, guard: noopGuard });
+
 test("fetch_page tool: an image-only page brings its images along", async () => {
   const { fetchPageTool } = await import("../src/tools.js");
-  const fetchImpl = (u) => fetchPage(u, { guard: noopGuard });
-  const r = await fetchPageTool({}, { url: `${baseUrl}/ex.html` }, { fetchImpl });
+  const fetchImpl = toolFetch;
+  const r = await fetchPageTool(siteCtx(), { url: `${baseUrl}/ex.html` }, { fetchImpl });
   assert.equal(r.image_contents.length, 2);
   assert.ok(r.image_contents.every((i) => i.mimeType === "image/gif" && i.data));
-  const text = await fetchPageTool({}, { url: `${baseUrl}/lesson.md` }, { fetchImpl });
+  const text = await fetchPageTool(siteCtx(), { url: `${baseUrl}/lesson.md` }, { fetchImpl });
   assert.equal(text.image_contents, undefined); // a page with real text doesn't
+});
+
+test("fetch_page tool refuses a site that isn't a course site or teacher link", async () => {
+  const { fetchPageTool } = await import("../src/tools.js");
+  let fetched = false;
+  const fetchImpl = (u, o) => { fetched = true; return toolFetch(u, o); };
+  await assert.rejects(
+    () => fetchPageTool({ sites: [] }, { url: `${baseUrl}/page.html?grades=A,B` }, { fetchImpl }),
+    (err) => err.name === "HostNotAllowedError",
+  );
+  assert.equal(fetched, false, "nothing should be requested");
+});
+
+test("fetch_page tool refuses a redirect hop onto another host", async () => {
+  const { fetchPageTool } = await import("../src/tools.js");
+  await assert.rejects(
+    () => fetchPageTool(siteCtx(), { url: `${baseUrl}/offsite` }, { fetchImpl: toolFetch }),
+    (err) => err.name === "HostNotAllowedError" && err.host === "localhost",
+  );
 });

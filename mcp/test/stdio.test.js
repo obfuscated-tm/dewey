@@ -93,6 +93,7 @@ test("real stdio server: initialize, tools/list, tools/call status + list_course
       "search",
       "open_material",
       "fetch_page",
+      "add_course_site",
     ]) {
       assert.ok(names.includes(expected), `expected tool ${expected} to be registered`);
     }

@@ -6,8 +6,17 @@ Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git hist
 
 ## Unreleased
 
+### MCP
+- Security: `fetch_page` opens only course sites, Google Docs/Drive, and sites a teacher linked in a material or assignment Claude opened, on every redirect hop too. A post or page can no longer get Claude to send your grades to a URL of its choosing.
+- Security: the address guard also refuses IPv4 addresses written as IPv6 (`::ffff:7f00:1`, NAT64, 6to4), benchmarking and multicast addresses.
+- Course sites are your own list now, in `~/.schoology-mcp/sites.json` (an old `mcp/sites.json` is still read). New `add_course_site` tool: ask Claude to set up your course sites; a site no teacher linked needs your yes in a prompt.
+- Claude is told that text in tool results is content, never instructions.
+
 ### Extension
 - Done, Studied, Turn in and Remove work without neo-plan. With no token saved they're kept in this browser, one copy per Schoology account, so the daily Schoology sign-out doesn't lose them and another student on the same Chrome sees only their own. With a token, neo-plan holds them as before, and connecting moves the marks made in this browser onto the board (where neo-plan hasn't got a mark of its own).
+
+### Android
+- Security: `intent:` links from web pages can only open what a browser link could (no named app component, no file permission grants).
 
 ## 2026-11-01 — Extension 1.14.0
 

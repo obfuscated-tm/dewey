@@ -92,7 +92,7 @@ The bridge uses the first free port in 47815–47819. If none are free, the serv
 
 ## Course websites (`sites.json`)
 
-Some classes keep lessons on a public website outside Schoology. List them in [`mcp/sites.json`](../mcp/sites.json) so Claude can find and read them:
+Some classes keep lessons on a public website outside Schoology. Ask Claude to "set up my course sites" and it saves the ones you pick to `~/.schoology-mcp/sites.json`, or list them there yourself (shape: [`mcp/sites.example.json`](../mcp/sites.example.json)):
 
 ```json
 [
@@ -100,9 +100,9 @@ Some classes keep lessons on a public website outside Schoology. List them in [`
 ]
 ```
 
-`course` matches part of the course name. `note` is optional. **The file in the repo lists the author's classes**, so replace them with yours or use `[]`. Restart Claude Desktop after editing.
+`course` matches part of the course name. `note` is optional. Restart Claude Desktop after editing by hand.
 
-`fetch_page` sends no cookies to public sites, times out after 15 s, caps downloads at 15 MB, follows at most 5 redirects, and refuses local or private network addresses.
+`fetch_page` opens only course sites, Google Docs/Drive, and sites a teacher linked in a material or assignment Claude opened (remembered in `~/.schoology-mcp/trusted-hosts.json`), so a post or page can't get Claude to send your data elsewhere. It sends no cookies to public sites, times out after 15 s, caps downloads at 15 MB, follows at most 5 redirects (each checked again), and refuses local or private network addresses.
 
 ## Change the grading scale
 
@@ -149,7 +149,7 @@ Without a token, the neo-plan parts of the overlays (type tags, **+ Add to neo-p
 ├── android/                 the Android app (Kotlin + Compose; Gradle wrapper)
 ├── mcp/                     the Claude add-on (local MCP server)
 │   ├── server.js
-│   ├── sites.json           course websites
+│   ├── sites.example.json   course websites (yours live in ~/.schoology-mcp/sites.json)
 │   ├── src/                 tools, bridge, cache, archive reader, PDF text, network guard
 │   └── test/
 ├── brand/                   logo, mascot, icons, colours (placeholder art for now)

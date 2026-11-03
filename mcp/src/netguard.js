@@ -1,6 +1,7 @@
-// Refuses to fetch loopback, private, link-local, CGNAT, and IPv6 ULA /
-// link-local addresses. Used by fetch_page before making any request, and
-// re-checked on every redirect hop. Resolution is injectable so tests can
+// Refuses to fetch loopback, private, link-local, CGNAT, benchmarking,
+// multicast, and IPv6 ULA / link-local / multicast addresses, including IPv4
+// addresses written as IPv6 (::ffff:7f00:1, NAT64, 6to4). Used by fetch_page
+// before making any request, and re-checked on every redirect hop. Resolution is injectable so tests can
 // exercise real DNS-backed hosts (or fake ones) without touching the network
 // stack's real resolver.
 import dns from "node:dns";
@@ -26,21 +27,47 @@ function isBlockedIPv4(ip) {
   if (a === 192 && b === 168) return true; // private
   if (a === 169 && b === 254) return true; // link-local
   if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT 100.64.0.0/10
+  if (a === 198 && (b === 18 || b === 19)) return true; // benchmarking 198.18.0.0/15
+  if (a >= 224) return true; // multicast, reserved, broadcast
   return false;
 }
 
-function isBlockedIPv6(ip) {
-  const norm = ip.toLowerCase();
-  if (norm === "::1" || norm === "::") return true; // loopback / unspecified
-  const v4mapped = norm.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
-  if (v4mapped) return isBlockedIPv4(v4mapped[1]); // IPv4-mapped address
+/** An IPv6 address as its eight 16-bit groups, or null if it isn't one. */
+function ipv6Groups(ip) {
+  let s = ip.toLowerCase().split("%")[0]; // drop a zone id (fe80::1%en0)
+  // A trailing dotted IPv4 (::ffff:127.0.0.1) becomes two hex groups.
+  const v4 = s.match(/^(.*:)(\d+\.\d+\.\d+\.\d+)$/);
+  if (v4) {
+    const o = v4[2].split(".").map(Number);
+    if (o.some((n) => n > 255)) return null;
+    s = `${v4[1]}${((o[0] << 8) | o[1]).toString(16)}:${((o[2] << 8) | o[3]).toString(16)}`;
+  }
+  const halves = s.split("::");
+  if (halves.length > 2) return null;
+  const head = halves[0] ? halves[0].split(":") : [];
+  const tail = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const fill = halves.length === 2 ? 8 - head.length - tail.length : 0;
+  if (fill < 0 || (halves.length === 1 && head.length !== 8)) return null;
+  const groups = [...head, ...Array(fill).fill("0"), ...tail].map((g) => parseInt(g, 16));
+  return groups.length === 8 && groups.every((g) => g >= 0 && g <= 0xffff) ? groups : null;
+}
 
-  const firstGroup = norm.split(":")[0];
-  if (!firstGroup) return false; // starts with "::" but isn't ::1 or :: — leave to other checks
-  const val = parseInt(firstGroup, 16);
-  if (Number.isNaN(val)) return false;
-  if ((val & 0xfe00) === 0xfc00) return true; // ULA fc00::/7
-  if ((val & 0xffc0) === 0xfe80) return true; // link-local fe80::/10
+const v4From = (hi, lo) => `${hi >> 8}.${hi & 0xff}.${lo >> 8}.${lo & 0xff}`;
+
+function isBlockedIPv6(ip) {
+  const g = ipv6Groups(ip);
+  if (!g) return true; // unparseable: refuse
+  const zeros = (n) => g.slice(0, n).every((x) => x === 0);
+  // Forms that carry an IPv4 address are judged by that address:
+  // IPv4-mapped ::ffff:a.b.c.d, IPv4-compatible ::a.b.c.d (also covers :: and
+  // ::1), NAT64 64:ff9b::a.b.c.d, and 6to4 2002:aabb:ccdd::.
+  if (zeros(5) && g[5] === 0xffff) return isBlockedIPv4(v4From(g[6], g[7]));
+  if (zeros(6)) return true; // ::, ::1 and the deprecated IPv4-compatible range
+  if (g[0] === 0x64 && g[1] === 0xff9b && g.slice(2, 6).every((x) => x === 0)) return isBlockedIPv4(v4From(g[6], g[7]));
+  if (g[0] === 0x2002) return isBlockedIPv4(v4From(g[1], g[2]));
+  if ((g[0] & 0xfe00) === 0xfc00) return true; // ULA fc00::/7
+  if ((g[0] & 0xffc0) === 0xfe80) return true; // link-local fe80::/10
+  if ((g[0] & 0xff00) === 0xff00) return true; // multicast ff00::/8
   return false;
 }
 
@@ -57,6 +84,8 @@ export function isBlockedAddress(ip) {
  * defaults to Node's real DNS resolution with `{ all: true }`.
  */
 export async function assertPublicHost(hostname, { lookup } = {}) {
+  // new URL() keeps IPv6 literals bracketed: http://[::1]/ has hostname "[::1]".
+  hostname = String(hostname).replace(/^\[(.*)\]$/, "$1");
   if (net.isIP(hostname)) {
     if (isBlockedAddress(hostname)) throw new AddressBlockedError(hostname, hostname);
     return;

@@ -101,8 +101,15 @@ pages are plain `.md`; math: a site linking the textbook PDFs). The MCP
 fetches public `http(s)` pages itself with Node's `fetch`: GET only, no
 cookies, 15 MB cap, never a loopback/private/link-local address (resolve the
 host first). HTML → readable text with its links listed, `.md`/`.txt` as is,
-PDF → text. `mcp/sites.json` maps courses to their sites so Claude knows
-they exist.
+PDF → text. The user's `~/.schoology-mcp/sites.json` maps courses to their
+sites so Claude knows they exist (`add_course_site` writes it).
+
+`fetch_page` opens a web host only if it's a `sites.json` site, a subdomain
+of one, or a host a teacher linked in a `material`, `assignment` or
+`materials` result (not a discussion, update or comment), checked on every
+redirect hop. Learned hosts live in `~/.schoology-mcp/trusted-hosts.json`.
+This keeps Schoology or page text from steering Claude into sending the
+user's data to a URL of its choosing.
 
 Google links are the exception: Docs/Slides/Sheets, Drive files and Drive
 folders need the user's Google sign-in, so `fetch_page` sends them through

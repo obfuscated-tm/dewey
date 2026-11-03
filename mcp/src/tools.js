@@ -17,9 +17,10 @@ import { resolveArchivePath, PathEscapeError } from "./safepath.js";
 import { extractPdfText, extractPdfTextFromBuffer } from "./pdftext.js";
 import { tryLive } from "./result.js";
 import { AmbiguousCourseError, CourseNotFoundError } from "./archive.js";
-import { siteForCourse } from "./sites.js";
+import { sitesForCourse, saveSite, SITES_PATH } from "./sites.js";
 import { readCachedFile, writeCachedFile } from "./filecache.js";
-import { fetchPage } from "./fetchpage.js";
+import { fetchPage, HostNotAllowedError } from "./fetchpage.js";
+import { hostAllowed, hostOf } from "./trustedhosts.js";
 import { walkMaterials, matchesQuery } from "./materialwalk.js";
 
 const TEXT_EXTS = new Set([".md", ".txt", ".html", ".htm", ".json"]);
@@ -54,9 +55,34 @@ export async function statusTool(ctx) {
   };
 }
 
+// Links in teacher-written content (materials, assignment instructions and
+// attachments) become hosts fetch_page may open (trustedhosts.js). Discussion
+// pages, updates and comments are left out: classmates write those too.
+async function learnLinks(ctx, value, from) {
+  if (ctx.trusted) await ctx.trusted.learn(value, from);
+}
+
+/**
+ * First run with no trusted-hosts file yet: learn from the materials and
+ * assignments already in the cache, so links opened before this check existed
+ * keep working.
+ */
+export async function seedTrustedHosts(ctx) {
+  if (!ctx.trusted || ctx.trusted.hosts.size > 0) return;
+  for (const e of ctx.cache.allLiveForOp("material")) {
+    const m = e.data || {};
+    if (m.kind !== "discussion") await learnLinks(ctx, { body_md: m.body_md, target: m.target, links: m.links, files: m.files }, "cache");
+  }
+  for (const e of ctx.cache.allLiveForOp("assignment")) await learnAssignmentLinks(ctx, e.data);
+  for (const e of ctx.cache.allLiveForOp("materials")) {
+    await learnLinks(ctx, (e.data?.rows || []).filter((r) => r?.kind !== "discussion").map((r) => r?.url), "cache");
+  }
+}
+
 function withSite(course, name, sites) {
-  const site = siteForCourse(name, sites);
-  return site ? { ...course, site } : course;
+  const [site, ...more] = sitesForCourse(name, sites);
+  if (!site) return course;
+  return more.length ? { ...course, site, other_sites: more } : { ...course, site };
 }
 
 export async function listCoursesTool(ctx) {
@@ -252,6 +278,10 @@ async function resolveAssignmentIdsLive(ctx, title, course) {
   return [...byId.values()];
 }
 
+function learnAssignmentLinks(ctx, a) {
+  return learnLinks(ctx, { instructions_md: a?.instructions_md, attachments: a?.attachments }, `assignment ${a?.id ?? ""}`.trim());
+}
+
 export async function getAssignmentTool(ctx, { course, id, title }) {
   if (!id && !title) {
     throw new Error("get_assignment needs either id or title");
@@ -260,6 +290,7 @@ export async function getAssignmentTool(ctx, { course, id, title }) {
   if (id) {
     const live = await tryLive(ctx, "assignment", { id: String(id) });
     if (live.ok) {
+      await learnAssignmentLinks(ctx, live.data);
       return { source: "live", as_of: new Date().toISOString(), ...live.data };
     }
   }
@@ -276,6 +307,7 @@ export async function getAssignmentTool(ctx, { course, id, title }) {
     if (liveCandidates.length === 1) {
       const live = await tryLive(ctx, "assignment", { id: liveCandidates[0].id });
       if (live.ok) {
+        await learnAssignmentLinks(ctx, live.data);
         return { source: "live", as_of: new Date().toISOString(), ...live.data };
       }
     }
@@ -398,6 +430,7 @@ export async function listMaterialsTool(ctx, { course, folder_id, path: subPath,
   if (ref.section_id) {
     const live = await tryLive(ctx, "materials", { section_id: ref.section_id, folder_id });
     if (live.ok) {
+      await learnLinks(ctx, (live.data?.rows || []).filter((r) => r?.kind !== "discussion").map((r) => r?.url), `materials of ${ref.name}`);
       return { source: "live", as_of: new Date().toISOString(), course: ref.name, ...live.data };
     }
   }
@@ -469,6 +502,7 @@ export async function findMaterialTool(ctx, { query, course, kind }) {
       if (matchesQuery(row, query)) hits.push({ course: c.title, section_id: c.section_id, ...row });
     }
   }
+  await learnLinks(ctx, hits.filter((h) => h.kind !== "discussion").map((h) => h.url), "find_material");
   const out = {
     source: "live",
     as_of: new Date().toISOString(),
@@ -836,6 +870,9 @@ export async function openMaterialTool(ctx, { course, url, id, fetch_files = tru
   const material = live.data || {};
   const files = Array.isArray(material.files) ? material.files : [];
   const notes = [];
+  if (material.kind !== "discussion") {
+    await learnLinks(ctx, { body_md: material.body_md, target: material.target, links: material.links, files }, material.url || materialUrl);
+  }
   if (material.kind === "link" && material.target) {
     notes.push("This is a link item; read its target page with fetch_page.");
   }
@@ -950,7 +987,14 @@ async function fetchGoogle(ctx, url) {
 export async function fetchPageTool(ctx, { url, include_images } = {}, { fetchImpl = fetchPage } = {}) {
   if (!url || !url.trim()) throw new Error("fetch_page needs a url");
   if (isGoogleUrl(url.trim())) return fetchGoogle(ctx, url.trim());
-  const result = await fetchImpl(url.trim());
+  // Only course sites and sites a teacher linked, on every redirect hop too.
+  // The page's own images are fetched from wherever it points: the page
+  // picked those URLs, not Claude.
+  const allowHost = (h) => hostAllowed(h, { trusted: ctx.trusted, sites: ctx.sites });
+  let host = null;
+  try { host = new URL(url.trim()).hostname; } catch { throw new Error(`fetch_page: not a url: ${url}`); }
+  if (!allowHost(host)) throw new HostNotAllowedError(host);
+  const result = await fetchImpl(url.trim(), { allowHost });
   const out = { source: "web", as_of: result.fetched_at, ...result };
   const imageOnly = result.kind === "html" && (result.text || "").trim().length < 200 && result.images?.length;
   if (include_images ?? imageOnly) {
@@ -965,4 +1009,42 @@ export async function fetchPageTool(ctx, { url, include_images } = {}, { fetchIm
     }
   }
   return out;
+}
+
+/**
+ * add_course_site: save a course's public website to the user's sites.json,
+ * so status/list_courses show it and fetch_page may open it. A site a
+ * teacher linked (or already listed) is saved straight away; any other needs
+ * the user's yes through `confirm(message)` (the server asks with an MCP
+ * elicitation). Without a way to ask, it is refused: text in a post or page
+ * must never be able to add a site on its own.
+ */
+export async function addCourseSiteTool(ctx, { course, url, note } = {}, { confirm, sitesPath = ctx.sitesPath || SITES_PATH } = {}) {
+  if (!course || !String(course).trim()) throw new Error("add_course_site needs a course");
+  const host = hostOf(String(url || "").trim());
+  if (!host) throw new Error("add_course_site needs an http(s) url");
+  if (isGoogleUrl(String(url).trim())) throw new Error("Google Docs and Drive links already open with fetch_page; no need to add them");
+
+  let name = String(course).trim();
+  const ref = await resolveCourseRef(ctx, course).catch((err) => {
+    if (err instanceof AmbiguousCourseError) throw err;
+    return null;
+  });
+  if (ref) name = ref.name;
+
+  const linked = hostAllowed(host, { trusted: ctx.trusted, sites: ctx.sites });
+  if (!linked) {
+    const ok = confirm
+      ? await confirm(`Add ${url} as the course website for ${name}? Claude will then be able to open pages on ${host}. Only say yes if you asked for this site.`)
+      : false;
+    if (!ok) {
+      throw new Error(
+        `${host} wasn't linked by a teacher, and the user didn't confirm adding it` +
+          (confirm ? "." : ` (this app can't ask). The user can add it to ${sitesPath} themselves.`),
+      );
+    }
+  }
+
+  ctx.sites = await saveSite(ctx.sites, { course: name, url: String(url).trim(), note }, sitesPath);
+  return { saved: { course: name, url: String(url).trim(), note: note || null }, confirmed_by_user: !linked, sites_path: sitesPath, sites: ctx.sites };
 }

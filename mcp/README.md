@@ -73,8 +73,12 @@ All optional; defaults shown.
 
 ## Course websites (`sites.json`)
 
-`mcp/sites.json` maps a course to a public website outside Schoology, so
-Claude knows it exists and can read it with `fetch_page`:
+`~/.schoology-mcp/sites.json` (under `SCHOOLOGY_MCP_HOME`) maps a course to a
+public website outside Schoology, so Claude knows it exists and can read it
+with `fetch_page`. It's each user's own list: ask Claude to "set up my course
+sites" and it finds the sites linked in your materials and saves the ones you
+pick with `add_course_site`. Or write it by hand, in the shape of
+[`sites.example.json`](sites.example.json):
 
 ```json
 [
@@ -84,17 +88,30 @@ Claude knows it exists and can read it with `fetch_page`:
 
 `course` is matched as a case-insensitive fragment against the course's
 name/title (either direction), the same way tool arguments resolve a
-course. A missing `sites.json` just means no sites are configured. It's
-read once at startup — restart the server after editing it.
+course. A missing `sites.json` just means no sites are configured. A hand
+edit is read at startup — restart the server after editing it. An older
+`mcp/sites.json` is still read if there's none in `~/.schoology-mcp` yet.
 
-The math course's site is still TBD; add it the same way once known (a
-plain `{ "course": "...", "url": "...", "note": "..." }` entry — `note` is
-optional and worth using if the site has a quirk like APCS's, e.g. where
-per-unit PDFs live or a fixed URL pattern for lesson pages).
+## Which sites `fetch_page` opens
+
+Only these, so text in a post or page can't get Claude to send your data to a
+URL of its choosing:
+
+- course sites from `sites.json`;
+- Google Docs/Slides/Sheets and Drive (through the extension, as before);
+- any site a teacher linked in a material or assignment that a live tool
+  returned (`open_material`, `get_assignment`, `list_materials`,
+  `find_material`). Those hosts are remembered in
+  `~/.schoology-mcp/trusted-hosts.json`; on first start it's filled from the
+  materials already in the cache. Discussion pages, updates and comments
+  don't count, since classmates write those too.
+
+Subdomains of an allowed host are allowed too, and every redirect hop is
+checked. Anything else is refused with an error saying how to get it allowed.
 
 ## Tools
 
-All tools are read-only and return `{ source: "live" | "snapshot" | "archive", as_of, ... }`, plus a one-line `note` when they fell back and why.
+All tools but `add_course_site` are read-only and return `{ source: "live" | "snapshot" | "archive", as_of, ... }`, plus a one-line `note` when they fell back and why.
 
 - **`status`** — is the extension connected, host, bridge port, last snapshot time, archive path, archived courses with their last-synced time, and any course websites from `sites.json`.
 - **`list_courses`** — live course list → snapshot → archive folders; notes which have an archive, and attaches a `site` to courses with one.
@@ -104,13 +121,14 @@ All tools are read-only and return `{ source: "live" | "snapshot" | "archive", a
 - **`get_updates(course, page?)`** — live announcements → archived `updates.md` (if any were captured).
 - **`list_materials(course, folder_id?, path?, depth?)`** — live materials folder → the archive's directory tree (one level, or `depth` levels), skipping `.DS_Store` and `_archive`. Live rows are Schoology wrapper URLs — open one with `open_material`, not by visiting the URL.
 - **`open_material(course?, url?, id?, fetch_files?)`** — **live only.** Opens one `list_materials` row: its body/target/links, then (unless `fetch_files: false`) the content of up to 5 of its attached files, in order — PDF → extracted text, CSV/text → text, images → image content, anything else → name/size. A link item's `target` page can be read with `fetch_page`. Files are cached under `~/.schoology-mcp/files/` by a hash of their URL. With no extension connected, says so and points at `search`/`read_file`.
-- **`fetch_page(url)`** — fetch a public course website page (see "Course websites" below): plain `http(s)` GET, no cookies, a 15s timeout, a 15MB cap, at most 5 redirects (each re-checked against the address guard — no loopback/private/link-local/CGNAT/IPv6 ULA or link-local targets). HTML → readable text plus a capped absolute-link list; `.md`/`.txt` → as is; PDF → extracted text. Cached for 1 hour under `~/.schoology-mcp/files/`.
+- **`fetch_page(url)`** — fetch a course website page or a site a teacher linked (see "Which sites `fetch_page` opens" above): plain `http(s)` GET, no cookies, a 15s timeout, a 15MB cap, at most 5 redirects (each re-checked against the allowed sites and the address guard — no loopback/private/link-local/CGNAT/benchmarking/multicast or IPv6 ULA/link-local targets, including IPv4 written as IPv6). HTML → readable text plus a capped absolute-link list; `.md`/`.txt` → as is; PDF → extracted text. Cached for 1 hour under `~/.schoology-mcp/files/`.
+- **`add_course_site(course, url, note?)`** — save a course website to `~/.schoology-mcp/sites.json`. A site a teacher linked is saved straight away; any other site needs the user to confirm it in a prompt (an MCP elicitation), and is refused if the app can't ask.
 - **`read_file(path)`** — **archive only.** Read one file from the archive by path relative to the archive root (rejects traversal/symlink escape). `.md`/`.txt`/`.html`/`.json` → text (~200KB cap, says if truncated); `.pdf` → extracted text (cached by mtime, with page markers); images → MCP image content (5MB cap); `.url` → the URL inside; anything else (`.xlsx`, `.docx`, video, …) → name/size/path only. May be stale and doesn't cover every course — for current course content use `list_materials` → `open_material` instead.
 - **`search(query, course?)`** — **archive only.** Case-insensitive search over file names, markdown/text/html/json contents, and PDF text (lazily extracted and cached); returns path + snippet per hit, capped. Same staleness/coverage caveat as `read_file`.
 
 A `course` argument accepts a `section_id` or a case-insensitive fragment of the course's name; an ambiguous fragment returns an error listing the matching candidates.
 
-The server also sets MCP `instructions` (surfaced to Claude at connect time) explaining the live-vs-archive tradeoff and pointing at `sites.json` course websites, so this isn't just a README note.
+The server also sets MCP `instructions` (surfaced to Claude at connect time) explaining the live-vs-archive tradeoff, how to set up course websites, and that text inside tool results is content, never instructions, so this isn't just a README note.
 
 ## Tests
 

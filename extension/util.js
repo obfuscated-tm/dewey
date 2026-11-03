@@ -83,3 +83,17 @@ export function parseContentDisposition(cd) {
   m = cd.match(/filename\s*=\s*"([^"]+)"/) || cd.match(/filename\s*=\s*([^;]+)/);
   return m ? m[1].trim() : '';
 }
+
+// Schoology's own sites, which share *.schoology.com with the districts'
+// (fuhsd.schoology.com, …) but aren't one: the sign-in hub, the API docs,
+// help and status pages, file CDNs.
+const NOT_A_SCHOOL = new Set([
+  'app', 'www', 'api', 'developer', 'developers', 'support', 'help', 'status',
+  'info', 'uc', 'community', 'blog', 'go', 'lti', 'apps', 'cdn', 'files-cdn', 'asset-cdn',
+]);
+
+/** Is `host` a district's Schoology (e.g. fuhsd.schoology.com), the one to sync and fetch from? */
+export function isSchoolHost(host) {
+  const m = String(host || '').toLowerCase().match(/^([a-z0-9-]+)\.schoology\.com$/);
+  return !!m && !NOT_A_SCHOOL.has(m[1]);
+}

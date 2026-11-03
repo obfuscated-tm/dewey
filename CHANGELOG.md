@@ -14,6 +14,7 @@ Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git hist
 
 ### Extension
 - Done, Studied, Turn in and Remove work without neo-plan. With no token saved they're kept in this browser, one copy per Schoology account, so the daily Schoology sign-out doesn't lose them and another student on the same Chrome sees only their own. With a token, neo-plan holds them as before, and connecting moves the marks made in this browser onto the board (where neo-plan hasn't got a mark of its own).
+- Fix: visiting one of Schoology's own sites (like developers.schoology.com) no longer makes sync, the Claude add-on and the toolbar button use that site instead of your school's.
 
 ### Android
 - Security: `intent:` links from web pages can only open what a browser link could (no named app component, no file permission grants).

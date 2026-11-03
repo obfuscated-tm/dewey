@@ -7,6 +7,7 @@ import { handleNeoplan } from '../outputs/neoplan/api.js';
 import { runSync, KEY_SNAPSHOT, submittedPayload } from './sync.js';
 import { limiter, persistPausedUntil } from './limiter.js';
 import { ensureOffscreen } from '../offscreen/ensure.js';
+import { isSchoolHost } from '../util.js';
 
 export const SYNC_LOCK_ID = 'sync';
 export const KEY_HOST = 'schoologyHost';
@@ -30,10 +31,11 @@ export async function offscreenParse(kind, text, url) {
 }
 
 // ── Which Schoology ──────────────────────────────────────────────────────
+// The district site last visited. A host saved before Schoology's own sites
+// (developers.schoology.com, …) were told apart is skipped, not trusted.
 export async function schoologyHost() {
   const got = await chrome.storage.local.get([KEY_HOST, 'options']);
-  const h = got[KEY_HOST] || got.options?.host || DEFAULT_HOST;
-  return /^[a-z0-9-]+\.schoology\.com$/i.test(h) ? h : DEFAULT_HOST;
+  return [got[KEY_HOST], got.options?.host].find(isSchoolHost) || DEFAULT_HOST;
 }
 
 // ── One run ──────────────────────────────────────────────────────────────

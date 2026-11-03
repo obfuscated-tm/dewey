@@ -1,5 +1,5 @@
 import { handleNeoplan, getConfig, isWorkValue } from './outputs/neoplan/api.js';
-import { requestSync, stopSync, syncRunning, reportSubmitted, sectionForRealm, SYNC_LOCK_ID, KEY_HOST, DEFAULT_HOST } from './sync/runner.js';
+import { requestSync, stopSync, syncRunning, reportSubmitted, sectionForRealm, schoologyHost, SYNC_LOCK_ID, KEY_HOST, DEFAULT_HOST } from './sync/runner.js';
 import { KEY_SNAPSHOT } from './sync/sync.js';
 import { limiter, restorePausedUntil, persistPausedUntil } from './sync/limiter.js';
 import { ensureOffscreen, OFFSCREEN_URL } from './offscreen/ensure.js';
@@ -10,6 +10,7 @@ import { connectBridge, pushSnapshot, closeBridge, bridgeConnected, setBridgePau
 import { isQuizPageUrl, quizTabOpen, noteQuizPage } from './sync/quiet.js';
 import { handleLocal, markSubmittedLocal, LOCAL_OPS, storeKey, readRecord, setPortedAt } from './outputs/local/marks.js';
 import { toPort, portItems } from './outputs/local/port.js';
+import { isSchoolHost } from './util.js';
 
 const SYNC_ALARM = 'neoplan-sync';
 const SYNC_SOON_ALARM = 'neoplan-sync-soon';
@@ -62,8 +63,8 @@ chrome.action.onClicked.addListener(async (tab) => {
   if (tab?.id != null && SCHOOLOGY_URL.test(tab.url || '')) {
     try { await chrome.tabs.sendMessage(tab.id, { type: 'openSettings' }); return; } catch { /* no overlay on this page */ }
   }
-  const { [KEY_HOST]: host } = await chrome.storage.local.get(KEY_HOST).catch(() => ({}));
-  chrome.tabs.create({ url: `https://${host || DEFAULT_HOST}/home` }).catch(() => {});
+  const host = await schoologyHost().catch(() => DEFAULT_HOST);
+  chrome.tabs.create({ url: `https://${host}/home` }).catch(() => {});
 });
 
 // The folder picker can't run on a Schoology page or in a frame on one, so
@@ -446,7 +447,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {
   if (info.status !== 'complete') return;
   if (quiet || isQuizPageUrl(tab?.url)) return;
   const m = (tab?.url || '').match(/^https:\/\/([a-z0-9-]+\.schoology\.com)\//i);
-  if (!m || m[1].toLowerCase() === 'app.schoology.com') return;
+  if (!m || !isSchoolHost(m[1])) return; // developers.schoology.com and the like aren't a district
   await chrome.storage.local.set({ [KEY_HOST]: m[1].toLowerCase() });
   if (syncRunning()) return;
   const snap = (await chrome.storage.local.get(KEY_SNAPSHOT))[KEY_SNAPSHOT];

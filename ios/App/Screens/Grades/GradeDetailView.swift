@@ -83,7 +83,7 @@ struct GradeDetailView: View {
 
     private func scoreCard(_ it: CourseGrade.Item) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(it.category.uppercased()).font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+            Text(it.category).font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.secondary)
             HStack(alignment: .firstTextBaseline, spacing: 10) {
                 Text(scoreText(it)).font(Theme.largeTitle.monospacedDigit())
                 if let p = it.pct { Text(Fmt.pct(p)).font(Theme.body.monospacedDigit()).foregroundStyle(Theme.secondary) }
@@ -135,7 +135,9 @@ struct GradeDetailView: View {
 
     private func section<C: View>(_ title: String, @ViewBuilder _ c: () -> C) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(title).font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+            // Sentence case ("Rubric", not "RUBRIC"): callers still pass the old capitals.
+            Text(title.prefix(1) + title.dropFirst().lowercased())
+                .font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.secondary)
             c()
         }
         .frame(maxWidth: .infinity, alignment: .leading)

@@ -27,6 +27,7 @@ struct ToDoView: View {
     @AppStorage("statusTipKind") private var tipKind = StatusTip.Kind.done.rawValue
     @State private var showGuide = false
     @AppStorage(CallNumber.key) private var callRaw = ""
+    @AppStorage(CallNumber.showKey) private var showCallNumbers = false
     @AppStorage(ToDoMode.key) private var modeID = ToDoMode.list.rawValue
     /// The week strip opened up to a month (MonthGrid), and the month it shows.
     @AppStorage("todoMonth") private var showMonth = false
@@ -97,25 +98,22 @@ struct ToDoView: View {
     @ViewBuilder
     private func header(items: [ItemState], now: Date) -> some View {
         let open = items.filter { !model.isFinished($0) }
-        let today = items.filter { TodoLogic.bucket(due: $0.due, now: now) == .today }
-        // Plan has its own Done section and count; two different "done today" counts would read as a mistake.
-        let ripple = today.isEmpty || mode == .plan ? nil : RippleProgress(done: today.filter { model.isFinished($0) }.count, total: today.count)
+        // No "done today" ring here: the week strip's dots already count what's left.
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do", titleView: AnyView(modeTitles)) {
-                if !typeSize.isAccessibilitySize, let ripple { ripple.padding(.bottom, Theme.Space.xs) }
                 ScreenOptions(page: .todo)
             }
-            if typeSize.isAccessibilitySize, let ripple { ripple.padding(.horizontal, Theme.Space.xs) }
             // Late, today and the next six days, a dot per item still to do; tap one to show only it.
             // Pull it down (anywhere on it, or its chevron) for the month; slide the month sideways.
             if mode == .list && layout == .week {
                 CalendarPull(open: showMonth, set: { set in
                     guard set != showMonth else { return }
                     if set { shownMonth = MonthGrid.start(of: now) }
-                    withAnimation(.spring(response: 0.45, dampingFraction: 0.82)) { showMonth = set; filter = nil }
+                    // Everyday controls: no bounce (Apple HIG; NN/g ~200–300 ms for a view change).
+                    withAnimation(.snappy(duration: 0.3)) { showMonth = set; filter = nil }
                 }, swipe: { n in
                     monthForward = n > 0
-                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                    withAnimation(.snappy(duration: 0.3)) {
                         shownMonth = Calendar.current.date(byAdding: .month, value: n, to: shownMonth)!
                     }
                 }) {
@@ -193,7 +191,7 @@ struct ToDoView: View {
 
     private func modeSwitch(_ other: ToDoMode) -> some View {
         Button {
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) { modeID = other.rawValue }
+            withAnimation(.snappy(duration: 0.25)) { modeID = other.rawValue }
         } label: {
             Text(other == .plan ? "Plan" : "To Do")
                 .font(Theme.displaySmall)
@@ -292,7 +290,6 @@ struct ToDoView: View {
                     Button { withAnimation { showOlder.toggle() } } label: {
                         HStack {
                             Text("Older · \(older.count)").font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.text)
-                            Text("over \(TodoLogic.olderDays) days late").font(Theme.footnote).foregroundStyle(Theme.tertiary)
                             Spacer()
                             Image(systemName: showOlder ? "chevron.up" : "chevron.down").foregroundStyle(Theme.secondary)
                         }
@@ -350,32 +347,24 @@ struct ToDoView: View {
     /// Dewey can't tell, see CallNumber), the class, its period, a red rule under it.
     /// Long-press to set the number.
     private func cardHeading(_ title: String, _ items: [ItemState], now: Date, sectionId: String) -> some View {
-        let open = items.filter { !model.isFinished($0) }
         let course = model.course(sectionId)
-        let number = course.flatMap { CallNumber.number(for: $0, raw: callRaw) }
-        // Urgent first already has a Today section.
-        let dueToday = layout == .week && open.contains { TodoLogic.bucket(due: $0.due, now: now) == .today }
+        // Call numbers only when the student turned them on (Settings → To Do → Call numbers).
+        let number = showCallNumbers ? course.flatMap { CallNumber.number(for: $0, raw: callRaw) } : nil
+        // Just the class: the rows under it say what's open and what's due today.
         return AdaptiveStack(spacing: Theme.Space.s) {
             if let number {
                 Text(number).font(Theme.callNumber.monospacedDigit())
                     .foregroundStyle(course.map { model.classColor($0.sectionId) } ?? Theme.accent)
                     .accessibilityLabel("Call number \(number)")
+            } else if let course {
+                Circle().fill(model.classColor(course.sectionId)).frame(width: 9, height: 9)
+                    .accessibilityHidden(true)
             }
             Text(title).font(Theme.headline).foregroundStyle(Theme.text)
-            if dueToday {
-                // A rubber stamp, a little crooked, in the rule's red.
-                Text("DUE TODAY").font(Theme.caption.weight(.heavy)).tracking(1).foregroundStyle(Theme.catalogRule)
-                    .padding(.horizontal, 5).padding(.vertical, 1)
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag / 2).strokeBorder(Theme.catalogRule, lineWidth: 1.5))
-                    .rotationEffect(.degrees(-4))
-                    .accessibilityLabel("Due today")
-            }
             Spacer(minLength: 0)
-            Text([(1...3).contains(course?.periodLabel.count ?? 0) ? course?.periodLabel : nil, "\(open.count) open"].compactMap { $0 }.joined(separator: " · "))
-                .font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
         }
         .padding(.bottom, Theme.Space.s)
-        .overlay(alignment: .bottom) { Theme.catalogRule.frame(height: 1.5) }
+        .overlay(alignment: .bottom) { Theme.divider.frame(height: 1) }
         // The rule sits on the row's bottom edge, so the first task starts right under it.
         .listRowInsets(EdgeInsets(top: Theme.Space.m, leading: Theme.Space.l, bottom: 0, trailing: Theme.Space.l))
         .accessibilityElement(children: .combine)
@@ -383,7 +372,7 @@ struct ToDoView: View {
         .listRowBackground(Theme.card)
         .listRowSeparator(.hidden)
         .contextMenu {
-            if let course {
+            if showCallNumbers, let course {
                 Picker("Call number", selection: Binding(
                     get: { CallNumber.overrides(callRaw)[sectionId] ?? "auto" },
                     set: { callRaw = CallNumber.setting(callRaw, sectionId, $0 == "auto" ? nil : $0) })) {
@@ -433,21 +422,9 @@ struct ToDoView: View {
                     .tint(Theme.accent)
                 }
             }
-            .swipeActions(edge: .leading) {
-                Button { set(it, model.progress(it) == .todo ? .done : .todo) } label: {
-                    Label(it.type == .exam ? (it.studied ? "Not studied" : "Studied") : (it.done ? "Not done" : "Done"),
-                          systemImage: "checkmark")
-                }
-                .tint(Theme.accent)
-            }
+            // Done lives on the circle, handing in on the row's button and the swipe. The
+            // hold menu is for the rest (NN/g: several routes to one thing rarely help).
             .contextMenu {
-                ForEach(AppModel.Progress.allCases, id: \.self) { p in
-                    Button { set(it, p) } label: {
-                        Label(it.type == .exam && p == .done ? "Studied" : p.label,
-                              systemImage: model.progress(it) == p ? "checkmark" : "circle")
-                    }
-                }
-                Divider()
                 if it.mine {
                     Button { open(it) } label: { Label("Edit task", systemImage: "pencil") }
                     Button(role: .destructive) { model.deleteTask(it) } label: { Label("Delete task", systemImage: "trash") }
@@ -645,20 +622,24 @@ struct TodoRow: View {
         .padding(.vertical, Theme.Space.xs)
     }
 
+    /// A button only when there's something to hand in soon: done, late, or due by the end of
+    /// tomorrow. Further out, the swipe does it, so the list isn't a column of buttons.
     private var hasAction: Bool {
         if item.mine && item.type == .task { return false }
-        return !item.submitted && (item.turnedIn || item.hasDropbox || item.type != .exam)
+        guard !item.submitted, !item.turnedIn, item.hasDropbox || item.type != .exam else { return false }
+        if item.done { return true }
+        guard let due = item.due else { return false }
+        let cal = Calendar.current
+        return due < cal.date(byAdding: .day, value: 2, to: cal.startOfDay(for: now))!
     }
 
     private var action: some View { actionButton.coachTarget("todo.action.\(item.schoologyId)") }
 
     @ViewBuilder
     private var actionButton: some View {
-        if item.submitted {
+        // Undoing a turn in is the circle's job (one tap goes back to done) or the swipe's.
+        if item.submitted || item.turnedIn {
             EmptyView()
-        } else if item.turnedIn {
-            PillButton(title: "Undo", color: Theme.secondary) { onSet(.done) }
-                .accessibilityLabel("Undo turned in for \(item.title)")
         } else if item.hasDropbox {
             PillButton.submit(onSubmit)
                 .accessibilityLabel("Submit \(item.title) on Schoology")
@@ -688,21 +669,20 @@ struct TodoRow: View {
             let countdown = Reminders.testCountdown(due: item.due, now: now)
                 .map { $0.replacingOccurrences(of: "Test ", with: "") }
                 .flatMap { dueWords.hasPrefix($0.lowercased()) ? nil : " · " + nb($0) } ?? ""
-            t = t + Text("\(countdown) · \(nb(item.studied ? "studied" : "not studied"))")
-                .foregroundStyle(item.studied ? Theme.accent : Theme.secondary)
+            // Studied or not is the circle's job; the line keeps only the countdown.
+            t = t + Text(countdown).foregroundStyle(Theme.secondary)
         }
         return t.font(Theme.footnote.weight(late != nil ? .semibold : .regular).monospacedDigit())
     }
 
-    /// The status, when it says more than "to do": its own line, never cut short.
+    /// A third line only when the circle can't say it: which kind of handed in the green seal
+    /// means (Schoology's word or the student's), a Google Assignment, or a task's notes.
+    /// Done, not submitted and so on are the circle and the button's job.
     private var statusNote: (String, Color, Bool)? {
-        if item.submitted { return ("Submitted on Schoology\(item.statusLate == true ? " · late" : "")", Theme.good, true) }
-        if item.turnedIn { return (item.mine ? "Turned in" : "Turned in · not on Schoology", Theme.good, true) }
+        if item.submitted { return (item.statusLate == true ? "Submitted late" : "Submitted", Theme.good, true) }
+        if item.turnedIn { return ("Turned in", Theme.good, true) }
         if item.mine { return item.notes.map { ($0, Theme.secondary, false) } }
-        if item.type == .exam { return nil }
-        if item.external { return (item.done ? "Done · check it in Schoology" : "Google Assignment · turn in on Schoology", item.done ? Theme.accent : Theme.secondary, item.done) }
-        if item.done { return (item.hasDropbox ? "Done · not submitted yet" : "Done", Theme.accent, true) }
-        if !item.inSchoology { return ("Not on Schoology anymore · tick when done", Theme.secondary, false) }
+        if item.external && !item.done { return ("Google Assignment", Theme.secondary, false) }
         return nil
     }
 }
@@ -784,11 +764,13 @@ private struct CalendarPull<Content: View>: View {
         .highPriorityGesture(DragGesture(minimumDistance: 12)
             .onChanged { v in
                 if abs(v.translation.height) > abs(v.translation.width) {
-                    pull = max(-60, min(60, v.translation.height))
+                    // Rubber band: the further you pull, the more it resists (never a hard stop).
+                    let y = v.translation.height
+                    pull = y / (1 + abs(y) / 60)
                 }
             }
             .onEnded { v in
-                withAnimation(.spring(response: 0.4, dampingFraction: 0.75)) { pull = 0 }
+                withAnimation(.snappy(duration: 0.25)) { pull = 0 }
                 let dx = v.translation.width, dy = v.translation.height
                 if abs(dx) > abs(dy) {
                     if open && abs(dx) > 40 { swipe(dx < 0 ? 1 : -1) }

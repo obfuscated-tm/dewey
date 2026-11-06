@@ -143,7 +143,8 @@ struct ScreenHeader<Trailing: View>: View {
         // The kicker gets the whole width, so a long date never wraps beside the buttons.
         VStack(alignment: .leading, spacing: 2) {
             if let kicker {
-                Text(kicker.uppercased()).font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.secondary)
+                // Plain words, not spaced capitals (NN/g: all caps flattens hierarchy).
+                Text(kicker).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.secondary)
                     .lineLimit(1).minimumScaleFactor(0.8)
             }
             HStack(alignment: .bottom) {

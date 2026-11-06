@@ -333,7 +333,7 @@ struct WideSidebar: View {
                 .padding(.leading, Theme.Space.s)
                 .padding(.bottom, Theme.Space.s)
                 ForEach(Array(WideRail.tabs.enumerated()), id: \.offset) { i, t in navRow(i, t.0, t.1) }
-                Text("CLASSES").font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.tertiary)
+                Text("Classes").font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.secondary)
                     .padding(.horizontal, 10).padding(.top, Theme.Space.m).padding(.bottom, Theme.Space.xs)
                     .accessibilityAddTraits(.isHeader)
                 ForEach(model.classes) { c in classRow(c) }

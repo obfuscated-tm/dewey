@@ -55,9 +55,6 @@ struct GradeHistoryChart: View {
                 readout(pts)
                 chart(pts)
                     .frame(height: 170)
-                Text(selected == nil ? "Drag across the graph to see any day." : " ")
-                    .font(Theme.caption).foregroundStyle(Theme.tertiary)
-                    .accessibilityHidden(true)
             }
             .padding(Theme.Space.l)
             .card()

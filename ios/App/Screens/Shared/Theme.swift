@@ -90,12 +90,14 @@ enum Theme {
     }
     /// 17 bold New York · the Dewey number on a To Do catalog card.
     static let callNumber = Font.system(.headline, design: .serif, weight: .bold)
-    /// A To Do catalog card's red rule under its heading, and its pale blue ruled lines.
-    static let catalogRule = Color(light: "#C24A42", dark: "#D9706B")
-    static let catalogLine = Color(light: "#C9DDF0", dark: "#2E4258")
-    /// 10 heavy · the word on a shelf book's bookmark ribbon only (like the type bar's
-    /// label: a fixed size so the ribbon stays thinner than the spine's name).
-    static let ribbon = Font.system(size: 10, weight: .heavy)
+    /// The rule under a screen title and a card's heading: ink, not red. Red means late
+    /// and nothing else (Apple HIG: never one colour for two meanings).
+    static var catalogRule: Color { text }
+    /// The lines between rows: the same quiet divider as everywhere else.
+    static var catalogLine: Color { divider }
+    /// 11 heavy · the word on a shelf book's bookmark ribbon and the type bar. Apple's
+    /// smallest text style, and it follows Dynamic Type (it was a fixed 10 pt).
+    static let ribbon = Font.system(.caption2, weight: .heavy)
     /// Settings → Developer only: raw engine JSON. Never in the student-facing UI.
     static let code = Font.system(.caption, design: .monospaced)
 
@@ -190,14 +192,17 @@ struct AdaptiveStack<Content: View>: View {
 struct TypeBar: View {
     let type: ItemType
     /// The tallest the label needs; the bar stretches to fill a taller row.
-    static let minHeight: CGFloat = 38
+    static let minHeight: CGFloat = 40
+    /// Grow with Dynamic Type, so the turned label always fits.
+    @ScaledMetric(relativeTo: .caption2) private var height = TypeBar.minHeight
+    @ScaledMetric(relativeTo: .caption2) private var width: CGFloat = 18
     var body: some View {
         Text(type.label)
-            .font(.system(size: 10, weight: .heavy))
-            .tracking(0.6)
+            .font(Theme.ribbon)
+            .tracking(0.4)
             .fixedSize()
             .rotationEffect(.degrees(-90))
-            .frame(width: 18, height: Self.minHeight)
+            .frame(width: width, height: height)
             .frame(maxHeight: .infinity)
             .foregroundStyle(type == .exam ? Theme.card : Theme.secondary)
             .background(type == .exam ? Theme.text : Theme.tagSoft,
@@ -217,6 +222,18 @@ struct TypeTag: View {
             .foregroundStyle(type == .exam ? Theme.card : Theme.secondary)
             .background(type == .exam ? Theme.text : Theme.tagSoft,
                         in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+    }
+}
+
+/// Pressed feedback for Dewey's own buttons: a slight shrink and dim, about 100 ms
+/// (NN/g: simple feedback ~100 ms). No bounce. Reduce Motion keeps only the dim.
+struct PressStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
+            .opacity(configuration.isPressed ? 0.75 : 1)
+            .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }
 
@@ -246,18 +263,19 @@ struct PillButton: View {
             .overlay(shape.strokeBorder(filled ? Color.clear : color, lineWidth: 1.5))
             .contentShape(shape)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 }
 
 /// To Do's two one-tap actions, so they never look alike: Turn in stays in Dewey
-/// (outlined ink, a check), Submit leaves for Schoology's dropbox (filled, the globe, ↗).
+/// (ink, a check), Submit leaves for Schoology's dropbox (accent, ↗). Both outlined, so a
+/// list of them never turns into a column of filled buttons.
 extension PillButton {
     static func turnIn(_ action: @escaping () -> Void) -> PillButton {
         PillButton(title: "Turn in", color: Theme.text, icon: "checkmark", action: action)
     }
     static func submit(_ action: @escaping () -> Void) -> PillButton {
-        PillButton(title: "Submit", filled: true, icon: "globe", external: true, action: action)
+        PillButton(title: "Submit", external: true, action: action)
     }
 }
 
@@ -282,6 +300,6 @@ struct WideButton: View {
             .background(filled ? color : Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
             .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(filled ? Color.clear : Theme.border))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 }

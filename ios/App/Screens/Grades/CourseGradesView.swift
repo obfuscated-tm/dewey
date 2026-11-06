@@ -203,8 +203,8 @@ struct CourseGradesView: View {
         let p = changeCount > 0 ? preview?.pct : nil
         return HStack(alignment: .center, spacing: Theme.Space.m) {
             VStack(alignment: .leading, spacing: 1) {
-                Text("WHAT-IF").font(Theme.caption.weight(.bold)).foregroundStyle(Theme.accent)
-                Text(changeCount == 0 ? "Type a score on any row" : "\(changeCount) change\(changeCount == 1 ? "" : "s") · preview only")
+                Text("What-if").font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.accent)
+                Text(changeCount == 0 ? "Type a score on any row" : "\(changeCount) change\(changeCount == 1 ? "" : "s")")
                     .font(Theme.caption).foregroundStyle(Theme.secondary).oneLine()
             }
             Spacer(minLength: 0)
@@ -374,8 +374,9 @@ struct CourseGradesView: View {
                         Image(systemName: "arrow.right").imageScale(.small).foregroundStyle(Theme.tertiary)
                         Text(possible > 0 ? Fmt.pct(t / possible * 100, digits: 0) : "—").fontWeight(.semibold)
                             .foregroundStyle(possible > 0 && t / possible * 100 >= cutoff ? Theme.good : Theme.text)
-                    } else {
-                        Text(it.earned != nil ? "Real \(scoreText(it))" + (it.pct.map { " · \(Fmt.pct($0, digits: 0))" } ?? "") : "Not graded yet" + (Fmt.wallDate(it.due).map { " · due \(Fmt.short.string(from: $0))" } ?? ""))
+                    } else if it.earned == nil {
+                        // A graded row says nothing here: its box already shows the real score.
+                        Text("Not graded yet" + (Fmt.wallDate(it.due).map { " · due \(Fmt.short.string(from: $0))" } ?? ""))
                             .foregroundStyle(Theme.secondary)
                     }
                 }

@@ -260,6 +260,7 @@ func scoreText(_ i: CourseGrade.Item) -> String {
 struct ClassGradeRow: View {
     @Environment(AppModel.self) private var model
     @AppStorage(CallNumber.key) private var callRaw = ""
+    @AppStorage(CallNumber.showKey) private var showCallNumbers = false
     let course: Course
     /// The letter, when the report card row above is hidden.
     var showLetter = false
@@ -278,12 +279,10 @@ struct ClassGradeRow: View {
                         Circle().fill(Theme.accent).frame(width: 7, height: 7).accessibilityHidden(true)
                     }
                 }
-                // Period (only when the section title names one) · the latest score, then its
-                // title: the score comes first, so a long title is what gets cut, never the points.
-                let latest = last.map { (Text(scoreText($0)).fontWeight(.semibold).foregroundStyle(Theme.text) + Text("  " + $0.title)) }
-                let period = course.periodLabel.isEmpty ? nil : Text(course.periodLabel + (latest == nil ? "" : " · "))
-                if period != nil || latest != nil {
-                    ((period ?? Text("")) + (latest ?? Text("")))
+                // The latest score, then its title: the score comes first, so a long title is
+                // what gets cut, never the points. (The period lives on the class screen.)
+                if let last {
+                    (Text(scoreText(last)).fontWeight(.semibold).foregroundStyle(Theme.text) + Text("  " + last.title))
                         .font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary).oneLine()
                 }
             }
@@ -291,7 +290,8 @@ struct ClassGradeRow: View {
             if let g, g.pct != nil {
                 // The % with the latest score's effect under it, so the row never gets wider.
                 VStack(alignment: .trailing, spacing: 1) {
-                    Text(Fmt.pct(g.pct)).font(Theme.subhead.monospacedDigit()).foregroundStyle(Theme.secondary)
+                    // Two decimals, like the class screen and Schoology: 89.46 vs 89.54 matters.
+                    Text(Fmt.pct(g.pct, digits: 2)).font(Theme.subhead.monospacedDigit()).foregroundStyle(Theme.secondary)
                     if let i = last?.impact {
                         Text(Fmt.signed(i)).font(Theme.caption.weight(.semibold).monospacedDigit()).foregroundStyle(Fmt.impactColor(i))
                     }
@@ -318,7 +318,7 @@ struct ClassGradeRow: View {
     private var spine: some View {
         HStack(spacing: 3) {
             RoundedRectangle(cornerRadius: Theme.Radius.tag / 6, style: .continuous).fill(model.classColor(course.sectionId)).frame(width: 3)
-            if let n = CallNumber.number(for: course, raw: callRaw) {
+            if showCallNumbers, let n = CallNumber.number(for: course, raw: callRaw) {
                 Text(n).font(Theme.ribbon.monospacedDigit()).tracking(0.6)
                     .foregroundStyle(model.classColor(course.sectionId))
                     .fixedSize()

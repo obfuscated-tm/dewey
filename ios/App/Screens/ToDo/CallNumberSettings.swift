@@ -5,9 +5,23 @@ import SwiftUI
 struct CallNumberSettings: View {
     @Environment(AppModel.self) private var model
     @AppStorage(CallNumber.key) private var raw = ""
+    @AppStorage(CallNumber.showKey) private var show = false
 
     var body: some View {
         DewForm {
+            Section {
+                Toggle("Show call numbers", isOn: $show)
+            } footer: {
+                Text("A library call number beside each class on To Do and Grades.")
+            }
+            if show { numbers }
+        }
+        .navigationTitle("Call numbers")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+
+    @ViewBuilder
+    private var numbers: some View {
             Section {
                 ForEach(model.classes) { c in
                     Picker(selection: binding(c)) {
@@ -26,11 +40,8 @@ struct CallNumberSettings: View {
                     }
                 }
             } footer: {
-                Text("Each class's card on To Do carries its library call number. Dewey guesses from the class name and leaves it blank when it can't tell; pick one here if it's wrong or missing.")
+                Text("Dewey guesses from the class name. Pick one if it's wrong or missing.")
             }
-        }
-        .navigationTitle("Call numbers")
-        .navigationBarTitleDisplayMode(.inline)
     }
 
     private func autoLabel(_ c: Course) -> String {

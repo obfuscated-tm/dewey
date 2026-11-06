@@ -74,7 +74,7 @@ enum TourScript {
         .init(target: "todo.check.\(Practice.quiz)",
               text: "Tests are never turned in. Tap the circle once you've studied, and the night-before reminder stops.",
               done: { $0.item(Practice.quiz)?.studied == true }, tab: 0),
-        .init(text: "That's your list. Circle = done for you. Submit or Turn in = handed in. Press and hold any row to pick its status. The drop at the top fills as you finish today's work.",
+        .init(text: "That's your list. Circle = done for you. Submit or Turn in = handed in. Their buttons show up once work is done or due soon; swipe a row left any time.",
               hint: .none, button: "Next"),
         .init(target: "todo.calendar",
               text: "Your next 7 days, with a dot for each thing due. Pull the days down to see the whole month.",

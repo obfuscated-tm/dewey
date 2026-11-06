@@ -120,7 +120,7 @@ struct AssignmentView: View {
         VStack(alignment: .leading, spacing: 6) {
             // A library catalog line: class · period · term · category, in the class colour.
             if let c = model.course(section) {
-                Text(catalogLine(c)).font(Theme.caption.weight(.semibold)).tracking(0.6)
+                Text(catalogLine(c)).font(Theme.footnote.weight(.semibold))
                     .foregroundStyle(model.classColor(c.sectionId)).maxLines(2)
             }
             Text(a?.title ?? it?.title ?? "Assignment").font(Theme.displaySmall)
@@ -137,11 +137,10 @@ struct AssignmentView: View {
         }
     }
 
-    /// "AP BIOL · P2 · 26-27 T1 · LABS & HOMEWORK".
+    /// "AP Biology · Labs & Homework": the class and where the grade goes.
     private func catalogLine(_ c: Course) -> String {
-        [GradesLook.abbreviation(c.shortTitle), (1...3).contains(c.periodLabel.count) ? c.periodLabel : nil,
-         model.grades[c.sectionId]?.period, gradeItem?.category]
-            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ").uppercased()
+        [c.shortTitle, gradeItem?.category]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     private var gradeItem: CourseGrade.Item? {
@@ -165,25 +164,18 @@ struct AssignmentView: View {
         }
     }
 
-    /// The Submission card as a library date-due card: ruled columns for the due
-    /// date and where it's turned in, what Schoology says under them, and a stamp
-    /// with the one fact that matters (due, submitted, turned in, late).
+    /// The Submission card: when it's due (and how late, in red), where it's turned in, and
+    /// what Schoology says. No tilted stamp or ruled table headers: the facts speak.
     @ViewBuilder
     private func submissionCard(_ a: Assignment) -> some View {
         let k = kind(a)
         let due = Fmt.date(a.due) ?? it?.due
-        let s = stamp(k, due: due)
+        let late = lateWords(k, due: due)
         VStack(alignment: .leading, spacing: 0) {
-            if typeSize.isAccessibilitySize, let s { DueStamp(stamp: s).padding(.bottom, Theme.Space.m) }
             AdaptiveStack(spacing: Theme.Space.s) {
-                Text("DATE DUE").frame(maxWidth: .infinity, alignment: .leading)
-                if !typeSize.isAccessibilitySize { Text("TURN IN").frame(width: placeWidth, alignment: .leading) }
-            }
-            .font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.text)
-            .padding(.bottom, 6)
-            .overlay(alignment: .bottom) { Theme.text.frame(height: 1.5) }
-            AdaptiveStack(spacing: Theme.Space.s) {
-                Text(Fmt.due(due)).font(Theme.subhead.weight(.semibold).monospacedDigit())
+                (Text(Fmt.due(due)) + Text(late.map { " · " + $0 } ?? ""))
+                    .font(Theme.subhead.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(late != nil ? Theme.late : Theme.text)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Text(place(k)).font(Theme.subhead).foregroundStyle(Theme.secondary)
                     .frame(width: typeSize.isAccessibilitySize ? nil : placeWidth, alignment: .leading)
@@ -200,46 +192,42 @@ struct AssignmentView: View {
                         .font(Theme.body.weight(.semibold))
                         .foregroundStyle(done ? Theme.good : Theme.late)
                     if done, status?.late == true { Text("Late").font(Theme.footnote).foregroundStyle(Theme.late) }
-                    if let checkedAt { Text("Checked \(Fmt.ago(checkedAt))").font(Theme.footnote).foregroundStyle(Theme.secondary) }
+                    // Freshness only when it's worth doubting (over an hour old).
+                    if let checkedAt, Date().timeIntervalSince(checkedAt) > 3600 {
+                        Text("Checked \(Fmt.ago(checkedAt))").font(Theme.footnote).foregroundStyle(Theme.secondary)
+                    }
                 case .outside(let url):
                     Label("Handed in outside Schoology", systemImage: "arrow.up.right.square").font(Theme.body.weight(.semibold))
-                    Text(url != nil ? "This class takes it on its own site (\(url!.host ?? "")). Schoology can't see it." : "No Schoology dropbox. Hand it in the way your teacher asked, then mark it turned in.")
-                        .font(Theme.footnote).foregroundStyle(Theme.secondary)
+                    if url == nil {
+                        Text("Hand it in the way your teacher asked.").font(Theme.footnote).foregroundStyle(Theme.secondary)
+                    }
                 case .quiz:
                     if let q = a.quiz { quizFacts(q) } else {
                         Label("Test / quiz on Schoology", systemImage: "list.bullet.clipboard").font(Theme.body.weight(.semibold))
-                        Text("It only opens when you tap Take on Schoology.").font(Theme.footnote).foregroundStyle(Theme.secondary)
                     }
                 case .google:
                     Label("Google Assignment", systemImage: "doc.richtext").font(Theme.body.weight(.semibold))
-                    Text("Turned in inside Schoology's Google frame. Schoology never tells the app whether you did, so check it there.")
+                    // Kept: without it a student would trust a status Dewey can't see.
+                    Text("Schoology doesn't tell Dewey if it's turned in.")
                         .font(Theme.footnote).foregroundStyle(Theme.secondary)
                 case .unknown:
                     Label("Checking Schoology…", systemImage: "hourglass").font(Theme.body.weight(.semibold)).foregroundStyle(Theme.secondary)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            // Dewey, a little worried: only here, on the one overdue thing you opened.
-            if let it, model.isOverdue(it) {
-                Image(Mascot.uhOh).resizable().scaledToFit().frame(width: 44, height: 44).accessibilityHidden(true)
-            }
             }
             .padding(.top, 10)
         }
         .padding(16)
-        .padding(.top, 4)
         .card()
-        // The class colour across the top edge, like the band on a library card.
-        .overlay(alignment: .top) {
-            if section != nil {
-                model.classColor(section).frame(height: 5)
-                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: Theme.Radius.card, topTrailingRadius: Theme.Radius.card, style: .continuous))
-            }
-        }
-        .overlay(alignment: .topTrailing) {
-            if !typeSize.isAccessibilitySize, let s { DueStamp(stamp: s).offset(x: -4, y: -44) }
-        }
-        .padding(.top, typeSize.isAccessibilitySize ? 0 : 36)
+    }
+
+    /// "2 days late" while it's still owed; nil once it's handed in (or not late).
+    private func lateWords(_ k: Kind, due: Date?) -> String? {
+        if case .dropbox(true) = k { return nil }
+        if case .quiz = k, a?.quiz?.state == "submitted" { return nil }
+        guard let due, let it, model.showsLate(it), let n = TodoLogic.daysLate(due: due) else { return nil }
+        return n == 0 ? "late" : n == 1 ? "1 day late" : "\(n) days late"
     }
 
     private let placeWidth: CGFloat = 120
@@ -254,25 +242,6 @@ struct AssignmentView: View {
         case .google: return "Google"
         case .unknown: return "Checking…"
         }
-    }
-
-    private func stamp(_ k: Kind, due: Date?) -> DueStamp.Stamp? {
-        let submitted: Bool = {
-            if case .dropbox(true) = k { return true }
-            if case .quiz = k, a?.quiz?.state == "submitted" { return true }
-            return false
-        }()
-        if submitted { return .init(top: "SCHOOLOGY", main: "SUBMITTED", color: Theme.good, spoken: "Submitted on Schoology") }
-        if let it, it.turnedIn { return .init(top: "MARKED", main: "TURNED IN", color: Theme.good, spoken: "Marked turned in") }
-        guard let due else { return nil }
-        let finished = it.map { !model.showsLate($0) } ?? false
-        if !finished, let n = TodoLogic.daysLate(due: due) {
-            let main = n == 0 ? "LATE" : n == 1 ? "1 DAY LATE" : "\(n) DAYS LATE"
-            return .init(top: "DUE " + Fmt.short.string(from: due).uppercased(), main: main, color: Theme.late,
-                         spoken: "Due \(Fmt.header.string(from: due)), \(main.lowercased())")
-        }
-        return .init(top: "DUE", main: Fmt.short.string(from: due).uppercased(), color: Theme.text,
-                     spoken: "Due \(Fmt.header.string(from: due))")
     }
 
     // The main action for each kind.
@@ -373,12 +342,18 @@ struct AssignmentView: View {
 
     private func progressCard(_ it: ItemState) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("YOUR STATUS").font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
-            ProgressChips(current: model.progress(it), isExam: it.type == .exam) { p in
+            Text("Your status").font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.secondary)
+            // The system's segmented control: one control, no three tinted pills. What each
+            // status means is in Settings → Help → How statuses work.
+            Picker("Your status", selection: Binding(get: { model.progress(it) }, set: { p in
                 withAnimation(.snappy(duration: 0.2)) { model.setProgress(it, p) }
+            })) {
+                ForEach(AppModel.Progress.allCases, id: \.self) { p in
+                    Text(it.type == .exam && p == .done ? "Studied" : p.label).tag(p)
+                }
             }
-            Text(it.submitted ? "Schoology also shows it submitted." : "Only you see this. Turned in means you handed it in, on paper or another site.")
-                .font(Theme.footnote).foregroundStyle(Theme.secondary)
+            .pickerStyle(.segmented)
+            .sensoryFeedback(.selection, trigger: model.progress(it))
             let window = WidgetBridge.countdownWindow(due: it.due)
             if counting || (window != .none && !model.isFinished(it) && WidgetBridge.activitiesAllowed) {
                 Theme.divider.frame(height: 1).padding(.vertical, 4)
@@ -431,7 +406,7 @@ struct AssignmentView: View {
             } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: 3) {
-                        Text("GRADED").font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+                        Text("Grade").font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.secondary)
                         Text(g.grade).font(Theme.body.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.text)
                         if !g.comment.isEmpty { Text(g.comment).font(Theme.footnote).foregroundStyle(Theme.secondary).maxLines(2) }
                     }
@@ -474,7 +449,7 @@ struct AssignmentView: View {
     private var typeSwitch: some View {
         if let it {
             VStack(alignment: .leading, spacing: 8) {
-                Text(model.neoPlan.connected ? "IN NEO-PLAN AS" : "TYPE").font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.tertiary)
+                Text(model.neoPlan.connected ? "In neo-plan as" : "Type").font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.secondary)
                 Picker("Type", selection: Binding(get: { it.type }, set: { model.setType(it, $0) })) {
                     ForEach(ItemType.allCases, id: \.self) { Text($0.name).tag($0) }
                 }
@@ -504,8 +479,8 @@ struct AssignmentView: View {
     @ViewBuilder
     private var bottomBar: some View {
         if let (title, action) = mainAction {
-            // The one teal thing on the screen; the globe, like everywhere that opens Schoology.
-            WideButton(title: title, systemImage: "globe", external: true, action: action)
+            // The one teal thing on the screen; ↗ says it leaves Dewey.
+            WideButton(title: title, external: true, action: action)
                 .padding(.horizontal, 16).padding(.vertical, 8)
                 .background(.bar)
         }
@@ -523,29 +498,5 @@ struct MarkdownText: View {
             .foregroundStyle(Theme.text)
             .textSelection(.enabled)
             .environment(\.openURL, OpenURLAction { url in onLink(url); return .handled })
-    }
-}
-
-/// The rubber stamp on the checkout card: clean bold type in a rounded frame,
-/// tilted a little. VoiceOver reads `spoken`.
-struct DueStamp: View {
-    struct Stamp { let top: String; let main: String; let color: Color; let spoken: String }
-    let stamp: Stamp
-    @Environment(\.dynamicTypeSize) private var typeSize
-
-    var body: some View {
-        VStack(spacing: 0) {
-            Text(stamp.top).font(Theme.caption.weight(.heavy)).tracking(1.4)
-            Text(stamp.main).font(Theme.title.weight(.heavy)).tracking(0.4).monospacedDigit()
-        }
-        .lineLimit(1)
-        .foregroundStyle(stamp.color)
-        .padding(.horizontal, 10).padding(.vertical, 4)
-        .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
-        .background(stamp.color.opacity(0.08), in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous).stroke(stamp.color, lineWidth: 2.5))
-        .rotationEffect(.degrees(typeSize.isAccessibilitySize ? 0 : -7))
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(stamp.spoken)
     }
 }

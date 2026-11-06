@@ -113,7 +113,7 @@ struct NeoPlanView: View {
     // ── Pieces ───────────────────────────────────────────────────────────
 
     private func heading(_ s: String) -> some View {
-        Text(s.uppercased()).font(Theme.caption.weight(.semibold)).tracking(0.5).foregroundStyle(Theme.secondary)
+        Text(s).font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.secondary)
             .accessibilityAddTraits(.isHeader)
     }
 

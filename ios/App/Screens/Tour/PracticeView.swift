@@ -107,7 +107,7 @@ enum TourScript {
               hint: .none,
               done: { _ in Coach.shared.flags.contains("quickParsed") }, tab: 0, rewind: 1),
         .init(target: "quick.sheet",
-              text: "Dewey filled in the day, time and class. The buttons change them, and the row under them is one tap for the usual ones. Tap ↑ to add it.",
+              text: "Dewey read the day, time and class: the grey line is what it will add. The pills under it change any of them. Tap ↑ to add it.",
               hint: .none,
               done: { m in m.todoItems().contains { $0.mine } }, tab: 0, rewind: 2),
         .init(target: "todo.modeChip",

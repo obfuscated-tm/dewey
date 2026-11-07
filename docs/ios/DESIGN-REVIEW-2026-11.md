@@ -60,7 +60,7 @@ Specific tells found: spaced all-caps kickers, everything in cards, a chip/badge
 ## 6. Next work, in order
 1. ✓ (built 2026-11-07, §11) **Stamps + late-stays-red:** one stamp per class card (LATE red / DUE TODAY ink, most urgent wins, straight); heading rule red only when the class has late work; restore Assignment `DueStamp` exactly as before (main 307e459 has the code); done-but-not-turned-in late work stays red (TodoLogic.showsLate / TodoRow.dueText). Possibly faint warm ruled lines on cards. Update SCREENS.md rules 2/8 to allow these on purpose.
 2. ✓ (2026-11-07, §11: demo only) **Check a possible date bug:** To Do showed HW 4.3 due Thu Nov 5 while its Assignment screen said Fri Nov 6 (demo data or a real timezone/date bug). Also the Assignment card said "Checking…" twice (place column + status label).
-3. **New-task sheet (QuickTask.swift):** problems: two rows of controls in two styles doing the same jobs; you can't see what was parsed; equal-width chips truncate ("Chemis…"); colour means "picked" or "guessed"; fixed 158 pt sheet. Plan: field → grey preview line ("Chem lab · Fri 3:30 pm · Chemistry") → one row of content-sized pills (When = day+time with Today/Tomorrow/After school/Tonight/Pick…, Class, Kind) → ↑ add. Teal = set. Rewrite the tour step that mentions "the row under them". Risk: Tomorrow becomes two taps.
+3. ✓ **New-task sheet (QuickTask.swift):** problems: two rows of controls in two styles doing the same jobs; you can't see what was parsed; equal-width chips truncate ("Chemis…"); colour means "picked" or "guessed"; fixed 158 pt sheet. Plan: field → grey preview line ("Chem lab · Fri 3:30 pm · Chemistry") → one row of content-sized pills (When = day+time with Today/Tomorrow/After school/Tonight/Pick…, Class, Kind) → ↑ add. Teal = set. Rewrite the tour step that mentions "the row under them". Risk: Tomorrow becomes two taps.
 4. Later ideas not decided: website motion/colour pass; extension 1.15 release + catch-up items; Android port of this pass; Settings regrouping.
 
 ## 7. The full 46-item cleanup list (given before building; ✓ = done on the branch, ↩ = reversed by Owen)
@@ -113,3 +113,10 @@ Owen also likes being interrogated with multiple-choice questions (AskUserQuesti
 - **Checked:** build, 51/51 unit tests, a recording driven by a throwaway UI test (zoom open, Mark turned in → MARKED TURNED IN slam, badge 2 → 1, back, Lab 2.2 with "in 11 h 56 min"). The simulator tool's taps don't register on this machine, so UI tests drive recordings.
 - **Not done / to check on the phone:** how the slam and heavy haptic feel in the hand; the wash against every class colour in light mode; thumbnails on real Schoology files (they download each file when the page opens, at most 4).
 - **Wash dropped (same day):** in light mode the Spanish header (raspberry wash + red stamp + red status) read as one late block, as predicted. Owen said "build until you're done" without deciding, so I took my recommendation as its own commit; revert it to bring the wash back.
+
+## 13. New-task sheet (2026-11-07)
+
+Done per §6 step 3. Field, then a grey line with what ↑ will add, then one row of content-sized pills: When (day and time in one menu), Class, Kind. Teal only for what you picked on a pill; parsed values live in the grey line, so teal no longer means "picked or guessed". The sheet measures itself instead of a fixed 158 pt. The tour step now points at the grey line and the pills.
+
+Trade-off kept on purpose: Tomorrow / After school / Tonight are now two taps (open When, pick) instead of one. Typing "tmrw" is still zero taps, and the old second row was the thing that made two rows of controls do the same jobs. If it hurts in use, the fix is a Tomorrow pill that appears only while When is unset, not a second row.
+

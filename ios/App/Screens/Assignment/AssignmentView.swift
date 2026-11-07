@@ -165,13 +165,11 @@ struct AssignmentView: View {
     /// The header: class and title, the big tilted stamp overlapping its top (due, N days
     /// late, submitted, turned in; exactly as before, 2026-11-07), the due line (with a live
     /// countdown in its last 12 hours), where it's turned in, one status line, and the grade.
-    /// A faint wash of the class colour ties it to the class's book on the shelf.
     @ViewBuilder
     private func header(_ a: Assignment) -> some View {
         let k = kind(a)
         let due = Fmt.date(a.due) ?? it?.due
         let s = stamp(k, due: due)
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
         VStack(alignment: .leading, spacing: 0) {
             if typeSize.isAccessibilitySize, let s { SlammingStamp(stamp: s).padding(.bottom, Theme.Space.m) }
             titleBlock
@@ -186,16 +184,12 @@ struct AssignmentView: View {
             }
         }
         .padding(16)
-        .background(section.map { model.classColor($0).opacity(Self.washOpacity) } ?? .clear, in: shape)
         .card()
         .overlay(alignment: .topTrailing) {
             if !typeSize.isAccessibilitySize, let s { SlammingStamp(stamp: s).offset(x: -4, y: -44) }
         }
         .padding(.top, typeSize.isAccessibilitySize ? 0 : 36)
     }
-
-    /// Faint on purpose: a stronger wash of a warm class colour would read as "late".
-    static let washOpacity = 0.07
 
     /// "Today, 11:59 pm · in 2 h 14 min": the countdown only in the last 12 hours of work
     /// still owed, ticking once a minute (no seconds: it's seen every time the page opens).

@@ -97,7 +97,7 @@ struct ToDoView: View {
 
     @ViewBuilder
     private func header(items: [ItemState], now: Date) -> some View {
-        let open = items.filter { !model.isFinished($0) }
+        let open = items.filter { model.isPending($0, now: now) }
         // No "done today" ring here: the week strip's dots already count what's left.
         VStack(alignment: .leading, spacing: Theme.Space.l) {
             ScreenHeader(kicker: Fmt.header.string(from: now), title: "To Do", titleView: AnyView(modeTitles)) {
@@ -254,7 +254,7 @@ struct ToDoView: View {
         } else {
             let filtered = items.filter { it in
                 guard let filter else { return true }
-                return !model.isFinished(it) && filter.matches(it, now: now)
+                return model.isPending(it, now: now) && filter.matches(it, now: now)
             }
             let older = filtered.filter { TodoLogic.isOlder(due: $0.due, now: now) && !model.isFinished($0) }
             let current = filtered.filter { !older.contains($0) }
@@ -322,12 +322,12 @@ struct ToDoView: View {
 
     /// Urgent first: Late, Today, Next 7 days, Later, then everything done (sorted last, as in Week).
     private func urgentGroups(_ items: [ItemState], now: Date) -> [Group] {
-        let open = Dictionary(grouping: items.filter { !model.isFinished($0) }) { TodoLogic.bucket(due: $0.due, now: now) }
+        let open = Dictionary(grouping: items.filter { model.isPending($0, now: now) }) { TodoLogic.bucket(due: $0.due, now: now) }
         var out: [Group] = []
         for (b, title) in [(TodoLogic.Bucket.overdue, "Late"), (.today, "Today"), (.week, "Next 7 days"), (.later, "Later")] {
             if let list = open[b], !list.isEmpty { out.append(Group(key: "\(b)", title: title, items: sortItems(list))) }
         }
-        let finished = items.filter { model.isFinished($0) }
+        let finished = items.filter { !model.isPending($0, now: now) }
         if !finished.isEmpty { out.append(Group(key: "finished", title: "Done", items: sortItems(finished))) }
         return out
     }
@@ -335,7 +335,7 @@ struct ToDoView: View {
     /// Unfinished first, then done but not handed in (it may still need turning in),
     /// then turned in or submitted; each by due date (overdue oldest first, upcoming soonest first).
     private func sortItems(_ items: [ItemState]) -> [ItemState] {
-        func rank(_ it: ItemState) -> Int { !model.isFinished(it) ? 0 : (it.turnedIn || it.submitted) ? 2 : 1 }
+        func rank(_ it: ItemState) -> Int { model.isPending(it) ? 0 : (it.turnedIn || it.submitted) ? 2 : 1 }
         return items.sorted { a, b in
             let ra = rank(a), rb = rank(b)
             if ra != rb { return ra < rb }
@@ -343,14 +343,17 @@ struct ToDoView: View {
         }
     }
 
-    /// The top of a catalog card: the class's call number in its colour (none when
-    /// Dewey can't tell, see CallNumber), the class, its period, a red rule under it.
-    /// Long-press to set the number.
+    /// The top of a catalog card: a class-colour dot (or the call number when shown,
+    /// see CallNumber), the class, and at most one stamp for the most urgent state in
+    /// the class: LATE (red) or DUE TODAY (ink), straight (TodoLogic.cardStamp). The
+    /// rule under it is red only when the class has late work. Long-press to set the number.
     private func cardHeading(_ title: String, _ items: [ItemState], now: Date, sectionId: String) -> some View {
         let course = model.course(sectionId)
         // Call numbers only when the student turned them on (Settings → To Do → Call numbers).
         let number = showCallNumbers ? course.flatMap { CallNumber.number(for: $0, raw: callRaw) } : nil
-        // Just the class: the rows under it say what's open and what's due today.
+        let stamp = model.cardStamp(items, now: now)
+        // Urgent first already sorts by Late / Today, so it shows no stamps; its Late group keeps the red rule.
+        let showStamp = layout == .week ? stamp : nil
         return AdaptiveStack(spacing: Theme.Space.s) {
             if let number {
                 Text(number).font(Theme.callNumber.monospacedDigit())
@@ -362,9 +365,12 @@ struct ToDoView: View {
             }
             Text(title).font(Theme.headline).foregroundStyle(Theme.text)
             Spacer(minLength: 0)
+            if let showStamp { CardStampView(stamp: showStamp) }
         }
         .padding(.bottom, Theme.Space.s)
-        .overlay(alignment: .bottom) { Theme.divider.frame(height: 1) }
+        .overlay(alignment: .bottom) {
+            stamp == .late ? Theme.late.frame(height: 1.5) : Theme.divider.frame(height: 1)
+        }
         // The rule sits on the row's bottom edge, so the first task starts right under it.
         .listRowInsets(EdgeInsets(top: Theme.Space.m, leading: Theme.Space.l, bottom: 0, trailing: Theme.Space.l))
         .accessibilityElement(children: .combine)
@@ -659,7 +665,7 @@ struct TodoRow: View {
     private func nb(_ s: String) -> String { s.replacingOccurrences(of: " ", with: "\u{00A0}") }
 
     private var dueText: Text {
-        let late = TodoLogic.showsLate(type: item.type, isQuiz: item.isQuiz, done: item.type == .exam ? item.studied : item.done, turnedIn: item.turnedIn, submitted: item.submitted, inSchoology: item.inSchoology) ? TodoLogic.daysLate(due: item.due, now: now) : nil
+        let late = TodoLogic.showsLate(item) ? TodoLogic.daysLate(due: item.due, now: now) : nil
         var t = Text(nb(Fmt.due(item.due, now: now)))
         if let late, late > 0 { t = t + Text(" · " + nb("\(late) day\(late == 1 ? "" : "s") late")) } else if late == 0 { t = t + Text(" · late") }
         t = t.foregroundStyle(late != nil ? Theme.late : Theme.secondary)
@@ -684,6 +690,24 @@ struct TodoRow: View {
         if item.mine { return item.notes.map { ($0, Theme.secondary, false) } }
         if item.external && !item.done { return ("Google Assignment", Theme.secondary, false) }
         return nil
+    }
+}
+
+/// A class card's one rubber stamp: LATE in red, DUE TODAY in ink. Straight (only the
+/// Assignment screen's big stamp tilts), outlined, the same size as the heading's
+/// secondary text, so a column of cards reads at a glance without shouting.
+struct CardStampView: View {
+    let stamp: TodoLogic.CardStamp
+
+    var body: some View {
+        let color = stamp == .late ? Theme.late : Theme.text
+        Text(stamp == .late ? "LATE" : "DUE TODAY")
+            .font(Theme.caption.weight(.heavy)).tracking(0.8)
+            .foregroundStyle(color)
+            .lineLimit(1).fixedSize()
+            .padding(.horizontal, 5).padding(.vertical, 1)
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag / 2).strokeBorder(color, lineWidth: 1.5))
+            .accessibilityLabel(stamp == .late ? "Has late work" : "Work due today")
     }
 }
 

@@ -99,10 +99,16 @@ enum Demo {
     ]
     static func course(_ short: String) -> DemoCourse { courses.first { $0.title.hasPrefix(short) }! }
 
+    /// The demo's "today", fixed at launch. Computed per call, a session left open past
+    /// midnight gave To Do (loaded the day before) and a freshly opened Assignment dates a
+    /// day apart (HW 4.3: Thu Nov 5 vs Fri Nov 6, 2026-11-07). The real app can't do that:
+    /// Schoology's assignment page gives its due date as words, so 1b uses To Do's date.
+    static let today = Calendar.current.startOfDay(for: Date())
+
     /// Today at `hour:minute`, `day` days away.
     static func at(_ day: Int, _ hour: Int, _ minute: Int = 0) -> Date {
         let cal = Calendar.current
-        let d = cal.date(byAdding: .day, value: day, to: cal.startOfDay(for: Date()))!
+        let d = cal.date(byAdding: .day, value: day, to: today)!
         return cal.date(bySettingHour: hour, minute: minute, second: 0, of: d)!
     }
 

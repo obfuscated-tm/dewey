@@ -164,21 +164,26 @@ struct AssignmentView: View {
         }
     }
 
-    /// The Submission card: when it's due (and how late, in red), where it's turned in, and
-    /// what Schoology says. No tilted stamp or ruled table headers: the facts speak.
+    /// The Submission card: when it's due, where it's turned in, and what Schoology says,
+    /// under the big tilted stamp with the one fact that matters (due, N days late,
+    /// submitted, turned in), overlapping the card's top (2026-11-07, Owen: exactly as
+    /// before). The stamp says how late, so the due line doesn't repeat it.
     @ViewBuilder
     private func submissionCard(_ a: Assignment) -> some View {
         let k = kind(a)
         let due = Fmt.date(a.due) ?? it?.due
-        let late = lateWords(k, due: due)
+        let s = stamp(k, due: due)
         VStack(alignment: .leading, spacing: 0) {
+            if typeSize.isAccessibilitySize, let s { DueStamp(stamp: s).padding(.bottom, Theme.Space.m) }
             AdaptiveStack(spacing: Theme.Space.s) {
-                (Text(Fmt.due(due)) + Text(late.map { " · " + $0 } ?? ""))
-                    .font(Theme.subhead.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(late != nil ? Theme.late : Theme.text)
+                Text(Fmt.due(due)).font(Theme.subhead.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Theme.text)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Text(place(k)).font(Theme.subhead).foregroundStyle(Theme.secondary)
-                    .frame(width: typeSize.isAccessibilitySize ? nil : placeWidth, alignment: .leading)
+                // While the status loads, the line under says "Checking Schoology…" once.
+                if let place = place(k) {
+                    Text(place).font(Theme.subhead).foregroundStyle(Theme.secondary)
+                        .frame(width: typeSize.isAccessibilitySize ? nil : placeWidth, alignment: .leading)
+                }
             }
             .padding(.vertical, 10)
             .overlay(alignment: .bottom) { Theme.divider.frame(height: 1) }
@@ -220,28 +225,43 @@ struct AssignmentView: View {
         }
         .padding(16)
         .card()
-    }
-
-    /// "2 days late" while it's still owed; nil once it's handed in (or not late).
-    private func lateWords(_ k: Kind, due: Date?) -> String? {
-        if case .dropbox(true) = k { return nil }
-        if case .quiz = k, a?.quiz?.state == "submitted" { return nil }
-        guard let due, let it, model.showsLate(it), let n = TodoLogic.daysLate(due: due) else { return nil }
-        return n == 0 ? "late" : n == 1 ? "1 day late" : "\(n) days late"
+        .overlay(alignment: .topTrailing) {
+            if !typeSize.isAccessibilitySize, let s { DueStamp(stamp: s).offset(x: -4, y: -44) }
+        }
+        .padding(.top, typeSize.isAccessibilitySize ? 0 : 36)
     }
 
     private let placeWidth: CGFloat = 120
 
-    /// Where it's turned in, in two words.
-    private func place(_ k: Kind) -> String {
+    /// Where it's turned in, in two words; nil while it's still being checked.
+    private func place(_ k: Kind) -> String? {
         switch k {
         case .dropbox: return "Dropbox"
         case .outside(let url?): return url.host?.replacingOccurrences(of: "www.", with: "") ?? "Lab site"
         case .outside(nil): return "Outside Schoology"
         case .quiz: return "On Schoology"
         case .google: return "Google"
-        case .unknown: return "Checking…"
+        case .unknown: return nil
         }
+    }
+
+    private func stamp(_ k: Kind, due: Date?) -> DueStamp.Stamp? {
+        let submitted: Bool = {
+            if case .dropbox(true) = k { return true }
+            if case .quiz = k, a?.quiz?.state == "submitted" { return true }
+            return false
+        }()
+        if submitted { return .init(top: "SCHOOLOGY", main: "SUBMITTED", color: Theme.good, spoken: "Submitted on Schoology") }
+        if let it, it.turnedIn { return .init(top: "MARKED", main: "TURNED IN", color: Theme.good, spoken: "Marked turned in") }
+        guard let due else { return nil }
+        let finished = it.map { !model.showsLate($0) } ?? false
+        if !finished, let n = TodoLogic.daysLate(due: due) {
+            let main = n == 0 ? "LATE" : n == 1 ? "1 DAY LATE" : "\(n) DAYS LATE"
+            return .init(top: "DUE " + Fmt.short.string(from: due).uppercased(), main: main, color: Theme.late,
+                         spoken: "Due \(Fmt.header.string(from: due)), \(main.lowercased())")
+        }
+        return .init(top: "DUE", main: Fmt.short.string(from: due).uppercased(), color: Theme.text,
+                     spoken: "Due \(Fmt.header.string(from: due))")
     }
 
     // The main action for each kind.
@@ -498,5 +518,29 @@ struct MarkdownText: View {
             .foregroundStyle(Theme.text)
             .textSelection(.enabled)
             .environment(\.openURL, OpenURLAction { url in onLink(url); return .handled })
+    }
+}
+
+/// The rubber stamp on the checkout card: clean bold type in a rounded frame,
+/// tilted a little. VoiceOver reads `spoken`.
+struct DueStamp: View {
+    struct Stamp { let top: String; let main: String; let color: Color; let spoken: String }
+    let stamp: Stamp
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    var body: some View {
+        VStack(spacing: 0) {
+            Text(stamp.top).font(Theme.caption.weight(.heavy)).tracking(1.4)
+            Text(stamp.main).font(Theme.title.weight(.heavy)).tracking(0.4).monospacedDigit()
+        }
+        .lineLimit(1)
+        .foregroundStyle(stamp.color)
+        .padding(.horizontal, 10).padding(.vertical, 4)
+        .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+        .background(stamp.color.opacity(0.08), in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous).stroke(stamp.color, lineWidth: 2.5))
+        .rotationEffect(.degrees(typeSize.isAccessibilitySize ? 0 : -7))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(stamp.spoken)
     }
 }

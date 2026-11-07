@@ -236,7 +236,28 @@ final class AppModel {
 
     /// Past due counts as late (TodoLogic.showsLate).
     func showsLate(_ it: ItemState) -> Bool {
-        TodoLogic.showsLate(type: it.type, isQuiz: it.isQuiz, done: it.type == .exam ? it.studied : it.done, turnedIn: it.turnedIn, submitted: it.submitted, inSchoology: it.inSchoology)
+        TodoLogic.showsLate(it)
+    }
+
+    /// Still owed: not handed in (submitted or marked turned in), and for a test
+    /// or your own task, not marked studied / done. Done homework is still owed.
+    func isOwed(_ it: ItemState) -> Bool {
+        if it.submitted || it.turnedIn { return false }
+        if it.type == .exam { return !it.studied }
+        return it.mine ? !it.done : true
+    }
+
+    /// The class card's one stamp (TodoLogic.cardStamp). Older late work doesn't stamp.
+    func cardStamp(_ items: [ItemState], now: Date = Date()) -> TodoLogic.CardStamp? {
+        TodoLogic.cardStamp(items.map {
+            TodoLogic.StampRow(due: $0.due, late: isOverdue($0, now: now), owed: isOwed($0))
+        }, now: now)
+    }
+
+    /// Still on the list's open part: not finished, or late (done but not
+    /// handed in late work stays with the late work, not with the done rows).
+    func isPending(_ it: ItemState, now: Date = Date()) -> Bool {
+        !isFinished(it) || isOverdue(it, now: now)
     }
 
     func isFinished(_ it: ItemState) -> Bool {

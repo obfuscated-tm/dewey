@@ -89,18 +89,41 @@ final class TodoLogicTests: XCTestCase {
     }
 
     func testShowsLate() {
-        func late(_ t: ItemType, quiz: Bool = false, done: Bool = false, turnedIn: Bool = false, submitted: Bool = false, listed: Bool = true) -> Bool {
-            TodoLogic.showsLate(type: t, isQuiz: quiz, done: done, turnedIn: turnedIn, submitted: submitted, inSchoology: listed)
+        func late(_ t: ItemType, quiz: Bool = false, done: Bool = false, turnedIn: Bool = false, submitted: Bool = false, listed: Bool = true, mine: Bool = false) -> Bool {
+            TodoLogic.showsLate(type: t, isQuiz: quiz, done: done, turnedIn: turnedIn, submitted: submitted, inSchoology: listed, mine: mine)
         }
         XCTAssertFalse(late(.assignment, listed: false))  // Schoology dropped it: maybe handed in elsewhere
         XCTAssertTrue(late(.assignment))
-        XCTAssertFalse(late(.assignment, done: true))
+        XCTAssertTrue(late(.assignment, done: true))      // done but not handed in: still late (2026-11-07)
+        XCTAssertTrue(late(.classwork, done: true))
+        XCTAssertFalse(late(.task, done: true, mine: true)) // your own task: nothing to hand in
+        XCTAssertFalse(late(.assignment, done: true, mine: true))
+        XCTAssertTrue(late(.task, mine: true))
         XCTAssertFalse(late(.assignment, turnedIn: true))
         XCTAssertFalse(late(.assignment, submitted: true))
         XCTAssertFalse(late(.exam))                       // a test on paper: nothing to hand in after it
         XCTAssertTrue(late(.exam, quiz: true))            // an online quiz not taken yet
         XCTAssertFalse(late(.exam, quiz: true, done: true)) // studied: given in class and taken
         XCTAssertFalse(late(.exam, quiz: true, submitted: true))
+    }
+
+    func testCardStamp() {
+        let cal = Calendar.current
+        let now = cal.date(from: DateComponents(year: 2026, month: 11, day: 7, hour: 12))!
+        let yesterday = cal.date(byAdding: .hour, value: -20, to: now)!
+        let tonight = cal.date(bySettingHour: 23, minute: 59, second: 0, of: now)!
+        let earlierToday = cal.date(bySettingHour: 8, minute: 0, second: 0, of: now)!
+        let tomorrow = cal.date(byAdding: .day, value: 1, to: tonight)!
+        typealias R = TodoLogic.StampRow
+        XCTAssertNil(TodoLogic.cardStamp([], now: now, calendar: cal))
+        XCTAssertNil(TodoLogic.cardStamp([R(due: tomorrow, late: false, owed: true)], now: now, calendar: cal), "no TMRW stamp")
+        XCTAssertEqual(TodoLogic.cardStamp([R(due: tonight, late: false, owed: true)], now: now, calendar: cal), .dueToday)
+        XCTAssertNil(TodoLogic.cardStamp([R(due: tonight, late: false, owed: false)], now: now, calendar: cal), "handed in: no stamp")
+        XCTAssertNil(TodoLogic.cardStamp([R(due: earlierToday, late: false, owed: true)], now: now, calendar: cal),
+                     "past due but not late (paper Schoology dropped): not DUE TODAY either")
+        XCTAssertEqual(TodoLogic.cardStamp([R(due: tonight, late: false, owed: true), R(due: yesterday, late: true, owed: true)], now: now, calendar: cal),
+                       .late, "LATE wins over DUE TODAY")
+        XCTAssertNil(TodoLogic.cardStamp([R(due: tomorrow, late: true, owed: true)], now: now, calendar: cal), "not past due: not late")
     }
 
     func testDaysLateAndBuckets() {

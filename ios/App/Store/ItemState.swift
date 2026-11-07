@@ -152,14 +152,40 @@ enum TodoLogic {
 
     /// Whether a past-due row may say "late": only while Schoology still lists it
     /// as overdue (work it dropped, like paper or lab-site work, may well be
-    /// handed in), and not once it's handed in or marked done. A test is late only
-    /// as an online quiz not marked studied: Schoology keeps quizzes given in class
-    /// on its overdue list, and a past test you studied for is one you took.
+    /// handed in), and until it's handed in (submitted or marked turned in).
+    /// Done alone doesn't clear it (2026-11-07): done means "still to hand in",
+    /// so late work stays red until it's handed in. Your own tasks have nothing
+    /// to hand in, so done clears theirs. A test is late only as an online quiz
+    /// not marked studied: Schoology keeps quizzes given in class on its overdue
+    /// list, and a past test you studied for is one you took.
     /// The student's own tasks always count as listed (`inSchoology: true`).
-    static func showsLate(type: ItemType, isQuiz: Bool, done: Bool, turnedIn: Bool, submitted: Bool, inSchoology: Bool = true) -> Bool {
+    static func showsLate(type: ItemType, isQuiz: Bool, done: Bool, turnedIn: Bool, submitted: Bool, inSchoology: Bool = true, mine: Bool = false) -> Bool {
         if submitted || turnedIn || !inSchoology { return false }
         if type == .exam { return isQuiz && !done }
-        return !done
+        return mine ? !done : true
+    }
+
+    static func showsLate(_ it: ItemState) -> Bool {
+        showsLate(type: it.type, isQuiz: it.isQuiz, done: it.type == .exam ? it.studied : it.done,
+                  turnedIn: it.turnedIn, submitted: it.submitted, inSchoology: it.inSchoology, mine: it.mine)
+    }
+
+    /// The one stamp a class card on To Do may carry: the most urgent state in
+    /// that class. LATE when any row there shows late; else DUE TODAY when work
+    /// still owed (not handed in; a test, or your own task, not done) is due
+    /// later today. Nothing for tomorrow or later.
+    enum CardStamp: Equatable { case late, dueToday }
+
+    struct StampRow {
+        var due: Date?
+        var late: Bool
+        var owed: Bool
+    }
+
+    static func cardStamp(_ rows: [StampRow], now: Date = Date(), calendar: Calendar = .current) -> CardStamp? {
+        if rows.contains(where: { r in r.late && (r.due.map { $0 < now } ?? false) }) { return .late }
+        if rows.contains(where: { r in r.owed && (r.due.map { $0 >= now && calendar.isDate($0, inSameDayAs: now) } ?? false) }) { return .dueToday }
+        return nil
     }
 
     /// Calendar days late (≥ 0) or nil when not overdue.

@@ -1,6 +1,7 @@
 import CryptoKit
 import PDFKit
 import QuickLook
+import QuickLookThumbnailing
 import SwiftUI
 import WebKit
 
@@ -58,6 +59,67 @@ struct AttachmentRow: View {
             .frame(minHeight: 44)
         }
         .buttonStyle(.plain)
+    }
+}
+
+/// An attachment on the Assignment page: a preview of its first page (PDFs, images,
+/// Office files, through QuickLook) beside its name and where it opens. The preview
+/// downloads the file into the same cache the viewer uses, so opening it after is instant.
+/// Links and Google files keep their icon.
+struct AttachmentCard: View {
+    let title: String
+    let url: String
+    var thumbnail = true
+    let open: (OpenTarget) -> Void
+    @Environment(\.displayScale) private var scale
+    @State private var thumb: UIImage?
+
+    private static let size = CGSize(width: 44, height: 56)
+
+    var body: some View {
+        let l = FileKinds.label(title: title, url: url)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous)
+        Button {
+            if let t = FileKinds.target(title: title, url: url) { open(t) }
+        } label: {
+            HStack(spacing: 12) {
+                ZStack {
+                    if let thumb {
+                        Image(uiImage: thumb).resizable().scaledToFill()
+                            .transition(.opacity)
+                    } else {
+                        Theme.background
+                        Image(systemName: l.icon).foregroundStyle(Theme.accent)
+                    }
+                }
+                .frame(width: Self.size.width, height: Self.size.height)
+                .clipShape(shape)
+                .overlay(shape.stroke(Theme.border))
+                .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text)
+                        .maxLines(2).multilineTextAlignment(.leading)
+                    Text(l.where).font(Theme.footnote).foregroundStyle(Theme.secondary)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .card()
+            .contentShape(shape)
+        }
+        .buttonStyle(PressStyle())
+        .task(id: url) { await loadThumb() }
+    }
+
+    /// Only for real files (not Google, links, or a course's viewer page, which would
+    /// need another page read first).
+    private func loadThumb() async {
+        guard thumbnail, thumb == nil, case .file(let f)? = FileKinds.target(title: title, url: url),
+              !f.url.path.contains("/materials/gp/"),
+              let local = try? await FileStore.fetch(f) else { return }
+        let req = QLThumbnailGenerator.Request(fileAt: local, size: Self.size, scale: scale, representationTypes: .thumbnail)
+        guard let rep = try? await QLThumbnailGenerator.shared.generateBestRepresentation(for: req) else { return }
+        withAnimation(.easeOut(duration: 0.2)) { thumb = rep.uiImage }
     }
 }
 
@@ -147,6 +209,7 @@ enum FileStore {
             .first(where: { $0.lastPathComponent.hasPrefix(key + "-") }) {
             return hit
         }
+        if Demo.on, t.url.path.hasPrefix("/system/files/demo/") { return try demoFile(t, key: key) }
         let cookies = await WKWebsiteDataStore.default().httpCookieStore.allCookies()
             .filter { t.url.host?.hasSuffix($0.domain.trimmingCharacters(in: CharacterSet(charactersIn: "."))) ?? false }
         var req = URLRequest(url: t.url)
@@ -162,6 +225,25 @@ enum FileStore {
         let dest = dir.appendingPathComponent("\(key)-\(safe)")
         try? FileManager.default.removeItem(at: dest)
         try FileManager.default.moveItem(at: tmp, to: dest)
+        return dest
+    }
+
+    /// Demo mode has no Schoology: a one-page handout so the viewer and previews have a file.
+    private static func demoFile(_ t: FileTarget, key: String) throws -> URL {
+        let dest = dir.appendingPathComponent("\(key)-demo.pdf")
+        let page = CGRect(x: 0, y: 0, width: 612, height: 792)
+        let data = UIGraphicsPDFRenderer(bounds: page).pdfData { ctx in
+            ctx.beginPage()
+            let name = (t.title as NSString).deletingPathExtension
+            NSString(string: name).draw(in: CGRect(x: 56, y: 64, width: 500, height: 80),
+                                        withAttributes: [.font: UIFont.boldSystemFont(ofSize: 30)])
+            for i in 0..<14 {
+                let y = 170 + CGFloat(i) * 38
+                UIColor(white: 0.82, alpha: 1).setFill()
+                UIBezierPath(roundedRect: CGRect(x: 56, y: y, width: i % 3 == 2 ? 300 : 500, height: 12), cornerRadius: 6).fill()
+            }
+        }
+        try data.write(to: dest)
         return dest
     }
 

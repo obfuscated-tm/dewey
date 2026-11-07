@@ -1,7 +1,9 @@
 import SwiftUI
 
-/// 1b · One assignment: the Submission card (exactly one of five), instructions,
-/// type switch, what-if, and the main action.
+/// 1b · One assignment: one header (class, title, the stamp, due, one status line that
+/// merges what Schoology says with your own mark, the grade), then the instructions as the
+/// page, then the bottom bar: your circle + the main action. Type, what-if, the Lock Screen
+/// countdown and Open in Schoology live in the ⋯ menu (2026-11-07).
 struct AssignmentView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -32,16 +34,13 @@ struct AssignmentView: View {
 
     private var assignment: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 16) {
-                titleBlock
+            VStack(alignment: .leading, spacing: 20) {
                 if let a {
-                    submissionCard(a)
-                    if let it { progressCard(it) }
-                    gradeCard
+                    header(a)
                     instructions(a)
-                    typeSwitch
-                    whatIfButton
+                    if case .quiz = kind(a), let q = a.quiz { quizDetails(q) }
                 } else if let error {
+                    titleBlock
                     ErrorState(error: error, schoologyURL: pageURL, retry: { Task { await load() } }, open: { sheet = SheetTarget(url: $0, assignmentId: id) })
                     // 403: the teacher removed it or made it private. The saved row would stay forever otherwise.
                     if error == .http(403), let it, !it.dismissed {
@@ -57,6 +56,7 @@ struct AssignmentView: View {
                         .tint(Theme.late)
                     }
                 } else {
+                    titleBlock
                     SkeletonRows(count: 3)
                 }
             }
@@ -66,10 +66,7 @@ struct AssignmentView: View {
         .background(Theme.background)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button { sheet = SheetTarget(url: pageURL, assignmentId: id) } label: { Label("Open in Schoology", systemImage: "globe").labelStyle(.iconOnly) }
-                    .accessibilityLabel("Open in Schoology")
-            }
+            ToolbarItem(placement: .primaryAction) { moreMenu }
         }
         .safeAreaInset(edge: .bottom) { bottomBar }
         .sheet(item: $sheet) { SchoologySheet(target: $0) }
@@ -155,7 +152,8 @@ struct AssignmentView: View {
     private func kind(_ a: Assignment) -> Kind {
         if a.type == "quiz" || (it?.isQuiz ?? false) { return .quiz }
         if a.type == "external_tool" { return .google }
-        let state = status?.state ?? a.submission?.state
+        // The saved row's last check, until this page's own check answers.
+        let state = status?.state ?? a.submission?.state ?? it?.statusState
         switch state {
         case "submitted": return .dropbox(true)
         case "not_submitted": return .dropbox(false)
@@ -164,85 +162,121 @@ struct AssignmentView: View {
         }
     }
 
-    /// The Submission card: when it's due, where it's turned in, and what Schoology says,
-    /// under the big tilted stamp with the one fact that matters (due, N days late,
-    /// submitted, turned in), overlapping the card's top (2026-11-07, Owen: exactly as
-    /// before). The stamp says how late, so the due line doesn't repeat it.
+    /// The header: class and title, the big tilted stamp overlapping its top (due, N days
+    /// late, submitted, turned in; exactly as before, 2026-11-07), the due line (with a live
+    /// countdown in its last 12 hours), where it's turned in, one status line, and the grade.
+    /// A faint wash of the class colour ties it to the class's book on the shelf.
     @ViewBuilder
-    private func submissionCard(_ a: Assignment) -> some View {
+    private func header(_ a: Assignment) -> some View {
         let k = kind(a)
         let due = Fmt.date(a.due) ?? it?.due
         let s = stamp(k, due: due)
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous)
         VStack(alignment: .leading, spacing: 0) {
-            if typeSize.isAccessibilitySize, let s { DueStamp(stamp: s).padding(.bottom, Theme.Space.m) }
-            AdaptiveStack(spacing: Theme.Space.s) {
-                Text(Fmt.due(due)).font(Theme.subhead.weight(.semibold).monospacedDigit())
-                    .foregroundStyle(Theme.text)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                // While the status loads, the line under says "Checking Schoology…" once.
-                if let place = place(k) {
-                    Text(place).font(Theme.subhead).foregroundStyle(Theme.secondary)
-                        .frame(width: typeSize.isAccessibilitySize ? nil : placeWidth, alignment: .leading)
-                }
+            if typeSize.isAccessibilitySize, let s { SlammingStamp(stamp: s).padding(.bottom, Theme.Space.m) }
+            titleBlock
+            Theme.divider.frame(height: 1).padding(.vertical, 12)
+            // Where it's turned in is part of the status line ("Not submitted on Schoology",
+            // "Hand it in on lab.site"), so the old place column is gone.
+            dueLine(due)
+            statusLine(k).padding(.top, 6)
+            if let g = gradeItem, g.earned != nil || !g.comment.isEmpty {
+                Theme.divider.frame(height: 1).padding(.vertical, 12)
+                gradeRow(g)
             }
-            .padding(.vertical, 10)
-            .overlay(alignment: .bottom) { Theme.divider.frame(height: 1) }
-            .accessibilityElement(children: .combine)
-            HStack(alignment: .top, spacing: 12) {
-            VStack(alignment: .leading, spacing: 6) {
-                switch k {
-                case .dropbox(let done):
-                    Label(done ? "Submitted on Schoology" : "Not submitted on Schoology",
-                          systemImage: done ? "checkmark.circle.fill" : "xmark.circle")
-                        .font(Theme.body.weight(.semibold))
-                        .foregroundStyle(done ? Theme.good : Theme.late)
-                    if done, status?.late == true { Text("Late").font(Theme.footnote).foregroundStyle(Theme.late) }
-                    // Freshness only when it's worth doubting (over an hour old).
-                    if let checkedAt, Date().timeIntervalSince(checkedAt) > 3600 {
-                        Text("Checked \(Fmt.ago(checkedAt))").font(Theme.footnote).foregroundStyle(Theme.secondary)
-                    }
-                case .outside(let url):
-                    Label("Handed in outside Schoology", systemImage: "arrow.up.right.square").font(Theme.body.weight(.semibold))
-                    if url == nil {
-                        Text("Hand it in the way your teacher asked.").font(Theme.footnote).foregroundStyle(Theme.secondary)
-                    }
-                case .quiz:
-                    if let q = a.quiz { quizFacts(q) } else {
-                        Label("Test / quiz on Schoology", systemImage: "list.bullet.clipboard").font(Theme.body.weight(.semibold))
-                    }
-                case .google:
-                    Label("Google Assignment", systemImage: "doc.richtext").font(Theme.body.weight(.semibold))
-                    // Kept: without it a student would trust a status Dewey can't see.
-                    Text("Schoology doesn't tell Dewey if it's turned in.")
-                        .font(Theme.footnote).foregroundStyle(Theme.secondary)
-                case .unknown:
-                    Label("Checking Schoology…", systemImage: "hourglass").font(Theme.body.weight(.semibold)).foregroundStyle(Theme.secondary)
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .padding(.top, 10)
         }
         .padding(16)
+        .background(section.map { model.classColor($0).opacity(Self.washOpacity) } ?? .clear, in: shape)
         .card()
         .overlay(alignment: .topTrailing) {
-            if !typeSize.isAccessibilitySize, let s { DueStamp(stamp: s).offset(x: -4, y: -44) }
+            if !typeSize.isAccessibilitySize, let s { SlammingStamp(stamp: s).offset(x: -4, y: -44) }
         }
         .padding(.top, typeSize.isAccessibilitySize ? 0 : 36)
     }
 
-    private let placeWidth: CGFloat = 120
+    /// Faint on purpose: a stronger wash of a warm class colour would read as "late".
+    static let washOpacity = 0.07
 
-    /// Where it's turned in, in two words; nil while it's still being checked.
-    private func place(_ k: Kind) -> String? {
-        switch k {
-        case .dropbox: return "Dropbox"
-        case .outside(let url?): return url.host?.replacingOccurrences(of: "www.", with: "") ?? "Lab site"
-        case .outside(nil): return "Outside Schoology"
-        case .quiz: return "On Schoology"
-        case .google: return "Google"
-        case .unknown: return nil
+    /// "Today, 11:59 pm · in 2 h 14 min": the countdown only in the last 12 hours of work
+    /// still owed, ticking once a minute (no seconds: it's seen every time the page opens).
+    private func dueLine(_ due: Date?) -> some View {
+        TimelineView(.everyMinute) { ctx in
+            let left = countdown(due, now: ctx.date)
+            (Text(Fmt.due(due, now: ctx.date)) + Text(left.map { " · " + $0 } ?? ""))
+                .font(Theme.subhead.weight(.semibold).monospacedDigit())
+                .foregroundStyle(Theme.text)
+                .contentTransition(.numericText(countsDown: true))
         }
+    }
+
+    private func countdown(_ due: Date?, now: Date) -> String? {
+        guard let due, let it, model.isOwed(it), due > now, due.timeIntervalSince(now) <= 12 * 3600 else { return nil }
+        let m = Int((due.timeIntervalSince(now) / 60).rounded(.up))
+        return m >= 60 ? "in \(m / 60) h \(m % 60) min" : "in \(m) min"
+    }
+
+    /// One line for Schoology's fact and your own mark together ("Not submitted on Schoology ·
+    /// you marked it done"). Red only while it's late.
+    @ViewBuilder
+    private func statusLine(_ k: Kind) -> some View {
+        let (text, color) = statusWords(k)
+        VStack(alignment: .leading, spacing: 2) {
+            Text(text).font(Theme.subhead.weight(.semibold)).foregroundStyle(color)
+            if case .dropbox = k, let checkedAt, Date().timeIntervalSince(checkedAt) > 3600 {
+                Text("Checked \(Fmt.ago(checkedAt))").font(Theme.footnote).foregroundStyle(Theme.secondary)
+            }
+            // Kept: without it a student would trust a status Dewey can't see.
+            if case .google = k {
+                Text("Schoology doesn't tell Dewey if it's turned in.").font(Theme.footnote).foregroundStyle(Theme.secondary)
+            }
+        }
+    }
+
+    private func statusWords(_ k: Kind) -> (String, Color) {
+        let mark = it.map { model.progress($0) } ?? .todo
+        let isExam = it?.type == .exam
+        let late = it.map { model.isOverdue($0) } ?? false
+        let owedColor = late ? Theme.late : Theme.text
+        let yours: String? = mark == .turnedIn ? "you marked it turned in" : mark == .done ? (isExam ? "studied" : "you marked it done") : nil
+        switch k {
+        case .dropbox(true):
+            return (status?.late == true ? "Submitted on Schoology, late" : "Submitted on Schoology", Theme.good)
+        case .dropbox(false):
+            return (["Not submitted on Schoology", yours].compactMap { $0 }.joined(separator: " · "), owedColor)
+        case .outside(let url):
+            if mark == .turnedIn { return ("Turned in · marked by you", Theme.good) }
+            let whereTo = url?.host.map { "on " + $0.replacingOccurrences(of: "www.", with: "") } ?? "the way your teacher asked"
+            return (mark == .done ? "Done · hand it in \(whereTo)" : "Hand it in \(whereTo)", owedColor)
+        case .quiz:
+            switch a?.quiz?.state {
+            case "submitted": return ("Submitted on Schoology", Theme.good)
+            case "in_progress": return ("Attempt in progress · resume it on Schoology", Theme.late)
+            default: return (mark == .done ? "Not started · studied" : "Not started · opens only when you tap Take", late ? Theme.late : Theme.secondary)
+            }
+        case .google:
+            return (mark == .turnedIn ? "Google Assignment · you marked it turned in" : "Google Assignment", mark == .turnedIn ? Theme.good : Theme.text)
+        case .unknown:
+            return ("Checking Schoology…", Theme.secondary)
+        }
+    }
+
+    private func gradeRow(_ g: CourseGrade.Item) -> some View {
+        NavigationLink {
+            GradeDetailView(sectionId: section ?? "", itemId: id)
+        } label: {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("Grade  ").font(Theme.subhead).foregroundStyle(Theme.secondary)
+                        + Text(g.grade).font(Theme.subhead.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.text)
+                    if !g.comment.isEmpty { Text(g.comment).font(Theme.footnote).foregroundStyle(Theme.secondary).maxLines(2) }
+                }
+                Spacer()
+                if let i = g.impact { Text(Fmt.signed(i)).font(Theme.footnote.monospacedDigit()).foregroundStyle(Fmt.impactColor(i)) }
+                Image(systemName: "chevron.right").font(Theme.footnote).foregroundStyle(Theme.tertiary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func stamp(_ k: Kind, due: Date?) -> DueStamp.Stamp? {
@@ -265,31 +299,28 @@ struct AssignmentView: View {
     }
 
     // The main action for each kind.
-    private var mainAction: (String, () -> Void)? {
+    /// (title, leaves Dewey, action). Paper work's main action is Mark turned in.
+    private var mainAction: (String, Bool, () -> Void)? {
         guard let a else { return nil }
         switch kind(a) {
-        case .dropbox: return ("Submit on Schoology", { sheet = SheetTarget(url: pageURL, assignmentId: id) })
-        case .outside(let url?): return ("Turn in on \(url.host ?? "lab site")", { sheet = SheetTarget(url: url) })
-        case .quiz: return (quizAction(a.quiz), { sheet = SheetTarget(url: URL(string: Engine.origin.absoluteString + (it?.url ?? "/assignment/\(id)"))!, assignmentId: id) })
-        case .google: return ("Open in Schoology", { sheet = SheetTarget(url: pageURL, assignmentId: id, google: true) })
-        default: return nil
+        case .dropbox: return ("Submit on Schoology", true, { sheet = SheetTarget(url: pageURL, assignmentId: id) })
+        case .outside(let url?): return ("Turn in on \(url.host ?? "lab site")", true, { sheet = SheetTarget(url: url) })
+        case .outside(nil):
+            guard let it, !it.turnedIn else { return nil }
+            return ("Mark turned in", false, { withAnimation(.snappy(duration: 0.2)) { model.setProgress(it, .turnedIn) } })
+        case .quiz: return (quizAction(a.quiz), true, { sheet = SheetTarget(url: URL(string: Engine.origin.absoluteString + (it?.url ?? "/assignment/\(id)"))!, assignmentId: id) })
+        case .google: return ("Open in Schoology", true, { sheet = SheetTarget(url: pageURL, assignmentId: id, google: true) })
+        case .unknown: return nil
         }
     }
 
     // ── A newer quiz: read from its landing page, never from the quiz itself ──
 
+    /// Score, attempts and times, under the instructions (the header says the state).
     @ViewBuilder
-    private func quizFacts(_ q: QuizInfo) -> some View {
-        switch q.state {
-        case "in_progress":
-            Label("Attempt in progress", systemImage: "clock").font(Theme.body.weight(.semibold)).foregroundStyle(Theme.late)
-            Text("Started on Schoology but not turned in. Resume it there.").font(Theme.footnote).foregroundStyle(Theme.secondary)
-        case "submitted":
-            Label("Submitted on Schoology", systemImage: "checkmark.circle.fill").font(Theme.body.weight(.semibold)).foregroundStyle(Theme.good)
-        default:
-            Label("Not started", systemImage: "list.bullet.clipboard").font(Theme.body.weight(.semibold))
-            Text("Test / quiz on Schoology. It only opens when you tap Take on Schoology.").font(Theme.footnote).foregroundStyle(Theme.secondary)
-        }
+    private func quizDetails(_ q: QuizInfo) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+        Text("Quiz").font(Theme.headline).accessibilityAddTraits(.isHeader)
         VStack(alignment: .leading, spacing: 4) {
             if let s = q.score {
                 let max = q.maxPoints.map { " / \(Fmt.num($0))" } ?? ""
@@ -317,6 +348,7 @@ struct AssignmentView: View {
                 Text("Your answers are on Schoology: tap Review on Schoology, then View on the attempt.")
                     .font(Theme.footnote).foregroundStyle(Theme.secondary)
             }
+        }
         }
     }
 
@@ -358,163 +390,137 @@ struct AssignmentView: View {
         return nil
     }
 
-    // ── Your status: To do / Done / Turned in ────────────────────────────
-
-    private func progressCard(_ it: ItemState) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Your status").font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.secondary)
-            // The system's segmented control: one control, no three tinted pills. What each
-            // status means is in Settings → Help → How statuses work.
-            Picker("Your status", selection: Binding(get: { model.progress(it) }, set: { p in
-                withAnimation(.snappy(duration: 0.2)) { model.setProgress(it, p) }
-            })) {
-                ForEach(AppModel.Progress.allCases, id: \.self) { p in
-                    Text(it.type == .exam && p == .done ? "Studied" : p.label).tag(p)
-                }
-            }
-            .pickerStyle(.segmented)
-            .sensoryFeedback(.selection, trigger: model.progress(it))
-            let window = WidgetBridge.countdownWindow(due: it.due)
-            if counting || (window != .none && !model.isFinished(it) && WidgetBridge.activitiesAllowed) {
-                Theme.divider.frame(height: 1).padding(.vertical, 4)
-                Toggle(isOn: Binding(get: { counting }, set: { on in
-                    countdownError = nil
-                    guard on else {
-                        counting = false
-                        Task { await WidgetBridge.stopCountdown(it.schoologyId) }
-                        return
-                    }
-                    do {
-                        try WidgetBridge.startCountdown(model, it)
-                        counting = true
-                    } catch {
-                        counting = false
-                        countdownError = WidgetBridge.countdownErrorMessage(error)
-                    }
-                })) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Countdown on Lock Screen").font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text)
-                        Group {
-                            if case .opens(let from) = window, !counting {
-                                Text("Available from \(from.formatted(date: .abbreviated, time: .shortened)), 12 hours before it's due.")
-                            } else {
-                                Text("Shows the time left in the Dynamic Island. Ends when you mark it done.")
-                            }
-                        }
-                        .font(Theme.footnote).foregroundStyle(Theme.secondary)
-                    }
-                }
-                .tint(Theme.accent)
-                .disabled(!counting && window != .open)
-                if let countdownError {
-                    Text(countdownError).font(Theme.footnote).foregroundStyle(Theme.late)
-                }
-            }
-        }
-        .onAppear { counting = WidgetBridge.activity(for: it.schoologyId) != nil }
-        .padding(16)
-        .card()
-    }
-
-    // ── Grade, instructions, type, what-if ───────────────────────────────
-
-    @ViewBuilder
-    private var gradeCard: some View {
-        if let g = gradeItem, g.earned != nil || !g.comment.isEmpty {
-            NavigationLink {
-                GradeDetailView(sectionId: section ?? "", itemId: id)
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("Grade").font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.secondary)
-                        Text(g.grade).font(Theme.body.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.text)
-                        if !g.comment.isEmpty { Text(g.comment).font(Theme.footnote).foregroundStyle(Theme.secondary).maxLines(2) }
-                    }
-                    Spacer()
-                    if let i = g.impact { Text(Fmt.signed(i)).font(Theme.footnote.monospacedDigit()).foregroundStyle(Fmt.impactColor(i)) }
-                    Image(systemName: "chevron.right").foregroundStyle(Theme.tertiary)
-                }
-                .padding(16)
-                .card()
-            }
-            .buttonStyle(.plain)
-        }
-    }
+    // ── Instructions: the page ───────────────────────────────────────────
 
     @ViewBuilder
     private func instructions(_ a: Assignment) -> some View {
         let md = (a.instructionsMd ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        if !md.isEmpty || !a.attachments.isEmpty {
-            VStack(alignment: .leading, spacing: 10) {
-                Text("Instructions").font(Theme.headline).accessibilityAddTraits(.isHeader)
-                if !md.isEmpty {
-                    MarkdownText(md: md) { url in LinkOpener.open(url) { sheet = $0 } }
-                }
-                ForEach(a.attachments, id: \.url) { att in
-                    AttachmentRow(title: att.title, url: att.url) { target in
-                        switch target {
-                        case .file(let f): file = f
-                        case .web(let u): LinkOpener.open(u) { sheet = $0 }
-                        }
+        VStack(alignment: .leading, spacing: 14) {
+            if !md.isEmpty {
+                // Body size, unboxed, no heading: the reading is the page.
+                MarkdownText(md: md, font: Theme.body) { url in LinkOpener.open(url) { sheet = $0 } }
+                    .lineSpacing(3)
+            } else if a.attachments.isEmpty {
+                Text("No instructions on Schoology.").font(Theme.subhead).foregroundStyle(Theme.secondary)
+            }
+            ForEach(Array(a.attachments.enumerated()), id: \.element.url) { n, att in
+                AttachmentCard(title: att.title, url: att.url, thumbnail: n < 4) { target in
+                    switch target {
+                    case .file(let f): file = f
+                    case .web(let u): LinkOpener.open(u) { sheet = $0 }
                     }
                 }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            // No box: the reading text gets the room.
-            .padding(.top, Theme.Space.s)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 4)
     }
 
-    @ViewBuilder
-    private var typeSwitch: some View {
-        if let it {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(model.neoPlan.connected ? "In neo-plan as" : "Type").font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.secondary)
-                Picker("Type", selection: Binding(get: { it.type }, set: { model.setType(it, $0) })) {
+    // ── ⋯ menu: Open in Schoology, type, what-if, Lock Screen countdown ──
+
+    private var moreMenu: some View {
+        Menu {
+            Button { sheet = SheetTarget(url: pageURL, assignmentId: id) } label: { Label("Open in Schoology", systemImage: "globe") }
+            if let it {
+                Picker(selection: Binding(get: { it.type }, set: { model.setType(it, $0) })) {
                     ForEach(ItemType.allCases, id: \.self) { Text($0.name).tag($0) }
+                } label: {
+                    Label(model.neoPlan.connected ? "In neo-plan as" : "Type", systemImage: "tag")
+                    Text(it.type.name)
                 }
-                .pickerStyle(.segmented)
+                .pickerStyle(.menu)
             }
-            .padding(16)
-            .card()
+            if let g = gradeItem, g.earned == nil, let p = g.possible {
+                Button { whatIf = true } label: { Label("What if I get __ / \(Fmt.num(p))?", systemImage: "plus.forwardslash.minus") }
+            }
+            if let it, counting || (WidgetBridge.countdownWindow(due: it.due) == .open && !model.isFinished(it) && WidgetBridge.activitiesAllowed) {
+                Button { toggleCountdown(it) } label: {
+                    Label(counting ? "Stop Lock Screen countdown" : "Countdown on Lock Screen", systemImage: "timer")
+                }
+            }
+        } label: {
+            Label("More", systemImage: "ellipsis").labelStyle(.iconOnly)
         }
+        .accessibilityLabel("More")
+        .onAppear { counting = WidgetBridge.activity(for: id) != nil }
     }
 
-    @ViewBuilder
-    private var whatIfButton: some View {
-        if let g = gradeItem, g.earned == nil, let p = g.possible {
-            Button { whatIf = true } label: {
-                Text("What if I get __ / \(Fmt.num(p))?")
-                    .font(Theme.subhead.weight(.semibold))
-                    .frame(maxWidth: .infinity, minHeight: 48)
-                    .overlay(RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous).stroke(Theme.tertiary, style: StrokeStyle(lineWidth: 1.2, dash: [5, 4])))
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(Theme.text)
+    private func toggleCountdown(_ it: ItemState) {
+        if counting {
+            counting = false
+            Task { await WidgetBridge.stopCountdown(it.schoologyId) }
+            return
+        }
+        do {
+            try WidgetBridge.startCountdown(model, it)
+            counting = true
+        } catch {
+            model.toast = WidgetBridge.countdownErrorMessage(error)
         }
     }
 
     // ── Bottom bar: Done + the main action ───────────────────────────────
 
+    /// Your circle, the same one as on To Do (tap: to do ↔ done; hold for every status),
+    /// then the main action: the one teal thing on the screen.
     @ViewBuilder
     private var bottomBar: some View {
-        if let (title, action) = mainAction {
-            // The one teal thing on the screen; ↗ says it leaves Dewey.
-            WideButton(title: title, external: true, action: action)
-                .padding(.horizontal, 16).padding(.vertical, 8)
-                .background(.bar)
+        let action = mainAction
+        if a != nil, it != nil || action != nil {
+            HStack(spacing: 12) {
+                if let it { statusCircle(it) }
+                if let (title, external, run) = action {
+                    WideButton(title: title, external: external, action: run)
+                } else {
+                    Spacer(minLength: 0)
+                }
+            }
+            .padding(.horizontal, 16).padding(.vertical, 8)
+            .background(.bar)
         }
+    }
+
+    private func statusCircle(_ it: ItemState) -> some View {
+        let p = model.progress(it)
+        let word = it.type == .exam && p == .done ? "Studied" : p.label
+        return Button {
+            withAnimation(.snappy(duration: 0.2)) { model.setProgress(it, p == .todo ? .done : p == .done ? .todo : .done) }
+        } label: {
+            HStack(spacing: 8) {
+                CheckMark(item: it, size: 28).doneRipple(p != .todo)
+                    .frame(width: 28, height: 28)
+                Text(word).font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.text)
+                    .fixedSize()
+            }
+            .frame(minHeight: 48)
+            .padding(.horizontal, 4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .sensoryFeedback(.success, trigger: p)
+        .contextMenu {
+            ForEach(AppModel.Progress.allCases, id: \.self) { q in
+                Button {
+                    withAnimation(.snappy(duration: 0.2)) { model.setProgress(it, q) }
+                } label: {
+                    Label(it.type == .exam && q == .done ? "Studied" : q.label, systemImage: q == p ? "checkmark" : "")
+                }
+            }
+        }
+        .accessibilityLabel("Your status: \(word)")
+        .accessibilityHint(p == .todo ? (it.type == .exam ? "Marks it studied" : "Marks it done") : "Marks it to do. Hold for every status.")
     }
 }
 
 /// Markdown from the engine (instructions, pages, posts), links tappable.
 struct MarkdownText: View {
     let md: String
+    var font: Font = Theme.subhead
     let onLink: (URL) -> Void
     var body: some View {
         let attr = (try? AttributedString(markdown: md, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(md)
         Text(attr)
-            .font(Theme.subhead)
+            .font(font)
             .foregroundStyle(Theme.text)
             .textSelection(.enabled)
             .environment(\.openURL, OpenURLAction { url in onLink(url); return .handled })
@@ -542,5 +548,40 @@ struct DueStamp: View {
         .rotationEffect(.degrees(typeSize.isAccessibilitySize ? 0 : -7))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(stamp.spoken)
+    }
+}
+
+/// The stamp, slammed down again when what it says changes while you're looking (you come
+/// back from the Schoology sheet and it's SUBMITTED, or you mark it turned in): in big, a
+/// heavy thud, settled in about 300 ms. Never on opening the page; just a thud with Reduce Motion.
+struct SlammingStamp: View {
+    let stamp: DueStamp.Stamp
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var slam = 0
+    @State private var thud = 0
+
+    private struct Pose { var scale = 1.0; var opacity = 1.0 }
+
+    var body: some View {
+        DueStamp(stamp: stamp)
+            .keyframeAnimator(initialValue: Pose(), trigger: slam) { view, pose in
+                view.scaleEffect(pose.scale).opacity(pose.opacity)
+            } keyframes: { _ in
+                KeyframeTrack(\.scale) {
+                    MoveKeyframe(1.8)
+                    CubicKeyframe(0.94, duration: 0.14)
+                    CubicKeyframe(1.0, duration: 0.14)
+                }
+                KeyframeTrack(\.opacity) {
+                    MoveKeyframe(0)
+                    LinearKeyframe(1, duration: 0.07)
+                }
+            }
+            .sensoryFeedback(.impact(weight: .heavy), trigger: thud)
+            .onChange(of: stamp.top + stamp.main) { _, _ in
+                if !reduceMotion { slam += 1 }
+                // Lands as the stamp hits the card.
+                Task { try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 130)); thud += 1 }
+            }
     }
 }

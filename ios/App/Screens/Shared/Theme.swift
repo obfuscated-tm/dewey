@@ -214,8 +214,13 @@ struct TypeBar: View {
 /// HW / TEST / TASK / CW, inline.
 struct TypeTag: View {
     let type: ItemType
+    /// A chevron: tapping the tag changes the type (the Assignment page).
+    var changeable = false
     var body: some View {
-        Text(type.label)
+        HStack(spacing: 3) {
+            Text(type.label)
+            if changeable { Image(systemName: "chevron.up.chevron.down").font(.system(size: 8, weight: .bold)) }
+        }
             .font(Theme.caption.weight(.semibold))
             .tracking(0.4)
             .padding(.horizontal, 6).padding(.vertical, 2)

@@ -122,7 +122,21 @@ struct AssignmentView: View {
             }
             Text(a?.title ?? it?.title ?? "Assignment").font(Theme.displaySmall)
             HStack(spacing: 8) {
-                if let it { TypeTag(type: it.type) }
+                // The type is a guess from Schoology's words, so it's one tap to fix, right where it shows.
+                if let it {
+                    Menu {
+                        Picker(model.neoPlan.connected ? "In neo-plan as" : "Type", selection: Binding(get: { it.type }, set: { model.setType(it, $0) })) {
+                            ForEach(ItemType.allCases, id: \.self) { Text($0.name).tag($0) }
+                        }
+                        .pickerStyle(.inline)
+                    } label: {
+                        TypeTag(type: it.type, changeable: true).contentShape(Rectangle()).padding(.vertical, 6)
+                    }
+                    .padding(.vertical, -6)
+                    .sensoryFeedback(.selection, trigger: it.type)
+                    .accessibilityLabel("Type: \(it.type.name)")
+                    .accessibilityHint("Changes what kind of work this is")
+                }
                 // Once the assignment loads, the due date moves onto the checkout card.
                 if a == nil {
                     let due = it?.due
@@ -410,20 +424,11 @@ struct AssignmentView: View {
         .padding(.horizontal, 4)
     }
 
-    // ── ⋯ menu: Open in Schoology, type, what-if, Lock Screen countdown ──
+    // ── ⋯ menu: Open in Schoology, what-if, Lock Screen countdown (type: the tag) ──
 
     private var moreMenu: some View {
         Menu {
             Button { sheet = SheetTarget(url: pageURL, assignmentId: id) } label: { Label("Open in Schoology", systemImage: "globe") }
-            if let it {
-                Picker(selection: Binding(get: { it.type }, set: { model.setType(it, $0) })) {
-                    ForEach(ItemType.allCases, id: \.self) { Text($0.name).tag($0) }
-                } label: {
-                    Label(model.neoPlan.connected ? "In neo-plan as" : "Type", systemImage: "tag")
-                    Text(it.type.name)
-                }
-                .pickerStyle(.menu)
-            }
             if let g = gradeItem, g.earned == nil, let p = g.possible {
                 Button { whatIf = true } label: { Label("What if I get __ / \(Fmt.num(p))?", systemImage: "plus.forwardslash.minus") }
             }

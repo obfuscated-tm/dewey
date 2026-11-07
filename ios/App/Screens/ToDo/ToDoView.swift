@@ -21,6 +21,8 @@ struct ToDoView: View {
     @State private var showOlder = false
     @State private var sheet: SheetTarget?
     @State private var path: [AssignmentRoute] = []
+    /// The row an Assignment zooms out of (and back into).
+    @Namespace private var zoom
     // The status tip: shown once, under the first row the student ticks, until closed.
     @AppStorage("statusTipShown") private var tipShown = false
     @AppStorage("statusTipRow") private var tipRow = ""
@@ -63,7 +65,7 @@ struct ToDoView: View {
             .contentMargins(.bottom, 72, for: .scrollContent)
             .overlay(alignment: .bottomTrailing) { addButton }
             .refreshable { await model.refreshTodo(quick: true) }
-            .navigationDestination(for: AssignmentRoute.self) { r in AssignmentView(id: r.id) }
+            .navigationDestination(for: AssignmentRoute.self) { r in AssignmentView(id: r.id).zoomDestination(r.id, in: zoom) }
             .navigationDestination(isPresented: $showGuide) { StatusGuideView() }
             .toolbar(.hidden, for: .navigationBar)
             .sheet(item: $sheet) { SchoologySheet(target: $0) }
@@ -400,6 +402,7 @@ struct ToDoView: View {
                 onSubmit: { sheet = SheetTarget(url: submitURL(it), assignmentId: it.schoologyId) },
                 onOpen: { open(it) })
             .coachTarget("todo.row.\(it.schoologyId)")
+            .zoomSource(it.schoologyId, in: zoom)
             // Every separator starts under the checkbox, whatever the row holds.
             .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
             // A line on the class's catalog card; tinted while it's open on the right (the open Duo).
@@ -814,5 +817,19 @@ private struct FlatChevron: Shape {
         p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
         p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
         return p
+    }
+}
+
+/// iOS 18's zoom: the row grows into its Assignment page and shrinks back into it (swipe
+/// down or back). It replaces the push, so it adds no motion. iOS 17 keeps the push.
+extension View {
+    @ViewBuilder
+    func zoomSource(_ id: String, in ns: Namespace.ID) -> some View {
+        if #available(iOS 18, *) { matchedTransitionSource(id: id, in: ns) } else { self }
+    }
+
+    @ViewBuilder
+    func zoomDestination(_ id: String, in ns: Namespace.ID) -> some View {
+        if #available(iOS 18, *) { navigationTransition(.zoom(sourceID: id, in: ns)) } else { self }
     }
 }

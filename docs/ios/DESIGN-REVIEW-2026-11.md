@@ -134,3 +134,5 @@ Owen: the Assignment page "has no hierarchy, looks bland / empty card". Side by 
 Type: the menu on the HW tag (chevron, inline picker) was "clunky and hidden". Replaced by all four type tags in a row under the title, the current one solid ink; one tap switches. Checked with a throwaway UI test: tapping TEST selects it, and the stamp goes from 2 DAYS LATE to DUE (tests aren't late).
 
 Then the loose tags didn't read as changeable either. Now: a TYPE label + the system segmented control (Owen picked it from four options); a segmented track is iOS's standard "pick one" sign.
+
+Then: no TYPE label, and the picked segment coloured like its tag (Owen). The system control can't colour one segment, so `TypeTags` is a custom outlined track with a sliding fill: soft grey for HW/CW/TASK, ink for TEST.

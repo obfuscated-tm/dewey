@@ -225,24 +225,49 @@ struct TypeTag: View {
     }
 }
 
-/// The type on the Assignment page: a TYPE label like the slip's DATE DUE, then the four
-/// types as a system segmented control, the standard "pick one" sign (Owen 2026-11-07: a menu
-/// on the tag was "clunky and hidden"; loose tags didn't read as changeable). Dewey guesses
-/// the type from Schoology's words and can be wrong, and it decides lateness and the stamp.
+/// The type on the Assignment page: one outlined track of the four types, the picked one
+/// filled exactly like its tag elsewhere (HW/CW/TASK soft grey, TEST solid ink), sliding when
+/// you pick another. A track reads as "pick one" (Owen 2026-11-07: a menu on the tag was
+/// "clunky and hidden", loose tags didn't read as changeable, the system control didn't
+/// match the tags). Dewey guesses the type and can be wrong; it decides lateness and the stamp.
 struct TypeTags: View {
     let current: ItemType
     let pick: (ItemType) -> Void
+    @Namespace private var thumb
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private var shape: RoundedRectangle { RoundedRectangle(cornerRadius: Theme.Radius.tag + 2, style: .continuous) }
+
     var body: some View {
-        HStack(spacing: 10) {
-            Text("TYPE").font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.text)
-                .accessibilityHidden(true)
-            Picker("Type", selection: Binding(get: { current }, set: { pick($0) })) {
-                ForEach(ItemType.allCases, id: \.self) { Text($0.name).tag($0) }
+        HStack(spacing: 0) {
+            ForEach(ItemType.allCases, id: \.self) { t in
+                let on = t == current
+                Button {
+                    withAnimation(reduceMotion ? nil : .snappy(duration: 0.22)) { pick(t) }
+                } label: {
+                    Text(t.label)
+                        .font(Theme.caption.weight(.semibold)).tracking(0.4)
+                        .foregroundStyle(on ? (t == .exam ? Theme.card : Theme.text) : Theme.secondary)
+                        .padding(.horizontal, 12).padding(.vertical, 5)
+                        .background {
+                            if on {
+                                RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous)
+                                    .fill(t == .exam ? Theme.text : Theme.tagSoft)
+                                    .matchedGeometryEffect(id: "thumb", in: thumb)
+                            }
+                        }
+                        .padding(.vertical, 8).contentShape(Rectangle())
+                }
+                .buttonStyle(PressStyle())
+                .padding(.vertical, -8)
+                .accessibilityLabel(t.name)
+                .accessibilityAddTraits(on ? .isSelected : [])
             }
-            .pickerStyle(.segmented)
-            .fixedSize()
         }
+        .padding(2)
+        .overlay(shape.strokeBorder(Theme.divider, lineWidth: 1))
         .sensoryFeedback(.selection, trigger: current)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Type")
     }
 }
 

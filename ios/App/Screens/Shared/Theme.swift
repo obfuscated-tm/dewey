@@ -225,36 +225,24 @@ struct TypeTag: View {
     }
 }
 
-/// The type as a row of all four tags (Assignment page): the current one is the normal tag,
-/// the others outlined; one tap switches. Dewey guesses the type from Schoology's words and
-/// can be wrong, so fixing it is visible and one tap (a menu on the tag was "clunky and hidden").
+/// The type on the Assignment page: a TYPE label like the slip's DATE DUE, then the four
+/// types as a system segmented control, the standard "pick one" sign (Owen 2026-11-07: a menu
+/// on the tag was "clunky and hidden"; loose tags didn't read as changeable). Dewey guesses
+/// the type from Schoology's words and can be wrong, and it decides lateness and the stamp.
 struct TypeTags: View {
     let current: ItemType
     let pick: (ItemType) -> Void
     var body: some View {
-        HStack(spacing: 6) {
-            ForEach(ItemType.allCases, id: \.self) { t in
-                Button { pick(t) } label: {
-                    // The picked one solid ink, the rest outlined: which is set reads at a glance.
-                    Text(t.label)
-                        .font(Theme.caption.weight(.semibold)).tracking(0.4)
-                        .padding(.horizontal, 7).padding(.vertical, 3)
-                        .foregroundStyle(t == current ? Theme.card : Theme.secondary)
-                        .background(t == current ? Theme.text : .clear,
-                                    in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
-                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous)
-                            .strokeBorder(t == current ? .clear : Theme.divider, lineWidth: 1))
-                    .padding(.vertical, 10).contentShape(Rectangle())
-                }
-                .buttonStyle(PressStyle())
-                .padding(.vertical, -10)
-                .accessibilityLabel(t.name)
-                .accessibilityAddTraits(t == current ? .isSelected : [])
+        HStack(spacing: 10) {
+            Text("TYPE").font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.text)
+                .accessibilityHidden(true)
+            Picker("Type", selection: Binding(get: { current }, set: { pick($0) })) {
+                ForEach(ItemType.allCases, id: \.self) { Text($0.name).tag($0) }
             }
+            .pickerStyle(.segmented)
+            .fixedSize()
         }
         .sensoryFeedback(.selection, trigger: current)
-        .accessibilityElement(children: .contain)
-        .accessibilityLabel("Type")
     }
 }
 

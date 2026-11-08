@@ -29,7 +29,7 @@ struct ToDoView: View {
     @AppStorage("statusTipKind") private var tipKind = StatusTip.Kind.done.rawValue
     @State private var showGuide = false
     @AppStorage(CallNumber.key) private var callRaw = ""
-    @AppStorage(CallNumber.showKey) private var showCallNumbers = false
+    @AppStorage(CallNumber.showKey) private var showCallNumbers = true
     @AppStorage(ToDoMode.key) private var modeID = ToDoMode.list.rawValue
     /// The week strip opened up to a month (MonthGrid), and the month it shows.
     @AppStorage("todoMonth") private var showMonth = false
@@ -187,7 +187,7 @@ struct ToDoView: View {
             .fixedSize()
             .contentTransition(.opacity)
             .padding(.bottom, Theme.Space.xs)
-            .overlay(alignment: .bottom) { Rectangle().fill(Theme.catalogRule).frame(height: 2) }
+            .overlay(alignment: .bottom) { Rectangle().fill(Theme.accent).frame(height: 2) }
             .accessibilityAddTraits(.isHeader)
     }
 
@@ -354,6 +354,7 @@ struct ToDoView: View {
         // Call numbers only when the student turned them on (Settings → To Do → Call numbers).
         let number = showCallNumbers ? course.flatMap { CallNumber.number(for: $0, raw: callRaw) } : nil
         let stamp = model.cardStamp(items, now: now)
+        let open = items.filter { model.isPending($0, now: now) }.count
         // Urgent first already sorts by Late / Today, so it shows no stamps; its Late group keeps the red rule.
         let showStamp = layout == .week ? stamp : nil
         return AdaptiveStack(spacing: Theme.Space.s) {
@@ -367,11 +368,15 @@ struct ToDoView: View {
             }
             Text(title).font(Theme.headline).foregroundStyle(Theme.text)
             Spacer(minLength: 0)
+            Text([(1...3).contains(course?.periodLabel.count ?? 0) ? course?.periodLabel : nil, "\(open) open"].compactMap { $0 }.joined(separator: " · "))
+                .font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
+                .lineLimit(1).fixedSize()
             if let showStamp { CardStampView(stamp: showStamp) }
         }
         .padding(.bottom, Theme.Space.s)
+        // The catalog card's rule, in the class's colour; red only when the class has late work.
         .overlay(alignment: .bottom) {
-            stamp == .late ? Theme.late.frame(height: 1.5) : Theme.divider.frame(height: 1)
+            (stamp == .late ? Theme.late : course.map { model.classColor($0.sectionId) } ?? Theme.text).frame(height: 2)
         }
         // The rule sits on the row's bottom edge, so the first task starts right under it.
         .listRowInsets(EdgeInsets(top: Theme.Space.m, leading: Theme.Space.l, bottom: 0, trailing: Theme.Space.l))
@@ -631,24 +636,22 @@ struct TodoRow: View {
         .padding(.vertical, Theme.Space.xs)
     }
 
-    /// A button only when there's something to hand in soon: done, late, or due by the end of
-    /// tomorrow. Further out, the swipe does it, so the list isn't a column of buttons.
+    /// Submit / Turn in on every row that can be handed in (Undo once turned in): the old
+    /// look, back 2026-11-07.
     private var hasAction: Bool {
         if item.mine && item.type == .task { return false }
-        guard !item.submitted, !item.turnedIn, item.hasDropbox || item.type != .exam else { return false }
-        if item.done { return true }
-        guard let due = item.due else { return false }
-        let cal = Calendar.current
-        return due < cal.date(byAdding: .day, value: 2, to: cal.startOfDay(for: now))!
+        return !item.submitted && (item.turnedIn || item.hasDropbox || item.type != .exam)
     }
 
     private var action: some View { actionButton.coachTarget("todo.action.\(item.schoologyId)") }
 
     @ViewBuilder
     private var actionButton: some View {
-        // Undoing a turn in is the circle's job (one tap goes back to done) or the swipe's.
-        if item.submitted || item.turnedIn {
+        if item.submitted {
             EmptyView()
+        } else if item.turnedIn {
+            PillButton(title: "Undo", color: Theme.secondary) { onSet(.done) }
+                .accessibilityLabel("Undo turned in for \(item.title)")
         } else if item.hasDropbox {
             PillButton.submit(onSubmit)
                 .accessibilityLabel("Submit \(item.title) on Schoology")
@@ -684,14 +687,15 @@ struct TodoRow: View {
         return t.font(Theme.footnote.weight(late != nil ? .semibold : .regular).monospacedDigit())
     }
 
-    /// A third line only when the circle can't say it: which kind of handed in the green seal
-    /// means (Schoology's word or the student's), a Google Assignment, or a task's notes.
-    /// Done, not submitted and so on are the circle and the button's job.
+    /// The status, when it says more than "to do": its own line, never cut short.
     private var statusNote: (String, Color, Bool)? {
-        if item.submitted { return (item.statusLate == true ? "Submitted late" : "Submitted", Theme.good, true) }
-        if item.turnedIn { return ("Turned in", Theme.good, true) }
+        if item.submitted { return ("Submitted on Schoology\(item.statusLate == true ? " · late" : "")", Theme.good, true) }
+        if item.turnedIn { return (item.mine ? "Turned in" : "Turned in · not on Schoology", Theme.good, true) }
         if item.mine { return item.notes.map { ($0, Theme.secondary, false) } }
-        if item.external && !item.done { return ("Google Assignment", Theme.secondary, false) }
+        if item.type == .exam { return nil }
+        if item.external { return (item.done ? "Done · check it in Schoology" : "Google Assignment · turn in on Schoology", item.done ? Theme.accent : Theme.secondary, item.done) }
+        if item.done { return (item.hasDropbox ? "Done · not submitted yet" : "Done", Theme.accent, true) }
+        if !item.inSchoology { return ("Not on Schoology anymore · tick when done", Theme.secondary, false) }
         return nil
     }
 }

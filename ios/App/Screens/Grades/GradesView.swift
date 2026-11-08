@@ -260,7 +260,7 @@ func scoreText(_ i: CourseGrade.Item) -> String {
 struct ClassGradeRow: View {
     @Environment(AppModel.self) private var model
     @AppStorage(CallNumber.key) private var callRaw = ""
-    @AppStorage(CallNumber.showKey) private var showCallNumbers = false
+    @AppStorage(CallNumber.showKey) private var showCallNumbers = true
     let course: Course
     /// The letter, when the report card row above is hidden.
     var showLetter = false

@@ -144,7 +144,7 @@ struct ScreenHeader<Trailing: View>: View {
         VStack(alignment: .leading, spacing: 2) {
             if let kicker {
                 // Plain words, not spaced capitals (NN/g: all caps flattens hierarchy).
-                Text(kicker).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.secondary)
+                Text(kicker.uppercased()).font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.secondary)
                     .lineLimit(1).minimumScaleFactor(0.8)
             }
             HStack(alignment: .bottom) {

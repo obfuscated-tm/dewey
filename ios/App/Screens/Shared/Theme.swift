@@ -93,8 +93,8 @@ enum Theme {
     /// The rule under a screen title and a card's heading: ink, not red. Red means late
     /// and nothing else (Apple HIG: never one colour for two meanings).
     static var catalogRule: Color { text }
-    /// The lines between rows: the same quiet divider as everywhere else.
-    static var catalogLine: Color { divider }
+    /// The lines between rows: an index card's pale blue ruled lines (the old look, back 2026-11-07).
+    static let catalogLine = Color(light: "#C9DDF0", dark: "#2E4258")
     /// 11 heavy · the word on a shelf book's bookmark ribbon and the type bar. Apple's
     /// smallest text style, and it follows Dynamic Type (it was a fixed 10 pt).
     static let ribbon = Font.system(.caption2, weight: .heavy)
@@ -273,14 +273,13 @@ struct PillButton: View {
 }
 
 /// To Do's two one-tap actions, so they never look alike: Turn in stays in Dewey
-/// (ink, a check), Submit leaves for Schoology's dropbox (accent, ↗). Both outlined, so a
-/// list of them never turns into a column of filled buttons.
+/// (outlined ink, a check), Submit leaves for Schoology's dropbox (filled, the globe, ↗).
 extension PillButton {
     static func turnIn(_ action: @escaping () -> Void) -> PillButton {
         PillButton(title: "Turn in", color: Theme.text, icon: "checkmark", action: action)
     }
     static func submit(_ action: @escaping () -> Void) -> PillButton {
-        PillButton(title: "Submit", external: true, action: action)
+        PillButton(title: "Submit", filled: true, icon: "globe", external: true, action: action)
     }
 }
 

@@ -120,3 +120,9 @@ Done per §6 step 3. Field, then a grey line with what ↑ will add, then one ro
 
 Trade-off kept on purpose: Tomorrow / After school / Tonight are now two taps (open When, pick) instead of one. Typing "tmrw" is still zero taps, and the old second row was the thing that made two rows of controls do the same jobs. If it hurts in use, the fix is a Tomorrow pill that appears only while When is unset, not a second row.
 
+## 14. To Do: the old catalog card back (2026-11-07)
+
+Owen, on the real app: To Do "seems very basic and AI… doesn't provoke Dewey, unlike the past version which, although a bit messy, felt more homey". Compared side by side (main 307e459 vs the branch, real data, light mode; the first look was in dark mode by mistake). Restored: call numbers on by default, "P1 · N open", the heading rule (now in the class colour, red only with late work, so red still means late), pale blue index-card row lines everywhere they were, small-caps date, title underline (accent, not red), Submit filled with the globe, Turn in / Undo on every row, the status lines. Kept from the calm pass: stamps, late-stays-red, zoom, new-task sheet. Lesson: the calm pass removed character along with clutter; the catalog card was character.
+
+Also tried and scrapped the same day (mockups only, never built): web-trend Grades (bento, glass, big type, grain) and library details (date-due slip, Inbox NEW tabs, library card in Settings). Owen: generic, too loud, then "worse".
+

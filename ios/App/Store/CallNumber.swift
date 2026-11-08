@@ -11,8 +11,8 @@ import Foundation
 enum CallNumber {
     /// Hand-set numbers: "sectionId=570;sectionId2=" ("" = none). Missing = automatic.
     static let key = "callNumbers"
-    /// Whether To Do and Grades show the numbers at all. Off by default: to a new student
-    /// "512" beside Algebra 2 is a puzzle, not information.
+    /// Whether To Do and Grades show the numbers at all. On by default (2026-11-07: without
+    /// them To Do read as any app's list; they're the most Dewey thing on it).
     static let showKey = "showCallNumbers"
 
     /// Dewey's ten main classes: the choices in the picker.

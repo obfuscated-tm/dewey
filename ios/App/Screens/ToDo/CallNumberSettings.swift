@@ -5,7 +5,7 @@ import SwiftUI
 struct CallNumberSettings: View {
     @Environment(AppModel.self) private var model
     @AppStorage(CallNumber.key) private var raw = ""
-    @AppStorage(CallNumber.showKey) private var show = false
+    @AppStorage(CallNumber.showKey) private var show = true
 
     var body: some View {
         DewForm {

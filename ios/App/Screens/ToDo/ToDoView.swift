@@ -676,8 +676,9 @@ struct TodoRow: View {
             let countdown = Reminders.testCountdown(due: item.due, now: now)
                 .map { $0.replacingOccurrences(of: "Test ", with: "") }
                 .flatMap { dueWords.hasPrefix($0.lowercased()) ? nil : " · " + nb($0) } ?? ""
-            // Studied or not is the circle's job; the line keeps only the countdown.
-            t = t + Text(countdown).foregroundStyle(Theme.secondary)
+            // Back 2026-11-08: the circle alone didn't say a test still needs studying.
+            t = t + Text("\(countdown) · \(nb(item.studied ? "studied" : "not studied"))")
+                .foregroundStyle(item.studied ? Theme.accent : Theme.secondary)
         }
         return t.font(Theme.footnote.weight(late != nil ? .semibold : .regular).monospacedDigit())
     }

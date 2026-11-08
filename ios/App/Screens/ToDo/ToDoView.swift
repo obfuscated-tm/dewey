@@ -108,42 +108,23 @@ struct ToDoView: View {
             // Late, today and the next six days, a dot per item still to do; tap one to show only it.
             // Pull it down (anywhere on it, or its chevron) for the month; slide the month sideways.
             if mode == .list && layout == .week {
-                CalendarPull(open: showMonth, set: { set in
+                CalendarPull(open: showMonth, opening: {
+                    // Starting to open: the month it grows into is this one.
+                    shownMonth = MonthGrid.start(of: now)
+                }, set: { set in
                     guard set != showMonth else { return }
-                    if set { shownMonth = MonthGrid.start(of: now) }
-                    // Everyday controls: no bounce (Apple HIG; NN/g ~200–300 ms for a view change).
-                    // No withAnimation here: inside the List it would also animate the row's
-                    // resize, and the two fought (the whole page jumped). The row animates itself.
                     showMonth = set; filter = nil
                 }, swipe: { n in
                     monthForward = n > 0
                     withAnimation(.snappy(duration: 0.3)) {
                         shownMonth = Calendar.current.date(byAdding: .month, value: n, to: shownMonth)!
                     }
-                }) {
-                    // One at a time, top-aligned and clipped: the month comes down from under the
-                    // week row like a blind (the same way the pull goes) and goes back up; the
-                    // week fades. They never stack, so the list below moves once, smoothly.
-                    ZStack(alignment: .top) {
-                        if showMonth {
-                            MonthGrid(items: open, now: now, selected: $filter, month: $shownMonth, forward: $monthForward)
-                                .coachTarget("todo.month")
-                                // Closing, it just fades out fast: sliding up, its header showed over
-                                // the title for a frame (the row shrinks before the clip catches up).
-                                .transition(.asymmetric(
-                                    insertion: .move(edge: .top).combined(with: .opacity),
-                                    removal: .opacity.animation(.easeOut(duration: 0.12))))
-                        } else {
-                            // Out fast, in a beat late: the two never overlap.
-                            WeekStrip(items: open, now: now, selected: $filter)
-                                .transition(.asymmetric(
-                                    insertion: .opacity.animation(.easeIn(duration: 0.2).delay(0.14)),
-                                    removal: .opacity.animation(.easeOut(duration: 0.1))))
-                        }
-                    }
-                    .clipped()
-                    .animation(.smooth(duration: 0.38), value: showMonth)
-                }
+                }, week: {
+                    WeekStrip(items: open, now: now, selected: $filter)
+                }, month: {
+                    MonthGrid(items: open, now: now, selected: $filter, month: $shownMonth, forward: $monthForward)
+                        .coachTarget("todo.month")
+                })
                 // The strip and its chevron: the tour's month step points here.
                 .coachTarget("todo.calendar")
             }
@@ -777,54 +758,119 @@ struct CheckMark: View {
 /// month, push up for the week; it follows the finger a little and the chevron turns, then
 /// springs. Sideways on the month steps a month. Its own drag, ahead of the list's scroll
 /// and pull-to-refresh, so the pull isn't taken by the list.
-private struct CalendarPull<Content: View>: View {
+/// The week strip that grows into the month under your finger, like Calendar: its height
+/// follows the drag (the week fades as the month comes in), stops where you stop, and on
+/// letting go springs open or shut by where it is and how fast it was moving.
+///
+/// The spring is stepped by hand, not withAnimation: inside the List an animated height also
+/// animates the row's resize, the two fight, and the whole page jumps.
+private struct CalendarPull<Week: View, Month: View>: View {
     let open: Bool
+    let opening: () -> Void
     let set: (Bool) -> Void
     let swipe: (Int) -> Void
-    @ViewBuilder var content: Content
-    @State private var pull: CGFloat = 0
+    @ViewBuilder var week: Week
+    @ViewBuilder var month: Month
+    /// 0 = week, 1 = month, while dragging or settling; nil = at rest on `open`.
+    @State private var p: CGFloat?
+    @State private var weekH: CGFloat = 0
+    @State private var monthH: CGFloat = 0
+    @State private var settling: Task<Void, Never>?
+    @State private var vertical: Bool?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var progress: CGFloat { p ?? (open ? 1 : 0) }
+    private var range: CGFloat { max(1, monthH - weekH) }
 
     var body: some View {
-        let progress = min(1, abs(pull) / 40)
-        let toward = open ? pull < 0 : pull > 0
+        let t = min(1, max(0, progress))
         VStack(spacing: 0) {
-            content.offset(y: pull * 0.15)
-            // It bends rather than spins: the V flattens to a line and comes out the other way.
-            FlatChevron(bend: (open ? -1 : 1) + (toward ? (open ? 2 : -2) * progress : 0))
-                .stroke(toward && progress > 0.5 ? Theme.accent : Theme.tertiary,
+            ZStack(alignment: .top) {
+                week
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { weekH = $0 }
+                    .opacity(1 - min(1, t / 0.12))   // gone before the month shows: they never mix
+                    .allowsHitTesting(t < 0.5)
+                    .accessibilityHidden(t >= 0.5)
+                month
+                    .fixedSize(horizontal: false, vertical: true)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { monthH = $0 }
+                    .opacity(min(1, max(0, (t - 0.14) / 0.36)))
+                    .allowsHitTesting(t >= 0.5)
+                    .accessibilityHidden(t < 0.5)
+            }
+            // Before the first measure, the natural size; after, the height the drag says.
+            .frame(height: weekH == 0 ? nil : max(weekH * 0.85, weekH + range * progress), alignment: .top)
+            .clipped()
+            FlatChevron(bend: 1 - 2 * t)
+                .stroke(p != nil && abs(t - (open ? 1 : 0)) > 0.5 ? Theme.accent : Theme.tertiary,
                         style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
                 .frame(width: 40, height: 6)
-                .animation(.smooth(duration: 0.3), value: open)
-                .offset(y: pull * 0.35)
                 .frame(maxWidth: .infinity)
                 .frame(height: 8)
                 // A bigger tap target than it looks, overlapping the gap around it.
                 .contentShape(Rectangle().inset(by: -10))
-                .onTapGesture { set(!open) }
+                .onTapGesture { toggle() }
                 .accessibilityElement()
                 .accessibilityLabel(open ? "Show week" : "Show month")
                 .accessibilityAddTraits(.isButton)
-                .accessibilityAction { set(!open) }
+                .accessibilityAction { toggle() }
         }
         .contentShape(Rectangle())
         .highPriorityGesture(DragGesture(minimumDistance: 12)
             .onChanged { v in
-                if abs(v.translation.height) > abs(v.translation.width) {
-                    // Rubber band: the further you pull, the more it resists (never a hard stop).
-                    let y = v.translation.height
-                    pull = y / (1 + abs(y) / 60)
+                if vertical == nil { vertical = abs(v.translation.height) > abs(v.translation.width) }
+                guard vertical == true else { return }
+                if p == nil {
+                    settling?.cancel()
+                    if !open { opening() }
                 }
+                let raw = (open ? 1 : 0) + v.translation.height / range
+                p = rubber(raw)
             }
             .onEnded { v in
-                withAnimation(.snappy(duration: 0.25)) { pull = 0 }
-                let dx = v.translation.width, dy = v.translation.height
-                if abs(dx) > abs(dy) {
+                defer { vertical = nil }
+                if vertical == false {
+                    let dx = v.translation.width
                     if open && abs(dx) > 40 { swipe(dx < 0 ? 1 : -1) }
-                } else {
-                    let end = v.predictedEndTranslation.height
-                    if end > 30 { set(true) } else if end < -30 { set(false) }
+                    return
                 }
+                // Where a flick would carry it, so a quick short flick still opens it.
+                let land = (open ? 1 : 0) + v.predictedEndTranslation.height / range
+                settle(to: land > 0.5, velocity: v.velocity.height / range)
             })
+    }
+
+    private func toggle() {
+        if !open { opening() }
+        settle(to: !open, velocity: 0)
+    }
+
+    /// Past either end it keeps following the finger, but less and less.
+    private func rubber(_ raw: CGFloat) -> CGFloat {
+        func damp(_ over: CGFloat) -> CGFloat { let pts = over * range; return pts / (1 + pts / 50) / range }
+        if raw > 1 { return 1 + damp(raw - 1) }
+        if raw < 0 { return -damp(-raw) }
+        return raw
+    }
+
+    private func settle(to target: Bool, velocity: CGFloat) {
+        settling?.cancel()
+        let to: CGFloat = target ? 1 : 0
+        if reduceMotion { set(target); p = nil; return }
+        var x = p ?? (open ? 1 : 0), vel = velocity
+        settling = Task { @MainActor in
+            // A spring with no visible bounce (stiffness 260, a touch under critical damping).
+            let k: CGFloat = 260, c: CGFloat = 2 * sqrt(k) * 0.9, dt: CGFloat = 1 / 240
+            for _ in 0..<90 {
+                for _ in 0..<4 { vel += (-k * (x - to) - c * vel) * dt; x += vel * dt }
+                p = x
+                if abs(x - to) < 0.003 && abs(vel) < 0.05 { break }
+                try? await Task.sleep(for: .milliseconds(16))
+                if Task.isCancelled { return }
+            }
+            set(target); p = nil
+        }
     }
 }
 

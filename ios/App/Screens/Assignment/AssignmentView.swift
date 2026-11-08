@@ -39,6 +39,7 @@ struct AssignmentView: View {
             VStack(alignment: .leading, spacing: 20) {
                 if let a {
                     header(a)
+                    yours(a)
                     instructions(a)
                     if case .quiz = kind(a), let q = a.quiz { quizDetails(q) }
                 } else if let error {
@@ -487,24 +488,84 @@ struct AssignmentView: View {
         .padding(.horizontal, 4)
     }
 
-    // ── ⋯ menu: Open in Schoology, what-if, Lock Screen countdown (type: the tag) ──
+    // ── Yours: what-if, the Lock Screen countdown, and what your mark means ──
+
+    /// Under the card, on the page (they hid in ⋯ and nobody found them, 2026-11-07):
+    /// What if I get __ / N? while ungraded, the Lock Screen countdown (or when it becomes
+    /// available), and what your circle means, since Schoology never sees it.
+    @ViewBuilder
+    private func yours(_ a: Assignment) -> some View {
+        if let it {
+            let points = gradeItem.flatMap { $0.earned == nil ? $0.possible : nil }
+            let window = WidgetBridge.countdownWindow(due: it.due)
+            let countdown = WidgetBridge.activitiesAllowed && (counting || (window != .none && !model.isFinished(it)))
+            VStack(alignment: .leading, spacing: 10) {
+                if points != nil || countdown {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 8) { tools(it, points: points, window: window, countdown: countdown) }
+                        VStack(alignment: .leading, spacing: 8) { tools(it, points: points, window: window, countdown: countdown) }
+                    }
+                }
+                Text(it.submitted ? "Schoology also shows it submitted." : "Only you see your circle: Schoology never does. Turned in means you handed it in, on paper or another site.")
+                    .font(Theme.footnote).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 4)
+            .onAppear { counting = WidgetBridge.activity(for: id) != nil }
+        }
+    }
+
+    @ViewBuilder
+    private func tools(_ it: ItemState, points: Double?, window: WidgetBridge.CountdownWindow, countdown: Bool) -> some View {
+        if let p = points {
+            Button { whatIf = true } label: {
+                toolLabel("What if I get __ / \(Fmt.num(p))?", icon: "plus.forwardslash.minus", dashed: true)
+            }
+            .buttonStyle(PressStyle())
+        }
+        if countdown {
+            if case .opens(let from) = window, !counting {
+                // Not yet: say when, instead of hiding it until then.
+                toolLabel("Countdown from \(startText(from))", icon: "timer", dashed: false)
+                    .opacity(0.6)
+                    .accessibilityLabel("Lock Screen countdown available from \(startText(from)), 12 hours before it's due")
+            } else {
+                Button { toggleCountdown(it) } label: {
+                    toolLabel(counting ? "Counting down · Stop" : "Countdown on Lock Screen", icon: "timer", dashed: false, on: counting)
+                }
+                .buttonStyle(PressStyle())
+                .accessibilityHint(counting ? "Stops the Lock Screen countdown" : "Shows the time left on the Lock Screen and Dynamic Island")
+            }
+        }
+    }
+
+    /// "3:59 pm" today, else "Fri 11:59 am".
+    private func startText(_ d: Date) -> String {
+        (Calendar.current.isDateInToday(d) ? Fmt.time : Fmt.weekdayTime).string(from: d)
+    }
+
+    private func toolLabel(_ title: String, icon: String, dashed: Bool, on: Bool = false) -> some View {
+        Label(title, systemImage: icon)
+            .font(Theme.footnote.weight(.semibold))
+            .foregroundStyle(on ? Theme.accent : Theme.text)
+            .lineLimit(1).fixedSize()
+            .padding(.horizontal, 12)
+            .frame(minHeight: 36)
+            .background(on ? Theme.accentSoft : Theme.card, in: Capsule())
+            .overlay(Capsule().strokeBorder(on ? Theme.accent.opacity(0.5) : Theme.tertiary,
+                                            style: StrokeStyle(lineWidth: 1.2, dash: dashed ? [5, 4] : [])))
+            .contentShape(Capsule())
+    }
+
+    // ── ⋯ menu: Open in Schoology ──
 
     private var moreMenu: some View {
         Menu {
             Button { sheet = SheetTarget(url: pageURL, assignmentId: id) } label: { Label("Open in Schoology", systemImage: "globe") }
-            if let g = gradeItem, g.earned == nil, let p = g.possible {
-                Button { whatIf = true } label: { Label("What if I get __ / \(Fmt.num(p))?", systemImage: "plus.forwardslash.minus") }
-            }
-            if let it, counting || (WidgetBridge.countdownWindow(due: it.due) == .open && !model.isFinished(it) && WidgetBridge.activitiesAllowed) {
-                Button { toggleCountdown(it) } label: {
-                    Label(counting ? "Stop Lock Screen countdown" : "Countdown on Lock Screen", systemImage: "timer")
-                }
-            }
         } label: {
             Label("More", systemImage: "ellipsis").labelStyle(.iconOnly)
         }
         .accessibilityLabel("More")
-        .onAppear { counting = WidgetBridge.activity(for: id) != nil }
     }
 
     private func toggleCountdown(_ it: ItemState) {

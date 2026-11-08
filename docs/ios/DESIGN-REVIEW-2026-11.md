@@ -136,3 +136,11 @@ Type: the menu on the HW tag (chevron, inline picker) was "clunky and hidden". R
 Then the loose tags didn't read as changeable either. Now: a TYPE label + the system segmented control (Owen picked it from four options); a segmented track is iOS's standard "pick one" sign.
 
 Then: no TYPE label, and the picked segment coloured like its tag (Owen). The system control can't colour one segment, so `TypeTags` is a custom outlined track with a sliding fill: soft grey for HW/CW/TASK, ink for TEST.
+
+## 16. Bringing back what the calm pass hid (2026-11-07)
+
+Owen reviewed a list of everything removed or changed since main and asked for:
+- Assignment: What-if and the Lock Screen countdown back on the page, under the card (they had moved into ⋯). The countdown shows "Countdown from <time>" dimmed before its 12-hour window, instead of being invisible. The "Only you see your circle…" line is back.
+- New-task sheet: separate Day and Time pills, the one-tap Today / Tomorrow / After school / Tonight row back, and class chips (one tap, class colour) in place of the Class pill. He also asked to use or remove the empty band over the keyboard: it's iOS's spacing between a sheet and the keyboard (a smaller detent, removing the home-indicator inset and ignoring the bottom safe area all left it unchanged), so the class row uses the sheet's height instead.
+- Grades graph: a tiny "Drag for any day" hint in the card's corner.
+Design rule 6 now allows one tiny line that stops a wrong guess.

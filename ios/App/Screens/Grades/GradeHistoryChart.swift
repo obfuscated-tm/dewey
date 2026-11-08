@@ -77,6 +77,11 @@ struct GradeHistoryChart: View {
                 if selected == nil, let w = whatIfPct {
                     Text("What-if \(Fmt.pct(w, digits: 2))").font(Theme.footnote.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Theme.accent)
+                } else if selected == nil {
+                    // A tiny hint in the card's corner; gone while you're dragging.
+                    Label("Drag for any day", systemImage: "hand.draw")
+                        .font(Theme.caption).foregroundStyle(Theme.tertiary)
+                        .accessibilityHidden(true)
                 }
             }
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.s) {

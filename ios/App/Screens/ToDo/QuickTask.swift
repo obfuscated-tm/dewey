@@ -2,8 +2,9 @@ import SwiftUI
 
 /// To Do's +: a short sheet over the keyboard. Type the task, with its day, time
 /// and class in plain words if you like ("chem lab fri after school", TaskParse);
-/// a grey line shows what will be saved. Or pick on the pills (When, Class, Kind);
-/// a pill wins over what was typed. Changing a task later, and its
+/// a grey line shows what will be saved. Or pick: one-tap usual picks (Today, Tomorrow,
+/// After school, Tonight), then Day, Time, Class and Kind pills for the rest; a pick
+/// wins over what was typed. Changing a task later, and its
 /// notes, is the full TaskEditor (tap its row).
 struct QuickTask: View {
     @Environment(AppModel.self) private var model
@@ -64,12 +65,18 @@ struct QuickTask: View {
             }
             // What will be saved, read from the words and the pills together.
             preview(parsed.title, due: due, section: s, kind: k)
-            // One row: When (day and time), Class, Kind. Teal = you picked it here; what was
-            // only typed shows in the grey line above, not on the pills.
-            // Side by side; stacked when big text won't fit them on one line.
+            // The usual picks, one tap each (they toggle). Teal = picked here; what was
+            // only typed shows in the grey line above, not on the buttons.
+            quickRow(d: d, t: t)
+            // Your classes, one tap each (it used the empty band iOS leaves over the keyboard).
+            classRow(s: s)
+            // Everything else: any day, any time, the kind. One row; two when big text won't fit.
             ViewThatFits(in: .horizontal) {
-                HStack(spacing: 6) { pills(d: d, t: t, s: s, k: k) }
-                VStack(alignment: .leading, spacing: 6) { pills(d: d, t: t, s: s, k: k) }
+                HStack(spacing: 6) { dayMenu(d: d); timeMenu(t: t); pills(s: s, k: k) }
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 6) { dayMenu(d: d); timeMenu(t: t) }
+                    HStack(spacing: 6) { pills(s: s, k: k) }
+                }
             }
             .menuOrder(.fixed)
         }
@@ -96,18 +103,7 @@ struct QuickTask: View {
 
     // ── Pieces ───────────────────────────────────────────────────────────
 
-    @ViewBuilder private func pills(d: Date?, t: TaskParse.Clock?, s: String?, k: ItemType) -> some View {
-        whenMenu(d: d, t: t)
-        Menu {
-            Picker("Class", selection: Binding(get: { s }, set: { v in section = v.map { .some($0) } ?? Choice.none })) {
-                ForEach(model.classes) { c in Text(c.shortTitle).tag(Optional(c.sectionId)) }
-                Text("No class").tag(String?.none)
-            }
-        } label: {
-            pill(section.map { $0.value.flatMap { model.course($0)?.shortTitle } ?? "No class" } ?? "Class",
-                 icon: "graduationcap", on: section != nil)
-        }
-        .accessibilityLabel(s.flatMap { model.course($0)?.shortTitle }.map { "Class: \($0)" } ?? "Class")
+    @ViewBuilder private func pills(s: String?, k: ItemType) -> some View {
         Menu {
             Picker("Kind", selection: Binding(get: { k }, set: { type = $0 })) {
                 ForEach([ItemType.task, .assignment, .exam, .classwork], id: \.self) { t in Text(Self.kindName(t)).tag(t) }
@@ -133,46 +129,123 @@ struct QuickTask: View {
             .animation(nil, value: parts)
     }
 
-    /// Day and time in one menu: the usual picks are one tap after opening it.
-    private func whenMenu(d: Date?, t: TaskParse.Clock?) -> some View {
+    /// Each class as a chip with its colour; tap to pick, tap again to clear. Scrolls sideways.
+    private func classRow(s: String?) -> some View {
+        let picked = section.flatMap(\.value)
+        return ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                ForEach(model.classes) { c in
+                    let on = picked == c.sectionId
+                    Button { section = on ? nil : .some(c.sectionId) } label: {
+                        HStack(spacing: 5) {
+                            Circle().fill(model.classColor(c.sectionId)).frame(width: 8, height: 8)
+                            Text(c.shortTitle).lineLimit(1)
+                        }
+                        .font(Theme.footnote.weight(.semibold))
+                        .foregroundStyle(on ? Theme.accent : Theme.text)
+                        .padding(.horizontal, 10)
+                        .frame(minHeight: 32)
+                        .background(on ? Theme.accentSoft : Theme.card, in: Capsule())
+                        .overlay(Capsule().stroke(on ? Theme.accent.opacity(0.5) : Theme.border, lineWidth: 1))
+                        .contentShape(Capsule())
+                    }
+                    .buttonStyle(PressStyle())
+                    .accessibilityLabel("Class: \(c.shortTitle)")
+                    .accessibilityAddTraits(on ? .isSelected : [])
+                }
+            }
+        }
+        .scrollClipDisabled()
+    }
+
+    /// Today · Tomorrow · After school · Tonight: equal buttons, one tap each, tap again to clear.
+    private func quickRow(d: Date?, t: TaskParse.Clock?) -> some View {
         let today = cal.startOfDay(for: now)
         let tomorrow = cal.date(byAdding: .day, value: 1, to: today)!
         let pickedDay = day.flatMap(\.value)
         let pickedTime = time.flatMap(\.value)
+        func isDay(_ x: Date) -> Bool { pickedDay.map { cal.isDate($0, inSameDayAs: x) } ?? false }
+        return HStack(spacing: 6) {
+            quick("Today", on: isDay(today)) { day = isDay(today) ? nil : .some(today) }
+            quick("Tomorrow", on: isDay(tomorrow)) { day = isDay(tomorrow) ? nil : .some(tomorrow) }
+            quick("After school", on: pickedTime == TaskParse.afterSchool) {
+                time = pickedTime == TaskParse.afterSchool ? nil : .some(TaskParse.afterSchool)
+            }
+            quick("Tonight", on: pickedTime == TaskParse.tonight) {
+                time = pickedTime == TaskParse.tonight ? nil : .some(TaskParse.tonight)
+            }
+        }
+    }
+
+    private func quick(_ title: String, on: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .font(Theme.footnote.weight(.semibold))
+                .lineLimit(1).minimumScaleFactor(0.75)
+                .foregroundStyle(on ? Theme.accent : Theme.text)
+                .frame(maxWidth: .infinity, minHeight: 34)
+                .background(on ? Theme.accentSoft : Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous)
+                    .stroke(on ? Theme.accent.opacity(0.5) : Theme.border, lineWidth: 1))
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(PressStyle())
+        .accessibilityAddTraits(on ? .isSelected : [])
+    }
+
+    /// The day pill: Today, Tomorrow, any day, no date, or back to what was typed.
+    private func dayMenu(d: Date?) -> some View {
+        let today = cal.startOfDay(for: now)
+        let tomorrow = cal.date(byAdding: .day, value: 1, to: today)!
+        let pickedDay = day.flatMap(\.value)
         func dayToggle(_ name: String, _ date: Date) -> some View {
             Toggle(name, isOn: Binding(get: { pickedDay.map { cal.isDate($0, inSameDayAs: date) } ?? false },
                                        set: { on in day = on ? .some(date) : nil }))
         }
+        let label: String = day == nil ? "Day" : pickedDay.map(dayLabel) ?? "No date"
+        return Menu {
+            dayToggle("Today", today)
+            dayToggle("Tomorrow", tomorrow)
+            Button { picking = .day } label: { Label("Pick a day…", systemImage: "calendar") }
+            Section {
+                Button { day = Choice.none } label: { Label("No date", systemImage: "calendar.badge.minus") }
+                if day != nil { Button { day = nil } label: { Label("Use what I typed", systemImage: "arrow.uturn.backward") } }
+            }
+        } label: {
+            pill(label, icon: "calendar", on: day != nil)
+        }
+        .accessibilityLabel(d.map { "Day: \(Self.short.string(from: $0))" } ?? "Day: none")
+    }
+
+    /// The time pill: before / after school, tonight, any time, or no time.
+    private func timeMenu(t: TaskParse.Clock?) -> some View {
+        let pickedTime = time.flatMap(\.value)
         func timeToggle(_ name: String, _ c: TaskParse.Clock) -> some View {
             Toggle(name, isOn: Binding(get: { pickedTime == c }, set: { on in time = on ? .some(c) : nil }))
         }
         let label: String = {
-            if day == nil && time == nil { return "When" }
-            let parts = [pickedDay.map(dayLabel), pickedTime.map { clockText($0) }].compactMap { $0 }
-            return parts.isEmpty ? "No date" : parts.joined(separator: " · ")
+            guard time != nil else { return "Time" }
+            guard let c = pickedTime else { return "No time" }
+            switch c {
+            case TaskParse.beforeSchool: return "Before school"
+            case TaskParse.afterSchool: return "After school"
+            case TaskParse.tonight: return "Tonight"
+            default: return clockText(c)
+            }
         }()
         return Menu {
-            Section("Day") {
-                dayToggle("Today", today)
-                dayToggle("Tomorrow", tomorrow)
-                Button { picking = .day } label: { Label("Pick a day…", systemImage: "calendar") }
-            }
-            Section("Time") {
-                timeToggle("Before school · \(clockText(TaskParse.beforeSchool))", TaskParse.beforeSchool)
-                timeToggle("After school · \(clockText(TaskParse.afterSchool))", TaskParse.afterSchool)
-                timeToggle("Tonight · 11:59 pm", TaskParse.tonight)
-                Button { picking = .time } label: { Label("Pick a time…", systemImage: "clock") }
-            }
+            timeToggle("Before school · \(clockText(TaskParse.beforeSchool))", TaskParse.beforeSchool)
+            timeToggle("After school · \(clockText(TaskParse.afterSchool))", TaskParse.afterSchool)
+            timeToggle("Tonight · 11:59 pm", TaskParse.tonight)
+            Button { picking = .time } label: { Label("Pick a time…", systemImage: "clock") }
             Section {
-                Button { day = Choice.none; time = Choice.none } label: { Label("No date", systemImage: "calendar.badge.minus") }
-                if day != nil || time != nil {
-                    Button { day = nil; time = nil } label: { Label("Use what I typed", systemImage: "arrow.uturn.backward") }
-                }
+                Button { time = Choice.none } label: { Label("No time", systemImage: "clock.badge.xmark") }
+                if time != nil { Button { time = nil } label: { Label("Use what I typed", systemImage: "arrow.uturn.backward") } }
             }
         } label: {
-            pill(label, icon: "calendar", on: day != nil || time != nil)
+            pill(label, icon: "clock", on: time != nil)
         }
-        .accessibilityLabel(due(d, t).map { "When: \(Self.dueText($0))" } ?? "When: no date")
+        .accessibilityLabel(t.map { "Time: \(clockText($0))" } ?? "Time: none")
     }
 
     private func due(_ d: Date?, _ t: TaskParse.Clock?) -> Date? { TaskParse.due(day: d, time: t, now: now) }

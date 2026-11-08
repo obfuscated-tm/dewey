@@ -126,3 +126,7 @@ Owen, on the real app: To Do "seems very basic and AI… doesn't provoke Dewey, 
 
 Also tried and scrapped the same day (mockups only, never built): web-trend Grades (bento, glass, big type, grain) and library details (date-due slip, Inbox NEW tabs, library card in Settings). Owen: generic, too loud, then "worse".
 
+
+## 15. Assignment: the checkout card back (2026-11-07)
+
+Owen: the Assignment page "has no hierarchy, looks bland / empty card". Side by side with main (307e459), the calm header was a run of same-weight lines with nothing labelled. He asked for almost everything back, smaller, keeping the PDF preview and the bottom bar (no "Your status" card). Built: class-colour band with the stamp on it, small-caps catalog line, DATE DUE / TURN IN slip, status with icon and its why, the worried mascot on overdue work, the "Instructions" heading. All inside one card, so the stamp's "forehead" stays small. The catalog line now stops at the stamp's measured width (a fixed gap let SPAN 2 · … · TAREAS run under a 2 DAYS LATE stamp). "Outside Schoology" became "Off Schoology" to fit the column; the status says "not turned in yet" and the note says how, instead of both saying "hand it in".

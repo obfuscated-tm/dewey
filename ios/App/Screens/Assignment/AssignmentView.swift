@@ -1,9 +1,9 @@
 import SwiftUI
 
-/// 1b · One assignment: one header (class, title, the stamp, due, one status line that
-/// merges what Schoology says with your own mark, the grade), then the instructions as the
-/// page, then the bottom bar: your circle + the main action. Type, what-if, the Lock Screen
-/// countdown and Open in Schoology live in the ⋯ menu (2026-11-07).
+/// 1b · One assignment: the checkout card (class band with the stamp on it, catalog line,
+/// title, type, a DATE DUE / TURN IN slip, the status with why, the grade), then
+/// Instructions, then the bottom bar: your circle + the main action. What-if, the Lock
+/// Screen countdown and Open in Schoology live in the ⋯ menu (2026-11-07).
 struct AssignmentView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -18,6 +18,8 @@ struct AssignmentView: View {
     @State private var whatIf = false
     @State private var counting = false
     @State private var countdownError: String?
+    /// The stamp's width, so the catalog line stops short of it whatever it says.
+    @State private var stampWidth: CGFloat = 120
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var it: ItemState? { _ = model.revision; return model.item(id) }
@@ -120,9 +122,9 @@ struct AssignmentView: View {
         VStack(alignment: .leading, spacing: 6) {
             // A library catalog line: class · period · term · category, in the class colour.
             if let c = model.course(section) {
-                Text(catalogLine(c)).font(Theme.footnote.weight(.semibold))
+                Text(catalogLine(c)).font(Theme.caption.weight(.semibold)).tracking(0.6)
                     .foregroundStyle(model.classColor(c.sectionId)).maxLines(2)
-                    .padding(.trailing, underStamp ? 118 : 0)
+                    .padding(.trailing, underStamp ? max(0, stampWidth - 2) : 0)
             }
             Text(a?.title ?? it?.title ?? "Assignment").font(Theme.displaySmall)
             HStack(spacing: 8) {
@@ -152,10 +154,11 @@ struct AssignmentView: View {
         }
     }
 
-    /// "AP Biology · Labs & Homework": the class and where the grade goes.
+    /// "AP BIOL · P2 · 26-27 T1 · LABS & HOMEWORK": a library catalog line.
     private func catalogLine(_ c: Course) -> String {
-        [c.shortTitle, gradeItem?.category]
-            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+        [GradesLook.abbreviation(c.shortTitle), (1...3).contains(c.periodLabel.count) ? c.periodLabel : nil,
+         model.grades[c.sectionId]?.period, gradeItem?.category]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ").uppercased()
     }
 
     private var gradeItem: CourseGrade.Item? {
@@ -191,22 +194,67 @@ struct AssignmentView: View {
         VStack(alignment: .leading, spacing: 0) {
             if typeSize.isAccessibilitySize, let s { SlammingStamp(stamp: s).padding(.bottom, Theme.Space.m) }
             titleBlock(underStamp: s != nil && !typeSize.isAccessibilitySize)
-            Theme.divider.frame(height: 1).padding(.vertical, 12)
-            // Where it's turned in is part of the status line ("Not submitted on Schoology",
-            // "Hand it in on lab.site"), so the old place column is gone.
-            dueLine(due)
-            statusLine(k).padding(.top, 6)
+            // A library date-due slip: ruled columns for when and where, then what Schoology says.
+            AdaptiveStack(spacing: Theme.Space.s) {
+                Text("DATE DUE").frame(maxWidth: .infinity, alignment: .leading)
+                if !typeSize.isAccessibilitySize { Text("TURN IN").frame(width: placeWidth, alignment: .leading) }
+            }
+            .font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.text)
+            .padding(.top, 14).padding(.bottom, 5)
+            .overlay(alignment: .bottom) { Theme.text.frame(height: 1.5) }
+            .accessibilityHidden(true)
+            AdaptiveStack(spacing: Theme.Space.s) {
+                dueLine(due).frame(maxWidth: .infinity, alignment: .leading)
+                Text(place(k)).font(Theme.subhead).foregroundStyle(Theme.secondary)
+                    .frame(width: typeSize.isAccessibilitySize ? nil : placeWidth, alignment: .leading)
+            }
+            .padding(.vertical, 8)
+            .overlay(alignment: .bottom) { Theme.divider.frame(height: 1) }
+            .accessibilityElement(children: .combine)
+            HStack(alignment: .top, spacing: 10) {
+                statusLine(k).frame(maxWidth: .infinity, alignment: .leading)
+                // Dewey, a little worried: only here, on the one overdue thing you opened.
+                if let it, model.isOverdue(it) {
+                    Image(Mascot.uhOh).resizable().scaledToFit().frame(width: 40, height: 40).accessibilityHidden(true)
+                }
+            }
+            .padding(.top, 10)
             if let g = gradeItem, g.earned != nil || !g.comment.isEmpty {
-                Theme.divider.frame(height: 1).padding(.vertical, 12)
+                Theme.divider.frame(height: 1).padding(.vertical, 10)
                 gradeRow(g)
             }
         }
         .padding(16)
+        .padding(.top, 4)
         .card()
+        // The class colour across the top edge, like the band on a library card; the stamp sits on it.
+        .overlay(alignment: .top) {
+            if section != nil {
+                model.classColor(section).frame(height: 5)
+                    .clipShape(UnevenRoundedRectangle(topLeadingRadius: Theme.Radius.card, topTrailingRadius: Theme.Radius.card, style: .continuous))
+            }
+        }
         .overlay(alignment: .topTrailing) {
-            if !typeSize.isAccessibilitySize, let s { SlammingStamp(stamp: s).offset(x: -4, y: -30) }
+            if !typeSize.isAccessibilitySize, let s {
+                SlammingStamp(stamp: s).offset(x: -4, y: -30)
+                    .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { stampWidth = $0 }
+            }
         }
         .padding(.top, typeSize.isAccessibilitySize ? 0 : 22)
+    }
+
+    private let placeWidth: CGFloat = 116
+
+    /// Where it's turned in, in two words.
+    private func place(_ k: Kind) -> String {
+        switch k {
+        case .dropbox: return "Dropbox"
+        case .outside(let url?): return url.host?.replacingOccurrences(of: "www.", with: "") ?? "Lab site"
+        case .outside(nil): return "Off Schoology"
+        case .quiz: return "On Schoology"
+        case .google: return "Google"
+        case .unknown: return "Checking…"
+        }
     }
 
     /// "Today, 11:59 pm · in 2 h 14 min": the countdown only in the last 12 hours of work
@@ -232,15 +280,34 @@ struct AssignmentView: View {
     @ViewBuilder
     private func statusLine(_ k: Kind) -> some View {
         let (text, color) = statusWords(k)
-        VStack(alignment: .leading, spacing: 2) {
-            Text(text).font(Theme.subhead.weight(.semibold)).foregroundStyle(color)
-            if case .dropbox = k, let checkedAt, Date().timeIntervalSince(checkedAt) > 3600 {
-                Text("Checked \(Fmt.ago(checkedAt))").font(Theme.footnote).foregroundStyle(Theme.secondary)
+        VStack(alignment: .leading, spacing: 3) {
+            Label(text, systemImage: statusIcon(k)).font(Theme.subhead.weight(.semibold)).foregroundStyle(color)
+            if let why = statusNote(k) {
+                Text(why).font(Theme.footnote).foregroundStyle(Theme.secondary)
             }
-            // Kept: without it a student would trust a status Dewey can't see.
-            if case .google = k {
-                Text("Schoology doesn't tell Dewey if it's turned in.").font(Theme.footnote).foregroundStyle(Theme.secondary)
-            }
+        }
+    }
+
+    private func statusIcon(_ k: Kind) -> String {
+        switch k {
+        case .dropbox(let done): return done ? "checkmark.circle.fill" : "xmark.circle"
+        case .outside: return it?.turnedIn == true ? "checkmark.circle.fill" : "arrow.up.right.square"
+        case .quiz: return a?.quiz?.state == "submitted" ? "checkmark.circle.fill" : a?.quiz?.state == "in_progress" ? "clock" : "list.bullet.clipboard"
+        case .google: return "doc.richtext"
+        case .unknown: return "hourglass"
+        }
+    }
+
+    /// The why under the status: how Dewey knows, or why it can't.
+    private func statusNote(_ k: Kind) -> String? {
+        switch k {
+        case .dropbox: return checkedAt.map { "Checked \(Fmt.ago($0))" }
+        case .outside(let url?): return "This class takes it on its own site (\(url.host?.replacingOccurrences(of: "www.", with: "") ?? "")). Schoology can't see it."
+        case .outside(nil): return it?.turnedIn == true ? nil : "No Schoology dropbox. Hand it in the way your teacher asked, then mark it turned in."
+        case .quiz: return a?.quiz?.state == "in_progress" ? "Started on Schoology but not turned in." : nil
+        // Kept: without it a student would trust a status Dewey can't see.
+        case .google: return "Turned in inside Schoology's Google frame. Schoology never tells Dewey whether you did, so check it there."
+        case .unknown: return nil
         }
     }
 
@@ -257,8 +324,8 @@ struct AssignmentView: View {
             return (["Not submitted on Schoology", yours].compactMap { $0 }.joined(separator: " · "), owedColor)
         case .outside(let url):
             if mark == .turnedIn { return ("Turned in · marked by you", Theme.good) }
-            let whereTo = url?.host.map { "on " + $0.replacingOccurrences(of: "www.", with: "") } ?? "the way your teacher asked"
-            return (mark == .done ? "Done · hand it in \(whereTo)" : "Hand it in \(whereTo)", owedColor)
+            // Where it goes is in the TURN IN column; the note under this says how.
+            return (mark == .done ? "Done · not turned in yet" : "Not turned in yet", owedColor)
         case .quiz:
             switch a?.quiz?.state {
             case "submitted": return ("Submitted on Schoology", Theme.good)
@@ -407,9 +474,12 @@ struct AssignmentView: View {
     @ViewBuilder
     private func instructions(_ a: Assignment) -> some View {
         let md = (a.instructionsMd ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 12) {
+            if !md.isEmpty || !a.attachments.isEmpty {
+                Text("Instructions").font(Theme.headline).accessibilityAddTraits(.isHeader)
+            }
             if !md.isEmpty {
-                // Body size, unboxed, no heading: the reading is the page.
+                // Body size, unboxed: the reading is the page.
                 MarkdownText(md: md, font: Theme.body) { url in LinkOpener.open(url) { sheet = $0 } }
                     .lineSpacing(3)
             } else if a.attachments.isEmpty {

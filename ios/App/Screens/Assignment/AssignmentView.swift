@@ -113,12 +113,16 @@ struct AssignmentView: View {
 
     // ── Header ───────────────────────────────────────────────────────────
 
-    private var titleBlock: some View {
+    private var titleBlock: some View { titleBlock(underStamp: false) }
+
+    /// `underStamp`: the stamp hangs over the card's top right, so the class line stops short of it.
+    private func titleBlock(underStamp: Bool) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             // A library catalog line: class · period · term · category, in the class colour.
             if let c = model.course(section) {
                 Text(catalogLine(c)).font(Theme.footnote.weight(.semibold))
                     .foregroundStyle(model.classColor(c.sectionId)).maxLines(2)
+                    .padding(.trailing, underStamp ? 118 : 0)
             }
             Text(a?.title ?? it?.title ?? "Assignment").font(Theme.displaySmall)
             HStack(spacing: 8) {
@@ -186,7 +190,7 @@ struct AssignmentView: View {
         let s = stamp(k, due: due)
         VStack(alignment: .leading, spacing: 0) {
             if typeSize.isAccessibilitySize, let s { SlammingStamp(stamp: s).padding(.bottom, Theme.Space.m) }
-            titleBlock
+            titleBlock(underStamp: s != nil && !typeSize.isAccessibilitySize)
             Theme.divider.frame(height: 1).padding(.vertical, 12)
             // Where it's turned in is part of the status line ("Not submitted on Schoology",
             // "Hand it in on lab.site"), so the old place column is gone.
@@ -200,9 +204,9 @@ struct AssignmentView: View {
         .padding(16)
         .card()
         .overlay(alignment: .topTrailing) {
-            if !typeSize.isAccessibilitySize, let s { SlammingStamp(stamp: s).offset(x: -4, y: -44) }
+            if !typeSize.isAccessibilitySize, let s { SlammingStamp(stamp: s).offset(x: -4, y: -30) }
         }
-        .padding(.top, typeSize.isAccessibilitySize ? 0 : 36)
+        .padding(.top, typeSize.isAccessibilitySize ? 0 : 22)
     }
 
     /// "Today, 11:59 pm · in 2 h 14 min": the countdown only in the last 12 hours of work
@@ -517,8 +521,14 @@ struct MarkdownText: View {
     var font: Font = Theme.subhead
     let onLink: (URL) -> Void
     var body: some View {
-        let attr = (try? AttributedString(markdown: md, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(md)
-        Text(attr)
+        var attr = (try? AttributedString(markdown: md, options: .init(interpretedSyntax: .inlineOnlyPreservingWhitespace))) ?? AttributedString(md)
+        // Links look like links (accent, underlined): a lab site's link is also what the
+        // main action opens, so the student can see where "Turn in on …" came from.
+        for run in attr.runs where run.link != nil {
+            attr[run.range].foregroundColor = Theme.accent
+            attr[run.range].underlineStyle = .single
+        }
+        return Text(attr)
             .font(font)
             .foregroundStyle(Theme.text)
             .textSelection(.enabled)

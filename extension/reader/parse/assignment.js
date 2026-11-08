@@ -14,7 +14,7 @@ export function parseAssignment(doc, client, finalUrl = '') {
     const url = client.abs(href);
     if (seen.has(url)) continue;
     seen.add(url);
-    attachments.push({ href, url, title: cleanText(a) || 'attachment' });
+    attachments.push({ href, url, title: fileTitle(cleanText(a)) || 'attachment' });
   }
   const dropbox = doc.querySelector('a[href*="/dropbox/view/"]');
   const tabs = [...doc.querySelectorAll('ul.tabs a[href]')].map((a) => ({ text: cleanText(a), href: a.getAttribute('href') }));
@@ -80,4 +80,23 @@ export function findSubmissionSources(html, client) {
 
 export function submissionId(url) {
   return (url.match(/\/submission\/(\d+)/) || [])[1] || url;
+}
+
+/**
+ * Schoology puts the uploaded file's name inside the link after its title, so the text
+ * reads "String Craft Classwork.pdfString_Craft_Classwork.pdf". Keep the title when the
+ * rest is the same name (underscores for spaces); leave anything else alone.
+ */
+export function fileTitle(text) {
+  const t = text || '';
+  const norm = (x) => x.replace(/[_\s]+/g, ' ').trim().toLowerCase();
+  // Try each place the first name could end (".pdf", ".docx", …) and keep it when the rest repeats it.
+  for (let dot = t.indexOf('.'); dot > 0; dot = t.indexOf('.', dot + 1)) {
+    for (let len = 2; len <= 5; len++) {
+      const end = dot + 1 + len;
+      if (end >= t.length || !/^[a-z0-9]+$/i.test(t.slice(dot + 1, end))) continue;
+      if (norm(t.slice(end)) === norm(t.slice(0, end))) return t.slice(0, end);
+    }
+  }
+  return t;
 }

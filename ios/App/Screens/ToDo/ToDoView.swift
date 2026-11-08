@@ -112,23 +112,37 @@ struct ToDoView: View {
                     guard set != showMonth else { return }
                     if set { shownMonth = MonthGrid.start(of: now) }
                     // Everyday controls: no bounce (Apple HIG; NN/g ~200–300 ms for a view change).
-                    withAnimation(.snappy(duration: 0.3)) { showMonth = set; filter = nil }
+                    // No withAnimation here: inside the List it would also animate the row's
+                    // resize, and the two fought (the whole page jumped). The row animates itself.
+                    showMonth = set; filter = nil
                 }, swipe: { n in
                     monthForward = n > 0
                     withAnimation(.snappy(duration: 0.3)) {
                         shownMonth = Calendar.current.date(byAdding: .month, value: n, to: shownMonth)!
                     }
                 }) {
-                    SwiftUI.Group {
+                    // One at a time, top-aligned and clipped: the month comes down from under the
+                    // week row like a blind (the same way the pull goes) and goes back up; the
+                    // week fades. They never stack, so the list below moves once, smoothly.
+                    ZStack(alignment: .top) {
                         if showMonth {
                             MonthGrid(items: open, now: now, selected: $filter, month: $shownMonth, forward: $monthForward)
                                 .coachTarget("todo.month")
+                                // Closing, it just fades out fast: sliding up, its header showed over
+                                // the title for a frame (the row shrinks before the clip catches up).
+                                .transition(.asymmetric(
+                                    insertion: .move(edge: .top).combined(with: .opacity),
+                                    removal: .opacity.animation(.easeOut(duration: 0.12))))
                         } else {
+                            // Out fast, in a beat late: the two never overlap.
                             WeekStrip(items: open, now: now, selected: $filter)
+                                .transition(.asymmetric(
+                                    insertion: .opacity.animation(.easeIn(duration: 0.2).delay(0.14)),
+                                    removal: .opacity.animation(.easeOut(duration: 0.1))))
                         }
                     }
-                    .transition(.asymmetric(insertion: .opacity.combined(with: .scale(scale: 0.94, anchor: .top)),
-                                            removal: .opacity))
+                    .clipped()
+                    .animation(.smooth(duration: 0.38), value: showMonth)
                 }
                 // The strip and its chevron: the tour's month step points here.
                 .coachTarget("todo.calendar")
@@ -775,11 +789,12 @@ private struct CalendarPull<Content: View>: View {
         let toward = open ? pull < 0 : pull > 0
         VStack(spacing: 0) {
             content.offset(y: pull * 0.15)
-            FlatChevron()
+            // It bends rather than spins: the V flattens to a line and comes out the other way.
+            FlatChevron(bend: (open ? -1 : 1) + (toward ? (open ? 2 : -2) * progress : 0))
                 .stroke(toward && progress > 0.5 ? Theme.accent : Theme.tertiary,
                         style: StrokeStyle(lineWidth: 3, lineCap: .round, lineJoin: .round))
                 .frame(width: 40, height: 6)
-                .rotationEffect(.degrees((open ? 180 : 0) + (toward ? (open ? -180 : 180) * progress : 0)))
+                .animation(.smooth(duration: 0.3), value: open)
                 .offset(y: pull * 0.35)
                 .frame(maxWidth: .infinity)
                 .frame(height: 8)
@@ -814,12 +829,16 @@ private struct CalendarPull<Content: View>: View {
 }
 
 /// A wide, shallow chevron: the full width of the old one, a third of its height.
+/// `bend` 1 points down, -1 points up, 0 is a flat line.
 private struct FlatChevron: Shape {
+    var bend: CGFloat
+    var animatableData: CGFloat { get { bend } set { bend = newValue } }
     func path(in r: CGRect) -> Path {
         var p = Path()
-        p.move(to: CGPoint(x: r.minX, y: r.minY))
-        p.addLine(to: CGPoint(x: r.midX, y: r.maxY))
-        p.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+        let h = r.height / 2 * bend
+        p.move(to: CGPoint(x: r.minX, y: r.midY - h))
+        p.addLine(to: CGPoint(x: r.midX, y: r.midY + h))
+        p.addLine(to: CGPoint(x: r.maxX, y: r.midY - h))
         return p
     }
 }

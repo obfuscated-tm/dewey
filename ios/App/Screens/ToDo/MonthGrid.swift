@@ -46,13 +46,17 @@ struct MonthGrid: View {
             }
             .id(month)
             .transition(.push(from: forward ? .trailing : .leading))
+            // Clipped, so the outgoing month doesn't slide over the list while it leaves.
+            .frame(maxWidth: .infinity, alignment: .top)
+            .clipped()
         }
         .padding(.horizontal, Theme.Space.xs)
     }
 
     private func step(_ n: Int) {
         forward = n > 0
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) { month = cal.date(byAdding: .month, value: n, to: month)! }
+        // The same slide as swiping sideways (ToDoView): one motion for one action.
+        withAnimation(.snappy(duration: 0.3)) { month = cal.date(byAdding: .month, value: n, to: month)! }
     }
 
     private var weekdays: [String] {

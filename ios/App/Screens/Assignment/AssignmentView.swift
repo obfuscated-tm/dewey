@@ -128,20 +128,9 @@ struct AssignmentView: View {
             }
             Text(a?.title ?? it?.title ?? "Assignment").font(Theme.displaySmall)
             HStack(spacing: 8) {
-                // The type is a guess from Schoology's words, so it's one tap to fix, right where it shows.
+                // The type is a guess from Schoology's words, so all four show and one tap fixes it.
                 if let it {
-                    Menu {
-                        Picker(model.neoPlan.connected ? "In neo-plan as" : "Type", selection: Binding(get: { it.type }, set: { model.setType(it, $0) })) {
-                            ForEach(ItemType.allCases, id: \.self) { Text($0.name).tag($0) }
-                        }
-                        .pickerStyle(.inline)
-                    } label: {
-                        TypeTag(type: it.type, changeable: true).contentShape(Rectangle()).padding(.vertical, 6)
-                    }
-                    .padding(.vertical, -6)
-                    .sensoryFeedback(.selection, trigger: it.type)
-                    .accessibilityLabel("Type: \(it.type.name)")
-                    .accessibilityHint("Changes what kind of work this is")
+                    TypeTags(current: it.type) { t in withAnimation(.snappy(duration: 0.2)) { model.setType(it, t) } }
                 }
                 // Once the assignment loads, the due date moves onto the checkout card.
                 if a == nil {

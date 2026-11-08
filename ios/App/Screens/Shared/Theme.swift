@@ -214,19 +214,47 @@ struct TypeBar: View {
 /// HW / TEST / TASK / CW, inline.
 struct TypeTag: View {
     let type: ItemType
-    /// A chevron: tapping the tag changes the type (the Assignment page).
-    var changeable = false
     var body: some View {
-        HStack(spacing: 3) {
-            Text(type.label)
-            if changeable { Image(systemName: "chevron.up.chevron.down").font(.system(size: 8, weight: .bold)) }
-        }
+        Text(type.label)
             .font(Theme.caption.weight(.semibold))
             .tracking(0.4)
             .padding(.horizontal, 6).padding(.vertical, 2)
             .foregroundStyle(type == .exam ? Theme.card : Theme.secondary)
             .background(type == .exam ? Theme.text : Theme.tagSoft,
                         in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+    }
+}
+
+/// The type as a row of all four tags (Assignment page): the current one is the normal tag,
+/// the others outlined; one tap switches. Dewey guesses the type from Schoology's words and
+/// can be wrong, so fixing it is visible and one tap (a menu on the tag was "clunky and hidden").
+struct TypeTags: View {
+    let current: ItemType
+    let pick: (ItemType) -> Void
+    var body: some View {
+        HStack(spacing: 6) {
+            ForEach(ItemType.allCases, id: \.self) { t in
+                Button { pick(t) } label: {
+                    // The picked one solid ink, the rest outlined: which is set reads at a glance.
+                    Text(t.label)
+                        .font(Theme.caption.weight(.semibold)).tracking(0.4)
+                        .padding(.horizontal, 7).padding(.vertical, 3)
+                        .foregroundStyle(t == current ? Theme.card : Theme.secondary)
+                        .background(t == current ? Theme.text : .clear,
+                                    in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+                        .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous)
+                            .strokeBorder(t == current ? .clear : Theme.divider, lineWidth: 1))
+                    .padding(.vertical, 10).contentShape(Rectangle())
+                }
+                .buttonStyle(PressStyle())
+                .padding(.vertical, -10)
+                .accessibilityLabel(t.name)
+                .accessibilityAddTraits(t == current ? .isSelected : [])
+            }
+        }
+        .sensoryFeedback(.selection, trigger: current)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Type")
     }
 }
 

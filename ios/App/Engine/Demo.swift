@@ -225,8 +225,12 @@ enum Demo {
             "id": id, "title": title, "type": e?.quiz == true ? "quiz" : "assignment", "attachments": [["url": file("\(title) handout.pdf"), "title": "\(title) handout.pdf"]],
             "instructionsMd": "Work through the handout, then hand in **one PDF** with your answers.\n\nQuestions? Come to tutorial on Wednesday.",
         ]
+        // One class that turns in on its own site, for the Turn in row and its ⓘ.
+        if id == "9502" {
+            a["instructionsMd"] = "Read the [mole ratios notes](https://www.khanacademy.org/science/chemistry/chemical-reactions-stoichiome), then do the worksheet on [the lab site](https://chemlab.example.org/unit2/stoich)."
+        }
         if let e { a["due"] = Fmt.isoPlain.string(from: at(e.day, e.hour, e.minute)) }
-        if let s = e?.status, s != "no_dropbox" { a["submission"] = ["state": s] }
+        if let s = e?.status { a["submission"] = ["state": s] }
         return a
     }
 

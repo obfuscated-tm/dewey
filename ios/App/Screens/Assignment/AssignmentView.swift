@@ -1,9 +1,11 @@
 import SwiftUI
+import TipKit
 
 /// 1b · One assignment: the checkout card (class band with the stamp on it, catalog line,
-/// title, type, a DATE DUE / TURN IN slip, the status with why, the grade), then
-/// Instructions, then the bottom bar: your circle + the main action. What-if, the Lock
-/// Screen countdown and Open in Schoology live in the ⋯ menu (2026-11-07).
+/// title, then a ruled slip read top to bottom: Status, Due, Turn in, Grade with What if,
+/// Type), then Instructions, then the bottom bar: your circle + the main action. The Lock
+/// Screen countdown is the ⏱ in the top bar; Open in Schoology is in ⋯ (2026-11-08).
+/// Marking it changes words only: every row is always there, so nothing on the page moves.
 struct AssignmentView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.dismiss) private var dismiss
@@ -17,7 +19,9 @@ struct AssignmentView: View {
     @State private var file: FileTarget?
     @State private var whatIf = false
     @State private var counting = false
-    @State private var countdownError: String?
+    /// The ⓘ on the Turn in row: why Dewey can't see an off-Schoology turn-in.
+    @State private var turnInHint = false
+    private let countdownTip = CountdownTip()
     /// The stamp's width, so the catalog line stops short of it whatever it says.
     @State private var stampWidth: CGFloat = 120
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -39,7 +43,6 @@ struct AssignmentView: View {
             VStack(alignment: .leading, spacing: 20) {
                 if let a {
                     header(a)
-                    yours(a)
                     instructions(a)
                     if case .quiz = kind(a), let q = a.quiz { quizDetails(q) }
                 } else if let error {
@@ -69,12 +72,15 @@ struct AssignmentView: View {
         .background(Theme.background)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .primaryAction) { moreMenu }
+            ToolbarItemGroup(placement: .primaryAction) {
+                if a != nil, let it { countdownButton(it) }
+                moreMenu
+            }
         }
         .safeAreaInset(edge: .bottom) { bottomBar }
         .sheet(item: $sheet) { SchoologySheet(target: $0) }
         .sheet(item: $file) { FileViewer(target: $0) }
-        .sheet(isPresented: $whatIf) { WhatIfSheet(itemId: id, sectionId: section) }
+        .task { counting = WidgetBridge.activity(for: id) != nil }
         .task { await load() }
         .onChange(of: model.revision) { _, _ in
             if let s = it?.statusState { status = SubmissionStatus(state: s, late: it?.statusLate); checkedAt = it?.statusCheckedAt }
@@ -89,7 +95,7 @@ struct AssignmentView: View {
             error = nil
             if let it {
                 // Save only real changes: a save redraws the To Do list under this screen.
-                let ext = got.type == "external_tool", lab = labLink(got)?.absoluteString
+                let ext = got.type == "external_tool", lab = turnInLink(got)?.absoluteString
                 var changed = it.external != ext || it.labURL != lab
                 it.external = ext
                 it.labURL = lab
@@ -128,18 +134,17 @@ struct AssignmentView: View {
                     .padding(.trailing, underStamp ? max(0, stampWidth - 2) : 0)
             }
             Text(a?.title ?? it?.title ?? "Assignment").font(Theme.displaySmall)
-            HStack(spacing: 8) {
-                // The type is a guess from Schoology's words, so all four show and one tap fixes it.
-                if let it {
-                    TypeTags(current: it.type) { t in withAnimation(.snappy(duration: 0.2)) { model.setType(it, t) } }
-                }
-                // Once the assignment loads, the due date moves onto the checkout card.
-                if a == nil {
-                    let due = it?.due
-                    Text(due.map { "Due " + Fmt.dayTime.string(from: $0) } ?? "No due date").font(Theme.footnote.monospacedDigit())
+            // Until the assignment loads (or if it can't): type, due and points here. After,
+            // they're rows on the slip.
+            if a == nil {
+                HStack(spacing: 8) {
+                    if let it {
+                        TypeTags(current: it.type) { t in withAnimation(.snappy(duration: 0.2)) { model.setType(it, t) } }
+                    }
+                    Text(it?.due.map { "Due " + Fmt.dayTime.string(from: $0) } ?? "No due date").font(Theme.footnote.monospacedDigit())
                         .foregroundStyle(Theme.secondary)
+                    if let g = gradeItem, let p = g.possible { Text("\(Fmt.num(p)) points").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary) }
                 }
-                if let g = gradeItem, let p = g.possible { Text("\(Fmt.num(p)) points").font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary) }
             }
         }
     }
@@ -168,14 +173,14 @@ struct AssignmentView: View {
         switch state {
         case "submitted": return .dropbox(true)
         case "not_submitted": return .dropbox(false)
-        case "no_dropbox": return .outside(labLink(a))
+        case "no_dropbox": return .outside(turnInLink(a))
         default: return .unknown
         }
     }
 
-    /// The header: class and title, the big tilted stamp overlapping its top (due, N days
-    /// late, submitted, turned in; exactly as before, 2026-11-07), the due line (with a live
-    /// countdown in its last 12 hours), where it's turned in, one status line, and the grade.
+    /// The header: the stamp on the class band (due, N days late, submitted, turned in), the
+    /// catalog line and title, then the slip. Its rows go in the order a student asks:
+    /// Is it done? When? Where does it go? What did I get? What kind is it?
     @ViewBuilder
     private func header(_ a: Assignment) -> some View {
         let k = kind(a)
@@ -184,35 +189,28 @@ struct AssignmentView: View {
         VStack(alignment: .leading, spacing: 0) {
             if typeSize.isAccessibilitySize, let s { SlammingStamp(stamp: s).padding(.bottom, Theme.Space.m) }
             titleBlock(underStamp: s != nil && !typeSize.isAccessibilitySize)
-            // A library date-due slip: ruled columns for when and where, then what Schoology says.
-            AdaptiveStack(spacing: Theme.Space.s) {
-                Text("DATE DUE").frame(maxWidth: .infinity, alignment: .leading)
-                if !typeSize.isAccessibilitySize { Text("TURN IN").frame(width: placeWidth, alignment: .leading) }
-            }
-            .font(Theme.caption.weight(.semibold)).tracking(0.6).foregroundStyle(Theme.text)
-            .padding(.top, 14).padding(.bottom, 5)
-            .overlay(alignment: .bottom) { Theme.text.frame(height: 1.5) }
-            .accessibilityHidden(true)
-            AdaptiveStack(spacing: Theme.Space.s) {
-                dueLine(due).frame(maxWidth: .infinity, alignment: .leading)
-                Text(place(k)).font(Theme.subhead).foregroundStyle(Theme.secondary)
-                    .frame(width: typeSize.isAccessibilitySize ? nil : placeWidth, alignment: .leading)
-            }
-            .padding(.vertical, 8)
-            .overlay(alignment: .bottom) { Theme.divider.frame(height: 1) }
-            .accessibilityElement(children: .combine)
-            HStack(alignment: .top, spacing: 10) {
-                statusLine(k).frame(maxWidth: .infinity, alignment: .leading)
-                // Dewey, a little worried: only here, on the one overdue thing you opened.
-                if let it, model.isOverdue(it) {
-                    Image(Mascot.uhOh).resizable().scaledToFit().frame(width: 40, height: 40).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 0) {
+                slipRow("Status") {
+                    HStack(alignment: .top, spacing: 10) {
+                        statusLine(k).frame(maxWidth: .infinity, alignment: .leading)
+                        // Dewey, a little worried: only here, on the one overdue thing you opened.
+                        if let it, model.isOverdue(it) {
+                            Image(Mascot.uhOh).resizable().scaledToFit().frame(width: 36, height: 36).accessibilityHidden(true)
+                        }
+                    }
+                }
+                slipRow("Due") { dueLine(due) }
+                slipRow("Turn in") { turnInValue(k, a) }
+                slipRow("Grade", last: it == nil) { gradeValue }
+                if let it {
+                    // The type is a guess from Schoology's words, so all four show and one tap fixes it.
+                    slipRow("Type", last: true) {
+                        TypeTags(current: it.type) { t in withAnimation(.snappy(duration: 0.2)) { model.setType(it, t) } }
+                    }
                 }
             }
-            .padding(.top, 10)
-            if let g = gradeItem, g.earned != nil || !g.comment.isEmpty {
-                Theme.divider.frame(height: 1).padding(.vertical, 10)
-                gradeRow(g)
-            }
+            .padding(.top, 12)
+            .overlay(alignment: .top) { Theme.text.frame(height: 1.5).padding(.top, 12) }
         }
         .padding(16)
         .padding(.top, 4)
@@ -233,13 +231,28 @@ struct AssignmentView: View {
         .padding(.top, typeSize.isAccessibilitySize ? 0 : 22)
     }
 
-    private let placeWidth: CGFloat = 116
+    /// One ruled row of the slip: a quiet label column, the value beside it (stacked at
+    /// accessibility sizes).
+    private func slipRow<V: View>(_ label: String, last: Bool = false, @ViewBuilder value: () -> V) -> some View {
+        let v = value()
+        return AdaptiveStack(spacing: 10) {
+            Text(label).font(Theme.caption.weight(.medium)).foregroundStyle(Theme.secondary)
+                .frame(width: typeSize.isAccessibilitySize ? nil : 64, alignment: .leading)
+                .accessibilityHidden(true)
+            v.frame(maxWidth: .infinity, alignment: .leading)
+                .accessibilityElement(children: .contain)
+                .accessibilityLabel(label)
+        }
+        .padding(.vertical, 10)
+        .padding(.bottom, last ? -6 : 0)
+        .overlay(alignment: .bottom) { if !last { Theme.divider.frame(height: 1) } }
+    }
 
     /// Where it's turned in, in two words.
     private func place(_ k: Kind) -> String {
         switch k {
         case .dropbox: return "Dropbox"
-        case .outside(let url?): return url.host?.replacingOccurrences(of: "www.", with: "") ?? "Lab site"
+        case .outside(let url?): return TurnInSite.host(url) ?? "Lab site"
         case .outside(nil): return "Off Schoology"
         case .quiz: return "On Schoology"
         case .google: return "Google"
@@ -247,35 +260,86 @@ struct AssignmentView: View {
         }
     }
 
-    /// "Today, 11:59 pm · in 2 h 14 min": the countdown only in the last 12 hours of work
+    /// The Turn in row. Off Schoology, an ⓘ says why Dewey can't see it (collapsed, so it
+    /// doesn't nag); holding a lab site lets you pick this class's site from the links.
+    @ViewBuilder
+    private func turnInValue(_ k: Kind, _ a: Assignment) -> some View {
+        let off: String? = {
+            switch k {
+            case .outside(let u): return u != nil ? "Dewey can't check this site. Tap your circle once it's in." : "No Schoology dropbox. Tap your circle once it's in."
+            case .google: return "Schoology never tells Dewey whether you turned it in, so check it there, then tap your circle."
+            default: return nil
+            }
+        }()
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text(place(k)).font(Theme.subhead).foregroundStyle(Theme.text)
+                if off != nil {
+                    Button { withAnimation(.snappy(duration: 0.2)) { turnInHint.toggle() } } label: {
+                        Image(systemName: turnInHint ? "info.circle.fill" : "info.circle")
+                            .font(Theme.subhead).foregroundStyle(Theme.secondary)
+                            .frame(width: 44, height: 32).contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.vertical, -6).padding(.leading, -12)
+                    .accessibilityLabel("How Dewey knows it's turned in")
+                    .accessibilityValue(turnInHint ? "Shown" : "Hidden")
+                }
+            }
+            if let off, turnInHint {
+                Text(off).font(Theme.footnote).foregroundStyle(Theme.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .transition(.opacity)
+            }
+        }
+        .contextMenu { if case .outside(_?) = k { turnInSiteMenu(a) } }
+    }
+
+    /// Hold the Turn in row: the links in these instructions, to say which one is this
+    /// class's turn-in site, and Forget.
+    @ViewBuilder
+    private func turnInSiteMenu(_ a: Assignment) -> some View {
+        let current = turnInLink(a).flatMap(TurnInSite.host)
+        if let s = section {
+            ForEach(TurnInSite.hosts(a.instructionsMd), id: \.self) { h in
+                Button { model.setTurnInSite(s, "https://\(h)") } label: {
+                    Label("Turn in on \(h)", systemImage: h == current ? "checkmark" : "")
+                }
+            }
+            if model.turnInSite(s) != nil {
+                Button(role: .destructive) { model.setTurnInSite(s, nil) } label: { Label("Forget this class's site", systemImage: "xmark") }
+            }
+        }
+    }
+
+    /// "Sun Nov 1, 11:59 pm", then "5 h 12 min left" under it in the last 12 hours of work
     /// still owed, ticking once a minute (no seconds: it's seen every time the page opens).
     private func dueLine(_ due: Date?) -> some View {
         TimelineView(.everyMinute) { ctx in
-            let left = countdown(due, now: ctx.date)
-            (Text(Fmt.due(due, now: ctx.date)) + Text(left.map { " · " + $0 } ?? ""))
-                .font(Theme.subhead.weight(.semibold).monospacedDigit())
-                .foregroundStyle(Theme.text)
-                .contentTransition(.numericText(countsDown: true))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(Fmt.due(due, now: ctx.date))
+                    .font(Theme.subhead.weight(.semibold).monospacedDigit())
+                    .foregroundStyle(Theme.text)
+                if let left = countdown(due, now: ctx.date) {
+                    Text(left).font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary)
+                        .contentTransition(.numericText(countsDown: true))
+                }
+            }
         }
     }
 
     private func countdown(_ due: Date?, now: Date) -> String? {
         guard let due, let it, model.isOwed(it), due > now, due.timeIntervalSince(now) <= 12 * 3600 else { return nil }
         let m = Int((due.timeIntervalSince(now) / 60).rounded(.up))
-        return m >= 60 ? "in \(m / 60) h \(m % 60) min" : "in \(m) min"
+        return m >= 60 ? "\(m / 60) h \(m % 60) min left" : "\(m) min left"
     }
 
-    /// One line for Schoology's fact and your own mark together ("Not submitted on Schoology ·
-    /// you marked it done"). Red only while it's late.
-    @ViewBuilder
+    /// One line for Schoology's fact and your own mark together. Red only while it's late.
+    /// No notes under it: the line changes words when you mark it, and nothing else moves.
     private func statusLine(_ k: Kind) -> some View {
         let (text, color) = statusWords(k)
-        VStack(alignment: .leading, spacing: 3) {
-            Label(text, systemImage: statusIcon(k)).font(Theme.subhead.weight(.semibold)).foregroundStyle(color)
-            if let why = statusNote(k) {
-                Text(why).font(Theme.footnote).foregroundStyle(Theme.secondary)
-            }
-        }
+        return Label(text, systemImage: statusIcon(k)).font(Theme.subhead.weight(.semibold)).foregroundStyle(color)
+            .contentTransition(.interpolate)
     }
 
     private func statusIcon(_ k: Kind) -> String {
@@ -285,19 +349,6 @@ struct AssignmentView: View {
         case .quiz: return a?.quiz?.state == "submitted" ? "checkmark.circle.fill" : a?.quiz?.state == "in_progress" ? "clock" : "list.bullet.clipboard"
         case .google: return "doc.richtext"
         case .unknown: return "hourglass"
-        }
-    }
-
-    /// The why under the status: how Dewey knows, or why it can't.
-    private func statusNote(_ k: Kind) -> String? {
-        switch k {
-        case .dropbox: return checkedAt.map { "Checked \(Fmt.ago($0))" }
-        case .outside(let url?): return "This class takes it on its own site (\(url.host?.replacingOccurrences(of: "www.", with: "") ?? "")). Schoology can't see it."
-        case .outside(nil): return it?.turnedIn == true ? nil : "No Schoology dropbox. Hand it in the way your teacher asked, then mark it turned in."
-        case .quiz: return a?.quiz?.state == "in_progress" ? "Started on Schoology but not turned in." : nil
-        // Kept: without it a student would trust a status Dewey can't see.
-        case .google: return "Turned in inside Schoology's Google frame. Schoology never tells Dewey whether you did, so check it there."
-        case .unknown: return nil
         }
     }
 
@@ -329,23 +380,53 @@ struct AssignmentView: View {
         }
     }
 
-    private func gradeRow(_ g: CourseGrade.Item) -> some View {
-        NavigationLink {
-            GradeDetailView(sectionId: section ?? "", itemId: id)
-        } label: {
-            HStack(alignment: .firstTextBaseline) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Grade  ").font(Theme.subhead).foregroundStyle(Theme.secondary)
-                        + Text(g.grade).font(Theme.subhead.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.text)
-                    if !g.comment.isEmpty { Text(g.comment).font(Theme.footnote).foregroundStyle(Theme.secondary).maxLines(2) }
+    /// The Grade row. Graded: the grade, its effect on the class, › to the grade page.
+    /// Not yet: "Not graded · 20 pts" and a small What if? that opens one line in place.
+    @ViewBuilder
+    private var gradeValue: some View {
+        if let g = gradeItem, g.earned != nil || !g.comment.isEmpty {
+            NavigationLink {
+                GradeDetailView(sectionId: section ?? "", itemId: id)
+            } label: {
+                HStack(alignment: .firstTextBaseline) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(g.grade).font(Theme.subhead.weight(.semibold).monospacedDigit()).foregroundStyle(Theme.text)
+                        if !g.comment.isEmpty { Text(g.comment).font(Theme.footnote).foregroundStyle(Theme.secondary).maxLines(2) }
+                    }
+                    Spacer()
+                    if let i = g.impact { Text(Fmt.signed(i)).font(Theme.footnote.monospacedDigit()).foregroundStyle(Fmt.impactColor(i)) }
+                    Image(systemName: "chevron.right").font(Theme.footnote).foregroundStyle(Theme.tertiary)
                 }
-                Spacer()
-                if let i = g.impact { Text(Fmt.signed(i)).font(Theme.footnote.monospacedDigit()).foregroundStyle(Fmt.impactColor(i)) }
-                Image(systemName: "chevron.right").font(Theme.footnote).foregroundStyle(Theme.tertiary)
+                .contentShape(Rectangle())
             }
-            .contentShape(Rectangle())
+            .buttonStyle(.plain)
+        } else {
+            let possible = gradeItem?.possible
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .center, spacing: 8) {
+                    Text(possible.map { "Not graded · \(Fmt.num($0)) pts" } ?? "Not graded")
+                        .font(Theme.subhead.monospacedDigit()).foregroundStyle(Theme.secondary)
+                    Spacer(minLength: 0)
+                    // Schoology shows the points only once it's graded, so usually you type them.
+                    if gradeItem != nil {
+                        Button { withAnimation(.snappy(duration: 0.2)) { whatIf.toggle() } } label: {
+                            Text(whatIf ? "Close" : "What if?")
+                                .font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.text)
+                                .padding(.horizontal, 10).frame(minHeight: 30)
+                                .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous)
+                                    .strokeBorder(Theme.tertiary, style: StrokeStyle(lineWidth: 1.2, dash: whatIf ? [] : [4, 3])))
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(PressStyle())
+                        .padding(.vertical, -4)
+                        .accessibilityLabel(whatIf ? "Close what if" : "What if: see your class grade with a score")
+                    }
+                }
+                if whatIf, let s = section {
+                    WhatIfLine(itemId: id, sectionId: s, known: possible.flatMap { $0 > 0 ? $0 : nil }).transition(.opacity)
+                }
+            }
         }
-        .buttonStyle(.plain)
     }
 
     private func stamp(_ k: Kind, due: Date?) -> DueStamp.Stamp? {
@@ -373,7 +454,12 @@ struct AssignmentView: View {
         guard let a else { return nil }
         switch kind(a) {
         case .dropbox: return ("Submit on Schoology", true, { sheet = SheetTarget(url: pageURL, assignmentId: id) })
-        case .outside(let url?): return ("Turn in on \(url.host ?? "lab site")", true, { sheet = SheetTarget(url: url) })
+        case .outside(let url?):
+            // Opening it is how Dewey learns where this class turns in (see `TurnInSite`).
+            return ("Turn in on \(TurnInSite.host(url) ?? "lab site")", true, {
+                if let s = section, model.turnInSite(s) == nil, let h = TurnInSite.host(url) { model.setTurnInSite(s, "https://\(h)") }
+                sheet = SheetTarget(url: url)
+            })
         case .outside(nil):
             guard let it, !it.turnedIn else { return nil }
             return ("Mark turned in", false, { withAnimation(.snappy(duration: 0.2)) { model.setProgress(it, .turnedIn) } })
@@ -448,15 +534,10 @@ struct AssignmentView: View {
         }
     }
 
-    /// An outside submit page linked from the instructions (AP Bio's lab site).
-    private func labLink(_ a: Assignment) -> URL? {
-        guard let md = a.instructionsMd else { return nil }
-        for m in md.matches(of: /\]\((https?:\/\/[^)\s]+)\)/) {
-            guard let u = URL(string: String(m.1)), let h = u.host else { continue }
-            if h.hasSuffix("schoology.com") || h.hasSuffix("google.com") || h.hasSuffix("youtube.com") { continue }
-            return u
-        }
-        return nil
+    /// Where an off-Schoology assignment is turned in: this class's saved site if the
+    /// student picked or opened one, else a guess from the instructions' links.
+    private func turnInLink(_ a: Assignment) -> URL? {
+        TurnInSite.pick(instructionsMd: a.instructionsMd, saved: model.turnInSite(section))
     }
 
     // ── Instructions: the page ───────────────────────────────────────────
@@ -488,73 +569,32 @@ struct AssignmentView: View {
         .padding(.horizontal, 4)
     }
 
-    // ── Yours: what-if, the Lock Screen countdown, and what your mark means ──
+    // ── ⏱ Lock Screen countdown, in the top bar ──
 
-    /// Under the card, on the page (they hid in ⋯ and nobody found them, 2026-11-07):
-    /// What if I get __ / N? while ungraded, the Lock Screen countdown (or when it becomes
-    /// available), and what your circle means, since Schoology never sees it.
-    @ViewBuilder
-    private func yours(_ a: Assignment) -> some View {
-        if let it {
-            let points = gradeItem.flatMap { $0.earned == nil ? $0.possible : nil }
-            let window = WidgetBridge.countdownWindow(due: it.due)
-            let countdown = WidgetBridge.activitiesAllowed && (counting || (window != .none && !model.isFinished(it)))
-            VStack(alignment: .leading, spacing: 10) {
-                if points != nil || countdown {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 8) { tools(it, points: points, window: window, countdown: countdown) }
-                        VStack(alignment: .leading, spacing: 8) { tools(it, points: points, window: window, countdown: countdown) }
+    /// Always there so nothing shifts; usable in the last 12 hours of work still owed.
+    /// While it runs it shows the time left in teal. A one-time tip names it.
+    private func countdownButton(_ it: ItemState) -> some View {
+        let open = WidgetBridge.countdownWindow(due: it.due) == .open
+        let can = counting || (WidgetBridge.activitiesAllowed && open && !model.isFinished(it))
+        return Button {
+            countdownTip.invalidate(reason: .actionPerformed)
+            toggleCountdown(it)
+        } label: {
+            TimelineView(.everyMinute) { ctx in
+                HStack(spacing: 4) {
+                    Image(systemName: "timer")
+                    if counting, let d = it.due, d > ctx.date {
+                        let m = Int((d.timeIntervalSince(ctx.date) / 60).rounded(.up))
+                        Text(String(format: "%d:%02d", m / 60, m % 60)).font(Theme.subhead.weight(.semibold).monospacedDigit())
                     }
                 }
-                Text(it.submitted ? "Schoology also shows it submitted." : "Only you see your circle: Schoology never does. Turned in means you handed it in, on paper or another site.")
-                    .font(Theme.footnote).foregroundStyle(Theme.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.horizontal, 4)
-            .onAppear { counting = WidgetBridge.activity(for: id) != nil }
-        }
-    }
-
-    @ViewBuilder
-    private func tools(_ it: ItemState, points: Double?, window: WidgetBridge.CountdownWindow, countdown: Bool) -> some View {
-        if let p = points {
-            Button { whatIf = true } label: {
-                toolLabel("What if I get __ / \(Fmt.num(p))?", icon: "plus.forwardslash.minus", dashed: true)
-            }
-            .buttonStyle(PressStyle())
-        }
-        if countdown {
-            if case .opens(let from) = window, !counting {
-                // Not yet: say when, instead of hiding it until then.
-                toolLabel("Countdown from \(startText(from))", icon: "timer", dashed: false)
-                    .opacity(0.6)
-                    .accessibilityLabel("Lock Screen countdown available from \(startText(from)), 12 hours before it's due")
-            } else {
-                Button { toggleCountdown(it) } label: {
-                    toolLabel(counting ? "Counting down · Stop" : "Countdown on Lock Screen", icon: "timer", dashed: false, on: counting)
-                }
-                .buttonStyle(PressStyle())
-                .accessibilityHint(counting ? "Stops the Lock Screen countdown" : "Shows the time left on the Lock Screen and Dynamic Island")
+                .foregroundStyle(counting ? Theme.accent : can ? Theme.text : Theme.tertiary)
             }
         }
-    }
-
-    /// "3:59 pm" today, else "Fri 11:59 am".
-    private func startText(_ d: Date) -> String {
-        (Calendar.current.isDateInToday(d) ? Fmt.time : Fmt.weekdayTime).string(from: d)
-    }
-
-    private func toolLabel(_ title: String, icon: String, dashed: Bool, on: Bool = false) -> some View {
-        Label(title, systemImage: icon)
-            .font(Theme.footnote.weight(.semibold))
-            .foregroundStyle(on ? Theme.accent : Theme.text)
-            .lineLimit(1).fixedSize()
-            .padding(.horizontal, 12)
-            .frame(minHeight: 36)
-            .background(on ? Theme.accentSoft : Theme.card, in: Capsule())
-            .overlay(Capsule().strokeBorder(on ? Theme.accent.opacity(0.5) : Theme.tertiary,
-                                            style: StrokeStyle(lineWidth: 1.2, dash: dashed ? [5, 4] : [])))
-            .contentShape(Capsule())
+        .disabled(!can)
+        .modifier(TipPopover(tip: can && !counting ? countdownTip : nil))
+        .accessibilityLabel(counting ? "Stop Lock Screen countdown" : "Lock Screen countdown")
+        .accessibilityHint(can ? (counting ? "" : "Shows the time left on the Lock Screen and Dynamic Island") : "Available in the last 12 hours before it's due")
     }
 
     // ── ⋯ menu: Open in Schoology ──
@@ -614,9 +654,12 @@ struct AssignmentView: View {
                     .frame(width: 28, height: 28)
                 Text(word).font(Theme.subhead.weight(.semibold)).foregroundStyle(Theme.text)
                     .fixedSize()
+                    .contentTransition(.interpolate)
             }
-            .frame(minHeight: 48)
-            .padding(.horizontal, 4)
+            .padding(.leading, 10).padding(.trailing, 14)
+            // Outlined so it reads as a button; a fixed width so the main action never resizes.
+            .frame(minWidth: 132, minHeight: 48, alignment: .leading)
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous).strokeBorder(Theme.text, lineWidth: 1.2))
             .contentShape(Rectangle())
         }
         .buttonStyle(PressStyle())
@@ -670,6 +713,8 @@ struct DueStamp: View {
         }
         .lineLimit(1)
         .foregroundStyle(stamp.color)
+        // A fixed width: DUE NOV 1 and TURNED IN take the same room, so the line beside it never jumps.
+        .frame(minWidth: typeSize.isAccessibilitySize ? nil : 112)
         .padding(.horizontal, 10).padding(.vertical, 4)
         .background(Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
         .background(stamp.color.opacity(0.08), in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
@@ -712,5 +757,147 @@ struct SlammingStamp: View {
                 // Lands as the stamp hits the card.
                 Task { try? await Task.sleep(for: .milliseconds(reduceMotion ? 0 : 130)); thud += 1 }
             }
+    }
+}
+
+/// What if, in one line inside the Grade row: "If I get [18] / 20 → 91.3% +0.3", the class grade
+/// worked out as you type with the same math as `WhatIfSheet`. One line so the keyboard
+/// can't hide the answer under the bottom bar. Schoology shows an item's
+/// points only once it's graded, so without them both boxes are yours: "[18] / [20]".
+struct WhatIfLine: View {
+    @Environment(AppModel.self) private var model
+    let itemId: String
+    let sectionId: String
+    /// The points it's out of, when Schoology says.
+    let known: Double?
+    @State private var score = ""
+    @State private var outOf = ""
+    private var possible: Double? { known ?? Double(outOf).flatMap { $0 > 0 ? $0 : nil } }
+    @State private var result: CourseGrade?
+    @State private var gen = 0
+    @FocusState private var typing: Bool
+
+    var body: some View {
+        let now = model.grades[sectionId]?.pct
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 8) { field; Spacer(minLength: 4); outcome(now) }
+            VStack(alignment: .leading, spacing: 6) { field; outcome(now) }
+        }
+        .onAppear { typing = true }
+        .onChange(of: score) { _, _ in recompute() }
+        .onChange(of: outOf) { _, _ in recompute() }
+    }
+
+    private var field: some View {
+        HStack(spacing: 6) {
+            Text("If I get").foregroundStyle(Theme.secondary)
+            box($score, label: known.map { "What-if score, out of \(Fmt.num($0))" } ?? "What-if score").focused($typing)
+            if let k = known {
+                Text("/ \(Fmt.num(k))").foregroundStyle(Theme.secondary)
+            } else {
+                Text("/").foregroundStyle(Theme.secondary)
+                box($outOf, label: "Out of how many points")
+            }
+        }
+        .font(Theme.subhead.monospacedDigit())
+        .fixedSize()
+    }
+
+    private func box(_ text: Binding<String>, label: String) -> some View {
+        TextField("", text: text)
+            .keyboardType(.decimalPad)
+            .font(Theme.subhead.weight(.semibold).monospacedDigit()).multilineTextAlignment(.center)
+            .frame(width: 44).padding(.vertical, 4)
+            .background(Theme.background, in: RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous).stroke(Theme.tertiary, lineWidth: 1.2))
+            .accessibilityLabel(label)
+    }
+
+    @ViewBuilder
+    private func outcome(_ now: Double?) -> some View {
+        if let r = result?.pct, Double(score) != nil, possible != nil {
+            HStack(spacing: 6) {
+                Text("→ ").foregroundStyle(Theme.secondary) + Text(Fmt.pct(r, digits: 1)).fontWeight(.semibold).foregroundStyle(Theme.text)
+                if let n = now, abs(r - n) >= 0.05 {
+                    Text(Fmt.signed(r - n)).font(Theme.footnote.weight(.semibold).monospacedDigit()).foregroundStyle(r < n ? Theme.late : Theme.good)
+                }
+            }
+            .font(Theme.subhead.monospacedDigit())
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel("Class grade would be \(Fmt.pct(r, digits: 1))")
+        } else {
+            Text(now.map { "Now " + Fmt.pct($0, digits: 1) } ?? "")
+                .font(Theme.subhead.monospacedDigit()).foregroundStyle(Theme.secondary)
+        }
+    }
+
+    private func recompute() {
+        guard let e = Double(score), let p = possible, let rows = model.gradeRows(sectionId) else { result = nil; return }
+        gen += 1
+        let g = gen
+        Task {
+            let r = try? await model.summarize(rows: rows, whatIf: [itemId: ["earned": e, "possible": p]])
+            if g == gen { result = r }
+        }
+    }
+}
+
+/// The tip on iOS 26 and later only: this SDK resolves every `popoverTip` call to the
+/// iOS 26 overload, and a missing tip on older phones costs nothing.
+private struct TipPopover: ViewModifier {
+    let tip: (any Tip)?
+    func body(content: Content) -> some View {
+        if #available(iOS 26, *) { content.popoverTip(tip) } else { content }
+    }
+}
+
+/// Shown once, the first time the ⏱ is usable.
+struct CountdownTip: Tip {
+    var title: Text { Text("Lock Screen countdown") }
+    var message: Text? { Text("Shows the time left on your Lock Screen and in the Dynamic Island.") }
+    var image: Image? { Image(systemName: "timer") }
+}
+
+/// Where a class turns in work that has no Schoology dropbox. The first guess is the first
+/// link in the instructions that isn't Schoology, Google or YouTube; once the student opens
+/// "Turn in on …" (or picks a site by holding the Turn in row), that site is saved for the
+/// class and wins over a reference link listed before it. Works for any school's sites:
+/// nothing here knows a hostname.
+enum TurnInSite {
+    private static let skipped = ["schoology.com", "google.com", "youtube.com"]
+
+    /// "apcs.tinocs.com" (no www.).
+    static func host(_ url: URL) -> String? {
+        guard var h = url.host?.lowercased(), !h.isEmpty else { return nil }
+        if h.hasPrefix("www.") { h.removeFirst(4) }
+        return h
+    }
+
+    /// The instructions' outside links, in order.
+    static func links(_ md: String?) -> [URL] {
+        guard let md else { return [] }
+        return md.matches(of: /\]\((https?:\/\/[^)\s]+)\)/).compactMap { m in
+            guard let u = URL(string: String(m.1)), let h = host(u), !skipped.contains(where: { h == $0 || h.hasSuffix("." + $0) }) else { return nil }
+            return u
+        }
+    }
+
+    /// Each outside site once, in order: what the hold menu offers.
+    static func hosts(_ md: String?) -> [String] {
+        var seen: [String] = []
+        for u in links(md) { if let h = host(u), !seen.contains(h) { seen.append(h) } }
+        return seen
+    }
+
+    /// No outside links at all: nothing (paper or in class), even with a saved site.
+    /// A saved site: the instructions' link on it (the exact page), else the site itself.
+    /// Otherwise the first outside link.
+    static func pick(instructionsMd md: String?, saved: String?) -> URL? {
+        let ls = links(md)
+        guard !ls.isEmpty else { return nil }
+        if let saved, let s = URL(string: saved), let h = host(s) {
+            return ls.first { host($0) == h } ?? s
+        }
+        return ls.first
     }
 }

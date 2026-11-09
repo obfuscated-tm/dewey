@@ -336,10 +336,12 @@ struct WideButton: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if let systemImage { Image(systemName: systemImage) }
-                Text(title)
+                // One line: a long site name shrinks a little, then truncates in the middle.
+                Text(title).lineLimit(1).minimumScaleFactor(0.75).truncationMode(.middle)
                 if external { Image(systemName: "arrow.up.right").imageScale(.small) }
             }
             .font(Theme.headline)
+            .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, minHeight: 48)
             .foregroundStyle(filled ? Theme.onAccent : color)
             .background(filled ? color : Theme.card, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))

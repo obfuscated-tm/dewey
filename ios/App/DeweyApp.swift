@@ -1,6 +1,7 @@
 import BackgroundTasks
 import os
 import SwiftUI
+import TipKit
 
 @main
 struct DeweyApp: App {
@@ -10,6 +11,7 @@ struct DeweyApp: App {
 
     init() {
         Theme.styleNavigationBars()
+        try? Tips.configure()
         BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.refreshTask, using: nil) { task in
             // Exactly once: when the work ends, or when iOS says time is up (it kills an app that doesn't answer).
             let finished = OSAllocatedUnfairLock(initialState: false)

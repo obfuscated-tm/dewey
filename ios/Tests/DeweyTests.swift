@@ -671,3 +671,30 @@ final class StoreUpkeepTests: XCTestCase {
         XCTAssertEqual(back, ops)
     }
 }
+
+/// Where off-Schoology work is turned in: a saved class site beats the first-link guess.
+final class TurnInSiteTests: XCTestCase {
+    let md = "Read [the docs](https://docs.oracle.com/javase/8/docs/api/String.html), watch [this](https://www.youtube.com/watch?v=1), then do [Lab 10.7](https://apcs.tinocs.com/lab/10.7)."
+
+    func testGuessIsFirstOutsideLink() {
+        XCTAssertEqual(TurnInSite.pick(instructionsMd: md, saved: nil)?.host, "docs.oracle.com")
+    }
+
+    func testSavedSiteWinsOverReferenceLinkListedFirst() {
+        XCTAssertEqual(TurnInSite.pick(instructionsMd: md, saved: "https://apcs.tinocs.com")?.absoluteString, "https://apcs.tinocs.com/lab/10.7")
+    }
+
+    func testSavedSiteNotLinkedOpensTheSite() {
+        let other = "Use [the reference](https://docs.oracle.com/x)."
+        XCTAssertEqual(TurnInSite.pick(instructionsMd: other, saved: "https://apcs.tinocs.com")?.absoluteString, "https://apcs.tinocs.com")
+    }
+
+    func testNoLinksMeansNoSiteEvenWhenSaved() {
+        XCTAssertNil(TurnInSite.pick(instructionsMd: "Hand in the worksheet in class.", saved: "https://apcs.tinocs.com"))
+    }
+
+    func testHostsSkipSchoologyGoogleYouTubeAndWww() {
+        let m = "[a](https://fuhsd.schoology.com/x) [b](https://docs.google.com/y) [c](https://www.lab.example.org/1) [d](https://lab.example.org/2)"
+        XCTAssertEqual(TurnInSite.hosts(m), ["lab.example.org"])
+    }
+}

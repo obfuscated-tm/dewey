@@ -794,6 +794,13 @@ final class AppModel {
         save()
     }
 
+    func turnInSite(_ sectionId: String?) -> String? { sectionId.flatMap { courseState($0).turnInSite } }
+
+    func setTurnInSite(_ sectionId: String, _ site: String?) {
+        courseState(sectionId).turnInSite = site
+        save()
+    }
+
     /// The gradebook category gives an item its type.
     private func learnFromGrades(sectionId: String, _ g: CourseGrade) {
         var changed = false

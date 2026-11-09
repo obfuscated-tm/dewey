@@ -35,7 +35,10 @@ enum FileKinds {
     static func label(title: String, url: String) -> (icon: String, where: String) {
         guard let t = target(title: title, url: url) else { return ("link", "") }
         switch t {
-        case .file: return (ext(url) == "pdf" || ext(title) == "pdf" ? "doc.richtext" : "doc", "Opens here ›")
+        case .file:
+            // The kind of file ("PDF ›"): it opens right here, so where isn't news.
+            let e = [ext(title), ext(url)].first { !$0.isEmpty && $0.count <= 5 }
+            return (e == "pdf" ? "doc.richtext" : "doc", (e?.uppercased() ?? "File") + " ›")
         case .web(let u): return (LinkOpener.isGoogle(u) ? "doc.text" : "safari", LinkOpener.isGoogle(u) ? "Google ↗\u{FE0E}" : "\(u.host ?? "") ↗\u{FE0E}")
         }
     }

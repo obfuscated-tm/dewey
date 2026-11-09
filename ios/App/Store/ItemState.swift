@@ -104,6 +104,9 @@ final class CourseState {
     var aCutoff: Double?
     /// The grade the student aims for (a % from `Goal.scale`); nil = the A line.
     var goal: Double?
+    /// Where this class turns in work with no Schoology dropbox ("https://apcs.tinocs.com"),
+    /// learned when the student opens it. nil = guess from each assignment's links.
+    var turnInSite: String?
 
     init(sectionId: String) { self.sectionId = sectionId }
 }

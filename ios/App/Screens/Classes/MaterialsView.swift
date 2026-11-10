@@ -94,11 +94,11 @@ struct MaterialsView: View {
     private var pathSegments: some View {
         HStack(spacing: 0) {
             ForEach(Array(trail.enumerated()), id: \.offset) { i, name in
-                if i > 0 { Text("›").font(Theme.footnote).foregroundStyle(Theme.tertiary).accessibilityHidden(true) }
+                if i > 0 { Text(" › ").font(Theme.footnote).foregroundStyle(Theme.secondary).accessibilityHidden(true) }
                 Button { popFolders(trail.count - i) } label: {
+                    // Looks like the plain text it replaced; the tap area is 44 pt tall.
                     Text(name).font(Theme.footnote).foregroundStyle(Theme.secondary).lineLimit(1)
-                        .padding(.horizontal, 6).frame(minHeight: 44)
-                        .contentShape(Rectangle())
+                        .contentShape(Rectangle().inset(by: -14))
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("Back to \(name)")

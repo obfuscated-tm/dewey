@@ -36,7 +36,7 @@ struct MaterialsView: View {
                         VStack(spacing: 0) {
                             ForEach(Array(shown.enumerated()), id: \.element.key) { i, r in
                                 MaterialLink(sectionId: sectionId, row: r, subtitle: status(r)?.text, subtitleLate: status(r)?.late ?? false,
-                                             item: todo(r), trail: trail + [title])
+                                             graded: score(r) != nil, item: todo(r), trail: trail + [title])
                                     .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
                             }
                         }
@@ -124,21 +124,32 @@ struct MaterialsView: View {
         } catch {}
     }
 
-    /// The To Do row for an assignment or quiz, if there is one.
+    /// The To Do row for an assignment or quiz, if there is one. An assignment's row id is
+    /// its Schoology id; a quiz's is the page's own row key, so a quiz is looked up by the id
+    /// at the end of its /assessments/ link (the id To Do saves it under, per sync.js; not
+    /// yet checked against a live quiz).
     private func todo(_ r: MaterialRow) -> ItemState? {
-        guard r.kind == "assignment" || r.kind == "quiz", let id = r.id else { return nil }
-        return model.item(id)
+        switch r.kind {
+        case "assignment": return r.id.flatMap { model.item($0) }
+        case "quiz":
+            guard let id = r.url?.firstMatch(of: /\/assessments\/(\d+)/)?.1 else { return nil }
+            return model.item(String(id))
+        default: return nil
+        }
+    }
+
+    /// The gradebook score text for an assignment, if graded.
+    private func score(_ r: MaterialRow) -> String? {
+        guard r.kind == "assignment", let id = r.id,
+              let gi = model.grades[sectionId]?.items.first(where: { $0.id == id }), gi.earned != nil else { return nil }
+        return scoreText(gi)
     }
 
     private func status(_ r: MaterialRow) -> MaterialStatus.Line? {
         guard r.kind == "assignment" || r.kind == "quiz" else { return nil }
-        var score: String?
-        if let id = r.id, let gi = model.grades[sectionId]?.items.first(where: { $0.id == id }), gi.earned != nil {
-            score = scoreText(gi)
-        }
         let it = todo(r)
         let now = Date()
-        return MaterialStatus.line(score: score, late: it.map { model.isOverdue($0, now: now) } ?? false, due: it?.due,
+        return MaterialStatus.line(score: score(r), late: it.map { model.isOverdue($0, now: now) } ?? false, due: it?.due,
                                    submitted: it?.submitted ?? false, turnedIn: it?.turnedIn ?? false, now: now)
     }
 

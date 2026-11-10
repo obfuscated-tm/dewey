@@ -146,6 +146,8 @@ struct MaterialLink: View {
     let row: MaterialRow
     var subtitle: String?
     var subtitleLate = false
+    /// The row has a score in the gradebook (so it is finished even with no saved state).
+    var graded = false
     /// The student's own state for an assignment or quiz row, if Dewey has one.
     var item: ItemState?
     /// Class name, then each folder above this row: the path shown at the top of a folder.
@@ -222,6 +224,8 @@ struct MaterialLink: View {
         if isWork {
             if let item {
                 CheckMark(item: item)
+            } else if graded {
+                DoneSeal().frame(width: 24, height: 24)
             } else {
                 // Nothing known about it yet: the same empty ring To Do shows for work not started.
                 Circle().stroke(Theme.secondary, lineWidth: 1.6).frame(width: 24, height: 24)

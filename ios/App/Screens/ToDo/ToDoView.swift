@@ -713,6 +713,17 @@ struct TodoRow: View {
 /// outline keeps them apart in every theme, even where the accent and green are close.
 /// Never a square: the type bar says it's a test.
 /// The words beside it say which kind of turned in it is.
+/// The solid green seal with a check: finished work (submitted, turned in, graded).
+struct DoneSeal: View {
+    var body: some View {
+        Image(systemName: "checkmark.seal.fill").resizable().scaledToFit()
+            .symbolRenderingMode(.palette).foregroundStyle(Theme.onAccent, Theme.good)
+            .fontWeight(.bold)
+            // The seal's points sit inside its box; this makes its body match the circles.
+            .scaleEffect(1.12)
+    }
+}
+
 struct CheckMark: View {
     let item: ItemState
     var size: CGFloat = 24
@@ -720,11 +731,7 @@ struct CheckMark: View {
     var body: some View {
         ZStack {
             if item.submitted || item.turnedIn {
-                Image(systemName: "checkmark.seal.fill").resizable().scaledToFit()
-                    .symbolRenderingMode(.palette).foregroundStyle(Theme.onAccent, Theme.good)
-                    .fontWeight(.bold)
-                    // The seal's points sit inside its box; this makes its body match the circles.
-                    .scaleEffect(1.12)
+                DoneSeal()
             } else if item.type == .exam ? item.studied : item.mine && item.done {
                 Circle().fill(Theme.accentSoft)
                 Circle().strokeBorder(Theme.accent, lineWidth: 2)

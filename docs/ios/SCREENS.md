@@ -122,6 +122,12 @@ Tabs: **To Do · Grades · Classes · Schoology**. To Do, Grades, Inbox and Clas
 ### 3b Materials · `design/Materials.dc.html`
 - Folders with open-work status and score (`rowState`, `folderTotals`). At the class's root, "Open work" first: the class's late work and everything still due, soonest first, each opening its Assignment (it's what the book's LATE / TODAY / TMRW ribbon is about). Then the Materials / Grades / Updates switch for the class.
 - **Late** (To Do, the shelf ribbon, the tab badge, Open work): past due, still on Schoology's overdue list, and not submitted, turned in or marked Done. A test is late only as an online quiz not marked Studied (in-class quizzes stay on Schoology's overdue list as "not started"). Quizzes are checked on their landing page (`assignment` op → `quiz.state`). Work Schoology dropped after its due date (no dropbox: paper, a lab site) shows its date, not "late".
+- **Path:** inside a folder, the trail above its name ("Chemistry H › Unit 4 › Labs") is a row of buttons. Tapping one goes straight back to that level (the stack is popped to it, not pushed again). Each is 44 pt tall with the label "Back to …"; a path too wide for the screen scrolls, showing its end.
+- **Rows say what they are:**
+  - *Assignments and quizzes* (work) show the To Do mark where the icon would be (show-only; tapping the row still opens the assignment, undo is on its page) and the HW / TEST / TASK / CW tag. With no saved state yet the mark is an empty ring and there is no tag.
+  - One status line, one fact, first match wins: the score if graded, else "Late · Oct 24" (red, by the same late rule as To Do), else "Submitted" or "Turned in", else "Due …". Never combined; the mark already says done-but-not-turned-in (`MaterialStatus.line`).
+  - *Everything else* (files, pages, links, discussions) is quiet: a grey icon and a word for what it is (PDF, Doc, Slides, Sheet, Image, Page, Link, Discussion). Folders are unchanged.
+  - VoiceOver reads the kind, title and state, e.g. "Assignment, Lab 2, HW, submitted, 18 out of 20".
 - **Every item says where it opens:**
 
 | Item | Opens |

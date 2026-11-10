@@ -14,6 +14,7 @@ struct MaterialsView: View {
     @State private var error: EngineError?
     @State private var asOf: Date?
     @State private var sheet: SheetTarget?
+    @Environment(\.popFolders) private var popFolders
 
     private var cacheKey: String { "materials-\(sectionId)-\(folderId ?? "root")" }
     private var pageURL: URL {
@@ -34,7 +35,8 @@ struct MaterialsView: View {
                     } else {
                         VStack(spacing: 0) {
                             ForEach(Array(shown.enumerated()), id: \.element.key) { i, r in
-                                MaterialLink(sectionId: sectionId, row: r, subtitle: subtitle(r), trail: trail + [title])
+                                MaterialLink(sectionId: sectionId, row: r, subtitle: status(r)?.text, subtitleLate: status(r)?.late ?? false,
+                                             item: todo(r), trail: trail + [title])
                                     .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
                             }
                         }
@@ -72,17 +74,34 @@ struct MaterialsView: View {
         VStack(alignment: .leading, spacing: Theme.Space.xs) {
             if !trail.isEmpty {
                 HStack(spacing: 6) {
-                    Circle().fill(classColor).frame(width: 8, height: 8)
-                    Text(trail.joined(separator: " › ")).font(Theme.footnote).foregroundStyle(Theme.secondary)
-                        .lineLimit(1).truncationMode(.head)
+                    Circle().fill(classColor).frame(width: 8, height: 8).accessibilityHidden(true)
+                    // Each name goes back to that level. A path too long to fit scrolls, showing its end.
+                    ViewThatFits(in: .horizontal) {
+                        pathSegments
+                        ScrollView(.horizontal, showsIndicators: false) { pathSegments }
+                            .defaultScrollAnchor(.trailing)
+                    }
                 }
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel("In " + trail.joined(separator: ", "))
             }
             HStack(spacing: Theme.Space.s) {
                 if trail.isEmpty { Circle().fill(classColor).frame(width: 10, height: 10) }
                 Text(title).font(Theme.title).foregroundStyle(Theme.text)
                     .accessibilityAddTraits(.isHeader)
+            }
+        }
+    }
+
+    private var pathSegments: some View {
+        HStack(spacing: 0) {
+            ForEach(Array(trail.enumerated()), id: \.offset) { i, name in
+                if i > 0 { Text("›").font(Theme.footnote).foregroundStyle(Theme.tertiary).accessibilityHidden(true) }
+                Button { popFolders(trail.count - i) } label: {
+                    Text(name).font(Theme.footnote).foregroundStyle(Theme.secondary).lineLimit(1)
+                        .padding(.horizontal, 6).frame(minHeight: 44)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Back to \(name)")
             }
         }
     }
@@ -105,21 +124,22 @@ struct MaterialsView: View {
         } catch {}
     }
 
-    /// The To Do row for an assignment, if there is one.
+    /// The To Do row for an assignment or quiz, if there is one.
     private func todo(_ r: MaterialRow) -> ItemState? {
-        guard r.kind == "assignment", let id = r.id else { return nil }
+        guard r.kind == "assignment" || r.kind == "quiz", let id = r.id else { return nil }
         return model.item(id)
     }
 
-    private func subtitle(_ r: MaterialRow) -> String? {
-        if let id = r.id, r.kind == "assignment", let gi = model.grades[sectionId]?.items.first(where: { $0.id == id }), gi.earned != nil {
-            return scoreText(gi)
+    private func status(_ r: MaterialRow) -> MaterialStatus.Line? {
+        guard r.kind == "assignment" || r.kind == "quiz" else { return nil }
+        var score: String?
+        if let id = r.id, let gi = model.grades[sectionId]?.items.first(where: { $0.id == id }), gi.earned != nil {
+            score = scoreText(gi)
         }
-        guard let it = todo(r) else { return nil }
-        if it.submitted { return "Submitted" }
-        if it.turnedIn { return "Turned in" }
-        if let d = it.due { return "Due \(Fmt.due(d))" }
-        return nil
+        let it = todo(r)
+        let now = Date()
+        return MaterialStatus.line(score: score, late: it.map { model.isOverdue($0, now: now) } ?? false, due: it?.due,
+                                   submitted: it?.submitted ?? false, turnedIn: it?.turnedIn ?? false, now: now)
     }
 
     private func classSwitch(_ c: Course) -> some View {

@@ -31,6 +31,19 @@ enum FileKinds {
         return .web(u)
     }
 
+    /// What kind of file a document row is, in one word.
+    static func word(title: String, url: String) -> String {
+        let e = ext(url).isEmpty ? ext(title) : ext(url)
+        switch e {
+        case "pdf": return "PDF"
+        case "doc", "docx", "pages", "txt", "rtf": return "Doc"
+        case "ppt", "pptx", "key": return "Slides"
+        case "xls", "xlsx", "numbers", "csv": return "Sheet"
+        case "png", "jpg", "jpeg", "gif", "heic": return "Image"
+        default: return "File"
+        }
+    }
+
     static func label(title: String, url: String) -> (icon: String, where: String) {
         guard let t = target(title: title, url: url) else { return ("link", "") }
         switch t {

@@ -40,6 +40,7 @@ struct SchoologyTabView: View {
             }
             .classDestinations()
         }
+        .environment(\.popFolders) { n in path.removeLast(min(n, path.count)) }
     }
 
     enum Dest: Hashable { case assignment(String), grades(Course), materials(Course) }

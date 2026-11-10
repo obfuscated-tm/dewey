@@ -4,11 +4,12 @@ import SwiftUI
 /// materials, and recently opened materials.
 struct ClassesView: View {
     @Environment(AppModel.self) private var model
+    @State private var path = NavigationPath()
     @State private var query = ""
     @State private var index = MaterialIndex.shared
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     ScreenHeader(title: "Classes") {
@@ -39,6 +40,7 @@ struct ClassesView: View {
             .classDestinations()
             .refreshable { try? await model.loadCourses() }
         }
+        .environment(\.popFolders) { n in path.removeLast(min(n, path.count)) }
     }
 
     private var tiles: some View { Shelf() }
@@ -113,6 +115,17 @@ struct SearchField: View {
 /// What a class page pushes. Every link under a class is a value (none is a view
 /// link), so when a folder redraws under an open assignment (its status or grade
 /// came in) SwiftUI doesn't pop the assignment and push it again, over and over.
+/// Pops the stack back a number of Materials levels (the tappable path above a folder).
+/// A folder's trail is the class and each folder above it, so the nth name is that many
+/// screens back; each stack that shows MaterialsView supplies this.
+private struct PopFoldersKey: EnvironmentKey { static let defaultValue: (Int) -> Void = { _ in } }
+extension EnvironmentValues {
+    var popFolders: (Int) -> Void {
+        get { self[PopFoldersKey.self] }
+        set { self[PopFoldersKey.self] = newValue }
+    }
+}
+
 struct FolderRoute: Hashable { let sectionId: String; let folderId: String?; let title: String; let trail: [String] }
 struct MaterialPageRoute: Hashable { let row: MaterialRow }
 struct ClassGradesRoute: Hashable { let course: Course }
@@ -132,6 +145,9 @@ struct MaterialLink: View {
     let sectionId: String
     let row: MaterialRow
     var subtitle: String?
+    var subtitleLate = false
+    /// The student's own state for an assignment or quiz row, if Dewey has one.
+    var item: ItemState?
     /// Class name, then each folder above this row: the path shown at the top of a folder.
     var trail: [String] = []
     @State private var sheet: SheetTarget?
@@ -156,7 +172,7 @@ struct MaterialLink: View {
             } else { webButton }
         case "page", "other":
             if let url = absURL, Self.isMaterialPage(url) {
-                NavigationLink(value: MaterialPageRoute(row: row)) { label(row.kind == "page" ? "doc.plaintext" : "link", "›") }
+                NavigationLink(value: MaterialPageRoute(row: row)) { label(row.kind == "page" ? "doc.plaintext" : "link", "›", word: row.kind == "page" ? "Page" : "Link") }
                     .simultaneousGesture(TapGesture().onEnded { RecentMaterials.add(sectionId, row) })
             } else { webButton }
         case "document":
@@ -169,7 +185,8 @@ struct MaterialLink: View {
                 }
             } label: {
                 let l = row.url.map { FileKinds.label(title: row.title, url: $0) }
-                label(l?.icon ?? "doc", l?.where ?? "")
+                let opensHere = l?.where == "Opens here ›"
+                label(l?.icon ?? "doc", opensHere ? FileKinds.word(title: row.title, url: row.url ?? "") : (l?.where ?? ""))
             }
         default:
             webButton
@@ -192,19 +209,46 @@ struct MaterialLink: View {
             LinkOpener.open(url) { sheet = $0 }
         } label: {
             label(row.kind == "quiz" ? "checklist" : row.kind == "discussion" ? "bubble.left.and.bubble.right" : "safari",
-                  absURL?.host == Engine.host ? "Schoology ↗\u{FE0E}" : "\(absURL?.host ?? "") ↗\u{FE0E}")
+                  row.kind == "discussion" ? "Discussion ↗\u{FE0E}" : absURL?.host == Engine.host ? "Schoology ↗\u{FE0E}" : "\(absURL?.host ?? "") ↗\u{FE0E}")
         }
     }
 
-    private func label(_ icon: String, _ trailing: String) -> some View {
+    /// Assignments and quizzes are work: the To Do mark (show-only) and type tag lead the row.
+    /// Everything else is quiet: a grey icon and a word for what it is.
+    private var isWork: Bool { row.kind == "assignment" || row.kind == "quiz" }
+
+    @ViewBuilder
+    private var leading: some View {
+        if isWork {
+            if let item {
+                CheckMark(item: item)
+            } else {
+                // Nothing known about it yet: the same empty ring To Do shows for work not started.
+                Circle().stroke(Theme.secondary, lineWidth: 1.6).frame(width: 24, height: 24)
+            }
+        }
+    }
+
+    private func label(_ icon: String, _ trailing: String, word: String? = nil) -> some View {
         HStack(spacing: Theme.Space.m) {
-            Image(systemName: icon).frame(width: 24).foregroundStyle(row.kind == "folder" ? Theme.secondary : Theme.accent)
-                .accessibilityLabel(row.kind == "folder" ? "Folder" : row.kind == "quiz" ? "Quiz" : "")
+            if isWork {
+                leading.frame(width: 24)
+            } else {
+                Image(systemName: icon).frame(width: 24).foregroundStyle(Theme.secondary)
+                    .accessibilityHidden(true)
+            }
             VStack(alignment: .leading, spacing: 2) {
-                Text(row.title).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text).maxLines(2).multilineTextAlignment(.leading)
-                if let subtitle, !subtitle.isEmpty { Text(subtitle).font(Theme.footnote).foregroundStyle(Theme.secondary).oneLine() }
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(row.title).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text).maxLines(2).multilineTextAlignment(.leading)
+                    if isWork, let item { TypeTag(type: item.type).accessibilityHidden(true) }
+                }
+                if let subtitle, !subtitle.isEmpty {
+                    Text(subtitle).font(Theme.footnote.weight(subtitleLate ? .semibold : .regular))
+                        .foregroundStyle(subtitleLate ? Theme.late : Theme.secondary).oneLine()
+                }
             }
             Spacer(minLength: Theme.Space.s)
+            if let word { Text(word).font(Theme.footnote).foregroundStyle(Theme.tertiary) }
             if trailing == "›" {
                 Image(systemName: "chevron.right").font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.tertiary)
                     .accessibilityHidden(true)
@@ -212,9 +256,35 @@ struct MaterialLink: View {
                 Text(trailing).font(Theme.footnote).foregroundStyle(Theme.tertiary)
             }
         }
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(spoken(word: word, trailing: trailing))
         .padding(.horizontal, Theme.Space.l).padding(.vertical, Theme.Space.m).frame(minHeight: 50)
         .contentShape(Rectangle())
+    }
+
+    /// "Assignment, submitted, 18 out of 20": the kind, the title, then the state.
+    private func spoken(word: String?, trailing: String) -> String {
+        var parts: [String]
+        switch row.kind {
+        case "folder": parts = ["Folder", row.title]
+        case "assignment", "quiz":
+            parts = [row.kind == "quiz" ? "Quiz" : "Assignment", row.title]
+            if let item {
+                if item.submitted { parts.append("submitted") }
+                else if item.turnedIn { parts.append("turned in") }
+                else if item.type == .exam ? item.studied : item.done { parts.append(item.type == .exam ? "studied" : "done, not turned in") }
+                else { parts.append(item.type == .exam ? "not studied" : "not done") }
+            }
+            if let subtitle, !subtitle.isEmpty, subtitle != "Submitted", subtitle != "Turned in" {
+                parts.append(subtitle.replacingOccurrences(of: " / ", with: " out of "))
+            }
+        case "discussion": parts = ["Discussion", row.title]
+        default:
+            parts = [row.title]
+            let kind = word ?? (trailing == "›" ? "" : trailing.replacingOccurrences(of: "\u{FE0E}", with: "").replacingOccurrences(of: " ↗", with: ""))
+            if !kind.isEmpty { parts.insert(kind, at: 0) }
+        }
+        return parts.joined(separator: ", ")
     }
 }
 

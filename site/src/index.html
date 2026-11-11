@@ -100,6 +100,15 @@
     to { transform: scale(1) rotate(var(--r, -3deg)); opacity: 1; }
   }
 
+  /* Date stamps roll like a library date stamper: each digit (and the month)
+     is a band that spins and settles on the date. The real text sits in .sr for
+     screen readers; the bands are decoration. */
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .band { display: inline-block; height: 1em; overflow: hidden; vertical-align: top; }
+  .band > span { display: block; transform: translateY(calc(var(--at, 0) * -1em)); }
+  .band > span > span { display: block; height: 1em; }
+  .band.roll > span { transition: transform var(--spin, .9s) cubic-bezier(.2, .8, .25, 1.04) var(--wait, 0s); }
+
   /* ---------- 1 · the cover ---------- */
   /* On a computer the cover fills the window, inset by a 28px margin all round, with a
      cue at the bottom to go down; the text inside keeps the width it had. */
@@ -194,7 +203,7 @@
   .playing.paused .ftab[aria-selected="true"]::before { animation-play-state: paused; }
   @keyframes fill { from { height: 0; } to { height: 100%; } }
 
-  .stage { position: sticky; top: 24px; display: grid; background: var(--stage); border-radius: 28px; height: 540px; padding: 28px 32px 32px; overflow: hidden; transform: perspective(1400px) rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg)); }
+  .stage { position: sticky; top: 24px; display: grid; background: var(--stage); border-radius: 28px; height: 540px; padding: 28px 32px 32px; overflow: hidden; transition: transform .3s ease; transform: perspective(1400px) rotateX(var(--ry, 0deg)) rotateY(var(--rx, 0deg)); }
   .stage figure { grid-area: 1 / 1; margin: 0; display: grid; grid-template-rows: auto 1fr; justify-items: center; align-items: center; min-height: 0; opacity: 0; visibility: hidden; transform: translateY(16px) scale(.98); transition: opacity .3s var(--settle), transform var(--slow) var(--settle), visibility 0s .3s; }
   .stage figure.past { transform: translateY(-16px) scale(.98); }
   .stage figure.on { opacity: 1; visibility: visible; transform: none; transition-delay: .06s; }
@@ -222,6 +231,7 @@
   .gc-grade [data-g-letter] { display: inline-block; font-size: 3.2rem; font-weight: 700; line-height: 1; color: var(--accent); }
   .gc-grade [data-g-letter].hit { animation: thunk .3s var(--settle); --r: 0deg; }
   .gc-grade [data-g-num] { font: 600 1.45rem var(--sans); font-variant-numeric: tabular-nums; }
+  .gc-grade .band.roll > span { --spin: .4s; }
   .gc-cats { list-style: none; padding: 0; margin: 18px 0; border-top: 1px solid var(--line); }
   .gc-cats li { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
   .gc-cats i { font-style: normal; color: var(--soft); font-size: .85rem; margin-left: 6px; }
@@ -474,6 +484,55 @@
   // restart a one-shot CSS animation (the stamp hit, the counter click)
   const replay = (el, cls) => { el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); };
 
+  // ---------- rolling bands ----------
+  // wheel(el, text): writes text into el as bands that roll to it. Digits get
+  // a 0–9 band, a month gets a band of months; anything else is plain text.
+  // Called again on the same element, the bands roll from where they are.
+  const DIGITS = '0123456789'.split('');
+  const bandFor = (tok) => (/^\d$/.test(tok) ? DIGITS : MONTHS.includes(tok) ? MONTHS : null);
+  const tokens = (text) => text.match(/[A-Z][a-z]{2}(?=\s|$)|\d|[^\dA-Z]+|[A-Z]/g) || [];
+  const wheel = (el, text, { spins = 0, wait = 0, gap = .07 } = {}) => {
+    const toks = tokens(text);
+    const old = el._bands;
+    const sameShape = old && old.length === toks.length && toks.every((t, i) => (bandFor(t) ? old[i].list === bandFor(t) : old[i].text === t));
+    if (!sameShape) {
+      el.textContent = '';
+      const sr = document.createElement('span'); sr.className = 'sr'; el.append(sr);
+      const vis = document.createElement('span'); vis.setAttribute('aria-hidden', 'true'); el.append(vis);
+      el._sr = sr;
+      el._bands = toks.map((t) => {
+        const list = bandFor(t);
+        if (!list) { vis.append(t); return { text: t }; }
+        const band = document.createElement('span'); band.className = 'band';
+        const strip = document.createElement('span');
+        // three copies, so a band can spin through a full turn before it lands
+        for (let r = 0; r < 3; r++) for (const v of list) { const c = document.createElement('span'); c.textContent = v; strip.append(c); }
+        band.append(strip); vis.append(band);
+        return { list, band, at: 0 };
+      });
+    }
+    el._sr.textContent = text;
+    let n = 0;
+    el._bands.forEach((b, i) => {
+      if (!b.list) return;
+      const target = b.list.indexOf(toks[i]);
+      // land in the middle copy; on the first roll start at the top so it spins
+      const to = b.list.length * (spins ? 2 : 1) + target;
+      if (calm || (!sameShape && !spins)) { b.band.classList.remove('roll'); b.band.style.setProperty('--at', b.list.length + target); b.at = b.list.length + target; return; }
+      if (!sameShape) { b.band.style.setProperty('--at', 0); void b.band.offsetWidth; }
+      else if (b.at !== b.list.length + target) {
+        // keep the band in the middle copy so the next roll has room either way
+        b.band.classList.remove('roll');
+        b.band.style.setProperty('--at', b.list.length + (b.at % b.list.length)); void b.band.offsetWidth;
+      }
+      b.band.classList.add('roll');
+      b.band.style.setProperty('--wait', `${wait + n++ * gap}s`);
+      b.band.style.setProperty('--at', spins ? to : b.list.length + target);
+      b.at = b.list.length + target;
+      if (spins) b.band.addEventListener('transitionend', () => { b.band.classList.remove('roll'); b.band.style.setProperty('--at', b.at); }, { once: true });
+    });
+  };
+
   // ---------- theme ----------
   $('.theme').onclick = () => {
     const root = document.documentElement;
@@ -483,7 +542,7 @@
   };
 
   // ---------- the due-date card ----------
-  $('[data-today]').textContent = `${dayStamp(today)} ${today.getFullYear()}`;
+  wheel($('[data-today]'), `${dayStamp(today)} ${today.getFullYear()}`, { spins: 1, wait: .55 });
   const rows = $$('[data-todo] li');
   const stamp = (text, cls = '', r = 0) => {
     const s = document.createElement('span');
@@ -496,9 +555,11 @@
     const off = Number(li.dataset.due);
     const when = $('.when', li);
     const tilt = [-4, 2, -2, 3, -3][i % 5];
-    if (off < 0) when.append(stamp(`${-off} d late`, '', tilt));
+    // on the page first, so the bands have a spot to roll from
+    const roll = (s) => { when.append(s); wheel(s, s.textContent, { spins: 1, wait: .9 + i * .12, gap: .05 }); };
+    if (off < 0) roll(stamp(`${-off} d late`, '', tilt));
     else if (off === 0) when.append(stamp('Today', '', tilt));
-    else { const d = new Date(today); d.setDate(d.getDate() + off); when.append(stamp(dayStamp(d), 'due', tilt)); }
+    else { const d = new Date(today); d.setDate(d.getDate() + off); roll(stamp(dayStamp(d), 'due', tilt)); }
     const btn = $('button', li);
     btn.onclick = () => {
       const done = !li.classList.contains('done');
@@ -522,27 +583,17 @@
     let need = OUT_OF + 1;
     for (let s = 0; s <= OUT_OF; s++) if (course(s).total >= 90) { need = s; break; }
     const input = $('#whatif');
-    const numEl = $('[data-g-num]', grade), letterEl = $('[data-g-letter]', grade);
-    let shown = null, raf = 0;
-    const countTo = (to) => {
-      cancelAnimationFrame(raf);
-      if (calm || shown === null) { shown = to; numEl.textContent = to.toFixed(1); return; }
-      const from = shown, t0 = performance.now();
-      const step = (t) => {
-        const k = Math.min(1, (t - t0) / 220), e = 1 - (1 - k) ** 3;
-        shown = from + (to - from) * e;
-        numEl.textContent = shown.toFixed(1);
-        if (k < 1) raf = requestAnimationFrame(step); else shown = to;
-      };
-      raf = requestAnimationFrame(step);
-    };
+    const letterEl = $('[data-g-letter]', grade);
+    let first = true;
     const render = () => {
       const score = Number(input.value);
       const { tests, total } = course(score);
       const r = Math.round(total * 10) / 10;
       const delta = Math.round((r - Math.round(now * 10) / 10) * 10) / 10;
-      if (letterEl.textContent !== letter(r)) { letterEl.textContent = letter(r); if (shown !== null) replay(letterEl, 'hit'); }
-      countTo(r);
+      // the digits roll; the letter re-stamps when it changes
+      if (letterEl.textContent !== letter(r)) { letterEl.textContent = letter(r); if (!first) replay(letterEl, 'hit'); }
+      wheel($('[data-g-num]', grade), r.toFixed(1), { gap: .03 });
+      first = false;
       $('[data-g-tests]', grade).textContent = `${tests.toFixed(1)}%`;
       $('[data-g-score]', grade).textContent = `${score} / ${OUT_OF}`;
       const move = delta === 0 ? 'No change from today.'
@@ -598,26 +649,13 @@
       }, { threshold: .5 }).observe(stage);
       sw.onmouseenter = () => sw.classList.add('paused');
       sw.onmouseleave = () => sw.classList.remove('paused');
-      if (matchMedia('(pointer: fine)').matches) { // a small tilt toward the mouse, on a spring
-        const goal = { x: 0, y: 0 }, at = { x: 0, y: 0 }, vel = { x: 0, y: 0 };
-        let ticking = false;
-        const frame = () => {
-          let moving = false;
-          for (const a of ['x', 'y']) {
-            vel[a] = (vel[a] + (goal[a] - at[a]) * .12) * .72;
-            at[a] += vel[a];
-            if (Math.abs(goal[a] - at[a]) > .005 || Math.abs(vel[a]) > .005) moving = true; else at[a] = goal[a];
-          }
-          stage.style.setProperty('--rx', at.x.toFixed(3) + 'deg');
-          stage.style.setProperty('--ry', at.y.toFixed(3) + 'deg');
-          ticking = moving && requestAnimationFrame(frame);
-        };
-        const aim = (x, y) => { goal.x = x; goal.y = y; if (!ticking) ticking = requestAnimationFrame(frame); };
+      if (matchMedia('(pointer: fine)').matches) { // a small tilt toward the mouse
         stage.onmousemove = (e) => {
           const r = stage.getBoundingClientRect();
-          aim(((e.clientX - r.left) / r.width - .5) * 4, ((e.clientY - r.top) / r.height - .5) * -4);
+          stage.style.setProperty('--rx', ((e.clientX - r.left) / r.width - .5) * 4 + 'deg');
+          stage.style.setProperty('--ry', ((e.clientY - r.top) / r.height - .5) * -4 + 'deg');
         };
-        stage.onmouseleave = () => aim(0, 0);
+        stage.onmouseleave = () => { stage.style.setProperty('--rx', '0deg'); stage.style.setProperty('--ry', '0deg'); };
       }
     }
   }

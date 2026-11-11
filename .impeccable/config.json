@@ -1,0 +1,17 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "cramped-padding",
+        "value": "*",
+        "files": [
+          "site/src/index.html"
+        ],
+        "createdAt": "2026-11-11T08:20:17.150Z",
+        "reason": "Claude: tour figcaptions have padding-bottom 18px above their border on desktop and no border on phones; checked in 1440px and 390px renders"
+      }
+    ]
+  }
+}

@@ -306,6 +306,17 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
     /** Still on the list's open part: not finished, or late (done but not handed in late work stays with the late work, not the done rows). */
     fun isPending(it: ItemState, now: Date = Date()) = !isFinished(it) || isOverdue(it, now)
 
+    /** Where a class turns in work with no Schoology dropbox (TurnInSite), once the student opened or picked it. */
+    fun turnInSite(sectionId: String?): String? {
+        revision.intValue
+        return sectionId?.let { store.turnInSite(it) }
+    }
+
+    fun setTurnInSite(sectionId: String, site: String?) {
+        store.setTurnInSite(sectionId, site)
+        revision.intValue++
+    }
+
     fun isFinished(it: ItemState) = it.submitted || it.turnedIn || (if (it.isExam) false else it.done)
 
     /**

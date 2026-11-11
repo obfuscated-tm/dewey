@@ -293,7 +293,8 @@ fun WideButton(title: String, icon: ImageVector? = null, filled: Boolean = true,
     ) {
         val tint = if (filled) C.onAccent else color
         if (icon != null) { Icon(icon, null, tint = tint, modifier = Modifier.size(20.dp)); Spacer(Modifier.width(6.dp)) }
-        Text(title, style = Theme.headline, color = tint, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        // One line: a long site name truncates in the middle ("Turn in on apcs.ti…cs.com").
+        Text(title, style = Theme.headline, color = tint, maxLines = 1, overflow = TextOverflow.MiddleEllipsis, modifier = Modifier.weight(1f, fill = false))
         if (external) { Spacer(Modifier.width(6.dp)); Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, tint = tint, modifier = Modifier.size(16.dp)) }
     }
 }

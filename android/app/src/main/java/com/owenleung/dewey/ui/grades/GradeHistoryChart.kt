@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextMeasurer
@@ -88,6 +89,8 @@ fun GradeHistoryChart(history: List<CourseGrade.Point>, cutoff: Double, whatIfPc
                 Text(if (selected == null) "Grade over time" else if (p.undated) "No due date" else Fmt.header(p.date),
                     style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.secondary, modifier = Modifier.weight(1f))
                 if (selected == null && whatIfPct != null) Text("What-if ${Fmt.pct(whatIfPct, 2)}", style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = C.accent)
+                // A tiny hint in the card's corner; gone while you're dragging.
+                else if (selected == null) Text("Drag for any day", style = Theme.caption, color = C.tertiary, modifier = Modifier.clearAndSetSemantics { })
             }
             Row {
                 Text(Fmt.pct(p.pct, 2), style = Theme.title, color = C.text)
@@ -158,6 +161,5 @@ fun GradeHistoryChart(history: List<CourseGrade.Point>, cutoff: Double, whatIfPc
                 drawCircle(accent, 4.dp.toPx(), Offset(x(pts.last().date.time), y(pts.last().pct)))
             }
         }
-        Text(if (selected == null) "Drag across the graph to see any day." else " ", style = Theme.caption, color = C.tertiary)
     }
 }

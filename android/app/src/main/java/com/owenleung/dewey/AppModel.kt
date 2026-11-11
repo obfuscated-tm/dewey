@@ -290,7 +290,21 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
             .sortedBy { it.dueAt ?: Long.MAX_VALUE }
 
     /** Past due counts as late (TodoLogic.showsLate). */
-    fun showsLate(it: ItemState) = TodoLogic.showsLate(it.type, it.isQuiz, if (it.isExam) it.studied else it.done, it.turnedIn, it.submitted, it.inSchoology)
+    fun showsLate(it: ItemState) = TodoLogic.showsLate(it)
+
+    /** Still owed: not handed in (submitted or marked turned in), and for a test or your own task, not marked studied / done. Done homework is still owed. */
+    fun isOwed(it: ItemState): Boolean {
+        if (it.submitted || it.turnedIn) return false
+        if (it.isExam) return !it.studied
+        return if (it.mine) !it.done else true
+    }
+
+    /** The class card's one stamp (TodoLogic.cardStamp). Older late work doesn't stamp. */
+    fun cardStamp(items: List<ItemState>, now: Date = Date()) =
+        TodoLogic.cardStamp(items.map { TodoLogic.StampRow(it.due, isOverdue(it, now), isOwed(it)) }, now)
+
+    /** Still on the list's open part: not finished, or late (done but not handed in late work stays with the late work, not the done rows). */
+    fun isPending(it: ItemState, now: Date = Date()) = !isFinished(it) || isOverdue(it, now)
 
     fun isFinished(it: ItemState) = it.submitted || it.turnedIn || (if (it.isExam) false else it.done)
 

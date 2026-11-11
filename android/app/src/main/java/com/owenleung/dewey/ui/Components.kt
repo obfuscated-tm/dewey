@@ -190,10 +190,10 @@ fun spineColor(sectionId: String?): Color = Theme.spineColor(classIndex(sectionI
 @Composable
 private fun classIndex(sectionId: String?): Int = model.classes.indexOfFirst { it.sectionId == sectionId }.coerceAtLeast(0)
 
-/** "SUBMISSION", "INSTRUCTIONS": the small label at the top of a card. */
+/** "Submission", "Rubric": the label at the top of a card. Sentence case, never spaced capitals (callers may still pass the old capitals). */
 @Composable
 fun SectionLabel(text: String) {
-    Text(text, style = Theme.caption.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp), color = C.tertiary)
+    Text(text.take(1) + text.drop(1).lowercase(), style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.secondary)
 }
 
 /** A card with a small label on top. */
@@ -210,14 +210,18 @@ fun LabeledCard(label: String, content: @Composable ColumnScope.() -> Unit) {
 @Composable
 fun TypeBar(type: ItemType, modifier: Modifier = Modifier) {
     val exam = type == ItemType.EXAM
+    // Grows with the font size, so the turned label always fits.
+    val d = androidx.compose.ui.platform.LocalDensity.current
+    val w = with(d) { 18.sp.toDp() }.coerceAtLeast(18.dp)
+    val h = with(d) { 40.sp.toDp() }.coerceAtLeast(40.dp)
     Box(
-        modifier.width(18.dp).heightIn(min = 38.dp).clip(RoundedCornerShape(Theme.Radius.tag)).background(if (exam) C.text else C.tagSoft)
+        modifier.width(w).heightIn(min = h).clip(RoundedCornerShape(Theme.Radius.tag)).background(if (exam) C.text else C.tagSoft)
             .semantics { contentDescription = type.label },
         contentAlignment = Alignment.Center,
     ) {
         Text(
             type.label, maxLines = 1, softWrap = false,
-            style = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 0.6.sp),
+            style = Theme.ribbon,
             color = if (exam) C.card else C.secondary,
             modifier = Modifier.rotate(-90f).layout { m, c ->
                 // Measure unbounded, then swap width and height for the rotation.

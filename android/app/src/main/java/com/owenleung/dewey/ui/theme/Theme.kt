@@ -92,8 +92,8 @@ object Theme {
     val displaySmall = TextStyle(fontSize = 22.sp, fontWeight = FontWeight.Bold, lineHeight = 28.sp, fontFamily = FontFamily.Serif)
     /** 17 bold serif · the Dewey number on a To Do catalog card. */
     val callNumber = TextStyle(fontSize = 17.sp, fontWeight = FontWeight.Bold, lineHeight = 22.sp, fontFamily = FontFamily.Serif)
-    /** 10 heavy · the word on a shelf book's bookmark ribbon only (a fixed size, so the ribbon stays thin). */
-    val ribbon = TextStyle(fontSize = 10.sp, fontWeight = FontWeight.Black, letterSpacing = 0.4.sp)
+    /** 11 heavy · the word on a shelf book's bookmark ribbon and the type bar: the smallest text, and it follows the font size (it was a fixed 10). */
+    val ribbon = TextStyle(fontSize = 11.sp, fontWeight = FontWeight.Black, letterSpacing = 0.4.sp)
     /** Settings → Developer only: raw engine JSON. Never in the student-facing UI. */
     val code = TextStyle(fontSize = 12.sp, fontFamily = FontFamily.Monospace)
 
@@ -122,7 +122,7 @@ data class DeweyColors(
     val tagSoft: Color,
     /** Text on a filled accent button: white in light mode, near-black in dark. */
     val onAccent: Color,
-    /** A To Do catalog card's red rule under its heading, and its pale blue ruled lines. */
+    /** The rule under a screen title or card heading (ink, not red: red means late and nothing else), and an index card's pale blue ruled lines. */
     val catalogRule: Color,
     val catalogLine: Color,
 )
@@ -147,7 +147,7 @@ fun colors(dark: Boolean, palette: Palette = Palette.dew): DeweyColors {
         goodSoft = p("goodSoft"),
         tagSoft = p("tagSoft"),
         onAccent = Theme.hex(if (dark) "#101418" else "#FFFFFF"),
-        catalogRule = Theme.hex(if (dark) "#D9706B" else "#C24A42"),
+        catalogRule = p("text"),
         catalogLine = Theme.hex(if (dark) "#2E4258" else "#C9DDF0"),
     )
 }

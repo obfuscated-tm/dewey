@@ -126,9 +126,9 @@ import java.util.Date
 // ── Small form parts ─────────────────────────────────────────────────────
 
 @Composable
-internal fun Section(header: String, footer: String? = null, content: @Composable () -> Unit) {
+internal fun Section(header: String?, footer: String? = null, content: @Composable () -> Unit) {
     Column {
-        Text(header.uppercase(), style = Theme.caption.copy(fontWeight = FontWeight.SemiBold), color = C.secondary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
+        if (header != null) Text(header.uppercase(), style = Theme.caption.copy(fontWeight = FontWeight.SemiBold), color = C.secondary, modifier = Modifier.padding(start = 16.dp, bottom = 6.dp))
         Card { content() }
         if (footer != null) Text(footer, style = Theme.footnote, color = C.secondary, modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 6.dp))
     }
@@ -621,7 +621,10 @@ private fun CallNumberSettings() {
     val raw = Prefs.string(CallNumber.KEY)
     DetailScaffold("Call numbers") { pad ->
         ScrollPage(pad, spacing = 22.dp) {
-            Section("Classes", "Each class's card on To Do carries its library call number. Dewey guesses from the class name and leaves it blank when it can't tell; pick one here if it's wrong or missing.") {
+            Section(null, "A library call number beside each class on To Do and Grades.") {
+                Toggle("Show call numbers", CallNumber.SHOW_KEY, true, divider = false)
+            }
+            if (CallNumber.shown) Section("Classes", "Dewey guesses from the class name. Pick one if it's wrong or missing.") {
                 model.classes.forEachIndexed { i, c ->
                     val o = CallNumber.overrides(raw)[c.sectionId]
                     RowLine(i > 0) {

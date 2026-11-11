@@ -124,16 +124,38 @@ class LogicTest {
     }
 
     @Test fun showsLate() {
-        fun late(t: ItemType, quiz: Boolean = false, done: Boolean = false, turnedIn: Boolean = false, submitted: Boolean = false, listed: Boolean = true) =
-            TodoLogic.showsLate(t, quiz, done, turnedIn, submitted, listed)
+        fun late(t: ItemType, quiz: Boolean = false, done: Boolean = false, turnedIn: Boolean = false, submitted: Boolean = false, listed: Boolean = true, mine: Boolean = false) =
+            TodoLogic.showsLate(t, quiz, done, turnedIn, submitted, listed, mine)
         assertFalse(late(ItemType.ASSIGNMENT, listed = false))  // Schoology dropped it: maybe handed in elsewhere
         assertTrue(late(ItemType.ASSIGNMENT))
-        assertFalse(late(ItemType.ASSIGNMENT, done = true))
+        assertTrue(late(ItemType.ASSIGNMENT, done = true))       // done but not handed in: still late (2026-11-07)
+        assertTrue(late(ItemType.CLASSWORK, done = true))
+        assertFalse(late(ItemType.TASK, done = true, mine = true)) // your own task: nothing to hand in
+        assertFalse(late(ItemType.ASSIGNMENT, done = true, mine = true))
+        assertTrue(late(ItemType.TASK, mine = true))
         assertFalse(late(ItemType.ASSIGNMENT, turnedIn = true))
         assertFalse(late(ItemType.ASSIGNMENT, submitted = true))
         assertFalse(late(ItemType.EXAM))                    // a test on paper: nothing to hand in after it
         assertTrue(late(ItemType.EXAM, quiz = true))        // an online quiz not taken yet
         assertFalse(late(ItemType.EXAM, quiz = true, done = true)) // studied: given in class and taken
         assertFalse(late(ItemType.EXAM, quiz = true, submitted = true))
+    }
+
+    @Test fun cardStamp() {
+        val z = ZoneId.systemDefault()
+        fun at(d: Int, h: Int, m: Int = 0) = Date.from(LocalDateTime.of(2026, 11, d, h, m).atZone(z).toInstant())
+        val now = at(7, 12)
+        val yesterday = Date(now.time - 20 * 3_600_000L)
+        val tonight = at(7, 23, 59)
+        val earlierToday = at(7, 8)
+        val tomorrow = at(8, 23, 59)
+        fun r(due: Date, late: Boolean, owed: Boolean) = TodoLogic.StampRow(due, late, owed)
+        assertNull(TodoLogic.cardStamp(emptyList(), now))
+        assertNull("no TMRW stamp", TodoLogic.cardStamp(listOf(r(tomorrow, false, true)), now))
+        assertEquals(TodoLogic.CardStamp.DUE_TODAY, TodoLogic.cardStamp(listOf(r(tonight, false, true)), now))
+        assertNull("handed in: no stamp", TodoLogic.cardStamp(listOf(r(tonight, false, false)), now))
+        assertNull("past due but not late: not DUE TODAY either", TodoLogic.cardStamp(listOf(r(earlierToday, false, true)), now))
+        assertEquals("LATE wins over DUE TODAY", TodoLogic.CardStamp.LATE, TodoLogic.cardStamp(listOf(r(tonight, false, true), r(yesterday, true, true)), now))
+        assertNull("not past due: not late", TodoLogic.cardStamp(listOf(r(tomorrow, true, true)), now))
     }
 }

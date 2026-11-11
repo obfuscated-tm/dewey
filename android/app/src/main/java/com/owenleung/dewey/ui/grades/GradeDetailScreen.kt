@@ -143,7 +143,7 @@ fun GradeDetailScreen(sectionId: String, itemId: String) {
 @Composable
 private fun ScoreCard(it: CourseGrade.Item) {
     Card(padding = 16.dp) {
-        SectionLabel(it.category.uppercase())
+        SectionLabel(it.category)
         Row(verticalAlignment = Alignment.Bottom) {
             Text(scoreText(it), style = Theme.largeTitle, color = C.text)
             it.pct?.let { p -> Spacer(Modifier.width(10.dp)); Text(Fmt.pct(p), style = Theme.body, color = C.secondary, modifier = Modifier.padding(bottom = 6.dp)) }

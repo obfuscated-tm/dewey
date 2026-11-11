@@ -1,6 +1,13 @@
 package com.owenleung.dewey.ui.todo
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.material.icons.outlined.UnfoldMore
+import com.owenleung.dewey.ui.classColor
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -120,10 +127,11 @@ private sealed class Choice<out T> {
 /**
  * To Do's +: a short sheet over the keyboard. Type the task, with its day, time
  * and class in plain words if you like ("chem lab fri after school", TaskParse);
- * or tap a chip. A chip wins over what was typed. Drawn in the window (not a
+ * a grey line shows what will be added. Or pick: one-tap usual picks, your classes,
+ * then Day, Time and Kind pills for the rest; a pick wins over what was typed. Drawn in the window (not a
  * dialog), so the tour's coach can point into it.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun QuickTask(sectionId: String?, onClose: () -> Unit) {
     val model = model
@@ -163,7 +171,7 @@ fun QuickTask(sectionId: String?, onClose: () -> Unit) {
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                 .coachTarget("quick.sheet")
                 .padding(Theme.Space.l),
-            verticalArrangement = Arrangement.spacedBy(Theme.Space.m),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(Theme.Space.s)) {
                 OutlinedTextField(text, { text = it }, Modifier.weight(1f).focusRequester(focus).coachTarget("quick.field")
@@ -176,49 +184,86 @@ fun QuickTask(sectionId: String?, onClose: () -> Unit) {
                     Icon(Icons.Filled.ArrowCircleUp, "Add task", tint = if (clean.isEmpty()) C.tertiary else C.accent, modifier = Modifier.size(34.dp))
                 }
             }
-            // Day, time, class, kind: four small menus, all on screen. Each shows what's chosen.
+            // What will be saved, read from the words and the pills together.
+            Preview(parsed.title, TaskParse.due(d, t, now), s, k, clean.isEmpty())
+            // The usual picks, one tap each (they toggle). Teal = picked here; what was
+            // only typed shows in the grey line above, not on the buttons.
+            val pickedDay = day?.value
+            val pickedTime = time?.value
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Box(Modifier.weight(1f)) {
-                    ChipLabel(d?.let { dayLabel(it, today) } ?: "Day", Icons.Outlined.CalendarMonth, d != null,
-                        d?.let { "Due ${it.format(DateTimeFormatter.ofPattern("EEEE, MMM d", Locale.US))}" } ?: "Due day") { pickDay = true }
+                val tomorrow = today.plusDays(1)
+                Quick("Today", pickedDay == today) { day = if (pickedDay == today) null else Choice.Some(today) }
+                Quick("Tomorrow", pickedDay == tomorrow) { day = if (pickedDay == tomorrow) null else Choice.Some(tomorrow) }
+                Quick("After school", pickedTime == TaskParse.afterSchool) { time = if (pickedTime == TaskParse.afterSchool) null else Choice.Some(TaskParse.afterSchool) }
+                Quick("Tonight", pickedTime == TaskParse.TONIGHT) { time = if (pickedTime == TaskParse.TONIGHT) null else Choice.Some(TaskParse.TONIGHT) }
+            }
+            // Your classes, one tap each; scrolls sideways.
+            val pickedClass = section?.value
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                for (c in model.classes) {
+                    val on = pickedClass == c.sectionId
+                    val shape = RoundedCornerShape(50)
+                    Row(
+                        Modifier.heightIn(min = 32.dp).clip(shape).background(if (on) C.accentSoft else C.card)
+                            .border(1.dp, if (on) C.accent.copy(alpha = 0.5f) else C.border, shape)
+                            .clickable { section = if (on) null else Choice.Some(c.sectionId) }
+                            .semantics(mergeDescendants = true) { contentDescription = "Class: ${c.shortTitle}"; selected = on }
+                            .padding(horizontal = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Box(Modifier.size(8.dp).clip(CircleShape).background(classColor(c.sectionId)))
+                        Spacer(Modifier.width(5.dp))
+                        Text(c.shortTitle, style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = if (on) C.accent else C.text, maxLines = 1)
+                    }
                 }
-                Box(Modifier.weight(1f)) {
+            }
+            // Everything else: any day, any time, the kind. Wraps when big text won't fit.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box {
                     var open by remember { mutableStateOf(false) }
-                    ChipLabel(t?.let { clockText(it, short = true) } ?: "Time", Icons.Outlined.Schedule, t != null, "Due time") { open = true }
+                    val label = if (day == null) "Day" else pickedDay?.let { dayLabel(it, today) } ?: "No date"
+                    Pill(label, Icons.Outlined.CalendarMonth, day != null, d?.let { "Day: ${it.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.US))}" } ?: "Day: none") { open = true }
+                    DropdownMenu(open, { open = false }) {
+                        val tomorrow = today.plusDays(1)
+                        for ((name, x) in listOf("Today" to today, "Tomorrow" to tomorrow)) DropdownMenuItem(text = { Text(name) },
+                            leadingIcon = { if (pickedDay == x) Icon(Icons.Outlined.Check, null) },
+                            onClick = { open = false; day = if (pickedDay == x) null else Choice.Some(x) })
+                        DropdownMenuItem(text = { Text("Pick a day…") }, leadingIcon = { Icon(Icons.Outlined.CalendarMonth, null) }, onClick = { open = false; pickDay = true })
+                        HorizontalDivider()
+                        DropdownMenuItem(text = { Text("No date") }, onClick = { open = false; day = Choice.None })
+                        if (day != null) DropdownMenuItem(text = { Text("Use what I typed") }, onClick = { open = false; day = null })
+                    }
+                }
+                Box {
+                    var open by remember { mutableStateOf(false) }
+                    val label = when {
+                        time == null -> "Time"
+                        pickedTime == null -> "No time"
+                        pickedTime == TaskParse.beforeSchool -> "Before school"
+                        pickedTime == TaskParse.afterSchool -> "After school"
+                        pickedTime == TaskParse.TONIGHT -> "Tonight"
+                        else -> clockText(pickedTime)
+                    }
+                    Pill(label, Icons.Outlined.Schedule, time != null, t?.let { "Time: ${clockText(it)}" } ?: "Time: none") { open = true }
                     DropdownMenu(open, { open = false }) {
                         val options = listOf("Before school · ${clockText(TaskParse.beforeSchool)}" to TaskParse.beforeSchool,
-                            "After school · ${clockText(TaskParse.afterSchool)}" to TaskParse.afterSchool, "Tonight · 11:59 pm" to TaskParse.TONIGHT, "No time" to null)
-                        for ((label, c) in options) DropdownMenuItem(text = { Text(label) }, leadingIcon = { if (t == c) Icon(Icons.Outlined.Check, null) },
-                            onClick = { open = false; time = c?.let { Choice.Some(it) } ?: Choice.None })
-                        HorizontalDivider()
+                            "After school · ${clockText(TaskParse.afterSchool)}" to TaskParse.afterSchool, "Tonight · 11:59 pm" to TaskParse.TONIGHT)
+                        for ((name, c) in options) DropdownMenuItem(text = { Text(name) }, leadingIcon = { if (pickedTime == c) Icon(Icons.Outlined.Check, null) },
+                            onClick = { open = false; time = if (pickedTime == c) null else Choice.Some(c) })
                         DropdownMenuItem(text = { Text("Pick a time…") }, leadingIcon = { Icon(Icons.Outlined.Schedule, null) }, onClick = { open = false; pickTime = true })
+                        HorizontalDivider()
+                        DropdownMenuItem(text = { Text("No time") }, onClick = { open = false; time = Choice.None })
+                        if (time != null) DropdownMenuItem(text = { Text("Use what I typed") }, onClick = { open = false; time = null })
                     }
                 }
-                Box(Modifier.weight(1f)) {
+                Box {
                     var open by remember { mutableStateOf(false) }
-                    ChipLabel(s?.let { model.course(it)?.shortTitle } ?: "Class", Icons.Outlined.School, s != null, "Class") { open = true }
-                    DropdownMenu(open, { open = false }) {
-                        for (c in model.classes) DropdownMenuItem(text = { Text(c.shortTitle) }, leadingIcon = { if (s == c.sectionId) Icon(Icons.Outlined.Check, null) },
-                            onClick = { open = false; section = Choice.Some(c.sectionId) })
-                        DropdownMenuItem(text = { Text("No class") }, leadingIcon = { if (s == null) Icon(Icons.Outlined.Check, null) }, onClick = { open = false; section = Choice.None })
-                    }
-                }
-                Box(Modifier.weight(1f)) {
-                    var open by remember { mutableStateOf(false) }
-                    ChipLabel(kindName(k), Icons.Outlined.Sell, k != ItemType.TASK, "Kind: ${kindName(k)}") { open = true }
+                    Pill(type?.let(::kindName) ?: "Kind", Icons.Outlined.Sell, type != null, "Kind: ${kindName(k)}") { open = true }
                     DropdownMenu(open, { open = false }) {
                         for (x in TASK_KINDS) DropdownMenuItem(text = { Text(kindName(x)) }, leadingIcon = { if (k == x) Icon(Icons.Outlined.Check, null) },
                             onClick = { open = false; type = x })
                     }
                 }
-            }
-            // One tap for the usual picks; tap one that's on to clear it.
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                val tomorrow = today.plusDays(1)
-                Quick("Today", d == today) { day = if (d == today) Choice.None else Choice.Some(today) }
-                Quick("Tomorrow", d == tomorrow) { day = if (d == tomorrow) Choice.None else Choice.Some(tomorrow) }
-                Quick("After school", t == TaskParse.afterSchool) { time = if (t == TaskParse.afterSchool) Choice.None else Choice.Some(TaskParse.afterSchool) }
-                Quick("Tonight", t == TaskParse.TONIGHT) { time = if (t == TaskParse.TONIGHT) Choice.None else Choice.Some(TaskParse.TONIGHT) }
             }
         }
     }
@@ -251,30 +296,55 @@ fun QuickTask(sectionId: String?, onClose: () -> Unit) {
     }
 }
 
-/** A menu button: the four share the row's width equally. */
+/** "Chem lab · Fri, Nov 13 · 3:30 pm · Chemistry · Homework": grey, what ↑ will add. */
 @Composable
-private fun ChipLabel(title: String, icon: ImageVector, on: Boolean, a11y: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(Theme.Radius.tag)
+private fun Preview(title: String, due: Date?, section: String?, kind: ItemType, empty: Boolean) {
+    val model = model
+    val parts = listOfNotNull(title.ifEmpty { null },
+        due?.let(::dueText) ?: if (empty) null else "No date",
+        section?.let { model.course(it)?.shortTitle },
+        if (kind == ItemType.TASK) null else kindName(kind))
+    Text(if (parts.isEmpty()) "Add a day, time or class in the words, or below" else parts.joinToString(" · "),
+        style = Theme.footnote, color = if (parts.isEmpty()) C.tertiary else C.secondary, maxLines = 2, overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.fillMaxWidth().semantics { contentDescription = if (parts.isEmpty()) "Nothing set yet" else "Will add: ${parts.joinToString(", ")}" })
+}
+
+/** "Fri, Nov 13 · 3:30 pm", or just the day for 11:59 pm (due that day). */
+private fun dueText(d: Date): String {
+    val z = d.toInstant().atZone(Fmt.zone)
+    val day = z.format(DateTimeFormatter.ofPattern("EEE, MMM d", Locale.US))
+    return if (isEndOfDay(d)) day else "$day · ${clockText(TaskParse.Clock(z.hour, z.minute))}"
+}
+
+/** A pill as wide as what it says, with a menu. Teal = picked here. */
+@Composable
+private fun Pill(title: String, icon: ImageVector, on: Boolean, a11y: String, onClick: () -> Unit) {
+    val shape = RoundedCornerShape(50)
     val color = if (on) C.accent else C.secondary
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 32.dp).clip(shape).background(if (on) C.accentSoft else C.card)
+        Modifier.heightIn(min = 32.dp).clip(shape).background(if (on) C.accentSoft else C.card)
             .border(1.dp, if (on) C.accent.copy(alpha = 0.5f) else C.border, shape).clickable(onClick = onClick)
-            .semantics(mergeDescendants = true) { contentDescription = a11y }.padding(horizontal = 6.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
+            .semantics(mergeDescendants = true) { contentDescription = a11y }.padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
         Icon(icon, null, tint = color, modifier = Modifier.size(14.dp))
         Spacer(Modifier.width(4.dp))
-        Text(title, style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = color, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(if (title.length > 18) title.take(17) + "…" else title, style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = color, maxLines = 1)
+        Spacer(Modifier.width(3.dp))
+        Icon(Icons.Outlined.UnfoldMore, null, tint = if (on) C.accent.copy(alpha = 0.7f) else C.tertiary, modifier = Modifier.size(12.dp))
     }
 }
 
-/** A shortcut on the second row: plain text, tinted when it's what's set. */
+/** Today · Tomorrow · After school · Tonight: equal buttons, one tap each, tap again to clear. */
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.Quick(title: String, on: Boolean, onClick: () -> Unit) {
-    Text(title, style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = if (on) C.accent else C.text, maxLines = 1,
-        overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        modifier = Modifier.weight(1f).clip(RoundedCornerShape(Theme.Radius.tag)).background(if (on) C.accentSoft else C.divider.copy(alpha = 0.5f))
-            .clickable(onClick = onClick).semantics { selected = on }.padding(vertical = 7.dp))
+    val shape = RoundedCornerShape(Theme.Radius.tag)
+    Box(Modifier.weight(1f).heightIn(min = 34.dp).clip(shape).background(if (on) C.accentSoft else C.card)
+        .border(1.dp, if (on) C.accent.copy(alpha = 0.5f) else C.border, shape)
+        .clickable(onClick = onClick).semantics { selected = on }, contentAlignment = Alignment.Center) {
+        Text(title, style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = if (on) C.accent else C.text, maxLines = 1,
+            overflow = TextOverflow.Ellipsis, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+    }
 }
 
 /** The day button: "Today", "Tmrw", "Fri", or "Oct 30" further out. */

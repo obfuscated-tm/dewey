@@ -212,15 +212,36 @@ object TodoLogic {
     /**
      * Whether a past-due row may say "late": only while Schoology still lists it
      * as overdue (work it dropped, like paper or lab-site work, may well be
-     * handed in), and not once it's handed in or marked done. A test is late only
-     * as an online quiz not marked studied: Schoology keeps quizzes given in class
-     * on its overdue list, and a past test you studied for is one you took.
+     * handed in), and until it's handed in (submitted or marked turned in).
+     * Done alone doesn't clear it (2026-11-07): done means "still to hand in",
+     * so late work stays red until it's handed in. Your own tasks have nothing
+     * to hand in, so done clears theirs. A test is late only as an online quiz
+     * not marked studied: Schoology keeps quizzes given in class on its overdue
+     * list, and a past test you studied for is one you took.
      * The student's own tasks always count as listed (`inSchoology: true`).
      */
-    fun showsLate(type: ItemType, isQuiz: Boolean, done: Boolean, turnedIn: Boolean, submitted: Boolean, inSchoology: Boolean = true): Boolean {
+    fun showsLate(type: ItemType, isQuiz: Boolean, done: Boolean, turnedIn: Boolean, submitted: Boolean, inSchoology: Boolean = true, mine: Boolean = false): Boolean {
         if (submitted || turnedIn || !inSchoology) return false
         if (type == ItemType.EXAM) return isQuiz && !done
-        return !done
+        return if (mine) !done else true
+    }
+
+    fun showsLate(it: ItemState) = showsLate(it.type, it.isQuiz, if (it.isExam) it.studied else it.done, it.turnedIn, it.submitted, it.inSchoology, it.mine)
+
+    /**
+     * The one stamp a class card on To Do may carry: the most urgent state in that
+     * class. LATE when any row there shows late; else DUE TODAY when work still owed
+     * (not handed in; a test, or your own task, not done) is due later today.
+     * Nothing for tomorrow or later.
+     */
+    enum class CardStamp { LATE, DUE_TODAY }
+
+    data class StampRow(val due: Date?, val late: Boolean, val owed: Boolean)
+
+    fun cardStamp(rows: List<StampRow>, now: Date = Date()): CardStamp? {
+        if (rows.any { r -> r.late && (r.due?.before(now) ?: false) }) return CardStamp.LATE
+        if (rows.any { r -> r.owed && (r.due?.let { !it.before(now) && Fmt.sameDay(it, now) } ?: false) }) return CardStamp.DUE_TODAY
+        return null
     }
 
     /** Calendar days late (≥ 0) or null when not overdue. */
@@ -253,7 +274,7 @@ sealed class DayFilter {
         val b = TodoLogic.bucket(it.due, now)
         return when (this) {
             Late -> b == TodoLogic.Bucket.OVERDUE && !TodoLogic.isOlder(it.due, now) &&
-                TodoLogic.showsLate(it.type, it.isQuiz, if (it.isExam) it.studied else it.done, it.turnedIn, it.submitted, it.inSchoology)
+                TodoLogic.showsLate(it)
             is Day -> {
                 val due = it.due ?: return false
                 b != TodoLogic.Bucket.OVERDUE && Fmt.sameDay(due, Fmt.addDays(Fmt.startOfDay(now), k))

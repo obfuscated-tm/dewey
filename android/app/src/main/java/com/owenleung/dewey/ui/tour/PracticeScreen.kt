@@ -2,6 +2,7 @@ package com.owenleung.dewey.ui.tour
 
 import com.owenleung.dewey.MainActivity
 import com.owenleung.dewey.store.Prefs
+import com.owenleung.dewey.ui.todo.MONTH_KEY
 import com.owenleung.dewey.store.CalendarSync
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -127,12 +128,12 @@ object TourScript {
             done = { it.item(Practice.WORKSHEET)?.turnedIn == true }, wide = true, tab = 0),
         Coach.Step("todo.check.${Practice.QUIZ}", "Tests are never turned in. Tap the circle once you've studied, and the night-before reminder stops.",
             done = { it.item(Practice.QUIZ)?.studied == true }, tab = 0),
-        Coach.Step(text = "That's your list. Circle = done for you. Submit or Turn in = handed in. Press and hold any row to pick its status. The drop at the top fills as you finish today's work.",
+        Coach.Step(text = "That's your list. Circle = done for you. Submit or Turn in = handed in. Press and hold a row for the rest.",
             hint = Coach.Hint.NONE, button = "Next"),
         Coach.Step("todo.calendar", "Your next 7 days, with a dot for each thing due. Pull the days down to see the whole month.",
-            done = { seen("todo.month") }, tab = 0),
+            done = { Prefs.bool(MONTH_KEY) }, tab = 0),
         Coach.Step("todo.calendar", "Swipe sideways, or tap the arrows, for other months. Tap a day to see it and the next. Push the month back up when you're done.",
-            hint = Coach.Hint.NONE, done = { !seen("todo.month") }, tab = 0, rewind = 1),
+            hint = Coach.Hint.NONE, done = { !Prefs.bool(MONTH_KEY) }, tab = 0, rewind = 1),
     )
 
     /** Plan: your own order for the day, and tasks of your own. */
@@ -149,7 +150,7 @@ object TourScript {
             done = { seen("quick.field") }, tab = 0),
         Coach.Step("quick.field", "Type it the way you'd say it. Try: chem lab fri after school",
             hint = Coach.Hint.NONE, done = { "quickParsed" in Coach.flags }, tab = 0, rewind = 1),
-        Coach.Step("quick.sheet", "Dewey filled in the day, time and class. The buttons change them, and the row under them is one tap for the usual ones. Tap ↑ to add it.",
+        Coach.Step("quick.sheet", "Dewey read the day, time and class: the grey line is what it will add. The pills under it change any of them. Tap ↑ to add it.",
             hint = Coach.Hint.NONE, done = { m -> m.todoItems().any { it.mine } }, tab = 0, rewind = 2),
         Coach.Step("todo.modeChip", "Your task is on your list now. Tap it any time to change it or add notes. Tap To Do to go back to everything.",
             done = { seen("todo.calendar") }, tab = 0),

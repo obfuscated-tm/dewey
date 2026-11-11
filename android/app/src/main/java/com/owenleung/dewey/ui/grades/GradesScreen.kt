@@ -247,22 +247,19 @@ private fun ClassGradeRow(course: Course, showLetter: Boolean) {
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                     if (newCount > 0) { Spacer(Modifier.width(6.dp)); Box(Modifier.size(7.dp).clip(CircleShape).background(C.accent)) }
                 }
-                // Period (only when the section title names one) · the latest score, then its
-                // title: the score comes first, so a long title is what gets cut, never the points.
+                // The latest score, then its title: the score comes first, so a long title is
+                // what gets cut, never the points. (The period lives on the class screen.)
                 val text = C.text
-                if (course.periodLabel.isNotEmpty() || last != null) Text(buildAnnotatedString {
-                    if (course.periodLabel.isNotEmpty()) append(course.periodLabel + if (last == null) "" else " · ")
-                    if (last != null) {
-                        withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = text)) { append(scoreText(last)) }
-                        append("  " + last.title)
-                    }
+                if (last != null) Text(buildAnnotatedString {
+                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = text)) { append(scoreText(last)) }
+                    append("  " + last.title)
                 }, style = Theme.footnote, color = C.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
             when {
                 g?.pct != null -> {
                     // The % with the latest score's effect under it, so the row never gets wider.
                     Column(Modifier.widthIn(min = 56.dp), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                        Text(Fmt.pct(g.pct), style = Theme.subhead, color = C.secondary)
+                        Text(Fmt.pct(g.pct, 2), style = Theme.subhead, color = C.secondary)
                         last?.impact?.let { i -> Text(Fmt.signed(i), style = Theme.caption.copy(fontWeight = FontWeight.SemiBold), color = impactColor(i)) }
                     }
                     if (showLetter) LetterGrade(g.letter)
@@ -286,7 +283,7 @@ private fun ClassGradeRow(course: Course, showLetter: Boolean) {
 @Composable
 private fun Spine(course: Course) {
     val color = classColor(course.sectionId)
-    val n = CallNumber.number(course, Prefs.string(CallNumber.KEY))
+    val n = if (CallNumber.shown) CallNumber.number(course, Prefs.string(CallNumber.KEY)) else null
     Row(Modifier.heightIn(min = 34.dp).height(androidx.compose.foundation.layout.IntrinsicSize.Min).clearAndSetSemantics { },
         horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.width(3.dp).height(34.dp).clip(RoundedCornerShape(1.dp)).background(color))

@@ -152,3 +152,20 @@ Still to check:
 | Tour update from iOS: month, Plan and new-task steps, settings set during the tour (notifications, school day, Calendar), Student ID card after practice, Plan reference card | done; run on the emulator up to Grades |
 | Wide layout (iPad / Duo on iOS) | not ported |
 | Unit tests | pass (Dew contrast, call numbers, logic, Plan, quick add, calendar events, Code 39, student ID, neo-plan ops) |
+
+**Caught up with iOS, To Do, quick add, Grades and settings (2026-11-10):** the rest of the iOS commits since Android 0.4 (`f0e6f95`), apart from the Assignment page and Materials (see their notes above). Ported:
+- **To Do:** cards carry a LATE or DUE TODAY stamp (`TodoLogic.cardStamp`; late stays red until handed in, `showsLate`/`isOwed`), the pending filters, and "Mark turned in" in the hold menu.
+- **The month calendar pull:** the month draws while you drag, with rubber-banding and a spring on release. A sideways swipe changes month, and a push up or a tap on the chevron closes it. The tour's month steps now wait on `MONTH_KEY` instead of the month being on screen, since a part-drawn month showed up mid-drag.
+- **Quick add:** the grey preview line, the Today / Tomorrow / After school / Tonight buttons, class chips, and Day / Time / Kind pills.
+- **Settings:** "Show call numbers" (off by default).
+- **Smaller changes:** sentence-case section labels, the TypeBar scaling with text size, the ribbon and catalog-rule tweaks, Grades and neo-plan text changes, and the tour's wording.
+
+Not ported: iOS 18's zoom transition (Compose has no equivalent worth the cost), and swipe actions on To Do cards; "Mark turned in" moved to the hold menu instead.
+
+Checked on the emulator, signed out, in the tour:
+- The stamps: turning in the worksheet cleared Chem's LATE and the Late count.
+- The whole calendar pull: drag, settle, swipe, and close by chevron and by push.
+- The Plan steps (reorder, swipe to Later).
+- Quick add: "chem lab fri after school" became "chem lab · Fri, Nov 13 · 3:30 pm · Chemistry H".
+
+Not seen live: the Grades changes and the call-number setting.

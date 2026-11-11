@@ -275,8 +275,8 @@ private fun WhatIfBar(real: CourseGrade?, preview: CourseGrade?, changes: Int, r
     Column {
         Row(Modifier.fillMaxWidth().background(C.card).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("WHAT-IF", style = Theme.caption.copy(fontWeight = FontWeight.Bold), color = C.accent)
-                Text(if (changes == 0) "Type a score on any row" else "$changes change${if (changes == 1) "" else "s"} · preview only",
+                Text("What-if", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.accent)
+                Text(if (changes == 0) "Type a score on any row" else "$changes change${if (changes == 1) "" else "s"}",
                     style = Theme.caption, color = C.secondary, maxLines = 1)
             }
             if (p != null) {
@@ -398,10 +398,11 @@ private fun WhatIfRow(it: CourseGrade.Item, possible: Double?, cutoff: Double, s
                 val sub = when {
                     isDropped -> "Left out of the grade"
                     typed != null -> (if (it.earned != null) scoreText(it) else "Not graded") + " → " + (if (p > 0) Fmt.pct(typed / p * 100, 0) else "—")
-                    it.earned != null -> "Real ${scoreText(it)}" + (it.pct?.let { " · ${Fmt.pct(it, 0)}" } ?: "")
+                    // A graded row says nothing here: its box already shows the real score.
+                    it.earned != null -> null
                     else -> "Not graded yet" + (Fmt.wallDate(it.due)?.let { " · due ${Fmt.short(it)}" } ?: "")
                 }
-                Text(sub, style = Theme.footnote, color = if (typed != null && p > 0 && typed / p * 100 >= cutoff) C.good else C.secondary)
+                if (sub != null) Text(sub, style = Theme.footnote, color = if (typed != null && p > 0 && typed / p * 100 >= cutoff) C.good else C.secondary)
             }
             Spacer(Modifier.width(4.dp))
             if (isDropped) PillButton("Count it") { onDrop(false) }

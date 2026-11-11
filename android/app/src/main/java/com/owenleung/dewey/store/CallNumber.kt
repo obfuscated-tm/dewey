@@ -17,6 +17,10 @@ object CallNumber {
     /** Hand-set numbers: "sectionId=570;sectionId2=" ("" = none). Missing = automatic. */
     const val KEY = "callNumbers"
 
+    /** Whether To Do and Grades show the numbers at all. On by default (2026-11-07: without them To Do read as any app's list). */
+    const val SHOW_KEY = "showCallNumbers"
+    val shown: Boolean get() = Prefs.bool(SHOW_KEY, true)
+
     /** Dewey's ten main classes: the choices in the picker. */
     val mains = listOf(
         "000" to "Computers and general", "100" to "Philosophy and psychology", "200" to "Religion",

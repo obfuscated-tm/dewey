@@ -38,6 +38,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
+import androidx.compose.runtime.rememberUpdatedState
+import com.owenleung.dewey.ui.reduceMotion
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
@@ -68,6 +78,7 @@ import java.time.temporal.WeekFields
 import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
@@ -147,50 +158,126 @@ private fun DayCell(day: LocalDate, today: LocalDate, items: List<ItemState>, se
 }
 
 /**
- * The week strip (or month) and the chevron under it. Pull down anywhere on it for the
- * month, push up for the week; it follows the finger a little and the chevron turns, then
- * springs. Sideways on the month steps a month.
+ * The week strip that grows into the month under your finger, like Calendar: its height
+ * follows the drag (the week fades out first, then the month in, never both), stops where
+ * you stop, and on letting go springs open or shut by where a flick would carry it. Past
+ * either end it keeps following, more and more slowly. The chevron bends with it (the V
+ * flattens to a line and comes out pointing the other way). Sideways on the month steps a
+ * month. `opening` runs as it starts to open (the month it grows into is this one).
  */
 @Composable
-fun CalendarPull(open: Boolean, set: (Boolean) -> Unit, swipe: (Int) -> Unit, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val pull = remember { Animatable(0f) }
+fun CalendarPull(open: Boolean, opening: () -> Unit, set: (Boolean) -> Unit, swipe: (Int) -> Unit, modifier: Modifier = Modifier,
+                 week: @Composable () -> Unit, month: @Composable () -> Unit) {
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
-    val px40 = with(density) { 40.dp.toPx() }
-    val px60 = with(density) { 60.dp.toPx() }
-    val progress = (abs(pull.value) / px40).coerceAtMost(1f)
-    val toward = if (open) pull.value < 0 else pull.value > 0
+    val reduceMotion = reduceMotion()
+    // 0 = week, 1 = month. `drag` while a finger holds it; `anim` while it settles; else `open`.
+    val anim = remember { Animatable(0f) }
+    var drag by remember { mutableStateOf<Float?>(null) }
+    var moving by remember { mutableStateOf(false) }
+    var job by remember { mutableStateOf<Job?>(null) }
+    var weekH by remember { mutableIntStateOf(0) }
+    var monthH by remember { mutableIntStateOf(0) }
+    val active = drag != null || moving
+    val progress = drag ?: if (moving) anim.value else if (open) 1f else 0f
+    // Until the month is measured, a guess (about five weeks).
+    val range = (if (monthH > 0) monthH - weekH else weekH * 4).coerceAtLeast(1).toFloat()
+    val t = progress.coerceIn(0f, 1f)
     val accent = C.accent
     val tertiary = C.tertiary
-    Column(modifier.fillMaxWidth().pointerInput(open) {
+    val swipePx = with(density) { 40.dp.toPx() }
+
+    // The drag outlives recompositions (the month gets measured mid-drag), and so does anything
+    // it calls: they read these, never a captured `open` or `set` that may be from before it opened.
+    val openNow by rememberUpdatedState(open)
+    val rangeNow by rememberUpdatedState(range)
+    val setNow by rememberUpdatedState(set)
+    val openingNow by rememberUpdatedState(opening)
+    val swipeNow by rememberUpdatedState(swipe)
+    val reduceMotionNow by rememberUpdatedState(reduceMotion)
+
+    fun rubber(raw: Float): Float {
+        val r = rangeNow
+        fun damp(over: Float): Float { val pts = over * r; return pts / (1 + pts / with(density) { 50.dp.toPx() }) / r }
+        return when { raw > 1f -> 1f + damp(raw - 1f); raw < 0f -> -damp(-raw); else -> raw }
+    }
+    // Animates from wherever it is now. The drag value stays shown until the animation holds it.
+    fun settle(target: Boolean, velocity: Float) {
+        val from = drag ?: if (moving) anim.value else if (openNow) 1f else 0f
+        moving = true
+        job?.cancel()
+        job = scope.launch {
+            anim.snapTo(from)
+            drag = null
+            if (!reduceMotionNow) anim.animateTo(if (target) 1f else 0f, spring(dampingRatio = 0.9f, stiffness = 260f), initialVelocity = velocity)
+            setNow(target)
+            moving = false
+        }
+    }
+    fun toggle() { if (!openNow) openingNow(); settle(!openNow, 0f) }
+
+    Column(modifier.fillMaxWidth().pointerInput(Unit) {
         var dx = 0f; var dy = 0f
+        var base = 0f
+        var vertical: Boolean? = null
+        val tracker = VelocityTracker()
         detectDragGestures(
-            onDragStart = { dx = 0f; dy = 0f },
+            onDragStart = { dx = 0f; dy = 0f; vertical = null; tracker.resetTracking() },
             onDragEnd = {
-                scope.launch { pull.animateTo(0f, spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow)) }
-                if (abs(dx) > abs(dy)) { if (open && abs(dx) > px40) swipe(if (dx < 0) 1 else -1) }
-                else if (dy > px40 * 0.75f) set(true) else if (dy < -px40 * 0.75f) set(false)
+                val v = vertical
+                vertical = null
+                if (v == false) { if (openNow && abs(dx) > swipePx) swipeNow(if (dx < 0) 1 else -1); return@detectDragGestures }
+                if (v == null) return@detectDragGestures
+                val vy = tracker.calculateVelocity().y
+                // Where a flick would carry it, so a quick short flick still opens it.
+                val land = base + (dy + vy * 0.2f) / rangeNow
+                settle(land > 0.5f, vy / rangeNow)
             },
-            onDragCancel = { scope.launch { pull.animateTo(0f) } },
+            onDragCancel = { if (vertical == true) settle(openNow, 0f); vertical = null },
         ) { change, amount ->
             change.consume()
+            tracker.addPosition(change.uptimeMillis, change.position)
             dx += amount.x; dy += amount.y
-            if (abs(dy) > abs(dx)) scope.launch { pull.snapTo(dy.coerceIn(-px60, px60)) }
+            if (vertical == null) {
+                vertical = abs(dy) > abs(dx)
+                if (vertical == true) {
+                    // Catch it mid-settle where it is.
+                    job?.cancel()
+                    base = drag ?: if (moving) anim.value else if (openNow) 1f else 0f
+                    if (!openNow && !moving) openingNow()
+                }
+            }
+            if (vertical == true) drag = rubber(base + dy / rangeNow)
         }
     }) {
-        Box(Modifier.graphicsLayer { translationY = pull.value * 0.15f }) { content() }
-        // A wide, shallow chevron: a bigger tap target than it looks.
-        Box(Modifier.fillMaxWidth().height(28.dp).graphicsLayer { translationY = pull.value * 0.35f }
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Button) { set(!open) }
+        // Before the first measure, the natural size; after, the height the drag says.
+        val h = if (weekH == 0) null else maxOf(weekH * 0.85f, weekH + range * progress)
+        Box(Modifier.fillMaxWidth().then(if (h != null) Modifier.height(with(density) { h.toDp() }) else Modifier).clipToBounds()) {
+            // At rest only the one shown is drawn, so a tap never lands on the hidden one;
+            // while moving both are, the one more than half there on top.
+            @Composable fun weekLayer() = Box(Modifier.fillMaxWidth().wrapContentHeight(Alignment.Top, unbounded = true)
+                .onSizeChanged { weekH = it.height }.graphicsLayer { alpha = 1f - minOf(1f, t / 0.12f) }) { week() }
+            @Composable fun monthLayer() = Box(Modifier.fillMaxWidth().wrapContentHeight(Alignment.Top, unbounded = true)
+                .onSizeChanged { monthH = it.height }.graphicsLayer { alpha = ((t - 0.14f) / 0.36f).coerceIn(0f, 1f) }) { month() }
+            when {
+                !active -> if (open) monthLayer() else weekLayer()
+                t >= 0.5f -> { weekLayer(); monthLayer() }
+                else -> { monthLayer(); weekLayer() }
+            }
+        }
+        // A wide, shallow chevron: a bigger tap target than it looks. bend 1 points down, -1 up, 0 is flat.
+        val bend = 1f - 2f * t
+        val lit = active && abs(t - (if (open) 1f else 0f)) > 0.5f
+        Box(Modifier.fillMaxWidth().height(28.dp)
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Button) { toggle() }
             .semantics { contentDescription = if (open) "Show week" else "Show month" },
             contentAlignment = Alignment.Center) {
-            Canvas(Modifier.width(40.dp).height(6.dp).rotate((if (open) 180f else 0f) + if (toward) (if (open) -180f else 180f) * progress else 0f)) {
-                val c = if (toward && progress > 0.5f) accent else tertiary
-                val w = 3.dp.toPx()
+            Canvas(Modifier.width(40.dp).height(6.dp)) {
+                val hh = size.height / 2 * bend
                 val path = androidx.compose.ui.graphics.Path().apply {
-                    moveTo(0f, 0f); lineTo(size.width / 2, size.height); lineTo(size.width, 0f)
+                    moveTo(0f, size.height / 2 - hh); lineTo(size.width / 2, size.height / 2 + hh); lineTo(size.width, size.height / 2 - hh)
                 }
-                drawPath(path, c, style = Stroke(width = w, cap = StrokeCap.Round, join = StrokeJoin.Round))
+                drawPath(path, if (lit) accent else tertiary, style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
             }
         }
     }

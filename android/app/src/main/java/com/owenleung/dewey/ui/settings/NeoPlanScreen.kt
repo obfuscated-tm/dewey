@@ -137,7 +137,7 @@ fun NeoPlanScreen() {
 }
 
 @Composable
-private fun Heading(s: String) = Text(s.uppercase(), style = Theme.caption.copy(fontWeight = FontWeight.SemiBold, letterSpacing = 0.5.sp),
+private fun Heading(s: String) = Text(s, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold),
     color = C.secondary, modifier = Modifier.semantics { heading() })
 
 @Composable

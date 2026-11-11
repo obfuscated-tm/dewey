@@ -652,7 +652,7 @@ ${t.trim()}
       const url = client.abs(href);
       if (seen.has(url)) continue;
       seen.add(url);
-      attachments.push({ href, url, title: cleanText(a) || "attachment" });
+      attachments.push({ href, url, title: fileTitle(cleanText(a)) || "attachment" });
     }
     const dropbox2 = doc.querySelector('a[href*="/dropbox/view/"]');
     const tabs = [...doc.querySelectorAll("ul.tabs a[href]")].map((a) => ({ text: cleanText(a), href: a.getAttribute("href") }));
@@ -686,6 +686,18 @@ ${t.trim()}
     const directFiles = [...w.querySelectorAll('a[href*="/submission/"][href*="/source"]')].map((a) => client.abs(a.getAttribute("href")));
     const links = [...w.querySelectorAll('a[href*="/link?"]')].map((a) => ({ title: cleanText(a), url: resolveUrl(a.getAttribute("href"), client.origin) }));
     return { revisions, grade: grade2, comments, viewers, directFiles, names, links };
+  }
+  function fileTitle(text) {
+    const t = text || "";
+    const norm = (x) => x.replace(/[_\s]+/g, " ").trim().toLowerCase();
+    for (let dot = t.indexOf("."); dot > 0; dot = t.indexOf(".", dot + 1)) {
+      for (let len = 2; len <= 5; len++) {
+        const end = dot + 1 + len;
+        if (end >= t.length || !/^[a-z0-9]+$/i.test(t.slice(dot + 1, end))) continue;
+        if (norm(t.slice(end)) === norm(t.slice(0, end))) return t.slice(0, end);
+      }
+    }
+    return t;
   }
 
   // ../extension/reader/parse/materials.js

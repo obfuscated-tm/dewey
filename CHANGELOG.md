@@ -1,6 +1,6 @@
 # Changelog
 
-The extension and the MCP server are versioned separately (see [Versioning and releases](docs/DEVELOPING.md#versioning-and-releases)). Newest first.
+The extension, MCP server, Android app and website are versioned separately (see [Versioning and releases](docs/DEVELOPING.md#versioning-and-releases)). Newest first.
 
 Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git history. Apart from MCP 1.0.0 (tag `mcp-v1.0.0`), those versions were never tagged, so they're listed by date.
 
@@ -18,6 +18,14 @@ Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git hist
 
 ### Android
 - Security: `intent:` links from web pages can only open what a browser link could (no named app component, no file permission grants).
+
+## 2026-11-10 — Website 1.0.0
+
+Tag: `site-v1.0.0`
+
+### Website
+- First versioned release of dewey.owen64.me: the home page ("Green cover"), `/web` (a preview of Dewey in a browser tab), Privacy, Terms and 404, with downloads for the newest extension and Android releases.
+- The site's version shows in every page's footer.
 
 ## 2026-11-01 — Extension 1.14.0
 

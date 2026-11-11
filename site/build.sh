@@ -11,7 +11,7 @@ dist="$here/dist"
 rm -rf "$dist"
 mkdir -p "$dist/brand" "$dist/img/app" "$dist/download"
 
-cp "$here"/src/{style.css,site.js,404.html,privacy.html,terms.html,web.html} "$dist/"
+cp "$here"/src/{style.css,site.js,404.html} "$dist/"
 cp "$root"/brand/logo/dewey-{horizontal,horizontal-dark,mark}.svg "$dist/brand/"
 cp "$root/brand/mascot/dewey-hello.svg" "$dist/brand/"
 cp "$root/brand/icons/chrome/icon.svg" "$root/brand/icons/chrome/icon32.png" "$dist/brand/"
@@ -32,8 +32,14 @@ gh release download "$ext_tag" --repo obfuscated-tm/dewey \
 gh release download "$android_tag" --repo obfuscated-tm/dewey \
   --pattern '*.apk' --output "$dist/download/dewey-android.apk"
 
-sed -e "s/{{EXT_VERSION}}/${ext_tag#ext-v}/g" \
-    -e "s/{{ANDROID_VERSION}}/${android_tag#android-v}/g" \
-    "$here/src/index.html" > "$dist/index.html"
+# The site's own version (site/package.json) goes in every page's footer.
+site_version="$(node -p "require('$here/package.json').version")"
 
-echo "Built site/dist: extension $ext_tag, Android $android_tag"
+for page in index privacy terms web; do
+  sed -e "s/{{EXT_VERSION}}/${ext_tag#ext-v}/g" \
+      -e "s/{{ANDROID_VERSION}}/${android_tag#android-v}/g" \
+      -e "s/{{SITE_VERSION}}/$site_version/g" \
+      "$here/src/$page.html" > "$dist/$page.html"
+done
+
+echo "Built site/dist $site_version: extension $ext_tag, Android $android_tag"

@@ -11,6 +11,8 @@ dewey.owen64.me, deployed as the Cloudflare Worker `dewey-site` (static assets o
 - `drafts/`: earlier design drafts, not deployed
 - `build.sh`: builds everything into `dist/`, including brand files and the latest release downloads
 
+The site's version is in `package.json`; `build.sh` puts it in every page's footer. See [Versioning and releases](../docs/DEVELOPING.md#versioning-and-releases).
+
 From `site/`: `npm run build`, `npm run preview` (local), or `npm run deploy`.
 
 You rarely need to deploy by hand: [deploy-site.yml](../.github/workflows/deploy-site.yml) redeploys on every published release and on site changes pushed to main. It needs the repo secret `CLOUDFLARE_API_TOKEN`.

@@ -34,7 +34,7 @@ flowchart LR
 | Chrome extension (Manifest V3, plain ES modules, no build step) | [`extension/`](../extension/) | 1.12.0 |
 | MCP server (Node, stdio) | [`mcp/`](../mcp/) | 1.1.0 |
 | iPhone app (SwiftUI; runs the extension's parsers in a hidden web view) | [`ios/`](../ios/) | beta |
-| Android app (Kotlin + Compose port of the iPhone app, same engine) | [`android/`](../android/) | beta (0.4) |
+| Android app (Kotlin + Compose port of the iPhone app, same engine) | [`android/`](../android/) | beta (0.5) |
 
 - The **extension** is the only part that talks to Schoology. It reads normal pages with your login, because many districts turn off Schoology's API for students.
 - The **MCP server** answers from three sources, best first: **live** (asks the extension right now), **snapshot** (the extension's last background read, cached on disk), and **archive** (the folder). Every result includes `source` and `as_of`.
@@ -197,7 +197,7 @@ Each part of Dewey has its own [semantic version](https://semver.org):
 |---|---|---|
 | Extension | `extension/manifest.json` | `ext-v1.14.0` |
 | MCP server | `mcp/package.json` | `mcp-v1.1.1` |
-| Android app | `versionName` in `android/app/build.gradle.kts` | `android-v0.4` |
+| Android app | `versionName` in `android/app/build.gradle.kts` | `android-v0.5` |
 | Website | `site/package.json` (shown in every page's footer) | `site-v1.0.0` |
 
 For the website, **major** is a redesign, **minor** a new page or section, **patch** copy and fixes. Pushing site changes to main deploys them whatever the version, so bump it and tag when a set of site changes is done.

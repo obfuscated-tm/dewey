@@ -705,7 +705,7 @@ ${t.trim()}
       }
       const type = (cls.match(/type-([\w-]+)/) || [])[1] || "unknown";
       const titleA = tr.querySelector(".item-title a[href]");
-      const base = { type, key, rowText: cleanText(tr.querySelector(".item-body")) };
+      const base = { type, key, rowText: cleanText(tr.querySelector(".item-body")), dueText: cleanText(tr.querySelector(".item-subtitle")) };
       if (type === "document") {
         const files = [...tr.querySelectorAll(".attachments-file-name a[href]")].map((a2) => {
           const tip = a2.querySelector(".infotip-content");
@@ -1052,15 +1052,19 @@ ${t.trim()}
   }
   function materialsRows(doc, url) {
     const rows = parseFolderRows(doc, urlStub(url)) || [];
+    const due = (r) => {
+      const d = parseDueText(r.dueText || "") || parseDueText(r.rowText || "");
+      return d ? { due: d } : {};
+    };
     return rows.map((r) => {
       if (r.kind === "folder") return { kind: "folder", title: r.title, id: folderIdOf(r.url) || r.key || null, url: r.url || null };
       if (r.kind === "document") {
         const first = r.files?.[0] || r.links?.[0];
         return { kind: "document", title: r.title, id: r.key || null, url: first?.url || r.otherUrl || null };
       }
-      if (r.kind === "quiz") return { kind: "quiz", title: r.title, id: r.key || null, url: r.url || null };
+      if (r.kind === "quiz") return { kind: "quiz", title: r.title, id: r.key || null, url: r.url || null, ...due(r) };
       const idFrom = (re) => (String(r.url || "").match(re) || [])[1] || null;
-      if (r.kind === "assignment") return { kind: "assignment", title: r.title, id: idFrom(ASSIGNMENT_RE2), url: r.url || null };
+      if (r.kind === "assignment") return { kind: "assignment", title: r.title, id: idFrom(ASSIGNMENT_RE2), url: r.url || null, ...due(r) };
       if (r.kind === "page") return { kind: "page", title: r.title, id: idFrom(/\/page\/(\d+)/), url: r.url || null };
       if (r.kind === "discussion") return { kind: "discussion", title: r.title, id: idFrom(/\/discussion\/(\d+)/), url: r.url || null };
       return { kind: "other", title: r.title, id: r.key || null, url: r.url || null };

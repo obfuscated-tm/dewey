@@ -124,6 +124,7 @@ final class AppModel {
         grades = [:]
         gradesAsOf = [:]
         gradeLog = [:]
+        MaterialIndex.shared.reset()
         courses = []
         session = .signedOut
         Reminders.shared.sessionDidEnd(notify: false)

@@ -222,6 +222,8 @@ struct MaterialRow: Codable, Hashable {
     var title: String
     var id: String?
     var url: String?
+    /// The due date Schoology prints under an assignment or quiz in the folder list (ISO).
+    var due: String?
     /// For ForEach: rows have no guaranteed id.
     var key: String { "\(kind):\(id ?? url ?? title)" }
 }

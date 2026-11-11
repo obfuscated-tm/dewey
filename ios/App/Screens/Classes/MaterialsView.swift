@@ -219,7 +219,8 @@ struct MaterialsView: View {
         guard r.kind == "assignment" || r.kind == "quiz" else { return nil }
         let it = todo(r)
         let now = Date()
-        return MaterialStatus.line(score: score(r), late: it.map { model.isOverdue($0, now: now) } ?? false, due: it?.due,
+        // The saved To Do item's date, else the one Schoology prints on the folder row.
+        return MaterialStatus.line(score: score(r), late: it.map { model.isOverdue($0, now: now) } ?? false, due: it?.due ?? Fmt.date(r.due),
                                    submitted: it?.submitted ?? false, turnedIn: it?.turnedIn ?? false, now: now)
     }
 

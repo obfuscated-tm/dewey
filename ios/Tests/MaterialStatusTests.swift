@@ -6,9 +6,10 @@ final class MaterialStatusTests: XCTestCase {
     private var past: Date { now.addingTimeInterval(-3 * 86_400) }
     private var future: Date { now.addingTimeInterval(2 * 86_400) }
 
-    func testScoreWinsOverEverything() {
+    func testScoreWinsOverLateAndKeepsTheDate() {
         let l = MaterialStatus.line(score: "18 / 20", late: true, due: past, submitted: true, turnedIn: true, now: now)
-        XCTAssertEqual(l, MaterialStatus.Line(text: "18 / 20"))
+        XCTAssertEqual(l, MaterialStatus.Line(text: Fmt.short.string(from: past) + " · 18 / 20"))
+        XCTAssertEqual(MaterialStatus.line(score: "18 / 20", late: false, due: nil, submitted: false, turnedIn: false, now: now)?.text, "18 / 20")
     }
 
     func testLateShowsOnlyTheDate() {
@@ -17,13 +18,17 @@ final class MaterialStatusTests: XCTestCase {
         XCTAssertEqual(l?.late, true)
     }
 
-    func testSubmittedThenTurnedIn() {
-        XCTAssertEqual(MaterialStatus.line(score: nil, late: false, due: future, submitted: true, turnedIn: true, now: now)?.text, "Submitted")
-        XCTAssertEqual(MaterialStatus.line(score: nil, late: false, due: future, submitted: false, turnedIn: true, now: now)?.text, "Turned in")
+    func testSubmittedThenTurnedInWithTheDate() {
+        let day = Fmt.short.string(from: future)
+        XCTAssertEqual(MaterialStatus.line(score: nil, late: false, due: future, submitted: true, turnedIn: true, now: now)?.text, day + " · Submitted")
+        XCTAssertEqual(MaterialStatus.line(score: nil, late: false, due: future, submitted: false, turnedIn: true, now: now)?.text, day + " · Turned in")
+        XCTAssertEqual(MaterialStatus.line(score: nil, late: false, due: nil, submitted: false, turnedIn: true, now: now)?.text, "Turned in")
     }
 
     func testDueAndNothing() {
         XCTAssertEqual(MaterialStatus.line(score: nil, late: false, due: future, submitted: false, turnedIn: false, now: now)?.text, "Due " + Fmt.due(future, now: now))
+        // Past, not late by Dewey's rule (work Schoology dropped): the date alone.
+        XCTAssertEqual(MaterialStatus.line(score: nil, late: false, due: past, submitted: false, turnedIn: false, now: now)?.text, Fmt.short.string(from: past))
         XCTAssertNil(MaterialStatus.line(score: nil, late: false, due: nil, submitted: false, turnedIn: false, now: now))
         XCTAssertNil(MaterialStatus.line(score: "", late: false, due: nil, submitted: false, turnedIn: false, now: now))
     }

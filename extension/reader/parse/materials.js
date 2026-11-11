@@ -25,7 +25,8 @@ export function parseFolderRows(doc, client) {
 
     const type = (cls.match(/type-([\w-]+)/) || [])[1] || 'unknown';
     const titleA = tr.querySelector('.item-title a[href]');
-    const base = { type, key, rowText: cleanText(tr.querySelector('.item-body')) };
+    // dueText: "Due Monday, August 31, 2026 at 11:59 pm" under an assignment's title.
+    const base = { type, key, rowText: cleanText(tr.querySelector('.item-body')), dueText: cleanText(tr.querySelector('.item-subtitle')) };
 
     if (type === 'document') {
       const files = [...tr.querySelectorAll('.attachments-file-name a[href]')].map((a) => {

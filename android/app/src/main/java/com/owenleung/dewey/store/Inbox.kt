@@ -47,14 +47,16 @@ class Inbox {
             return if (isClass) Kind.TEACHER else Kind.SCHOOL
         }
 
-        /** The ids in `ids` no earlier refresh saw; remembers them all. None on the very first run. */
+        /**
+         * What wasn't in the saved list of ids already seen, remembering it; the first list
+         * ever saved has nothing new (`NewMaterials.fresh`, the same rule as Materials' NEW marks).
+         */
         private fun unknown(ids: List<String>, key: String): Set<String> {
-            val first = !Prefs.has(key)
-            val known = Prefs.strings(key).toMutableList()
-            val fresh = ids.filter { it !in known }
-            known += fresh
+            val saved = if (Prefs.has(key)) Prefs.strings(key) else null
+            val fresh = com.owenleung.dewey.ui.classes.NewMaterials.fresh(saved?.toSet(), ids)
+            val known = (saved ?: emptyList()) + ids.filter { it !in (saved ?: emptyList()) }.distinct()
             Prefs.set(key, known.takeLast(300))
-            return if (first) emptySet() else fresh.toSet()
+            return fresh.toSet()
         }
     }
 

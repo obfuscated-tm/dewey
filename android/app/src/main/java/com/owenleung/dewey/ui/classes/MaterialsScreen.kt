@@ -2,6 +2,18 @@ package com.owenleung.dewey.ui.classes
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import com.owenleung.dewey.store.ItemState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -67,10 +79,15 @@ import java.util.Date
 /**
  * 3b · One Materials folder. Every row says where it opens. The class's root
  * starts with its open work (what the book's LATE / TODAY / TMRW ribbon is
- * about), then the class switch (Materials / Grades / Updates).
+ * about), then the class switch (Materials / Grades / Updates), then a search of
+ * the class's whole tree above its list. Rows the teacher added since the student
+ * last looked wear NEW; a folder with something new inside has a dot (MaterialIndex).
+ * `trailIds` / `onStack`: each trail level's folder id and whether it is on the stack
+ * (Route.Materials); empty: all on it.
  */
 @Composable
-fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: List<String>) {
+fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: List<String>,
+                    trailIds: List<String?> = emptyList(), onStack: List<Boolean> = emptyList()) {
     val model = model
     val nav = nav
     val scope = rememberCoroutineScope()
@@ -79,6 +96,7 @@ fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: 
     var rows by remember { mutableStateOf<List<MaterialRow>?>(Cache.load(cacheKey, s)?.first) }
     var asOf by remember { mutableStateOf<Date?>(Cache.load(cacheKey, s)?.second) }
     var error by remember { mutableStateOf<EngineError?>(null) }
+    var query by rememberSaveable { mutableStateOf("") }
     val pageUrl = "${Engine.ORIGIN}/course/$sectionId/materials${folderId?.let { "?f=$it" } ?: ""}"
 
     suspend fun load() {
@@ -91,17 +109,44 @@ fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: 
         } catch (e: EngineError) { error = e }
     }
     LaunchedEffect(cacheKey) { load() }
+    // The class's tree is walked again once its copy is a day old: search and the NEW marks.
+    LaunchedEffect(sectionId) { if (folderId == null) MaterialIndex.refresh(sectionId, model) }
+    LaunchedEffect(query) { if (query.isNotEmpty()) MaterialIndex.refresh(sectionId, model) }
+    // Left this folder: what was new in it has been seen (it stays marked while you're here).
+    val shownRows by rememberUpdatedState(rows)
+    DisposableEffect(sectionId, folderId) { onDispose { shownRows?.let { r -> MaterialIndex.markSeen(sectionId, r.map { it.key }) } } }
 
-    /** The To Do row for an assignment, if there is one. */
-    fun todo(r: MaterialRow) = if (r.kind == "assignment" && r.id != null) model.item(r.id) else null
-    fun subtitle(r: MaterialRow): String? {
-        if (r.id != null && r.kind == "assignment") {
-            model.grades[sectionId]?.items?.firstOrNull { it.id == r.id && it.earned != null }?.let { return scoreText(it) }
-        }
-        val it = todo(r) ?: return null
-        if (it.submitted) return "Submitted"
-        if (it.turnedIn) return "Turned in"
-        return it.due?.let { "Due ${Fmt.due(it)}" }
+    /**
+     * The To Do row for an assignment or quiz, if there is one. An assignment's row id is
+     * its Schoology id; a quiz's is the page's own row key, so a quiz is looked up by the id
+     * at the end of its /assessments/ link (the id To Do saves it under, per sync.js; not
+     * yet checked against a live quiz).
+     */
+    fun todo(r: MaterialRow): ItemState? = when (r.kind) {
+        "assignment" -> r.id?.let { model.item(it) }
+        "quiz" -> r.url?.let { Regex("""/assessments/(\d+)""").find(it) }?.let { model.item(it.groupValues[1]) }
+        else -> null
+    }
+    /** The gradebook score text for an assignment, if graded. */
+    fun score(r: MaterialRow): String? {
+        if (r.kind != "assignment" || r.id == null) return null
+        return model.grades[sectionId]?.items?.firstOrNull { it.id == r.id && it.earned != null }?.let { scoreText(it) }
+    }
+    fun status(r: MaterialRow): MaterialStatus.Line? {
+        if (r.kind != "assignment" && r.kind != "quiz") return null
+        val it = todo(r)
+        val now = Date()
+        // The saved To Do item's date, else the one Schoology prints on the folder row.
+        return MaterialStatus.line(score(r), it?.let { model.isOverdue(it, now) } ?: false, it?.due ?: Fmt.date(r.due),
+            it?.submitted ?: false, it?.turnedIn ?: false, now)
+    }
+    val levelIds = if (trailIds.size == trail.size) trailIds else List(trail.size) { null }
+    val levelsOnStack = if (onStack.size == trail.size) onStack else List(trail.size) { true }
+    /** A path name: back to that level, or (opened from search, the level never pushed) to it. */
+    fun goTo(level: Int) {
+        val j = FolderPath.jump(level, levelsOnStack)
+        val route = if (j.push) Route.Materials(sectionId, levelIds[level], trail[level], trail.take(level), levelIds.take(level), levelsOnStack.take(level)) else null
+        nav.popFolders(j.pop, route)
     }
     val dot = com.owenleung.dewey.ui.classColor(sectionId)
 
@@ -112,7 +157,19 @@ fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: 
                 if (trail.isNotEmpty()) Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(8.dp).clip(CircleShape).background(dot))
                     Spacer(Modifier.width(6.dp))
-                    Text(trail.joinToString(" › "), style = Theme.footnote, color = C.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    // Each name goes back to that level. A path too long to fit scrolls, showing its end.
+                    val scroll = rememberScrollState()
+                    LaunchedEffect(scroll.maxValue) { scroll.scrollTo(scroll.maxValue) }
+                    Row(Modifier.horizontalScroll(scroll), verticalAlignment = Alignment.CenterVertically) {
+                        trail.forEachIndexed { i, name ->
+                            if (i > 0) Text(" › ", style = Theme.footnote, color = C.secondary, modifier = Modifier.clearAndSetSemantics {})
+                            // Looks like the plain text it replaced; Compose stretches a small target's
+                            // touch area to the 48 dp minimum, so no padding changes the look.
+                            Text(name, style = Theme.footnote, color = C.secondary, maxLines = 1,
+                                modifier = Modifier.clickable(onClickLabel = "Back to $name", role = Role.Button) { goTo(i) }
+                                    .semantics { contentDescription = "Back to $name" })
+                        }
+                    }
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     if (trail.isEmpty()) { Box(Modifier.size(10.dp).clip(CircleShape).background(dot)); Spacer(Modifier.width(8.dp)) }
@@ -127,16 +184,53 @@ fun MaterialsScreen(sectionId: String, folderId: String?, title: String, trail: 
                     PillButton("Updates", external = true) { nav.openSheet(SheetTarget("${Engine.ORIGIN}/course/$sectionId/updates")) }
                 }
             }
-            AsOfBanner(asOf, error)
-            val r = rows
-            when {
-                r != null -> {
-                    val shown = r
-                    if (shown.isEmpty()) EmptyState("Empty folder", icon = Icons.Outlined.Folder)
-                    else Card { shown.forEachIndexed { i, row -> if (i > 0) Divider(); MaterialLink(sectionId, row, subtitle(row), trail + title) } }
+            if (folderId == null) SearchField(query, "Search this class's materials") { query = it }
+            if (query.isNotEmpty()) {
+                // The class's whole tree by name (MaterialIndex), as the same rows with the folder
+                // path under each. A folder opens on top of this page; its path still goes to every level.
+                val hits = MaterialIndex.search(query, sectionId)
+                val walking = MaterialIndex.isWalking(sectionId)
+                if (walking) Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = C.secondary)
+                    Spacer(Modifier.width(8.dp))
+                    Text(if (MaterialIndex.walking == sectionId && MaterialIndex.foldersRead > 0)
+                        "Still reading this class's folders… ${MaterialIndex.foldersRead} read" else "Still reading this class's folders…",
+                        style = Theme.footnote, color = C.secondary)
                 }
-                error != null -> ErrorState(error!!, pageUrl, retry = { scope.launch { load() } }, open = { nav.openSheet(SheetTarget(it)) })
-                else -> SkeletonRows()
+                if (hits.isEmpty() && !walking) EmptyState("Nothing called that", "Searches the names of everything in this class's folders.", icon = Icons.Outlined.Search)
+                if (hits.isNotEmpty()) Card {
+                    hits.take(60).forEachIndexed { i, h ->
+                        if (i > 0) Divider()
+                        val t = h.trail(title)
+                        val r = h.row
+                        val st = if (h.path.isEmpty()) status(r) else null
+                        val f = h.containingFolder(title)
+                        MaterialLink(sectionId, r, if (h.path.isEmpty()) st?.text else h.path, t.names, subtitleLate = st?.late ?: false,
+                            graded = score(r) != null, item = todo(r), trailIds = t.ids, onStack = t.onStack,
+                            isNew = MaterialIndex.isNew(sectionId, r), hasNewInside = r.kind == "folder" && MaterialIndex.folderHasNew(sectionId, r.id),
+                            showIn = f?.let { it.title to { nav.popFolders(0, it) } })
+                    }
+                }
+            } else {
+                AsOfBanner(asOf, error)
+                val r = rows
+                when {
+                    r != null -> {
+                        if (r.isEmpty()) EmptyState("Empty folder", icon = Icons.Outlined.Folder)
+                        else Card {
+                            r.forEachIndexed { i, row ->
+                                if (i > 0) Divider()
+                                val st = status(row)
+                                MaterialLink(sectionId, row, st?.text, trail + title, subtitleLate = st?.late ?: false, graded = score(row) != null,
+                                    item = todo(row), trailIds = levelIds + folderId, onStack = levelsOnStack + true,
+                                    isNew = MaterialIndex.isNew(sectionId, row),
+                                    hasNewInside = row.kind == "folder" && MaterialIndex.folderHasNew(sectionId, row.id))
+                            }
+                        }
+                    }
+                    error != null -> ErrorState(error!!, pageUrl, retry = { scope.launch { load() } }, open = { nav.openSheet(SheetTarget(it)) })
+                    else -> SkeletonRows()
+                }
             }
         }
     }

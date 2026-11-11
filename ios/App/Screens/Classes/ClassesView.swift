@@ -40,7 +40,10 @@ struct ClassesView: View {
             .classDestinations()
             .refreshable { try? await model.loadCourses() }
         }
-        .environment(\.popFolders) { n in path.removeLast(min(n, path.count)) }
+        .environment(\.popFolders) { n, push in
+            path.removeLast(min(n, path.count))
+            if let push { path.append(push) }
+        }
     }
 
     private var tiles: some View { Shelf() }
@@ -76,8 +79,13 @@ struct ClassesView: View {
             VStack(spacing: 0) {
                 ForEach(Array(hits.prefix(60).enumerated()), id: \.offset) { i, h in
                     let sub = [model.course(h.sectionId)?.shortTitle ?? "", h.path].filter { !$0.isEmpty }.joined(separator: " › ")
-                    MaterialLink(sectionId: h.sectionId, row: h.row, subtitle: sub)
+                    MaterialLink(sectionId: h.sectionId, row: h.row, subtitle: sub, isNew: index.isNew(h.sectionId, h.row))
                         .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
+                        .contextMenu {
+                            if let c = model.course(h.sectionId), let f = h.containingFolder(classTitle: c.shortTitle) {
+                                Button { path.append(c); path.append(f) } label: { Label("Show in \(f.title)", systemImage: "folder") }
+                            }
+                        }
                 }
             }
             .card()
@@ -115,25 +123,36 @@ struct SearchField: View {
 /// What a class page pushes. Every link under a class is a value (none is a view
 /// link), so when a folder redraws under an open assignment (its status or grade
 /// came in) SwiftUI doesn't pop the assignment and push it again, over and over.
-/// Pops the stack back a number of Materials levels (the tappable path above a folder).
-/// A folder's trail is the class and each folder above it, so the nth name is that many
-/// screens back; each stack that shows MaterialsView supplies this.
-private struct PopFoldersKey: EnvironmentKey { static let defaultValue: (Int) -> Void = { _ in } }
+/// Pops the stack back a number of screens, then pushes a folder if one is given (the
+/// tappable path above a folder, `FolderPath.jump`; a class page's search opening the
+/// folder a hit is in). Each stack that shows MaterialsView supplies this.
+private struct PopFoldersKey: EnvironmentKey { static let defaultValue: (Int, FolderRoute?) -> Void = { _, _ in } }
 extension EnvironmentValues {
-    var popFolders: (Int) -> Void {
+    var popFolders: (Int, FolderRoute?) -> Void {
         get { self[PopFoldersKey.self] }
         set { self[PopFoldersKey.self] = newValue }
     }
 }
 
-struct FolderRoute: Hashable { let sectionId: String; let folderId: String?; let title: String; let trail: [String] }
+struct FolderRoute: Hashable {
+    let sectionId: String; let folderId: String?; let title: String; let trail: [String]
+    /// The folder id of each trail level (nil for the class page) and whether that level is a
+    /// screen under this one (not when the folder was opened from search). Empty: all on the stack.
+    var trailIds: [String?] = []
+    var onStack: [Bool] = []
+}
 struct MaterialPageRoute: Hashable { let row: MaterialRow }
 struct ClassGradesRoute: Hashable { let course: Course }
 
 extension View {
     /// The screens a class page can open; on every stack that shows MaterialsView.
     func classDestinations() -> some View {
-        navigationDestination(for: FolderRoute.self) { MaterialsView(sectionId: $0.sectionId, folderId: $0.folderId, title: $0.title, trail: $0.trail) }
+        navigationDestination(for: FolderRoute.self) {
+            // Its own identity: a path jump pops one folder and pushes another in the same
+            // place, which would otherwise keep the old folder's rows.
+            MaterialsView(sectionId: $0.sectionId, folderId: $0.folderId, title: $0.title, trail: $0.trail, trailIds: $0.trailIds, onStack: $0.onStack)
+                .id($0)
+        }
             .navigationDestination(for: MaterialPageRoute.self) { MaterialView(row: $0.row) }
             .navigationDestination(for: ClassGradesRoute.self) { CourseGradesView(course: $0.course) }
             .navigationDestination(for: AssignmentRoute.self) { AssignmentView(id: $0.id, sectionId: $0.sectionId) }
@@ -152,6 +171,13 @@ struct MaterialLink: View {
     var item: ItemState?
     /// Class name, then each folder above this row: the path shown at the top of a folder.
     var trail: [String] = []
+    /// For a folder row: the folder id of each trail level and whether it is on the stack (FolderRoute).
+    var trailIds: [String?] = []
+    var onStack: [Bool] = []
+    /// Added by the teacher since the student last looked (MaterialIndex's NEW marks).
+    var isNew = false
+    /// A folder with something new somewhere inside it: a small dot.
+    var hasNewInside = false
     @State private var sheet: SheetTarget?
     @State private var file: FileTarget?
 
@@ -166,20 +192,21 @@ struct MaterialLink: View {
     private var content: some View {
         switch row.kind {
         case "folder":
-            NavigationLink(value: FolderRoute(sectionId: sectionId, folderId: row.id, title: row.title, trail: trail)) { label("folder", "›") }
+            NavigationLink(value: FolderRoute(sectionId: sectionId, folderId: row.id, title: row.title, trail: trail, trailIds: trailIds, onStack: onStack)) { label("folder", "›") }
+                .simultaneousGesture(TapGesture().onEnded { MaterialIndex.shared.markSeen(sectionId, [row.key]) })
         case "assignment":
             if let id = row.id {
                 NavigationLink(value: AssignmentRoute(id: id, sectionId: sectionId)) { label("doc.text", "›") }
-                    .simultaneousGesture(TapGesture().onEnded { RecentMaterials.add(sectionId, row) })
+                    .simultaneousGesture(TapGesture().onEnded { opened() })
             } else { webButton }
         case "page", "other":
             if let url = absURL, Self.isMaterialPage(url) {
                 NavigationLink(value: MaterialPageRoute(row: row)) { label(row.kind == "page" ? "doc.plaintext" : "link", "›", word: row.kind == "page" ? "Page" : "Link") }
-                    .simultaneousGesture(TapGesture().onEnded { RecentMaterials.add(sectionId, row) })
+                    .simultaneousGesture(TapGesture().onEnded { opened() })
             } else { webButton }
         case "document":
             Button {
-                RecentMaterials.add(sectionId, row)
+                opened()
                 switch row.url.flatMap({ FileKinds.target(title: row.title, url: $0) }) {
                 case .file(let f): file = f
                 case .web(let u): LinkOpener.open(u) { sheet = $0 }
@@ -195,6 +222,11 @@ struct MaterialLink: View {
         }
     }
 
+    private func opened() {
+        RecentMaterials.add(sectionId, row)
+        MaterialIndex.shared.markSeen(sectionId, [row.key])
+    }
+
     private var absURL: URL? { row.url.flatMap { URL(string: $0, relativeTo: Engine.origin)?.absoluteURL } }
 
     static func isMaterialPage(_ u: URL) -> Bool {
@@ -207,7 +239,7 @@ struct MaterialLink: View {
     private var webButton: some View {
         Button {
             guard let url = absURL else { return }
-            RecentMaterials.add(sectionId, row)
+            opened()
             LinkOpener.open(url) { sheet = $0 }
         } label: {
             label(row.kind == "quiz" ? "checklist" : row.kind == "discussion" ? "bubble.left.and.bubble.right" : "safari",
@@ -245,6 +277,11 @@ struct MaterialLink: View {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(row.title).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text).maxLines(2).multilineTextAlignment(.leading)
                     if isWork, let item { TypeTag(type: item.type).accessibilityHidden(true) }
+                    if isNew { NewTag().accessibilityHidden(true) }
+                    if hasNewInside {
+                        Circle().fill(Theme.accent).frame(width: 8, height: 8).alignmentGuide(.firstTextBaseline) { $0[.bottom] + 1 }
+                            .accessibilityHidden(true)
+                    }
                 }
                 if let subtitle, !subtitle.isEmpty {
                     Text(subtitle).font(Theme.footnote.weight(subtitleLate ? .semibold : .regular))
@@ -288,6 +325,8 @@ struct MaterialLink: View {
             let kind = word ?? (trailing == "›" ? "" : trailing.replacingOccurrences(of: "\u{FE0E}", with: "").replacingOccurrences(of: " ↗", with: ""))
             if !kind.isEmpty { parts.insert(kind, at: 0) }
         }
+        if isNew { parts.insert("New", at: 0) }
+        if hasNewInside { parts.append("has new items") }
         return parts.joined(separator: ", ")
     }
 }
@@ -300,62 +339,5 @@ enum RecentMaterials {
         var l = list().filter { $0.row.key != row.key }
         l.insert(Entry(sectionId: sectionId, row: row), at: 0)
         Cache.save("recentMaterials", Array(l.prefix(20)))
-    }
-}
-
-/// Every class's Materials tree by name, like the MCP's find_material: walked
-/// on the first search (folders through the engine, which paces requests),
-/// cached for a day.
-@MainActor
-@Observable
-final class MaterialIndex {
-    static let shared = MaterialIndex()
-    struct Hit: Codable { var sectionId: String; var path: String; var row: MaterialRow }
-
-    private(set) var hits: [Hit]
-    private(set) var building = false
-    private(set) var foldersRead = 0
-    private var builtAt: Date?
-
-    init() {
-        let c = Cache.load("materialIndex", as: [Hit].self)
-        hits = c?.value ?? []
-        builtAt = c?.savedAt
-    }
-
-    func search(_ q: String) -> [Hit] {
-        let words = q.lowercased().split(separator: " ").map(String.init)
-        return hits.filter { h in h.row.kind != "folder" && words.allSatisfy { h.row.title.lowercased().contains($0) } }
-    }
-
-    func build(_ model: AppModel, force: Bool = false) {
-        guard !building else { return }
-        if !force, let at = builtAt, Date().timeIntervalSince(at) < 24 * 3600, !hits.isEmpty { return }
-        building = true
-        foldersRead = 0
-        Task {
-            var out: [Hit] = []
-            for c in model.classes {
-                var queue: [(String?, String, Int)] = [(nil, "", 0)]
-                while !queue.isEmpty {
-                    let (fid, path, depth) = queue.removeFirst()
-                    var args: [String: Any] = ["sectionId": c.sectionId]
-                    if let fid { args["folderId"] = fid }
-                    guard let rows: [MaterialRow] = try? await model.engine.call("materials", args) else { continue }
-                    foldersRead += 1
-                    for r in rows {
-                        out.append(Hit(sectionId: c.sectionId, path: path, row: r))
-                        if r.kind == "folder", let id = r.id, depth < 4 {
-                            queue.append((id, path.isEmpty ? r.title : "\(path) › \(r.title)", depth + 1))
-                        }
-                    }
-                    hits = out
-                }
-            }
-            hits = out
-            builtAt = Date()
-            Cache.save("materialIndex", out)
-            building = false
-        }
     }
 }

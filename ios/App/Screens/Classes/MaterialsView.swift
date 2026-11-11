@@ -2,7 +2,9 @@ import SwiftUI
 
 /// 3b · One Materials folder. Every row says where it opens. The class's root
 /// starts with its open work (what the book's LATE / TODAY / TMRW ribbon is
-/// about), then the class switch (Materials / Grades / Updates).
+/// about), then the class switch (Materials / Grades / Updates), then a search of
+/// the class's whole tree above its list. Rows the teacher added since the student
+/// last looked wear NEW; a folder with something new inside has a dot (MaterialIndex).
 struct MaterialsView: View {
     @Environment(AppModel.self) private var model
     let sectionId: String
@@ -10,7 +12,12 @@ struct MaterialsView: View {
     let title: String
     /// The class name and the folders above this one (empty at the class's root).
     var trail: [String] = []
+    /// Each trail level's folder id and whether it is on the stack (FolderRoute); empty: all on it.
+    var trailIds: [String?] = []
+    var onStack: [Bool] = []
     @State private var rows: [MaterialRow]?
+    @State private var query = ""
+    @State private var index = MaterialIndex.shared
     @State private var error: EngineError?
     @State private var asOf: Date?
     @State private var sheet: SheetTarget?
@@ -27,25 +34,32 @@ struct MaterialsView: View {
                 heading
                 if folderId == nil { ClassOpenWork(sectionId: sectionId) }
                 if folderId == nil, let c = model.course(sectionId) { classSwitch(c) }
-                AsOfBanner(date: asOf, error: error)
-                if let rows {
-                    let shown = rows
-                    if shown.isEmpty {
-                        EmptyState(icon: "folder", title: "Empty folder")
-                    } else {
-                        VStack(spacing: 0) {
-                            ForEach(Array(shown.enumerated()), id: \.element.key) { i, r in
-                                MaterialLink(sectionId: sectionId, row: r, subtitle: status(r)?.text, subtitleLate: status(r)?.late ?? false,
-                                             graded: score(r) != nil, item: todo(r), trail: trail + [title])
-                                    .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
-                            }
-                        }
-                        .card()
-                    }
-                } else if let error {
-                    ErrorState(error: error, schoologyURL: pageURL, retry: { Task { await load() } }, open: { sheet = SheetTarget(url: $0) })
+                if folderId == nil { SearchField(text: $query, prompt: "Search this class's materials") }
+                if !query.isEmpty {
+                    searchResults
                 } else {
-                    SkeletonRows()
+                    AsOfBanner(date: asOf, error: error)
+                    if let rows {
+                        let shown = rows
+                        if shown.isEmpty {
+                            EmptyState(icon: "folder", title: "Empty folder")
+                        } else {
+                            VStack(spacing: 0) {
+                                ForEach(Array(shown.enumerated()), id: \.element.key) { i, r in
+                                    MaterialLink(sectionId: sectionId, row: r, subtitle: status(r)?.text, subtitleLate: status(r)?.late ?? false,
+                                                 graded: score(r) != nil, item: todo(r), trail: trail + [title],
+                                                 trailIds: levelIds + [folderId], onStack: levelsOnStack + [true],
+                                                 isNew: index.isNew(sectionId, r), hasNewInside: r.kind == "folder" && index.folderHasNew(sectionId, r.id))
+                                        .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
+                                }
+                            }
+                            .card()
+                        }
+                    } else if let error {
+                        ErrorState(error: error, schoologyURL: pageURL, retry: { Task { await load() } }, open: { sheet = SheetTarget(url: $0) })
+                    } else {
+                        SkeletonRows()
+                    }
                 }
             }
             .padding(Theme.Space.l)
@@ -66,6 +80,62 @@ struct MaterialsView: View {
             if rows == nil, let c = Cache.load(cacheKey, as: [MaterialRow].self) { rows = c.value; asOf = c.savedAt }
             await load()
         }
+        // The class's tree is walked again once its copy is a day old: search and the NEW marks.
+        .task { if folderId == nil { index.refresh(sectionId, model) } }
+        .onChange(of: query) { _, q in if !q.isEmpty { index.refresh(sectionId, model) } }
+        // Left this folder: what was new in it has been seen (it stays marked while you're here).
+        .onDisappear { if let rows { index.markSeen(sectionId, rows.map(\.key)) } }
+    }
+
+    /// The class's whole tree by name (MaterialIndex), as the same rows with the folder
+    /// path under each. A folder opens on top of this page; its path still goes to every level.
+    @ViewBuilder
+    private var searchResults: some View {
+        let hits = index.search(query, in: sectionId)
+        let walking = index.isWalking(sectionId)
+        if walking {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text(index.walking == sectionId && index.foldersRead > 0
+                     ? "Still reading this class's folders… \(index.foldersRead) read"
+                     : "Still reading this class's folders…")
+                    .font(Theme.footnote).foregroundStyle(Theme.secondary)
+            }
+        }
+        if hits.isEmpty && !walking {
+            EmptyState(icon: "magnifyingglass", title: "Nothing called that", detail: "Searches the names of everything in this class's folders.")
+        }
+        if !hits.isEmpty {
+            VStack(spacing: 0) {
+                ForEach(Array(hits.prefix(60).enumerated()), id: \.offset) { i, h in
+                    let t = h.trail(classTitle: title)
+                    let r = h.row
+                    MaterialLink(sectionId: sectionId, row: r, subtitle: h.path.isEmpty ? status(r)?.text : h.path,
+                                 graded: score(r) != nil, item: todo(r), trail: t.names, trailIds: t.ids, onStack: t.onStack,
+                                 isNew: index.isNew(sectionId, r), hasNewInside: r.kind == "folder" && index.folderHasNew(sectionId, r.id))
+                        .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
+                        .contextMenu {
+                            if let f = h.containingFolder(classTitle: title) {
+                                Button { popFolders(0, f) } label: { Label("Show in \(f.title)", systemImage: "folder") }
+                            }
+                        }
+                }
+            }
+            .card()
+        }
+    }
+
+    /// The trail's folder ids and which levels are on the stack, filled in when the route didn't say.
+    private var levelIds: [String?] { trailIds.count == trail.count ? trailIds : Array(repeating: nil, count: trail.count) }
+    private var levelsOnStack: [Bool] { onStack.count == trail.count ? onStack : Array(repeating: true, count: trail.count) }
+
+    /// A path name: back to that level, or (opened from search, the level never pushed) to it.
+    private func goTo(level i: Int) {
+        let stack = levelsOnStack, ids = levelIds
+        let j = FolderPath.jump(to: i, onStack: stack)
+        let route = j.push ? FolderRoute(sectionId: sectionId, folderId: ids[i], title: trail[i], trail: Array(trail[..<i]),
+                                         trailIds: Array(ids[..<i]), onStack: Array(stack[..<i])) : nil
+        popFolders(j.pop, route)
     }
 
     /// Where you are: the class dot and the path above this folder, then the folder's
@@ -95,7 +165,7 @@ struct MaterialsView: View {
         HStack(spacing: 0) {
             ForEach(Array(trail.enumerated()), id: \.offset) { i, name in
                 if i > 0 { Text(" › ").font(Theme.footnote).foregroundStyle(Theme.secondary).accessibilityHidden(true) }
-                Button { popFolders(trail.count - i) } label: {
+                Button { goTo(level: i) } label: {
                     // Looks like the plain text it replaced; the tap area is 44 pt tall.
                     Text(name).font(Theme.footnote).foregroundStyle(Theme.secondary).lineLimit(1)
                         .contentShape(Rectangle().inset(by: -14))

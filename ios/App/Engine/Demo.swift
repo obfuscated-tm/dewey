@@ -242,10 +242,16 @@ enum Demo {
                 "u1": [doc("Unit 1 Slides.pdf"), work("9210", "Lab 1.1 Measuring pH"), work("9211", "Ch. 2 Reading Guide"), work("9212", "Lab 1.2 Enzyme Activity")],
                 "u2": [doc("Unit 2 Slides.pdf"), work("9214", "Lab 2.1 Osmosis in Potatoes"), work("9206", "Lab 2.2 Cell Size and Diffusion"),
                        work("9207", "Read Ch. 5: Membranes")],
-                "u3": [doc("Unit 3 Slides.pdf"), work("9311", "Lab 3.1 Leaf Disk Photosynthesis"),
+                "u3": [doc("Unit 3 Slides.pdf"), doc("Unit 3 Review Guide.pdf"), folder("u3-labs", "Labs"), work("9311", "Lab 3.1 Leaf Disk Photosynthesis"),
                        ["kind": "page", "title": "Photosynthesis reading", "id": "55501", "url": "/page/55501"],
                        ["kind": "document", "title": "Lab 3.1 guided notes", "id": "d-gn", "url": "https://docs.google.com/document/d/demo/edit"],
                        ["kind": "quiz", "title": "Quiz 3.1 Cellular Respiration", "id": "9208", "url": "/course/\(bio)/assessments/9208"]],
+                // Six folders down, past where search used to stop.
+                "u3-labs": [folder("u3-l31", "Lab 3.1 Leaf Disks"), doc("Lab report template.pdf")],
+                "u3-l31": [folder("u3-l31-data", "Data")],
+                "u3-l31-data": [folder("u3-l31-old", "Past years")],
+                "u3-l31-old": [folder("u3-l31-2025", "2025")],
+                "u3-l31-2025": [doc("Leaf disk class data 2025.pdf")],
             ],
         ]
         for c in courses where c.id != bio && !c.title.hasPrefix("Gr10") {
@@ -253,6 +259,9 @@ enum Demo {
         }
         return m
     }
+
+    /// What the teacher "just added" in demo mode: a NEW row in Unit 3, so Unit 3 has a dot.
+    static var newMaterialKeys: [String: [String]] { [courses[1].id: ["document:d-Unit 3 Review Guide.pdf"]] }
 
     static let material: [String: Any] = [
         "kind": "page", "title": "Photosynthesis reading", "files": [] as [Any], "links": [] as [Any],

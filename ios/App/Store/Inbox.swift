@@ -180,14 +180,15 @@ final class Inbox {
     }
 
     /// The ids in `ids` no earlier refresh saw; remembers them all. None on the very first run.
+    /// What wasn't in the saved list of ids already seen, remembering it; the first list
+    /// ever saved has nothing new (`NewMaterials.fresh`, the same rule as Materials' NEW marks).
     private static func unknown(_ ids: [String], key: String) -> Set<String> {
         let d = UserDefaults.standard
-        let first = d.object(forKey: key) == nil
-        var known = d.stringArray(forKey: key) ?? []
-        let fresh = ids.filter { !known.contains($0) }
-        known.append(contentsOf: fresh)
+        let saved = d.stringArray(forKey: key)
+        let fresh = NewMaterials.fresh(known: saved.map(Set.init), current: ids)
+        let known = (saved ?? []) + ids.filter { !(saved ?? []).contains($0) }
         d.set(Array(known.suffix(300)), forKey: key)
-        return first ? [] : Set(fresh)
+        return Set(fresh)
     }
 
     func clear() {

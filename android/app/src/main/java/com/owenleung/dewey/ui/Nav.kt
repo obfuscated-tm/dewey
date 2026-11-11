@@ -24,7 +24,13 @@ sealed class Route {
     data class MineTask(val id: String) : Route()
     data class CourseGrades(val sectionId: String) : Route()
     data class GradeDetail(val sectionId: String, val itemId: String) : Route()
-    data class Materials(val sectionId: String, val folderId: String?, val title: String, val trail: List<String>) : Route()
+    /**
+     * One Materials folder. `trailIds`: the folder id of each trail level (null for the class page);
+     * `onStack`: whether that level is a screen under this one (not when the folder was opened from
+     * search). Empty: every level is on the stack.
+     */
+    data class Materials(val sectionId: String, val folderId: String?, val title: String, val trail: List<String>,
+                         val trailIds: List<String?> = emptyList(), val onStack: List<Boolean> = emptyList()) : Route()
     data class MaterialPage(val row: MaterialRow) : Route()
     data class Message(val thread: MessageThread) : Route()
     data object Settings : Route()

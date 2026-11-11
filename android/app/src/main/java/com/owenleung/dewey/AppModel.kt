@@ -227,6 +227,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         grades.clear()
         gradesAsOf.clear()
         gradeLog.clear()
+        com.owenleung.dewey.ui.classes.MaterialIndex.reset()
         courses = emptyList()
         moveTo(Session.SIGNED_OUT)
         Reminders.sessionDidEnd(notify = false)

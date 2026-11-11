@@ -1,6 +1,22 @@
 package com.owenleung.dewey.ui.classes
 
 import com.owenleung.dewey.ui.tour.coachTarget
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.material.icons.filled.Verified
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import com.owenleung.dewey.store.ItemState
+import com.owenleung.dewey.ui.NewTag
+import com.owenleung.dewey.ui.TypeTag
+import com.owenleung.dewey.ui.todo.CheckMark
 import androidx.compose.material3.IconButton
 import androidx.compose.material.icons.outlined.Badge
 import android.net.Uri
@@ -89,7 +105,7 @@ fun ClassesScreen() {
             }
             ScreenOptions(SettingsPage.CLASSES)
         }
-        SearchField(query) { q ->
+        SearchField(query, "Search every class's materials") { q ->
             query = q
             if (q.isNotEmpty()) MaterialIndex.build(model)
         }
@@ -111,21 +127,28 @@ fun ClassesScreen() {
             if (hits.isNotEmpty()) Card {
                 hits.take(60).forEachIndexed { i, h ->
                     if (i > 0) Divider()
-                    MaterialLink(h.sectionId, h.row, listOf(model.course(h.sectionId)?.shortTitle ?: "", h.path).filter { it.isNotEmpty() }.joinToString(" › "))
+                    val c = model.course(h.sectionId)
+                    val f = c?.let { h.containingFolder(it.shortTitle) }
+                    MaterialLink(h.sectionId, h.row, listOf(c?.shortTitle ?: "", h.path).filter { it.isNotEmpty() }.joinToString(" › "),
+                        isNew = MaterialIndex.isNew(h.sectionId, h.row),
+                        showIn = if (c != null && f != null) f.title to {
+                            nav.push(Route.Materials(c.sectionId, null, c.shortTitle, emptyList())); nav.push(f)
+                        } else null)
                 }
             }
         }
     }
 }
 
+/** The search box under a page's title (Classes, and a class page). */
 @Composable
-private fun SearchField(q: String, onChange: (String) -> Unit) {
+internal fun SearchField(q: String, prompt: String, onChange: (String) -> Unit) {
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(Theme.Radius.card)).background(C.tagSoft).padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Icon(Icons.Outlined.Search, null, tint = C.secondary, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
         Box(Modifier.weight(1f)) {
-            if (q.isEmpty()) Text("Search every class's materials", style = Theme.body, color = C.tertiary)
+            if (q.isEmpty()) Text(prompt, style = Theme.body, color = C.tertiary)
             BasicTextField(q, onChange, singleLine = true, textStyle = Theme.body.copy(color = C.text), cursorBrush = SolidColor(C.accent),
                 modifier = Modifier.fillMaxWidth())
         }
@@ -133,26 +156,67 @@ private fun SearchField(q: String, onChange: (String) -> Unit) {
     }
 }
 
-/** A row that opens a material where it belongs (3b's table). */
+/**
+ * Pops the tab's stack back `n` screens, then pushes `push` if given: the tappable path
+ * above a folder (`FolderPath.jump`), and a class page's search opening the folder a hit is
+ * in. Every tab's stack is a plain list here, so Classes and the Schoology tab both get it.
+ */
+fun Nav.popFolders(n: Int, push: Route? = null) {
+    val s = stacks[tab]
+    repeat(minOf(n, s.size)) { s.removeAt(s.lastIndex) }
+    if (push != null) s += push
+}
+
+/**
+ * A row that opens a material where it belongs (3b's table). Assignments and quizzes are
+ * work: the To Do mark (show-only) and type tag lead the row, with one status line under
+ * it (`MaterialStatus`). Everything else is quiet: a grey icon and a word for what it is.
+ *
+ * `item`: the student's own state for a work row, if Dewey has one. `graded`: it has a score
+ * in the gradebook (finished even with no saved state). `trail`: the class name, then each
+ * folder above this row; with `trailIds` / `onStack` for a folder row (Route.Materials).
+ * `isNew`: added since the student last looked; `hasNewInside`: a folder with something new
+ * somewhere inside (a dot). `showIn`: a search hit's folder, for the long-press "Show in …".
+ */
 @Composable
-fun MaterialLink(sectionId: String, row: MaterialRow, subtitle: String? = null, trail: List<String> = emptyList()) {
+fun MaterialLink(
+    sectionId: String, row: MaterialRow, subtitle: String? = null, trail: List<String> = emptyList(),
+    subtitleLate: Boolean = false, graded: Boolean = false, item: ItemState? = null,
+    trailIds: List<String?> = emptyList(), onStack: List<Boolean> = emptyList(),
+    isNew: Boolean = false, hasNewInside: Boolean = false, showIn: Pair<String, () -> Unit>? = null,
+) {
     val nav = nav
     val ctx = LocalContext.current
     val abs = row.url?.let(WebConfig::abs)
-    fun web() { if (abs != null) { RecentMaterials.add(sectionId, row); nav.openLink(ctx, abs) } }
-    val external = if (Uri.parse(abs ?: "").host == Engine.HOST) "Schoology ↗" else "${Uri.parse(abs ?: "").host ?: ""} ↗"
+    fun opened() {
+        RecentMaterials.add(sectionId, row)
+        MaterialIndex.markSeen(sectionId, listOf(row.key))
+    }
+    fun web() { if (abs != null) { opened(); nav.openLink(ctx, abs) } }
+    val external = when {
+        row.kind == "discussion" -> "Discussion ↗"
+        Uri.parse(abs ?: "").host == Engine.HOST -> "Schoology ↗"
+        else -> "${Uri.parse(abs ?: "").host ?: ""} ↗"
+    }
+    @Composable
+    fun Link(icon: ImageVector, trailing: String, word: String? = null, onClick: () -> Unit) =
+        LinkRow(icon, row, subtitle, trailing, word, subtitleLate, graded, item, isNew, hasNewInside, showIn, onClick)
     when (row.kind) {
-        "folder" -> LinkRow(Icons.Outlined.Folder, row, subtitle, ">", C.secondary) { nav.push(Route.Materials(sectionId, row.id, row.title, trail)) }
-        "assignment" -> if (row.id != null) LinkRow(Icons.Outlined.Description, row, subtitle, ">") {
-            RecentMaterials.add(sectionId, row); nav.push(Route.Assignment(row.id, sectionId))
-        } else LinkRow(Icons.Outlined.Language, row, subtitle, external) { web() }
-        "page", "other" -> if (abs != null && isMaterialPage(abs)) LinkRow(if (row.kind == "page") Icons.Outlined.Article else Icons.Outlined.Link, row, subtitle, ">") {
-            RecentMaterials.add(sectionId, row); nav.push(Route.MaterialPage(row))
-        } else LinkRow(Icons.Outlined.Language, row, subtitle, external) { web() }
+        "folder" -> Link(Icons.Outlined.Folder, ">") {
+            MaterialIndex.markSeen(sectionId, listOf(row.key))
+            nav.push(Route.Materials(sectionId, row.id, row.title, trail, trailIds, onStack))
+        }
+        "assignment" -> if (row.id != null) Link(Icons.Outlined.Description, ">") {
+            opened(); nav.push(Route.Assignment(row.id, sectionId))
+        } else Link(Icons.Outlined.Language, external) { web() }
+        "page", "other" -> if (abs != null && isMaterialPage(abs)) Link(if (row.kind == "page") Icons.Outlined.Article else Icons.Outlined.Link, ">",
+            if (row.kind == "page") "Page" else "Link") {
+            opened(); nav.push(Route.MaterialPage(row))
+        } else Link(Icons.Outlined.Language, external) { web() }
         "document" -> {
             val (icon, where) = row.url?.let { FileKinds.label(row.title, it) } ?: (Icons.Outlined.Description to "")
-            LinkRow(icon, row, subtitle, where) {
-                RecentMaterials.add(sectionId, row)
+            Link(icon, if (where == "Opens here ›") FileKinds.word(row.title, row.url ?: "") else where) {
+                opened()
                 when (val t = row.url?.let { FileKinds.target(row.title, it) }) {
                     is OpenTarget.FileOpen -> nav.file = t.f
                     is OpenTarget.Web -> nav.openLink(ctx, t.url)
@@ -161,8 +225,8 @@ fun MaterialLink(sectionId: String, row: MaterialRow, subtitle: String? = null, 
             }
         }
         // Quizzes, discussions, anything else: the real page, only on tap.
-        else -> LinkRow(when (row.kind) { "quiz" -> Icons.Outlined.Checklist; "discussion" -> Icons.AutoMirrored.Outlined.Chat; else -> Icons.Outlined.Language },
-            row, subtitle, external) { web() }
+        else -> Link(when (row.kind) { "quiz" -> Icons.Outlined.Checklist; "discussion" -> Icons.AutoMirrored.Outlined.Chat; else -> Icons.Outlined.Language },
+            external) { web() }
     }
 }
 
@@ -173,20 +237,84 @@ fun isMaterialPage(u: String): Boolean {
     return Regex("""^/page/\d+$""").matches(p) || Regex("""^/course/\d+/materials/(gp|link/view)/\d+$""").matches(p)
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun LinkRow(icon: ImageVector, row: MaterialRow, subtitle: String?, trailing: String, tint: Color = C.accent, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 50.dp).clickable(onClick = onClick).padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, if (row.kind == "folder") "Folder" else if (row.kind == "quiz") "Quiz" else null, tint = tint, modifier = Modifier.size(22.dp))
-        Spacer(Modifier.width(12.dp))
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(row.title, style = Theme.subhead.copy(fontWeight = FontWeight.Medium), color = C.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            if (!subtitle.isNullOrEmpty()) Text(subtitle, style = Theme.footnote, color = C.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun LinkRow(
+    icon: ImageVector, row: MaterialRow, subtitle: String?, trailing: String, word: String?, subtitleLate: Boolean, graded: Boolean,
+    item: ItemState?, isNew: Boolean, hasNewInside: Boolean, showIn: Pair<String, () -> Unit>?, onClick: () -> Unit,
+) {
+    val isWork = row.kind == "assignment" || row.kind == "quiz"
+    var menu by remember { mutableStateOf(false) }
+    val spoken = spoken(row, item, subtitle, word, trailing, isNew, hasNewInside)
+    Box {
+        Row(Modifier.fillMaxWidth().heightIn(min = 50.dp)
+            .then(if (showIn != null) Modifier.combinedClickable(onClick = onClick, onLongClick = { menu = true }, onLongClickLabel = "Show in ${showIn.first}")
+                  else Modifier.clickable(onClick = onClick))
+            .clearAndSetSemantics { contentDescription = spoken; role = Role.Button }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.width(24.dp), contentAlignment = Alignment.Center) {
+                when {
+                    !isWork -> Icon(icon, null, tint = C.secondary, modifier = Modifier.size(22.dp))
+                    item != null -> CheckMark(item)
+                    // Graded but nothing saved: finished, the turned-in seal.
+                    graded -> Icon(Icons.Filled.Verified, null, tint = C.good, modifier = Modifier.size(24.dp * 1.12f))
+                    // Nothing known about it yet: the same empty ring To Do shows for work not started.
+                    else -> { val ring = C.secondary; Canvas(Modifier.size(24.dp)) {
+                        drawCircle(ring, style = Stroke(width = 1.6.dp.toPx()), radius = size.minDimension / 2 - 1.dp.toPx())
+                    } }
+                }
+            }
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(row.title, style = Theme.subhead.copy(fontWeight = FontWeight.Medium), color = C.text, maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false))
+                    if (isWork && item != null) TypeTag(item.type)
+                    if (isNew) NewTag()
+                    if (hasNewInside) Box(Modifier.size(8.dp).clip(CircleShape).background(C.accent))
+                }
+                if (!subtitle.isNullOrEmpty()) Text(subtitle, style = Theme.footnote.copy(fontWeight = if (subtitleLate) FontWeight.SemiBold else FontWeight.Normal),
+                    color = if (subtitleLate) C.late else C.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Spacer(Modifier.width(8.dp))
+            if (word != null) { Text(word, style = Theme.footnote, color = C.tertiary, maxLines = 1); Spacer(Modifier.width(4.dp)) }
+            if (trailing == ">") Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = C.tertiary)
+            else Text(trailing, style = Theme.footnote, color = C.tertiary, maxLines = 1)
         }
-        Spacer(Modifier.width(8.dp))
-        if (trailing == ">") Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, tint = C.tertiary)
-        else Text(trailing, style = Theme.footnote, color = C.tertiary, maxLines = 1)
+        if (showIn != null) DropdownMenu(menu, onDismissRequest = { menu = false }) {
+            DropdownMenuItem(text = { Text("Show in ${showIn.first}") }, leadingIcon = { Icon(Icons.Outlined.Folder, null) },
+                onClick = { menu = false; showIn.second() })
+        }
     }
+}
+
+/** "Assignment, Lab 2, submitted, 18 out of 20": the kind, the title, then the state. */
+private fun spoken(row: MaterialRow, item: ItemState?, subtitle: String?, word: String?, trailing: String, isNew: Boolean, hasNewInside: Boolean): String {
+    val parts = mutableListOf<String>()
+    when (row.kind) {
+        "folder" -> parts += listOf("Folder", row.title)
+        "assignment", "quiz" -> {
+            parts += listOf(if (row.kind == "quiz") "Quiz" else "Assignment", row.title)
+            if (item != null) parts += when {
+                item.submitted -> "submitted"
+                item.turnedIn -> "turned in"
+                item.isExam && item.studied -> "studied"
+                !item.isExam && item.done -> "done, not turned in"
+                else -> if (item.isExam) "not studied" else "not done"
+            }
+            if (!subtitle.isNullOrEmpty() && subtitle != "Submitted" && subtitle != "Turned in") parts += subtitle.replace(" / ", " out of ")
+        }
+        "discussion" -> parts += listOf("Discussion", row.title)
+        else -> {
+            parts += row.title
+            val kind = word ?: if (trailing == ">") "" else trailing.replace(" ↗", "")
+            if (kind.isNotEmpty()) parts.add(0, kind)
+        }
+    }
+    if (isNew) parts.add(0, "New")
+    if (hasNewInside) parts += "has new items"
+    return parts.joinToString(", ")
 }
 
 /** Recently opened materials (local only). */
@@ -204,65 +332,5 @@ object RecentMaterials {
         l.add(0, Entry(sectionId, row))
         Cache.save("recentMaterials", s, l.take(20))
         version++
-    }
-}
-
-/**
- * Every class's Materials tree by name, like the MCP's find_material: walked
- * on the first search (folders through the engine, which paces requests),
- * cached for a day.
- */
-object MaterialIndex {
-    @Serializable
-    data class Hit(val sectionId: String, val path: String, val row: MaterialRow)
-
-    private val s = ListSerializer(Hit.serializer())
-    var hits by mutableStateOf<List<Hit>>(emptyList()); private set
-    var building by mutableStateOf(false); private set
-    var foldersRead by mutableIntStateOf(0); private set
-    private var builtAt: Date? = null
-    private var loaded = false
-
-    private fun loadCached() {
-        if (loaded) return
-        loaded = true
-        Cache.load("materialIndex", s)?.let { hits = it.first; builtAt = it.second }
-    }
-
-    fun search(q: String): List<Hit> {
-        loadCached()
-        val words = q.lowercase().split(" ").filter { it.isNotEmpty() }
-        return hits.filter { h -> h.row.kind != "folder" && words.all { h.row.title.lowercase().contains(it) } }
-    }
-
-    fun build(model: AppModel, force: Boolean = false) {
-        loadCached()
-        if (building) return
-        val at = builtAt
-        if (!force && at != null && Date().time - at.time < 24 * 3600_000 && hits.isNotEmpty()) return
-        building = true
-        foldersRead = 0
-        model.scope.launch {
-            val out = mutableListOf<Hit>()
-            for (c in model.classes) {
-                val queue = ArrayDeque(listOf(Triple<String?, String, Int>(null, "", 0)))
-                while (queue.isNotEmpty()) {
-                    val (fid, path, depth) = queue.removeFirst()
-                    val args = mutableMapOf<String, Any?>("sectionId" to c.sectionId)
-                    if (fid != null) args["folderId"] = fid
-                    val rows = runCatching { model.engine.call<List<MaterialRow>>("materials", args) }.getOrNull() ?: continue
-                    foldersRead++
-                    for (r in rows) {
-                        out += Hit(c.sectionId, path, r)
-                        if (r.kind == "folder" && r.id != null && depth < 4) queue += Triple(r.id, if (path.isEmpty()) r.title else "$path › ${r.title}", depth + 1)
-                    }
-                    hits = out.toList()
-                }
-            }
-            hits = out
-            builtAt = Date()
-            Cache.save("materialIndex", s, out)
-            building = false
-        }
     }
 }

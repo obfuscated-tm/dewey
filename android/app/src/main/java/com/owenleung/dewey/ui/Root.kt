@@ -214,7 +214,7 @@ fun RouteScreen(r: Route) {
         is Route.MineTask -> com.owenleung.dewey.ui.todo.MineTaskScreen(r.id)
         is Route.CourseGrades -> CourseGradesScreen(r.sectionId)
         is Route.GradeDetail -> GradeDetailScreen(r.sectionId, r.itemId)
-        is Route.Materials -> MaterialsScreen(r.sectionId, r.folderId, r.title, r.trail)
+        is Route.Materials -> MaterialsScreen(r.sectionId, r.folderId, r.title, r.trail, r.trailIds, r.onStack)
         is Route.MaterialPage -> MaterialPageScreen(r.row)
         is Route.Message -> MessageScreen(r.thread)
         Route.Settings -> SettingsScreen()

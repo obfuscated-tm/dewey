@@ -173,6 +173,8 @@ data class MaterialRow(
     val title: String,
     val id: String? = null,
     val url: String? = null,
+    /** The due date Schoology prints under an assignment or quiz in the folder list (ISO). */
+    val due: String? = null,
 ) {
     val key: String get() = "$kind:${id ?: url ?: title}"
 }

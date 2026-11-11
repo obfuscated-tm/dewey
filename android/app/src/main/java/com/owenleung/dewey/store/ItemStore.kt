@@ -104,12 +104,15 @@ object Goal {
  * widgets' taps and the background refresh share it. The tour's pretend week
  * gets its own in-memory store that is never written.
  */
-class ItemStore private constructor(private val file: File?, private val courseFile: File?, private val goalFile: File? = null) {
+class ItemStore private constructor(private val file: File?, private val courseFile: File?, private val goalFile: File? = null,
+                                    private val siteFile: File? = null) {
     private val items = LinkedHashMap<String, ItemState>()
     /** Per class: the A line the student set (CourseState.aCutoff on iOS). */
     private val cutoffs = HashMap<String, Double>()
     /** Per class: the grade the student aims for (CourseState.goal on iOS). */
     private val goals = HashMap<String, Double>()
+    /** Per class: where it turns in work with no Schoology dropbox (CourseState.turnInSite on iOS). */
+    private val sites = HashMap<String, String>()
     private val lock = Any()
 
     companion object {
@@ -118,7 +121,8 @@ class ItemStore private constructor(private val file: File?, private val courseF
 
         fun init(dir: File) {
             if (this::real.isInitialized) return
-            real = ItemStore(File(dir, "items.json"), File(dir, "courses-state.json"), File(dir, "goals-state.json")).also { it.load() }
+            real = ItemStore(File(dir, "items.json"), File(dir, "courses-state.json"), File(dir, "goals-state.json"),
+                File(dir, "turnin-sites.json")).also { it.load() }
         }
 
         /** The tour's pretend week: in memory only. */
@@ -131,6 +135,7 @@ class ItemStore private constructor(private val file: File?, private val courseF
         }
         runCatching { cutoffs.putAll(Cache.json.decodeFromString(MapSerializer(String.serializer(), Double.serializer()), courseFile!!.readText())) }
         runCatching { goals.putAll(Cache.json.decodeFromString(MapSerializer(String.serializer(), Double.serializer()), goalFile!!.readText())) }
+        runCatching { sites.putAll(Cache.json.decodeFromString(MapSerializer(String.serializer(), String.serializer()), siteFile!!.readText())) }
     }
 
     fun item(id: String): ItemState? = synchronized(lock) { items[id] }
@@ -148,8 +153,10 @@ class ItemStore private constructor(private val file: File?, private val courseF
         items.clear()
         cutoffs.clear()
         goals.clear()
+        sites.clear()
         courseFile?.delete()
         goalFile?.delete()
+        siteFile?.delete()
         Unit
     }
 
@@ -170,6 +177,13 @@ class ItemStore private constructor(private val file: File?, private val courseF
         goals[sectionId] = v
         val f = goalFile ?: return@synchronized
         runCatching { Cache.atomicWrite(f, Cache.json.encodeToString(MapSerializer(String.serializer(), Double.serializer()), goals)) }
+    }
+
+    fun turnInSite(sectionId: String): String? = synchronized(lock) { sites[sectionId] }
+    fun setTurnInSite(sectionId: String, site: String?) = synchronized(lock) {
+        if (site == null) sites.remove(sectionId) else sites[sectionId] = site
+        val f = siteFile ?: return@synchronized
+        runCatching { Cache.atomicWrite(f, Cache.json.encodeToString(MapSerializer(String.serializer(), String.serializer()), sites)) }
     }
 }
 
@@ -212,16 +226,22 @@ object TodoLogic {
     /**
      * Whether a past-due row may say "late": only while Schoology still lists it
      * as overdue (work it dropped, like paper or lab-site work, may well be
-     * handed in), and not once it's handed in or marked done. A test is late only
-     * as an online quiz not marked studied: Schoology keeps quizzes given in class
-     * on its overdue list, and a past test you studied for is one you took.
+     * handed in), and until it's handed in (submitted or marked turned in).
+     * Done alone doesn't clear it (iOS 2026-11-07): done means "still to hand in",
+     * so late work stays red until it's handed in. Your own tasks have nothing
+     * to hand in, so done clears theirs. A test is late only as an online quiz
+     * not marked studied: Schoology keeps quizzes given in class on its overdue
+     * list, and a past test you studied for is one you took.
      * The student's own tasks always count as listed (`inSchoology: true`).
      */
-    fun showsLate(type: ItemType, isQuiz: Boolean, done: Boolean, turnedIn: Boolean, submitted: Boolean, inSchoology: Boolean = true): Boolean {
+    fun showsLate(type: ItemType, isQuiz: Boolean, done: Boolean, turnedIn: Boolean, submitted: Boolean, inSchoology: Boolean = true,
+                  mine: Boolean = false): Boolean {
         if (submitted || turnedIn || !inSchoology) return false
         if (type == ItemType.EXAM) return isQuiz && !done
-        return !done
+        return if (mine) !done else true
     }
+
+    fun showsLate(it: ItemState) = showsLate(it.type, it.isQuiz, if (it.isExam) it.studied else it.done, it.turnedIn, it.submitted, it.inSchoology, it.mine)
 
     /** Calendar days late (≥ 0) or null when not overdue. */
     fun daysLate(due: Date?, now: Date = Date()): Int? {
@@ -253,7 +273,7 @@ sealed class DayFilter {
         val b = TodoLogic.bucket(it.due, now)
         return when (this) {
             Late -> b == TodoLogic.Bucket.OVERDUE && !TodoLogic.isOlder(it.due, now) &&
-                TodoLogic.showsLate(it.type, it.isQuiz, if (it.isExam) it.studied else it.done, it.turnedIn, it.submitted, it.inSchoology)
+                TodoLogic.showsLate(it)
             is Day -> {
                 val due = it.due ?: return false
                 b != TodoLogic.Bucket.OVERDUE && Fmt.sameDay(due, Fmt.addDays(Fmt.startOfDay(now), k))

@@ -290,7 +290,28 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
             .sortedBy { it.dueAt ?: Long.MAX_VALUE }
 
     /** Past due counts as late (TodoLogic.showsLate). */
-    fun showsLate(it: ItemState) = TodoLogic.showsLate(it.type, it.isQuiz, if (it.isExam) it.studied else it.done, it.turnedIn, it.submitted, it.inSchoology)
+    fun showsLate(it: ItemState) = TodoLogic.showsLate(it)
+
+    /**
+     * Still owed: not handed in (submitted or marked turned in), and for a test
+     * or your own task, not marked studied / done. Done homework is still owed.
+     */
+    fun isOwed(it: ItemState): Boolean {
+        if (it.submitted || it.turnedIn) return false
+        if (it.isExam) return !it.studied
+        return if (it.mine) !it.done else true
+    }
+
+    /** Where a class turns in work with no Schoology dropbox (TurnInSite), once the student opened or picked it. */
+    fun turnInSite(sectionId: String?): String? {
+        revision.intValue
+        return sectionId?.let { store.turnInSite(it) }
+    }
+
+    fun setTurnInSite(sectionId: String, site: String?) {
+        store.setTurnInSite(sectionId, site)
+        revision.intValue++
+    }
 
     fun isFinished(it: ItemState) = it.submitted || it.turnedIn || (if (it.isExam) false else it.done)
 

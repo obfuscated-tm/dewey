@@ -124,11 +124,16 @@ class LogicTest {
     }
 
     @Test fun showsLate() {
-        fun late(t: ItemType, quiz: Boolean = false, done: Boolean = false, turnedIn: Boolean = false, submitted: Boolean = false, listed: Boolean = true) =
-            TodoLogic.showsLate(t, quiz, done, turnedIn, submitted, listed)
+        fun late(t: ItemType, quiz: Boolean = false, done: Boolean = false, turnedIn: Boolean = false, submitted: Boolean = false, listed: Boolean = true,
+                 mine: Boolean = false) =
+            TodoLogic.showsLate(t, quiz, done, turnedIn, submitted, listed, mine)
         assertFalse(late(ItemType.ASSIGNMENT, listed = false))  // Schoology dropped it: maybe handed in elsewhere
         assertTrue(late(ItemType.ASSIGNMENT))
-        assertFalse(late(ItemType.ASSIGNMENT, done = true))
+        assertTrue(late(ItemType.ASSIGNMENT, done = true))       // done but not handed in: still late (iOS 2026-11-07)
+        assertTrue(late(ItemType.CLASSWORK, done = true))
+        assertFalse(late(ItemType.TASK, done = true, mine = true)) // your own task: nothing to hand in
+        assertFalse(late(ItemType.ASSIGNMENT, done = true, mine = true))
+        assertTrue(late(ItemType.TASK, mine = true))
         assertFalse(late(ItemType.ASSIGNMENT, turnedIn = true))
         assertFalse(late(ItemType.ASSIGNMENT, submitted = true))
         assertFalse(late(ItemType.EXAM))                    // a test on paper: nothing to hand in after it

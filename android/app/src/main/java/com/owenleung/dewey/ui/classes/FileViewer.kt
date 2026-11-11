@@ -11,6 +11,8 @@ import android.webkit.CookieManager
 import android.webkit.MimeTypeMap
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -107,9 +109,12 @@ object FileKinds {
         return OpenTarget.Web(u)
     }
 
-    /** The row's icon and where it says it opens. */
+    /** The kind of file, from its name first ("pdf"), or null when neither says. */
+    fun kind(title: String, url: String): String? = listOf(ext(title), ext(url)).firstOrNull { it.isNotEmpty() && it.length <= 5 }
+
+    /** The row's icon and what it is: the kind of file ("PDF ›", it opens right here, so where isn't news), or a link's site. */
     fun label(title: String, url: String) = when (val t = target(title, url)) {
-        is OpenTarget.FileOpen -> (if (ext(url) == "pdf" || ext(title) == "pdf") Icons.Outlined.PictureAsPdf else Icons.Outlined.Description) to "Opens here ›"
+        is OpenTarget.FileOpen -> kind(title, url).let { e -> (if (e == "pdf") Icons.Outlined.PictureAsPdf else Icons.Outlined.Description) to ((e?.uppercase() ?: "File") + " ›") }
         is OpenTarget.Web -> if (LinkOpener.isGoogle(t.url)) Icons.Outlined.Description to "Google ↗" else Icons.Outlined.Link to "${Uri.parse(t.url).host ?: ""} ↗"
     }
 }
@@ -125,6 +130,67 @@ fun AttachmentRow(title: String, url: String, modifier: Modifier = Modifier, ope
             modifier = Modifier.weight(1f))
         Spacer(Modifier.width(8.dp))
         Text(where, style = Theme.footnote, color = C.secondary, maxLines = 1)
+    }
+}
+
+/**
+ * An attachment on the Assignment page: a preview of its first page (PDFs through
+ * PdfRenderer, images) beside its name and its kind. The preview downloads the file
+ * into the same cache the viewer uses, so opening it after is instant. Links, Google
+ * files and other kinds keep their icon.
+ */
+@Composable
+fun AttachmentCard(title: String, url: String, thumbnail: Boolean = true, open: (OpenTarget) -> Unit) {
+    val ctx = LocalContext.current
+    val (icon, kind) = FileKinds.label(title, url)
+    val shape = androidx.compose.foundation.shape.RoundedCornerShape(Theme.Radius.tag)
+    val thumb by produceState<Bitmap?>(null, url, thumbnail) {
+        val t = FileKinds.target(title, url)
+        if (!thumbnail || t !is OpenTarget.FileOpen || (Uri.parse(t.f.url).path ?: "").contains("/materials/gp/")) return@produceState
+        value = withContext(Dispatchers.IO) { runCatching { firstPage(FileStore.fetch(ctx, t.f)) }.getOrNull() }
+    }
+    Row(
+        Modifier.fillMaxWidth().clip(androidx.compose.foundation.shape.RoundedCornerShape(Theme.Radius.card)).background(C.card)
+            .border(1.dp, C.border, androidx.compose.foundation.shape.RoundedCornerShape(Theme.Radius.card))
+            .clickable { open(FileKinds.target(title, url)) }.padding(10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(44.dp, 56.dp).clip(shape).background(C.background).border(1.dp, C.border, shape), contentAlignment = Alignment.Center) {
+            val b = thumb
+            if (b != null) Image(b.asImageBitmap(), null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+            else Icon(icon, null, tint = C.accent, modifier = Modifier.size(22.dp))
+        }
+        Spacer(Modifier.width(12.dp))
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, style = Theme.subhead.copy(fontWeight = FontWeight.Medium), color = C.text, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(kind, style = Theme.footnote, color = C.secondary, maxLines = 1)
+        }
+    }
+}
+
+/** A small picture of a file's first page: PDFs and images only. */
+private fun firstPage(f: File): Bitmap? {
+    val w = 132
+    return when (f.extension.lowercase()) {
+        "pdf" -> ParcelFileDescriptor.open(f, ParcelFileDescriptor.MODE_READ_ONLY).use { fd ->
+            PdfRenderer(fd).use { r ->
+                if (r.pageCount == 0) return null
+                r.openPage(0).use { p ->
+                    val b = Bitmap.createBitmap(w, (w.toFloat() * p.height / p.width).toInt().coerceAtLeast(1), Bitmap.Config.ARGB_8888)
+                    b.eraseColor(android.graphics.Color.WHITE)
+                    p.render(b, null, null, PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                    b
+                }
+            }
+        }
+        "png", "jpg", "jpeg", "gif", "webp", "heic" -> {
+            val o = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(f.path, o)
+            var n = 1
+            while (o.outWidth / (n * 2) >= w) n *= 2
+            BitmapFactory.decodeFile(f.path, BitmapFactory.Options().apply { inSampleSize = n })
+        }
+        else -> null
     }
 }
 

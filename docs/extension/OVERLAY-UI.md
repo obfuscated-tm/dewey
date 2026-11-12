@@ -278,6 +278,15 @@ Always:
   on, "What-if · N changes" when scores are waiting). Right column: "X.XX
   above A", or "Doesn't match: NN.NN%" when the math and Schoology's course
   percent still disagree.
+- **Goal** (a small select beside What-if: "Goal A" down to "Goal C-", the
+  iOS app's scale): the grade this class aims for, saved per course
+  (`gradeGoals`), the A line (93%) until picked. Wherever this section says
+  "A" (the graph's dashed cutoff, "above A", "A holds down to", "for an A"),
+  the page shows the goal's letter.
+- **On /grades/grades only:** a faint **Hide** under each class's name takes
+  the class off the page (`gradesHidden`); "Hidden" under the last class lists
+  them as pills, and clicking one brings it back. With the overlay off every
+  class shows. Not offered when the page has one class.
 - **Category rows:** "weight N%" beside the name, only when Schoology shows no
   (N%) itself; right column "A holds down to NN.N%" (lowest this category can
   drop, the others unchanged, and still keep the A).

@@ -4,7 +4,9 @@
 // are; this only adds, and only what the page doesn't already show:
 //   course row     beside Schoology's grade, Graph (a step chart of the
 //                  replayed term, in a row of our own under it) and the
-//                  What-if button; "X.XX above A" at right
+//                  What-if button, and Goal (the grade to aim for, A down to
+//                  C-, saved per course; the A line until picked: every
+//                  "A" below is that goal's letter); "X.XX above A" at right
 //   category rows  "A holds down to NN.N%"; a weight box only when Schoology
 //                  shows no (N%) for the category
 //   graded items   a small percent beside Schoology's score (Settings: on by
@@ -34,12 +36,12 @@
 
 import { parseGrades } from '../reader/parse/grades.js';
 import {
-  periodsFromRows, currentPeriod, grade, impact, history, categoryFloor, needFor, letter, statedPct, A_CUTOFF,
+  periodsFromRows, currentPeriod, grade, impact, history, categoryFloor, needFor, letter, statedPct, A_CUTOFF, GOALS,
 } from './grademath.js';
 import {
   createHost, el, onOverlay, isOverlayOn, debounce, keepEvents, getSettings, onSettings,
 } from './ui.js';
-import { loadWeights, saveWeights } from './coursedata.js';
+import { loadWeights, saveWeights, loadGoal, saveGoal, loadHidden, saveHidden } from './coursedata.js';
 import { THEMES, themeOf, paint } from './theme.js';
 
 const EPS = 0.005;
@@ -94,6 +96,11 @@ const INLINE_CSS = CSS + `
   border: 1px solid var(--accent); color: var(--accent); font-size: 12px; font-weight: 500; white-space: nowrap;
 }
 .pill:hover { background: var(--accent-soft); }
+select.goal {
+  font: 500 12px/16px var(--sans); color: var(--dim); background: var(--surface); margin: 0;
+  padding: 2px 4px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
+}
+select.goal:hover { color: var(--ink); }
 .pill.on, .pill.on:hover { background: var(--accent); color: var(--surface); }
 .wi-pts { width: 44px; }
 .wi-score { width: 56px; }
@@ -121,6 +128,14 @@ const ROW_CSS = CSS + `
 // The what-if bar: one per course, pinned to the bottom of the window while
 // that course is in what-if mode, so the grade stays in view while typing
 // far down a long gradebook.
+const HIDE_CSS = CSS + `
+button { font: 500 12px/16px var(--sans); cursor: pointer; margin: 0; }
+.hide { color: var(--faint); background: none; border: 0; padding: 2px 4px; }
+.hide:hover, .hide:focus-visible { color: var(--ink); text-decoration: underline; }
+.hidden { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 12px 0; font: 12px/16px var(--sans); color: var(--dim); }
+.back { color: var(--dim); background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+.back:hover, .back:focus-visible { color: var(--ink); border-color: var(--accent); }
+`;
 const BAR_CSS = CSS + `
 :host { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 2147483000; }
 .bar {
@@ -202,7 +217,7 @@ function sparkSvg(pts) {
 }
 
 /** The step chart into `box`, with a dashed line to `proj` when a what-if is set. */
-function drawChart(box, pts, proj) {
+function drawChart(box, pts, proj, goal = A_CUTOFF) {
   const w = 600, h = 200, m = { l: 36, r: 76, t: 12, b: 24 };
   const tNum = dayNum(today());
   const x0 = dayNum(pts[0].day);
@@ -210,7 +225,7 @@ function drawChart(box, pts, proj) {
   const span = Math.max(xEnd - x0, 1);
   const x1 = proj != null ? xEnd + Math.max(3, span * 0.08) : xEnd + (xEnd === x0 ? 1 : 0);
   const vals = pts.map((p) => p.pct).concat(proj ?? []);
-  const ymin = Math.min(A_CUTOFF - 1, Math.floor(Math.min(...vals)) - 1);
+  const ymin = Math.min(goal - 1, Math.floor(Math.min(...vals)) - 1);
   const ymax = Math.max(100, Math.ceil(Math.max(...vals)));
   const X = (n) => m.l + ((n - x0) / (x1 - x0)) * (w - m.l - m.r);
   const Y = (v) => m.t + ((ymax - v) / (ymax - ymin)) * (h - m.t - m.b);
@@ -222,7 +237,7 @@ function drawChart(box, pts, proj) {
   for (let v = Math.ceil(ymin / step) * step; v <= ymax; v += step) {
     g += `<line x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--sunk)"/><text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--faint)" ${numFont}>${v}</text>`;
   }
-  g += `<line x1="${m.l}" x2="${w - m.r}" y1="${Y(A_CUTOFF)}" y2="${Y(A_CUTOFF)}" stroke="var(--dim)" stroke-dasharray="3 3"/><text x="${w - m.r + 6}" y="${Y(A_CUTOFF) + 4}" font-size="11" fill="var(--dim)" ${sans}>A cutoff</text>`;
+  g += `<line x1="${m.l}" x2="${w - m.r}" y1="${Y(goal)}" y2="${Y(goal)}" stroke="var(--dim)" stroke-dasharray="3 3"/><text x="${w - m.r + 6}" y="${Y(goal) + 4}" font-size="11" fill="var(--dim)" ${sans}>${letter(goal)} cutoff</text>`;
   for (let i = 0; i < 4; i++) {
     const n = Math.round(x0 + ((xEnd - x0) * i) / 3);
     const label = new Date(n * 864e5).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
@@ -290,15 +305,74 @@ function drawChart(box, pts, proj) {
 export async function start({ doc = document, loc = location } = {}) {
   if (/^\/grades\/grades\/?$/.test(loc.pathname)) {
     const out = [];
+    const boxes = [];
     for (const box of doc.querySelectorAll('.gradebook-course')) {
       const courseId = (box.id.match(/(\d+)$/) || [])[1];
       const o = courseId && await mountCourse({ doc, root: box, courseId });
       if (o) out.push(o);
+      if (courseId) boxes.push({ box, courseId });
     }
+    out.hide = await mountHide(boxes);
     return out;
   }
   const courseId = (loc.pathname.match(/^\/course\/(\d+)/) || [])[1] || 'page';
   return mountCourse({ doc, root: doc, courseId });
+}
+
+/**
+ * /grades/grades only: a quiet "Hide" beside each class's name takes that
+ * class off the page (a class you don't want to see every time: an advisory,
+ * a dropped section). Under the last class, "Hidden" lists them; clicking one
+ * brings it back. Saved on this computer; the overlay switched off shows
+ * every class. → { hide(id), show(id), hidden }
+ */
+async function mountHide(boxes) {
+  if (boxes.length < 2) return null;
+  const hidden = new Set(await loadHidden());
+  const { host: footHost, root: foot } = createHost('np-grade-hidden', HIDE_CSS);
+  boxes[boxes.length - 1].box.after(footHost);
+  const nameOf = box => (box.querySelector('.gradebook-course-title a, .gradebook-course-title')?.textContent || 'Class')
+    .replace(/\s+/g, ' ').trim();
+
+  function apply() {
+    const on = isOverlayOn();
+    foot.replaceChildren(foot.firstChild); // keep the <style>
+    const line = el('div', 'hidden');
+    for (const { box, courseId } of boxes) {
+      const off = on && hidden.has(courseId);
+      box.style.display = off ? 'none' : '';
+      if (!off) continue;
+      const b = el('button', 'back', nameOf(box));
+      b.type = 'button';
+      b.title = 'Show this class again';
+      b.addEventListener('click', () => set(courseId, false));
+      line.append(b);
+    }
+    if (line.childElementCount) {
+      line.prepend(el('span', 'lbl', 'Hidden'));
+      foot.append(line);
+    }
+  }
+  function set(id, off) {
+    if (off) hidden.add(id); else hidden.delete(id);
+    saveHidden(hidden);
+    apply();
+  }
+  for (const { box, courseId } of boxes) {
+    const title = box.querySelector('.gradebook-course-title');
+    if (!title) continue;
+    const { host, root } = createHost('np-grade-hide', HIDE_CSS);
+    host.style.cssText = 'display: block;';
+    const b = el('button', 'hide', 'Hide');
+    b.type = 'button';
+    b.title = 'Take this class off this page. It stays in Schoology; bring it back from "Hidden" at the bottom.';
+    b.addEventListener('click', (e) => { e.stopPropagation(); set(courseId, true); });
+    root.append(b);
+    title.append(host);
+  }
+  onOverlay(apply);
+  apply();
+  return { hide: id => set(id, true), show: id => set(id, false), hidden };
 }
 
 async function mountCourse({ doc, root: scope, courseId }) {
@@ -311,6 +385,10 @@ async function mountCourse({ doc, root: scope, courseId }) {
   const whatIf = new Map(); // item id → { earned, possible } — ungraded rows, or a graded row's override
   const plans = new Map(); // category title → { name, possible, score } (null: none open)
   const dropped = new Set(); // item ids left out of the math
+  let goal = (await loadGoal(courseId)) ?? A_CUTOFF; // the grade to aim for, a percent
+  const L = () => letter(goal);
+  const aL = () => `${/^A/.test(L()) ? 'an' : 'a'} ${L()}`;
+  let setGoal = () => {};
   let mode = false; // what-if mode. Off: the page shows the real grade, whatever is typed
   let chartOpen = true; // the graph shows from the start; "Hide graph" closes it for this page
 
@@ -444,11 +522,31 @@ async function mountCourse({ doc, root: scope, courseId }) {
         b.setAttribute('aria-expanded', String(chartOpen));
         if (chartOpen) {
           const box = el('div');
-          drawChart(box, plotPoints(history(course, { weights: weights() })), anyWhatIf() ? grade(course, opts()).pct : null);
+          drawChart(box, plotPoints(history(course, { weights: weights() })), anyWhatIf() ? grade(course, opts()).pct : null, goal);
           chartBox.replaceChildren(chartBox.firstChild, box);
         }
       });
     }
+
+    // Goal: a plain <select>, drawn as a quiet chip.
+    const { root: goalRoot } = inline(gradeCell(tr), 'np-grade-goal', { wrap: true });
+    const goalSel = el('select', 'goal');
+    goalSel.setAttribute('aria-label', 'The grade you are aiming for in this class');
+    goalSel.title = 'The grade you are aiming for in this class. The graph, "holds down to" and "need" use it.';
+    for (const [name, min] of GOALS) {
+      const o = el('option', null, `Goal ${name}`);
+      o.value = String(min);
+      goalSel.append(o);
+    }
+    goalSel.value = String(goal);
+    setGoal = pct => {
+      goal = pct;
+      goalSel.value = String(pct);
+      saveGoal(courseId, goal === A_CUTOFF ? null : goal);
+      update();
+    };
+    goalSel.addEventListener('change', () => setGoal(Number(goalSel.value)));
+    goalRoot.append(goalSel);
 
     const { root: modeRoot } = inline(gradeCell(tr), 'np-grade-mode', { wrap: true });
     const modeBtn = el('button', 'pill');
@@ -504,10 +602,10 @@ async function mountCourse({ doc, root: scope, courseId }) {
         n.title = `Schoology shows ${shown.pct}%. The overlay's math doesn't match it, so its numbers on this page are off. If a category has no weight, type it in beside the category's name.`;
         return cell(tr, n);
       }
-      const d = base - A_CUTOFF;
+      const d = base - goal;
       const n = el('span', 'note');
-      n.append(el('span', 'num', fmt(Math.abs(d))), d >= 0 ? ' above A' : ' below A');
-      n.title = `Course grade minus the A cutoff (${A_CUTOFF}%)`;
+      n.append(el('span', 'num', fmt(Math.abs(d))), d >= 0 ? ` above ${L()}` : ` below ${L()}`);
+      n.title = `Course grade minus your goal, ${aL()} (${goal}%)`;
       cell(tr, n);
     });
   }
@@ -542,13 +640,13 @@ async function mountCourse({ doc, root: scope, courseId }) {
         out.append(el('span', 'num', `${fmt(now, 1)}%`));
         catProj.replaceChildren(catProj.firstChild, out);
       }
-      const floor = categoryFloor(course, cat.title, A_CUTOFF, opts());
+      const floor = categoryFloor(course, cat.title, goal, opts());
       if (floor == null || now == null) return cell(ctr);
       const n = el('span', 'note');
-      if (floor > 100) n.append('A out of reach here');
-      else if (floor > now + 1e-9) n.append('A needs ', el('span', 'num', `${fmt(floor, 1)}%`));
-      else n.append('A holds down to ', el('span', 'num', `${fmt(Math.max(floor, 0), 1)}%`));
-      n.title = `Lowest ${cat.title} can drop, the other categories unchanged, and keep an A (${A_CUTOFF}%)`;
+      if (floor > 100) n.append(`${L()} out of reach here`);
+      else if (floor > now + 1e-9) n.append(`${L()} needs `, el('span', 'num', `${fmt(floor, 1)}%`));
+      else n.append(`${L()} holds down to `, el('span', 'num', `${fmt(Math.max(floor, 0), 1)}%`));
+      n.title = `Lowest ${cat.title} can drop, the other categories unchanged, and keep ${aL()} (${goal}%)`;
       cell(ctr, n);
     });
 
@@ -697,10 +795,10 @@ async function mountCourse({ doc, root: scope, courseId }) {
       planBtnHost.hidden = !mode || !!p;
       if (!p || !need) return;
       if (!(p.possible > 0)) return need.replaceChildren();
-      const r = needFor(course, { category: cat.title, possible: p.possible }, opts(cat.title));
-      if (r.status === 'any') need.replaceChildren('any score keeps an A');
+      const r = needFor(course, { category: cat.title, possible: p.possible, target: goal }, opts(cat.title));
+      if (r.status === 'any') need.replaceChildren(`any score keeps ${aL()}`);
       else if (r.status === 'out') need.replaceChildren('out of reach with this alone');
-      else need.replaceChildren('need ', el('b', null, `${Math.ceil(r.need * 100) / 100}/${p.possible}`), ' for an A');
+      else need.replaceChildren('need ', el('b', null, `${Math.ceil(r.need * 100) / 100}/${p.possible}`), ` for ${aL()}`);
     });
   }
 
@@ -786,7 +884,7 @@ async function mountCourse({ doc, root: scope, courseId }) {
   onSettings(() => update());
   update();
   return {
-    update, whatIf, plans, dropped, setMode,
+    update, whatIf, plans, dropped, setMode, setGoal: pct => setGoal(pct),
   };
 }
 

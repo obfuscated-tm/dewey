@@ -25,6 +25,7 @@ const CACHE_MS = 10 * 60_000;
 const CACHE_SECTIONS = 8;
 const MAX_FOLDERS = 80;
 const WEIGHTS_KEY = 'gradeWeights'; // { [course id]: { [category title]: percent } }
+const GOALS_KEY = 'gradeGoals'; // { [course id]: percent } — the grade the student aims for; absent: the A line
 
 export function chromeStore() {
   return {
@@ -201,4 +202,25 @@ export async function saveWeights(courseId, w) {
     if (Object.keys(w).length) all[courseId] = w; else delete all[courseId];
     await chrome.storage.local.set({ [WEIGHTS_KEY]: all });
   } catch { /* not in the extension */ }
+}
+
+/** The grade this course aims for, a percent, or null (the A line). */
+export async function loadGoal(courseId) {
+  try { return (await chrome.storage.local.get(GOALS_KEY))?.[GOALS_KEY]?.[courseId] ?? null; } catch { return null; }
+}
+export async function saveGoal(courseId, pct) {
+  try {
+    const all = (await chrome.storage.local.get(GOALS_KEY))?.[GOALS_KEY] || {};
+    if (pct == null) delete all[courseId]; else all[courseId] = pct;
+    await chrome.storage.local.set({ [GOALS_KEY]: all });
+  } catch { /* not in the extension */ }
+}
+
+const HIDDEN_KEY = 'gradesHidden'; // [course id] — classes the student hid on the all-courses Grades page
+/** The course ids hidden from /grades/grades. */
+export async function loadHidden() {
+  try { return (await chrome.storage.local.get(HIDDEN_KEY))?.[HIDDEN_KEY] || []; } catch { return []; }
+}
+export async function saveHidden(ids) {
+  try { await chrome.storage.local.set({ [HIDDEN_KEY]: [...ids] }); } catch { /* not in the extension */ }
 }

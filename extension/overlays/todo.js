@@ -152,10 +152,22 @@ export function groupEvents({ overdue = [], upcoming = [], cards = [], now = new
   return groups;
 }
 
-/** The first `cap` items, and how many more there are (for the "+N more" button). */
+/** Work overdue longer than this is "older" (the iOS app's TodoLogic.olderDays). */
+export const OLDER_DAYS = 60;
+
+/**
+ * The first `cap` items, and how many more there are (for the "+N more"
+ * button). Work more than OLDER_DAYS overdue is held back first: the list is
+ * oldest first, so it would otherwise fill the cap and push this week's work
+ * out of sight. `older` is how many of `more` are that (all of them → the
+ * button says "N older").
+ */
 export function visibleItems(items, { expanded = false, cap = CAP } = {}) {
-  if (expanded || items.length <= cap) return { shown: items, more: 0 };
-  return { shown: items.slice(0, cap), more: items.length - cap };
+  if (expanded) return { shown: items, more: 0, older: 0 };
+  const recent = items.filter((it) => !(it.overdue && (it.days ?? 0) > OLDER_DAYS));
+  const older = items.length - recent.length;
+  const shown = recent.slice(0, cap);
+  return { shown, more: items.length - shown.length, older };
 }
 
 // ── Course Dashboard cards: order, live and cached ──────────────────────────
@@ -220,11 +232,12 @@ function renderGroup(g, expanded) {
     box.append(el('div', 'nothing', 'Nothing due'));
     return { box, rows: [] };
   }
-  const { shown, more } = visibleItems(g.items, { expanded });
+  const { shown, more, older } = visibleItems(g.items, { expanded });
   const rows = shown.map(buildRow);
   for (const r of rows) box.append(r.el);
   if (more > 0) {
-    const btn = el('button', 'more', `+${more} more`);
+    const btn = el('button', 'more', older === more ? `${older} older` : `+${more} more`);
+    if (older) btn.title = `${older} more than ${OLDER_DAYS} days overdue`;
     btn.type = 'button';
     box.append(btn);
     return { box, rows, moreBtn: btn };

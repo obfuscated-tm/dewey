@@ -394,6 +394,7 @@ ${t.trim()}
   var grademath_exports = {};
   __export(grademath_exports, {
     A_CUTOFF: () => A_CUTOFF,
+    GOALS: () => GOALS,
     SCALE: () => SCALE,
     calibrate: () => calibrate,
     categoryFloor: () => categoryFloor,
@@ -411,6 +412,7 @@ ${t.trim()}
   });
   var SCALE = [["A", 93], ["A-", 90], ["B+", 87], ["B", 83], ["B-", 80], ["C+", 77], ["C", 73], ["C-", 70], ["D", 60], ["F", 0]];
   var A_CUTOFF = 93;
+  var GOALS = SCALE.filter(([, min]) => min >= 70);
   function letter(pct, scale = SCALE) {
     if (pct == null) return null;
     return (scale.find(([, min]) => pct >= min) || scale[scale.length - 1])[0];

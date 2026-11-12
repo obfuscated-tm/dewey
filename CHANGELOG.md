@@ -14,6 +14,9 @@ Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git hist
 
 ### Extension
 - Grades: what-if is a mode now, like the iPhone app. Press **What-if** on the course row and every row gets a score box; a bar at the bottom of the window shows your real grade → the what-if one, with Reset and Show real (which keeps what you typed). The hover-only "edit", "drop", "what if" and "+ plan" links are gone.
+- Grades: pick a **Goal** per class (A down to C-), like the iPhone app. The graph's cutoff line, "above / below", "holds down to" and "need X for" all follow it. It was always the A line before.
+- Grades (all classes page): **Hide** takes a class off the page; bring it back from "Hidden" at the bottom.
+- To Do on Home: work more than 60 days overdue is tucked behind "N older", so it no longer fills a class's five rows and pushes this week's work out of sight.
 - Fix: the course grade matches Schoology's when a teacher set some items to count for nothing. Schoology doesn't mark those rows, so Dewey checks each category against the percent Schoology shows for it and leaves out the items that don't fit (marked "not counted"). The iPhone and Android apps get the same fix through the shared engine.
 - Done, Studied, Turn in and Remove work without neo-plan. With no token saved they're kept in this browser, one copy per Schoology account, so the daily Schoology sign-out doesn't lose them and another student on the same Chrome sees only their own. With a token, neo-plan holds them as before, and connecting moves the marks made in this browser onto the board (where neo-plan hasn't got a mark of its own).
 - Fix: visiting one of Schoology's own sites (like developers.schoology.com) no longer makes sync, the Claude add-on and the toolbar button use that site instead of your school's.

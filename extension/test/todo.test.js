@@ -218,3 +218,13 @@ test('groupEvents: class colours go by place among the classes, like the iOS app
   const classes = groups.filter((g) => g.isClass);
   assert.deepEqual(classes.map((g) => g.colorIndex), classes.map((_, i) => (i % 8) + 1));
 });
+
+test('visibleItems: work over 60 days overdue is held back before the cap', () => {
+  const old = [{ id: 'a', overdue: true, days: 90 }, { id: 'b', overdue: true, days: 61 }];
+  const recent = [{ id: 'c', overdue: true, days: 60 }, { id: 'd', overdue: false }];
+  const v = visibleItems([...old, ...recent]);
+  assert.deepEqual(v.shown.map((i) => i.id), ['c', 'd']);
+  assert.equal(v.more, 2);
+  assert.equal(v.older, 2);
+  assert.equal(visibleItems([...old, ...recent], { expanded: true }).shown.length, 4);
+});

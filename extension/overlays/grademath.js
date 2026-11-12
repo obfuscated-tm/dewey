@@ -28,6 +28,8 @@
 /** The letter scale from the overlay demo. Not yet confirmed per course. */
 export const SCALE = [['A', 93], ['A-', 90], ['B+', 87], ['B', 83], ['B-', 80], ['C+', 77], ['C', 73], ['C-', 70], ['D', 60], ['F', 0]];
 export const A_CUTOFF = 93;
+/** The grades a student can aim for (the iOS app's Goal.scale): A down to C-. */
+export const GOALS = SCALE.filter(([, min]) => min >= 70);
 
 export function letter(pct, scale = SCALE) {
   if (pct == null) return null;

@@ -248,3 +248,19 @@ test('when no set of items explains it, the category is scaled to Schoology\'s p
   assert.ok(course.categories[0].items.every((it) => !it.uncounted));
   assert.equal(grade(course).pct.toFixed(2), '83.33');
 });
+
+test('freshGrades: a first look marks nothing; new and changed scores are fresh for a week', async () => {
+  const { freshGrades, NEW_FOR_MS } = await import('../overlays/newgrades.js');
+  const items = [{ id: 1, earned: 9, possible: 10 }, { id: 2, earned: null, possible: 10 }];
+  const first = freshGrades(null, items, 1000);
+  assert.deepEqual(first, { scores: { 1: '9/10' }, fresh: {} });
+  // item 2 gets graded, item 1 is regraded
+  const next = freshGrades(first, [{ id: 1, earned: 10, possible: 10 }, { id: 2, earned: 7, possible: 10 }], 2000);
+  assert.deepEqual(next.fresh, { 1: 2000, 2: 2000 });
+  // unopened marks stay, then go after a week
+  const same = [{ id: 1, earned: 10, possible: 10 }, { id: 2, earned: 7, possible: 10 }];
+  assert.deepEqual(freshGrades(next, same, 3000).fresh, { 1: 2000, 2: 2000 });
+  assert.deepEqual(freshGrades(next, same, 2000 + NEW_FOR_MS).fresh, {});
+  // opened (fresh cleared): nothing is new
+  assert.deepEqual(freshGrades({ scores: next.scores, fresh: {} }, same, 3000).fresh, {});
+});

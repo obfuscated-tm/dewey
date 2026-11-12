@@ -283,6 +283,14 @@ Always:
   (`gradeGoals`), the A line (93%) until picked. Wherever this section says
   "A" (the graph's dashed cutoff, "above A", "A holds down to", "for an A"),
   the page shows the goal's letter.
+- **New grades:** a small "New" pill beside a graded item's percent when its
+  score appeared or changed since the student last looked at this course's
+  grades (`overlays/newgrades.js`; the saved copy is `gradesSeen`). A course's
+  own Grades page counts as looking, so the pills show for that one view. On
+  /grades/grades each class's name carries "N new" until the class is opened
+  there. A first look marks nothing; an unopened mark goes after a week. The
+  extension reads nothing in the background for this, so there is no toolbar
+  badge: marks are found when a Grades page is open.
 - **On /grades/grades only:** a faint **Hide** under each class's name takes
   the class off the page (`gradesHidden`); "Hidden" under the last class lists
   them as pills, and clicking one brings it back. With the overlay off every

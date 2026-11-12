@@ -83,6 +83,7 @@
         "overlays/coursetodo.js",
         "overlays/dialog.js",
         "overlays/grademath.js",
+        "overlays/newgrades.js",
         "overlays/grades.js",
         "overlays/home.js",
         "overlays/intro.js",

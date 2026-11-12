@@ -75,7 +75,23 @@ document.addEventListener('click', (e) => {
   const tr = e.target.closest('tr.category-row'); if (!tr) return;
   for (const r of tr.parentElement.querySelectorAll(`tr[data-parent-id="${tr.dataset.id}"]`)) r.classList.toggle('hidden');
 });
+// ?new: a saved copy of the scores with two missing, so two rows read "New"
+// (chrome.storage stood in by sessionStorage; the page loads twice).
+if (q.has('new')) {
+  const read = () => JSON.parse(sessionStorage.getItem('np-store') || '{}');
+  globalThis.chrome = { storage: { local: {
+    get: async (k) => ({ [k]: read()[k] }),
+    set: async (o) => sessionStorage.setItem('np-store', JSON.stringify({ ...read(), ...o })),
+  } } };
+}
 globalThis.__npNoAutoStart = true;
 const { start } = await import('../overlays/grades.js');
 window.overlay = await start({ loc: { pathname: ALL ? '/grades/grades' : '/course/7000375857/student_grades' } });
+if (q.has('new') && !sessionStorage.getItem('np-primed')) {
+  const all = JSON.parse(sessionStorage.getItem('np-store')), seen = all.gradesSeen;
+  for (const c of Object.values(seen)) for (const id of Object.keys(c.scores).slice(2, 4)) delete c.scores[id];
+  sessionStorage.setItem('np-store', JSON.stringify(all));
+  sessionStorage.setItem('np-primed', '1');
+  location.reload();
+}
 </script></body></html>

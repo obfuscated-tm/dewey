@@ -41,7 +41,8 @@ import {
 import {
   createHost, el, onOverlay, isOverlayOn, debounce, keepEvents, getSettings, onSettings,
 } from './ui.js';
-import { loadWeights, saveWeights, loadGoal, saveGoal, loadHidden, saveHidden } from './coursedata.js';
+import { loadWeights, saveWeights, loadGoal, saveGoal, loadHidden, saveHidden, loadSeenGrades, saveSeenGrades } from './coursedata.js';
+import { freshGrades } from './newgrades.js';
 import { THEMES, themeOf, paint } from './theme.js';
 
 const EPS = 0.005;
@@ -83,6 +84,7 @@ const CELL_CSS = CSS + `
 `;
 
 const INLINE_CSS = CSS + `
+.new { font: 600 11px/16px var(--sans); color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 0 6px; white-space: nowrap; }
 :host { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; vertical-align: middle; }
 :host([hidden]) { display: none !important; }
 .spark {
@@ -129,6 +131,7 @@ const ROW_CSS = CSS + `
 // that course is in what-if mode, so the grade stays in view while typing
 // far down a long gradebook.
 const HIDE_CSS = CSS + `
+.new { font: 600 11px/16px var(--sans); color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 0 6px; white-space: nowrap; }
 button { font: 500 12px/16px var(--sans); cursor: pointer; margin: 0; }
 .hide { color: var(--faint); background: none; border: 0; padding: 2px 4px; }
 .hide:hover, .hide:focus-visible { color: var(--ink); text-decoration: underline; }
@@ -308,8 +311,9 @@ export async function start({ doc = document, loc = location } = {}) {
     const boxes = [];
     for (const box of doc.querySelectorAll('.gradebook-course')) {
       const courseId = (box.id.match(/(\d+)$/) || [])[1];
-      const o = courseId && await mountCourse({ doc, root: box, courseId });
+      const o = courseId && await mountCourse({ doc, root: box, courseId, all: true });
       if (o) out.push(o);
+      if (o?.fresh.size) newPill(box, o);
       if (courseId) boxes.push({ box, courseId });
     }
     out.hide = await mountHide(boxes);
@@ -375,11 +379,33 @@ async function mountHide(boxes) {
   return { hide: id => set(id, true), show: id => set(id, false), hidden };
 }
 
-async function mountCourse({ doc, root: scope, courseId }) {
+/** /grades/grades: "N new" after a class's name, until the class is opened. */
+function newPill(box, o) {
+  const title = box.querySelector('.gradebook-course-title');
+  if (!title) return;
+  const { host, root } = createHost('np-grade-new', HIDE_CSS);
+  host.style.cssText = 'display: inline-block; vertical-align: middle; margin-left: 8px;';
+  const pill = el('span', 'new', `${o.fresh.size} new`);
+  pill.title = 'Scores that are new or changed since you last opened this class here';
+  root.append(pill);
+  (title.querySelector('a') || title).append(host);
+  title.addEventListener('click', () => { host.remove(); o.seen(); }, { once: true });
+}
+
+async function mountCourse({ doc, root: scope, courseId, all = false }) {
   const rows = parseGrades(scope, { els: true });
   if (!rows.length) return null;
   const course = currentPeriod(periodsFromRows(rows));
   if (!course) return null;
+
+  // New grades: scores that appeared or changed since this course was last
+  // looked at. A course's own page counts as looking; on /grades/grades,
+  // opening the class does (start's newPill).
+  const graded = course.categories.flatMap((c) => c.items).filter((it) => it.earned != null);
+  const seenCopy = freshGrades(await loadSeenGrades(courseId), graded);
+  const fresh = new Set(Object.keys(seenCopy.fresh));
+  const seen = () => saveSeenGrades(courseId, { scores: seenCopy.scores, fresh: {} });
+  if (all) saveSeenGrades(courseId, seenCopy); else seen();
 
   const typed = await loadWeights(courseId); // only for categories Schoology shows no (N%) for
   const whatIf = new Map(); // item id → { earned, possible } — ungraded rows, or a graded row's override
@@ -659,6 +685,11 @@ async function mountCourse({ doc, root: scope, courseId }) {
         const { host, root } = inline(gradeCell(tr), 'np-grade-pct');
         const pctSpan = el('span', 'pct');
         root.append(pctSpan);
+        if (fresh.has(String(it.id))) {
+          const tag = el('span', 'new', 'New');
+          tag.title = 'New or changed since you last looked';
+          root.append(tag);
+        }
 
         if (it.uncounted) {
           // Schoology's own percent for the category leaves this item out.
@@ -884,7 +915,7 @@ async function mountCourse({ doc, root: scope, courseId }) {
   onSettings(() => update());
   update();
   return {
-    update, whatIf, plans, dropped, setMode, setGoal: pct => setGoal(pct),
+    update, whatIf, plans, dropped, setMode, setGoal: pct => setGoal(pct), fresh, seen,
   };
 }
 

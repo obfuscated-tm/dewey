@@ -224,3 +224,16 @@ export async function loadHidden() {
 export async function saveHidden(ids) {
   try { await chrome.storage.local.set({ [HIDDEN_KEY]: [...ids] }); } catch { /* not in the extension */ }
 }
+
+const SEEN_KEY = 'gradesSeen'; // { [course id]: { scores, fresh } } — see overlays/newgrades.js
+/** The last copy of a course's scores a Grades page saved, or null. */
+export async function loadSeenGrades(courseId) {
+  try { return (await chrome.storage.local.get(SEEN_KEY))?.[SEEN_KEY]?.[courseId] ?? null; } catch { return null; }
+}
+export async function saveSeenGrades(courseId, v) {
+  try {
+    const all = (await chrome.storage.local.get(SEEN_KEY))?.[SEEN_KEY] || {};
+    all[courseId] = v;
+    await chrome.storage.local.set({ [SEEN_KEY]: all });
+  } catch { /* not in the extension */ }
+}

@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   parseScore, parseDue, weightFromText, periodsFromRows, currentPeriod,
-  grade, impact, history, categoryFloor, needFor, letter,
+  grade, impact, history, categoryFloor, needFor, letter, calibrate, statedPct,
 } from '../overlays/grademath.js';
 
 const L = 'Labs & Homework', T = 'Tests & Quizzes';
@@ -180,4 +180,71 @@ test('points mode: floor and need still solve', () => {
   close(grade(COURSE, { extra: [{ category: T, earned: r.need, possible: 50 }] }).pct, 98);
   const f = categoryFloor(COURSE, T, 93);
   close(((220 + (f / 100) * 110) / 330) * 100, 93);
+});
+
+// ── Items Schoology doesn't count ────────────────────────────────────────
+// A teacher can make an item count for nothing; the row still reads "7 / 7".
+// AP Physics 1 on 11/12/2026: Quizzes added up to 98 / 100 but Schoology
+// showed 97.67% (84 / 86), and the course 99.73% where the plain sum gave 99.76.
+
+const item = (title, g, id) => ({ level: 'item', title, due: '', grade: g, id });
+const PHYSICS = [
+  { level: 'course', title: 'Course Grade', grade: 'A (99.73%)' },
+  { level: 'period', title: '26-27 T1', grade: 'A (99.73%)' },
+  { level: 'category', title: 'Assignments', grade: 'A (100%)', weight: 15 }, item('HW', 'A 10 / 10', 'a1'), item('Optional', 'A 0 / 0', 'a2'),
+  { level: 'category', title: 'Final Exam', grade: '—', weight: 15 },
+  { level: 'category', title: 'Labs', grade: 'A (100%)', weight: 20 }, item('Lab', 'A 12 / 12', 'l1'),
+  { level: 'category', title: 'Quizzes', grade: 'A (97.67%)', weight: 10 },
+  item('Quiz 1 (Raw)', 'A 7 / 7', 'q1'), item('Quiz 1 with Corrections', 'A 7 / 7', 'q2'), item('Quiz 1.1', 'A 20 / 20', 'q3'),
+  item('Reminder', 'A 0 / 0', 'q4'), item('Quiz 2.0', 'A 20 / 20', 'q5'), item('Quiz 2.1', 'A 20 / 20', 'q6'),
+  item('Take home quiz', 'A 7 / 7', 'q7'), item('Take-Home Quiz 2.2', 'A 7 / 7', 'q8'), item('Quiz 3.1', 'B 10 / 12', 'q9'),
+  { level: 'category', title: 'Tests', grade: 'A (100%)', weight: 40 }, item('Unit 1 Test', 'A 100 / 100', 't1'),
+];
+
+test('statedPct reads the percent and how precisely it is shown', () => {
+  assert.deepEqual(statedPct('A (97.67%)'), { pct: 97.67, tol: 0.005 });
+  assert.deepEqual(statedPct('A (97%)'), { pct: 97, tol: 0.5 });
+  assert.equal(statedPct('—'), null);
+});
+
+test('a category that only adds up without some items leaves them out, and matches Schoology', () => {
+  const course = currentPeriod(periodsFromRows(PHYSICS));
+  const g = grade(course);
+  close(g.categories.find((c) => c.title === 'Quizzes').pct, (84 / 86) * 100);
+  assert.equal(g.pct.toFixed(2), '99.73');
+  // Two of the four 7 / 7 quizzes don't count; which two can't be known.
+  const out = course.categories.flatMap((c) => c.items).filter((it) => it.uncounted);
+  assert.deepEqual(out.map((it) => [it.earned, it.possible, it.uncounted]), [[7, 7, 'guess'], [7, 7, 'guess']]);
+  assert.equal(impact(course, out[0].id), null);
+  // A what-if on an item that doesn't count changes nothing.
+  close(grade(course, { whatIf: { [out[0].id]: 0 } }).pct, g.pct);
+});
+
+test('the one item that explains the category percent is left out for sure', () => {
+  const cat = { stated: statedPct('A (93.5%)'), items: [
+    { id: 1, earned: 18, possible: 20 }, { id: 2, earned: 46.5, possible: 50 }, { id: 3, earned: 41, possible: 50 },
+    { id: 4, earned: 10, possible: 10 }, { id: 5, earned: 47, possible: 50 },
+  ] };
+  calibrate(cat);
+  assert.deepEqual(cat.items.filter((it) => it.uncounted).map((it) => [it.id, it.uncounted]), [[3, 'sure']]);
+});
+
+test('a category that agrees with Schoology, or shows no percent, is left alone', () => {
+  for (const p of periodsFromRows(ROWS)) for (const c of p.categories) {
+    assert.equal(c.scale, undefined);
+    assert.ok(c.items.every((it) => !it.uncounted));
+  }
+  const cat = { stated: null, items: [{ id: 1, earned: 5, possible: 10 }] };
+  calibrate(cat);
+  assert.equal(cat.items[0].uncounted, undefined);
+});
+
+test('when no set of items explains it, the category is scaled to Schoology\'s percent', () => {
+  // Half weight on the second item: (10 + 2.5) / (10 + 5) = 83.33%.
+  const course = { categories: [{ title: 'Q', weight: null, stated: statedPct('B (83.33%)'), items: [
+    { id: 1, title: 'a', due: null, earned: 10, possible: 10 }, { id: 2, title: 'b', due: null, earned: 5, possible: 10 },
+  ] }] };
+  calibrate(course.categories[0]);
+  assert.ok(course.categories[0].items.every((it) => !it.uncounted));
+  assert.equal(grade(course).pct.toFixed(2), '83.33');
 });

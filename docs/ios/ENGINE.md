@@ -34,7 +34,7 @@ What page the hidden view loads: something small on the Schoology origin. Try `h
 | `reader/parse/mcp.js` | `parseMcpKind` (`gradesFull`, `assignmentFull`, `dropboxFull`, `materialsFull`, `materialFull`, `updatesFeed`, `postBody`, `messagesList`, `messageFull`, `notificationsFull`) |
 | `reader/parse/rubric.js` | `rubricPaths`, `parseRubric` |
 | `reader/parse/grades.js`, `assignment.js`, `materials.js`, `feed.js`, `inbox.js` | through `parseMcpKind` |
-| `overlays/grademath.js` | `periodsFromRows`, `currentPeriod`, `grade`, `impact`, `history`, `categoryFloor`, `needFor`, `letter`, `parseScore`, `A_CUTOFF` |
+| `overlays/grademath.js` | `periodsFromRows`, `currentPeriod`, `calibrate`, `statedPct`, `grade`, `impact`, `history`, `categoryFloor`, `needFor`, `letter`, `parseScore`, `A_CUTOFF` |
 | `overlays/asgstate.js` | `chipState`, `zeroCost`, `whatIfGrade`, `rankIn`, `lateDays` |
 | `overlays/matstate.js` | `rowState`, `folderTotals`, `summaryParts` |
 | `overlays/todorows.js` | `annotateItems`, `sortDueItems`, `typeFor`, `tagFor`, `formatDue`, `formatOverdue`. **Coupled:** it imports `overlays/ui.js` for `buildRow`. Milestone 1 moves the pure functions to `overlays/todologic.js` (todorows re-exports them so nothing else changes). |
@@ -72,7 +72,7 @@ Every op is `async`, takes one plain object, and returns one of:
 | `message({ id })` | `GET /messages/view/{id}` (**marks it read on Schoology**) | `parseMcpKind('messageFull')` | `{ id, subject, group, participants, messages: [{ author, authorId, date, body_md, attachments }] }` |
 | `account()` | `GET /settings/account` (read only; the form is never posted) | `reader/parse/account.js` `parseAccount` | `{ username, studentId }` (studentId: the username when it is a number, else null) |
 | `math.*` | none | grademath / asgstate / matstate / todologic | pass-through to the pure functions, e.g. `math.grade({ course, opts })`, `math.impact({ course, id, opts })` |
-| `courseGrade({ rows, opts, target })` | none | grademath | `{ period, pct, letter, mode, categories: [{ title, weight, earned, possible, pct, floor, floor_status }], items: [{ id, category, title, due, grade, comment, rubric, earned, possible, pct, impact }], history, periods }`. `opts.whatIf: { [id]: { earned, possible } }`. Swift keeps the raw gradebook rows and passes them back. |
+| `courseGrade({ rows, opts, target })` | none | grademath | `{ period, pct, letter, mode, categories: [{ title, weight, earned, possible, pct, floor, floor_status }], items: [{ id, category, title, due, grade, comment, rubric, earned, possible, pct, impact, uncounted }], history, periods }`. `uncounted` is `'sure'`, `'guess'` or null: an item Schoology leaves out of its category percent (`grademath.calibrate`; see OVERLAY-UI.md, Grade math), skipped by all the math. `opts.whatIf: { [id]: { earned, possible } }`. Swift keeps the raw gradebook rows and passes them back. |
 | `planTest({ rows, category, possible, target, opts })` | none | grademath `needFor` | `{ status: 'any'\|'out'\|'need'\|'none', need? }` |
 | `annotate({ items, now })` | none | todologic | `annotateItems` pass-through |
 

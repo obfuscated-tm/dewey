@@ -239,66 +239,79 @@ accept that trade for not having to track Schoology's markup.
 - History = replay graded items in due-date order, recomputing after each day.
   What-ifs, planned items and drops (below) are hypothetical or a page-view-only
   decision; history is the real term, so it ignores all three.
-- **What-if** (`grademath.js` opts.whatIf) used to only cover ungraded ("—")
-  rows. It now also overrides a graded item's score (and its points, if given)
-  — Schoology Plus lets you edit any grade, and the overlay's what-if follows
-  suit.
-- **Drop** (opts.drop, an array or `Set` of item ids) excludes an item from the
-  math entirely, as if it weren't in the gradebook — a real decision the
-  student is making, not a hypothetical, so `grade`/`impact`/`categoryFloor`/
-  `needFor` all respect it and only `history` doesn't.
+- **What-if** (`grademath.js` opts.whatIf) covers ungraded ("—") rows and also
+  overrides a graded item's score (and its points, if given).
+- **Drop** (opts.drop, an array or `Set` of item ids) leaves an item out of the
+  math entirely, as if it weren't in the gradebook: `grade`/`impact`/
+  `categoryFloor`/`needFor` all respect it and only `history` doesn't. The
+  overlay calls it "Leave out".
+- **Items Schoology doesn't count.** A teacher can make an item count for
+  nothing (or half, or double). A student's gradebook shows no sign of it: the
+  row reads "7 / 7" like any other, and nothing in the row's markup, the page
+  settings or the assignment page says so (checked 2026-11-12 on AP Physics 1,
+  where Quizzes added up to 98 / 100 but Schoology showed 97.67% = 84 / 86).
+  The only trace is the category's own percent, so `periodsFromRows` runs
+  `calibrate` on each category: if the sum of its items doesn't give the
+  percent Schoology shows, it looks for the fewest graded items (up to 4)
+  that, left out, do, and marks them `uncounted` ('sure' when only those items
+  fit; 'guess' when others with the same score would fit too, since the totals
+  are right either way). All the math skips an uncounted item, what-ifs on it
+  included. If no such set exists, or sets with different totals fit, the
+  category's earned points are scaled to Schoology's percent (`cat.scale`)
+  instead. Either way the category and course percent match Schoology's.
 
 ## 1. Grades page (inline in Schoology's table)
 
-The first cut of this had every control always on screen — a dashed input on
-every ungraded row, a full-row blue fill for any what-if, a permanent "+ Plan…"
-row under each category. Owen found it too loud. It's now quiet by default:
-nothing but the percent shows until a row is hovered or focused, and an active
-what-if marks its row with a thin bar instead of a fill.
+The first cut of this had every control always on screen (a dashed input on
+every ungraded row, a permanent "+ Plan…" row under each category): too loud.
+The second hid them all until a row was hovered: quiet, but nobody could find
+them. Now what-if is a **mode**, as in the iOS app (docs/ios/SCREENS.md 2b):
+off, the page shows facts only; one visible What-if button turns it on.
+
+Always:
 
 - **Course row:** a small sparkline button ("Hide graph" / "Graph"; open by default) that toggles a row under it
   with a step chart of the replayed history: y axis around the grade range, a
   dashed A-cutoff line, hover crosshair + tooltip (date, %, item that changed
-  it), and a dashed projection when any what-if or drop is set. Right column:
-  "X.XX above A". When any what-if or drop exists, show "→ letter %, ±delta,
-  Reset" beside Schoology's grade; Reset clears every what-if, drop and planned
-  item.
+  it), and a dashed projection while what-if mode has changes. Beside it the
+  **What-if** button (a pill; filled and reading "Show real" while the mode is
+  on, "What-if · N changes" when scores are waiting). Right column: "X.XX
+  above A", or "Doesn't match: NN.NN%" when the math and Schoology's course
+  percent still disagree.
 - **Category rows:** "weight N%" beside the name, only when Schoology shows no
   (N%) itself; right column "A holds down to NN.N%" (lowest this category can
-  drop, the others unchanged, and still keep the A). A faint "+ plan" text
-  button, shown only while the row is hovered or focused (`:host-context(tr:hover)`
-  plus `:focus-within`, so Tab still reaches it — opacity 0, not `display: none`),
-  opens a row of our own under the category: the same name/worth/score/"need
-  X/pts for an A" (or "any score keeps an A" / "out of reach with this alone")
-  editor as before, but it exists only while planning is open — Remove closes
-  it again rather than just clearing its score.
-- **Graded item rows:** a small percent beside Schoology's own score (tabular digits,
-  faint; Settings → "Percent beside scores" hides it). Hovering or focusing the
-  row reveals two faint text buttons beside the percent:
-  - **edit** — Schoology Plus lets you edit any grade, so the overlay does too.
-    Swaps in a score input prefilled with the real earned value ("/ possible"
-    beside it, not editable). Typing overrides that item in the math and the
-    impact tag updates for it; the percent shown updates to the what-if value
-    too. Clearing the box and blurring, or Esc, restores the real score.
-  - **drop** — excludes the item from the math entirely (grade, impact,
-    category floor, "need for an A" all skip it), as a real decision rather
-    than a hypothetical. Schoology's own score in that row is struck through
-    and faded; the right column shows "dropped · undo" instead of an impact
-    tag. Reset undrops everything.
-  - The impact tag itself is unchanged for an untouched row; a row with an
-    active what-if shows its impact recomputed under every other what-if and
-    drop currently set, not just its own.
-- **Ungraded rows ("—"):** hovering or focused reveals a faint "what if" text
-  button beside the dash (same hover/focus mechanism as "+ plan" and "edit").
-  Clicking it swaps in a score input (and a points input too, when the row
-  doesn't say what it's out of), focused. Typing recalculates everything live
-  and marks the row (below). Clearing the box(es) and blurring collapses it
-  back to the hidden button; while a value is set the input stays visible even
-  unfocused and unhovered.
-- **Row marker:** a row with an active what-if gets a 3px inset left bar on its
-  first cell (not the old full-row fill — too loud), only while the overlay is on.
-- What-ifs, drops and planned items are per-page-view only. Never saved.
-- Check what Schoology Plus already does here first (EXTENSION-STEPS step 6), and tell Owen if this duplicates it.
+  drop, the others unchanged, and still keep the A).
+- **Graded item rows:** a small percent beside Schoology's own score (tabular
+  digits, faint; Settings → "Percent beside scores" hides it) and the impact
+  tag in the right column. An item Schoology leaves out of the category (Grade
+  math, above) says "not counted" there instead ("may not count" for a guess;
+  the tooltip says why) and gets no score box.
+
+In what-if mode:
+
+- **Every item row** gets a score box in its grade cell. On a graded row the
+  placeholder is the real score and blank keeps it; typing overrides the item,
+  the percent beside it and its impact tag follow, and Esc clears it. Beside
+  the box, a faint **Leave out** drops the item from the math: Schoology's
+  score in that row is struck through and faded and the right column offers
+  **Count it**. A "—" row also gets a points box, since it doesn't say what
+  it's out of.
+- **Category rows:** "→ NN.N%" beside Schoology's percent when it changed, and
+  **+ Upcoming test** (or assignment) beside the name, which opens a row of our
+  own under the category: name / worth / score / "need X/pts for an A" (or
+  "any score keeps an A" / "out of reach with this alone") and Remove.
+- **The bar**, pinned to the bottom of the window so it stays in view far down
+  a long gradebook: "What-if", "N changes" (or "Type a score on any row"),
+  real → what-if letter and percent, the difference, **Reset** (clears every
+  score, left-out item and planned score) and **Show real**.
+- **Show real** (the bar's button or the pill) switches the mode off without
+  clearing anything: every number on the page is real again and the pill reads
+  "What-if · N changes". Only one course is in what-if mode at a time on
+  /grades/grades.
+- **Row marker:** a changed row gets a 3px inset left bar on its first cell,
+  only while the overlay is on.
+- What-if scores, left-out items and planned items are per-page-view only.
+  Never saved.
 
 ## 2. Materials page and folders
 

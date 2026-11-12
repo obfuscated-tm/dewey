@@ -67,6 +67,7 @@ Rules that follow:
 - **Comments** are real and sometimes long (an English 10 paragraph; "added 0.5 to factoring problem"; "score (104.45) capped at 100"). `parseGrades` returns them in `comment`.
 - A grade cell can hold an **exception word after a dash**: `—Collected`. "Missing" probably looks the same; parse the word.
 - Scores to handle: extra credit over 100% (`25 / 24`), `0 / 0` items (never divide by 0), raw and curved copies of one test. Skip the empty "(no grading period)" block.
+- **Some items don't count, and nothing says so.** A teacher can give an item no weight; the student's row still reads "7 / 7" with no flag in the markup, page settings or assignment page (AP Physics 1, 2026-11-12: Quizzes sums to 98 / 100, Schoology shows 97.67% = 84 / 86). The category's own percent is the only trace. `grademath.calibrate` (run by `periodsFromRows`) finds the items to leave out, or scales the category, so the math matches Schoology; `courseGrade` items carry `uncounted`.
 - **Scales differ by course.** Chemistry tops out at "A (100%)", others show A+. US History shows "A- (92%)", so its A line is above 92. Use 93 (`A_CUTOFF` in `overlays/grademath.js`) as approximate, narrow it with letter/% pairs seen in that course, let the user set it.
 - Dropbox comments include system lines ("Revision 1 submitted"). Filter them out.
 

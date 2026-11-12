@@ -395,6 +395,7 @@ ${t.trim()}
   __export(grademath_exports, {
     A_CUTOFF: () => A_CUTOFF,
     SCALE: () => SCALE,
+    calibrate: () => calibrate,
     categoryFloor: () => categoryFloor,
     currentPeriod: () => currentPeriod,
     grade: () => grade,
@@ -405,6 +406,7 @@ ${t.trim()}
     parseDue: () => parseDue,
     parseScore: () => parseScore,
     periodsFromRows: () => periodsFromRows,
+    statedPct: () => statedPct,
     weightFromText: () => weightFromText
   });
   var SCALE = [["A", 93], ["A-", 90], ["B+", 87], ["B", 83], ["B-", 80], ["C+", 77], ["C", 73], ["C-", 70], ["D", 60], ["F", 0]];
@@ -430,6 +432,58 @@ ${t.trim()}
     const all = [...String(text || "").matchAll(/\((\d+(?:\.\d+)?)\s*%\)/g)];
     return all.length ? Number(all[all.length - 1][1]) : null;
   }
+  function statedPct(text) {
+    const m = String(text || "").match(/(\d+(?:\.(\d+))?)\s*%/);
+    return m ? { pct: Number(m[1]), tol: 0.5 * 10 ** -(m[2]?.length || 0) } : null;
+  }
+  var agrees = (pct, s) => Math.abs(pct - s.pct) <= s.tol + 1e-9 || pct > s.pct && pct - s.pct < 2 * s.tol;
+  function calibrate(cat) {
+    const s = cat.stated;
+    const graded = cat.items.filter((it) => it.earned != null && it.possible != null && (it.possible > 0 || it.earned !== 0));
+    if (!s || !graded.length) return;
+    let E = 0, P = 0;
+    for (const it of graded) {
+      E += it.earned;
+      P += it.possible;
+    }
+    if (P <= 0 || agrees(E / P * 100, s)) return;
+    const groups = /* @__PURE__ */ new Map();
+    for (const it of graded) {
+      const k = `${it.earned}/${it.possible}`;
+      if (!groups.has(k)) groups.set(k, { earned: it.earned, possible: it.possible, items: [] });
+      groups.get(k).items.push(it);
+    }
+    const gs = [...groups.values()];
+    let budget = 6e4;
+    for (let k = 1; k <= 4; k++) {
+      const found = [];
+      const pick = new Array(gs.length).fill(0);
+      const walk = (i, left, e, p) => {
+        if (budget-- <= 0) return;
+        if (left === 0) {
+          if (P - p > 0 && agrees((E - e) / (P - p) * 100, s)) found.push({ e, p, pick: [...pick] });
+          return;
+        }
+        if (i >= gs.length) return;
+        for (let n = Math.min(left, gs[i].items.length); n >= 0; n--) {
+          pick[i] = n;
+          walk(i + 1, left - n, e + n * gs[i].earned, p + n * gs[i].possible);
+        }
+        pick[i] = 0;
+      };
+      walk(0, k, 0, 0);
+      if (budget <= 0) break;
+      if (!found.length) continue;
+      const f = found[0];
+      if (!found.every((x) => Math.abs(x.e - f.e) < 1e-9 && Math.abs(x.p - f.p) < 1e-9)) break;
+      gs.forEach((g, i) => {
+        const sure = found.length === 1 && f.pick[i] === g.items.length;
+        for (const it of g.items.slice(0, f.pick[i])) it.uncounted = sure ? "sure" : "guess";
+      });
+      return;
+    }
+    if (E > 0) cat.scale = s.pct / 100 * P / E;
+  }
   function periodsFromRows(rows) {
     const periods = [];
     let period = null;
@@ -442,13 +496,14 @@ ${t.trim()}
         category = null;
       } else if (r.level === "category") {
         if (!period) periods.push(period = { title: "", categories: [] });
-        category = { title: r.title, weight: r.weight ?? weightFromText(r.title), items: [], src: r };
+        category = { title: r.title, weight: r.weight ?? weightFromText(r.title), stated: statedPct(r.grade), items: [], src: r };
         period.categories.push(category);
       } else if (r.level === "item" && category) {
         const { earned, possible } = parseScore(r.grade);
         category.items.push({ id: r.id ?? `${category.title}/${r.title}/${r.due}`, title: r.title, due: parseDue(r.due), earned, possible, src: r });
       }
     }
+    for (const p of periods) for (const c of p.categories) calibrate(c);
     return periods;
   }
   function currentPeriod(periods) {
@@ -462,7 +517,7 @@ ${t.trim()}
     const byCat = new Map(course.categories.map((c) => [c.title, []]));
     for (const c of course.categories) {
       for (const it of c.items) {
-        if (dropped.has(it.id)) continue;
+        if (dropped.has(it.id) || it.uncounted) continue;
         const w = whatIf[it.id];
         if (w != null) {
           const ws = typeof w === "object" ? w : { earned: w };
@@ -473,7 +528,7 @@ ${t.trim()}
             continue;
           }
         }
-        if (it.earned != null) byCat.get(c.title).push(it);
+        if (it.earned != null) byCat.get(c.title).push(c.scale ? { ...it, earned: it.earned * c.scale } : it);
       }
     }
     for (const x of extra) {
@@ -1959,7 +2014,8 @@ ${t.trim()}
       earned: it.earned,
       possible: it.possible,
       pct: it.earned != null && it.possible > 0 ? it.earned / it.possible * 100 : null,
-      impact: finite(impact(course, it.id, opts))
+      impact: finite(impact(course, it.id, opts)),
+      uncounted: it.uncounted || null
     })));
     return {
       period: course.title || null,

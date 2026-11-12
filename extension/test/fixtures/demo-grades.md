@@ -20,6 +20,7 @@ Made-up gradebook for the README screenshots (test/grades-page.html). Not used b
 | ↳ **Tests & Quizzes** |  | A (93.5%) |  |
 |     Unit 1 Quiz | 8/31/26 9:40am | 18 / 20 |  |
 |     Unit 1 Test | 9/11/26 9:40am | 46.5 / 50 |  |
+|     Unit 1 Test (raw score) | 9/11/26 9:40am | 41 / 50 |  |
 |     Quiz 2.1 Membranes | 9/18/26 9:40am | 10 / 10 |  |
 |     Unit 2 Test | 9/25/26 9:40am | 47 / 50 |  |
 |     Quiz 3.1 Cellular Respiration | 10/02/26 9:40am | — |  |

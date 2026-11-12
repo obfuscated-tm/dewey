@@ -446,7 +446,9 @@ const finite = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
  * Gradebook rows → everything the Grades screens show, for the current period:
  * { period, pct, letter, mode, categories: [{ title, weight, earned, possible,
  * pct, floor, floorStatus }], items: [{ id, category, title, due, grade,
- * comment, rubric, earned, possible, pct, impact }], history, periods }.
+ * comment, rubric, earned, possible, pct, impact, uncounted }], history, periods }.
+ * `uncounted` ('sure' | 'guess' | null): the item is left out of the grade,
+ * because Schoology's category percent only adds up without it (grademath.calibrate).
  * `opts` is grademath's (weights, whatIf, extra, drop); `target` the A line.
  * pct is null when nothing is graded.
  */
@@ -481,6 +483,7 @@ export function courseGrade({ rows = [], opts = {}, target = grademath.A_CUTOFF 
     possible: it.possible,
     pct: it.earned != null && it.possible > 0 ? (it.earned / it.possible) * 100 : null,
     impact: finite(grademath.impact(course, it.id, opts)),
+    uncounted: it.uncounted || null,
   })));
   return {
     period: course.title || null,

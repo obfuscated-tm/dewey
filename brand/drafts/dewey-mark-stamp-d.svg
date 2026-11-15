@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="1024" height="1024">
+  <!-- Draft: stamped "d" whose hole is a tilted drop, on ruled paper. Ink texture is simulated by the #ink filter. -->
+  <defs>
+    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FBF8F0"/>
+      <stop offset="1" stop-color="#EAE4D4"/>
+    </linearGradient>
+    <mask id="drop-hole" maskUnits="userSpaceOnUse" x="0" y="0" width="120" height="120">
+      <rect width="120" height="120" fill="#fff"/>
+      <path d="M54 53C54 53 42 67 42 76a12 12 0 0 0 24 0C66 67 54 53 54 53Z" fill="#000" transform="rotate(-20 54 72)"/>
+    </mask>
+    <filter id="ink" x="-6%" y="-6%" width="112%" height="112%" color-interpolation-filters="sRGB">
+      <!-- rough edges -->
+      <feTurbulence type="fractalNoise" baseFrequency="0.045" numOctaves="2" seed="3" result="n1"/>
+      <feDisplacementMap in="SourceGraphic" in2="n1" scale="2.4" xChannelSelector="R" yChannelSelector="G" result="rough"/>
+      <!-- small specks where the ink missed; raise the last number for fewer specks -->
+      <feTurbulence type="fractalNoise" baseFrequency="0.85" numOctaves="2" seed="8" result="n2"/>
+      <feColorMatrix in="n2" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -9 6.15" result="speck"/>
+      <feComposite in="rough" in2="speck" operator="in" result="inked"/>
+      <!-- large patches of lighter ink; raise the last number for more even ink -->
+      <feTurbulence type="fractalNoise" baseFrequency="0.022" numOctaves="1" seed="5" result="n3"/>
+      <feColorMatrix in="n3" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.3 1.7" result="fade"/>
+      <feComposite in="inked" in2="fade" operator="in"/>
+    </filter>
+  </defs>
+
+  <rect width="120" height="120" fill="url(#paper)"/>
+  <path d="M0 24h120M0 42h120M0 60h120M0 78h120M0 96h120" stroke="#B5D4F4" stroke-width="1.2"/>
+
+  <g transform="rotate(-8 60 60)" filter="url(#ink)">
+    <rect x="15" y="15" width="90" height="90" rx="9" fill="none" stroke="#0F6E56" stroke-width="5.5"/>
+    <rect x="22" y="22" width="76" height="76" rx="5" fill="none" stroke="#0F6E56" stroke-width="1.6"/>
+    <g transform="translate(60 60) scale(.7) translate(-58 -60)">
+      <g mask="url(#drop-hole)" fill="#0F6E56">
+        <circle cx="54" cy="72" r="28"/>
+        <rect x="72" y="20" width="18" height="80" rx="9"/>
+      </g>
+    </g>
+  </g>
+</svg>

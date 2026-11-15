@@ -8,6 +8,7 @@ import { runSync, KEY_SNAPSHOT, submittedPayload } from './sync.js';
 import { limiter, persistPausedUntil } from './limiter.js';
 import { ensureOffscreen } from '../offscreen/ensure.js';
 import { isSchoolHost } from '../util.js';
+import { checkGrades } from './gradecheck.js';
 
 export const SYNC_LOCK_ID = 'sync';
 export const KEY_HOST = 'schoologyHost';
@@ -21,6 +22,7 @@ export const syncRunning = () => current;
 /** Abort a running sync (kill switch). */
 export function stopSync() {
   controller?.abort();
+  gradeController?.abort();
 }
 
 export async function offscreenParse(kind, text, url) {
@@ -78,6 +80,52 @@ export function requestSync({ isArchiveRunning, parse = offscreenParse, np = han
     }
   })().finally(() => { current = null; });
   return current;
+}
+
+// ── The grade check (sync/gradecheck.js) ─────────────────────────────────
+let gradeCheck = null;
+let gradeController = null;
+/**
+ * Reads every class's gradebook for new scores, unless a sync, an archive or
+ * another check is running (then it waits for the next alarm). The classes
+ * are the last sync's. → the number of new scores, or null when it didn't run
+ * or was cut short (signed out, rate limited, stopped).
+ */
+export function requestGradeCheck({ parse = offscreenParse } = {}) {
+  if (gradeCheck) return gradeCheck;
+  gradeCheck = (async () => {
+    if (current) return null;
+    const { running } = await chrome.storage.session.get('running');
+    if (running?.id) return null;
+    const courses = (await chrome.storage.local.get(KEY_SNAPSHOT))[KEY_SNAPSHOT]?.courses || [];
+    if (!courses.length) return null;
+    gradeController = new AbortController();
+    const client = new SchoologyClient({
+      host: await schoologyHost(),
+      log: () => {},
+      signal: gradeController.signal,
+      acquire: (s) => limiter.acquire(s),
+      onRateLimited: () => { limiter.pause(); persistPausedUntil(); },
+    });
+    try {
+      return await checkGrades({
+        courses,
+        storage: chrome.storage.local,
+        getRows: async (id) => {
+          const r = await client.getText(`/course/${id}/student_grades`);
+          if (r.redirected) return null;
+          const p = await parse('gradesFull', r.text, r.url);
+          if (p?.login) throw new Error('signed out');
+          return p?.data || null;
+        },
+      });
+    } catch {
+      return null; // signed out, rate limited or stopped: try again at the next alarm
+    } finally {
+      gradeController = null;
+    }
+  })().finally(() => { gradeCheck = null; });
+  return gradeCheck;
 }
 
 // ── Submit detection ─────────────────────────────────────────────────────

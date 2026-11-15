@@ -1,5 +1,5 @@
 import { handleNeoplan, getConfig, isWorkValue } from './outputs/neoplan/api.js';
-import { requestSync, stopSync, syncRunning, reportSubmitted, sectionForRealm, schoologyHost, SYNC_LOCK_ID, KEY_HOST, DEFAULT_HOST } from './sync/runner.js';
+import { requestSync, requestGradeCheck, stopSync, syncRunning, reportSubmitted, sectionForRealm, schoologyHost, SYNC_LOCK_ID, KEY_HOST, DEFAULT_HOST } from './sync/runner.js';
 import { KEY_SNAPSHOT } from './sync/sync.js';
 import { limiter, restorePausedUntil, persistPausedUntil } from './sync/limiter.js';
 import { ensureOffscreen, OFFSCREEN_URL } from './offscreen/ensure.js';
@@ -11,10 +11,13 @@ import { isQuizPageUrl, quizTabOpen, noteQuizPage } from './sync/quiet.js';
 import { handleLocal, markSubmittedLocal, LOCAL_OPS, storeKey, readRecord, setPortedAt } from './outputs/local/marks.js';
 import { toPort, portItems } from './outputs/local/port.js';
 import { isSchoolHost } from './util.js';
+import { GRADE_CHECK_MIN, newCount } from './sync/gradecheck.js';
+import { SEEN_KEY, HIDDEN_KEY } from './overlays/newgrades.js';
 
 const SYNC_ALARM = 'neoplan-sync';
 const SYNC_SOON_ALARM = 'neoplan-sync-soon';
 const MCP_CONNECT_ALARM = 'mcp-connect';
+const GRADE_ALARM = 'grade-check';
 const SYNC_EVERY_MIN = 15;
 const TAB_SYNC_GAP_MS = 10 * 60_000; // a Schoology page load starts a sync, at most every 10 min
 // What a content script on a Schoology page may ask neo-plan. Never the token,
@@ -396,6 +399,26 @@ async function ensureMcpAlarm() {
   const a = await chrome.alarms.get(MCP_CONNECT_ALARM);
   if (!a || a.periodInMinutes !== 1) await chrome.alarms.create(MCP_CONNECT_ALARM, { periodInMinutes: 1, delayInMinutes: 1 });
 }
+// The grade check (sync/gradecheck.js): every 30 minutes, a few minutes off
+// the sync's own alarm so the two don't land together.
+async function ensureGradeAlarm() {
+  const a = await chrome.alarms.get(GRADE_ALARM);
+  if (!a || a.periodInMinutes !== GRADE_CHECK_MIN) await chrome.alarms.create(GRADE_ALARM, { periodInMinutes: GRADE_CHECK_MIN, delayInMinutes: 4 });
+}
+// The toolbar badge: how many scores are new, from the saved copy, so it also
+// drops the moment a Grades page marks a class seen.
+async function paintBadge() {
+  const got = await chrome.storage.local.get([SEEN_KEY, HIDDEN_KEY]);
+  const n = newCount(got[SEEN_KEY], new Set(got[HIDDEN_KEY] || []));
+  await chrome.action.setBadgeBackgroundColor({ color: '#0F766E' });
+  await chrome.action.setBadgeText({ text: n ? String(n) : '' });
+  await chrome.action.setTitle({ title: n ? `Dewey: ${n} new grade${n === 1 ? '' : 's'}` : 'Dewey' });
+}
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && (changes[SEEN_KEY] || changes[HIDDEN_KEY])) paintBadge().catch(() => {});
+});
+paintBadge().catch(() => {});
+ensureGradeAlarm().catch(() => {});
 chrome.runtime.onInstalled.addListener(() => { ensureAlarm(); ensureMcpAlarm(); });
 chrome.runtime.onStartup.addListener(() => { ensureAlarm(); ensureMcpAlarm(); restorePausedUntil(); });
 ensureAlarm().catch(() => {}); // and whenever the worker starts, in case the alarm was lost
@@ -435,6 +458,7 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
   if (alarm.name === SYNC_ALARM) requestSync({ isArchiveRunning, reason: 'alarm' }).then(() => pushSnapshot()).catch(() => {});
   if (alarm.name === SYNC_SOON_ALARM) requestSync({ isArchiveRunning, reason: 'tab' }).then(() => pushSnapshot()).catch(() => {});
   if (alarm.name === MCP_CONNECT_ALARM) connectBridge();
+  if (alarm.name === GRADE_ALARM) requestGradeCheck().catch(() => {});
 });
 
 chrome.tabs.onUpdated.addListener(async (tabId, info, tab) => {

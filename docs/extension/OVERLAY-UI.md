@@ -288,9 +288,12 @@ Always:
   grades (`overlays/newgrades.js`; the saved copy is `gradesSeen`). A course's
   own Grades page counts as looking, so the pills show for that one view. On
   /grades/grades each class's name carries "N new" until the class is opened
-  there. A first look marks nothing; an unopened mark goes after a week. The
-  extension reads nothing in the background for this, so there is no toolbar
-  badge: marks are found when a Grades page is open.
+  there. A first look marks nothing; an unopened mark goes after a week.
+  Between visits the background worker reads each class's gradebook every 30
+  minutes (`sync/gradecheck.js`: one GET per class through the shared limiter,
+  skipped during a quiz, a sync or an archive, and for hidden classes) and the
+  toolbar button's badge shows how many scores are new. The badge is painted
+  from the saved copy, so it drops as soon as a Grades page marks a class seen.
 - **On /grades/grades only:** a faint **Hide** under each class's name takes
   the class off the page (`gradesHidden`); "Hidden" under the last class lists
   them as pills, and clicking one brings it back. With the overlay off every

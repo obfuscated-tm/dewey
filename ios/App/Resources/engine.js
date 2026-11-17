@@ -22,6 +22,7 @@ var SchoologyEngine = (() => {
   var engine_exports = {};
   __export(engine_exports, {
     MATERIAL_SHAPES: () => MATERIAL_SHAPES,
+    OP_NAMES: () => OP_NAMES,
     VERSION: () => VERSION,
     account: () => account,
     assignment: () => assignment,
@@ -2048,6 +2049,7 @@ ${t.trim()}
     "materials",
     "material",
     "feed",
+    "account",
     "notifications",
     "messages",
     "message",

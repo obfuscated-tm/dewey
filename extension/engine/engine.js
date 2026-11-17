@@ -508,8 +508,9 @@ export function planTest({ rows = [], category, possible, target = grademath.A_C
 
 let instance = null;
 const engine = () => (instance ||= createEngine());
-const OP_NAMES = ['courses', 'todo', 'status', 'assignment', 'gradebook', 'dropbox', 'rubric', 'materials', 'material', 'feed',
-  'notifications', 'messages', 'message', 'courseGrade', 'planTest', 'annotate'];
+/** Every op Swift (and Kotlin) may call. Must list every op createEngine has (engine.test.js checks). */
+export const OP_NAMES = ['courses', 'todo', 'status', 'assignment', 'gradebook', 'dropbox', 'rubric', 'materials', 'material', 'feed',
+  'account', 'notifications', 'messages', 'message', 'courseGrade', 'planTest', 'annotate'];
 
 /** Runs one op by name; always resolves. */
 export async function call(op, args) {

@@ -7,7 +7,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createEngine, refused, validId, samePath, makeQueue, courseGrade, planTest, call } from '../engine/engine.js';
+import { createEngine, refused, validId, samePath, makeQueue, courseGrade, planTest, call, OP_NAMES } from '../engine/engine.js';
 
 import { quizLandingHtml, DONE } from './fixtures/quiz-landing.js';
 
@@ -300,6 +300,12 @@ test('account: GET /settings/account → username and student number', async () 
   assert.deepEqual(calls.map((c) => [c.key, c.init.method]), [['/settings/account', 'GET']]);
   const out = fakeEngine(new Map([['/settings/account', res('<form class="s-user-login-form"></form>')]]));
   assert.equal((await out.eng.account()).error, 'login');
+});
+
+test('call() allows every op the engine has (account was left off: Fill in from Schoology always failed)', async () => {
+  const { eng } = fakeEngine(new Map());
+  assert.deepEqual([...OP_NAMES].sort(), Object.keys(eng).sort());
+  assert.deepEqual(await call('nope'), { ok: false, error: 'op' });
 });
 
 test('a request that never answers ends as `network` (timeout) and frees its slot', async () => {

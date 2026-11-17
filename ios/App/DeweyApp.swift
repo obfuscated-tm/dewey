@@ -96,7 +96,7 @@ struct RootView: View {
             case .signedOut:
                 SignInView()
             case .signedIn:
-                // The open iPhone Duo (regular width): sidebar, list and detail side by side.
+                // The open iPhone Duo (regular width): a rail of tabs, and what you tap opens over the right half.
                 if sizeClass == .regular { WideShell() } else { MainTabs() }
             }
         }

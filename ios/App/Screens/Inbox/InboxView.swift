@@ -7,7 +7,7 @@ import SwiftUI
 /// in the tab badge. Writing a message happens in the Schoology sheet.
 struct InboxView: View {
     @Environment(AppModel.self) private var model
-    /// The open Duo: New in your classes sits in the right half instead.
+    /// The open Duo (nil on the phone): New in your classes sits right of the fold.
     @Environment(\.split) private var split
     @State private var sheet: SheetTarget?
     /// Folded boxes, by id, kept across launches.
@@ -18,64 +18,59 @@ struct InboxView: View {
 
     private static let step = 10
 
+    /// Where "New in your classes" goes.
+    private enum ClassesBox { case inline, last, none }
+
     var body: some View {
         let inbox = model.inbox
-        let classes = model.classes
+        // The open Duo, wider than tall: messages left of the fold, New in your classes right of it.
+        let sideBySide = split.map { !$0.upright } ?? false
+        let paneOpen = split?.details[2] != nil
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    ScreenHeader(title: "Inbox") {
-                        Button { sheet = SheetTarget(url: Engine.origin.appendingPathComponent("messages/new")) } label: {
-                            Image(systemName: "square.and.pencil").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
-                                .frame(width: 44, height: 44)
+            Group {
+                if sideBySide, let split {
+                    VStack(spacing: 0) {
+                        VStack(alignment: .leading, spacing: 14) {
+                            header
+                            AsOfBanner(date: inbox.asOf, error: inbox.error)
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("New message in Schoology")
-                        ScreenOptions(page: .inbox)
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 14)
+                        HStack(alignment: .top, spacing: 0) {
+                            // Beside an opened message there is one column: the classes box goes
+                            // under the others, so nothing above it moves.
+                            ScrollView {
+                                VStack(alignment: .leading, spacing: 14) { boxes(classes: paneOpen ? .last : .none) }
+                                    .padding(.horizontal, 16)
+                                    .padding(.bottom, 24)
+                            }
+                            .refreshable { await refresh() }
+                            .frame(width: paneOpen ? nil : split.listWidth)
+                            if !paneOpen && inbox.asOf != nil {
+                                ScrollView {
+                                    classesBox
+                                        .padding(.horizontal, 16)
+                                        .padding(.bottom, 24)
+                                }
+                                .refreshable { await refresh() }
+                            }
+                        }
                     }
-                    .padding(.top, 8)
-                    AsOfBanner(date: inbox.asOf, error: inbox.error)
-
-                    if inbox.asOf == nil {
-                        if let e = inbox.error {
-                            ErrorState(error: e, retry: { Task { await inbox.refresh(model) } })
-                        } else {
-                            SkeletonRows(count: 4)
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 14) {
+                            header
+                            AsOfBanner(date: inbox.asOf, error: inbox.error)
+                            boxes(classes: .inline)
                         }
-                    } else {
-                        // A new school message sits at the top until it's opened, then goes back under School.
-                        let newSchool = inbox.schoolThreads(classes).filter(inbox.isNew)
-                        if !newSchool.isEmpty {
-                            box("newSchool", "New from school", sources: [],
-                                rows: { _ in newSchool.map(Row.thread) })
-                        }
-                        box("teachers", "From teachers", empty: "No messages from teachers", sources: [.messages],
-                            rows: { i in i.teacherThreads(classes).map(Row.thread) })
-                        if split == nil {
-                            box("classes", "New in your classes", empty: "Nothing new", sources: [.notices],
-                                rows: { i in i.classNotices(classes).map(Row.notice) })
-                        }
-                        // Only groups: a course switched to a class in Settings drops out right away.
-                        let posts = inbox.posts.filter { p in !classes.contains { $0.sectionId == p.sectionId } }
-                        if !posts.isEmpty {
-                            box("updates", "School updates", sources: [],
-                                rows: { _ in posts.map(Row.post) })
-                        }
-                        box("school", "School", empty: "Nothing from school", sources: [.messages, .notices],
-                            rows: { i in
-                                i.schoolThreads(classes).filter { !i.isNew($0) }.map(Row.thread)
-                                    + i.otherNotices(classes).map(Row.notice)
-                            })
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 24)
                     }
+                    .refreshable { await refresh() }
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .background(Theme.background)
-            .refreshable {
-                await inbox.refresh(model)
-                shown = [:]
-            }
             .navigationDestination(for: MessageThread.self) { MessageView(thread: $0) }
             .navigationDestination(for: AssignmentLink.self) { AssignmentView(id: $0.id) }
             .toolbar(.hidden, for: .navigationBar)
@@ -83,6 +78,64 @@ struct InboxView: View {
             .task {
                 if inbox.asOf == nil || Date().timeIntervalSince(inbox.asOf!) > 120 { await inbox.refresh(model) }
             }
+        }
+    }
+
+    private func refresh() async {
+        await model.inbox.refresh(model)
+        shown = [:]
+    }
+
+    private var header: some View {
+        ScreenHeader(title: "Inbox") {
+            Button { sheet = SheetTarget(url: Engine.origin.appendingPathComponent("messages/new")) } label: {
+                Image(systemName: "square.and.pencil").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
+                    .frame(width: 44, height: 44)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("New message in Schoology")
+            ScreenOptions(page: .inbox)
+        }
+        .padding(.top, 8)
+    }
+
+    private var classesBox: some View {
+        box("classes", "New in your classes", empty: "Nothing new", sources: [.notices],
+            rows: { [classes = model.classes] i in i.classNotices(classes).map(Row.notice) })
+    }
+
+    @ViewBuilder
+    private func boxes(classes where_: ClassesBox) -> some View {
+        let inbox = model.inbox
+        let classes = model.classes
+        if inbox.asOf == nil {
+            if let e = inbox.error {
+                ErrorState(error: e, retry: { Task { await inbox.refresh(model) } })
+            } else {
+                SkeletonRows(count: 4)
+            }
+        } else {
+            // A new school message sits at the top until it's opened, then goes back under School.
+            let newSchool = inbox.schoolThreads(classes).filter(inbox.isNew)
+            if !newSchool.isEmpty {
+                box("newSchool", "New from school", sources: [],
+                    rows: { _ in newSchool.map(Row.thread) })
+            }
+            box("teachers", "From teachers", empty: "No messages from teachers", sources: [.messages],
+                rows: { i in i.teacherThreads(classes).map(Row.thread) })
+            if where_ == .inline { classesBox }
+            // Only groups: a course switched to a class in Settings drops out right away.
+            let posts = inbox.posts.filter { p in !classes.contains { $0.sectionId == p.sectionId } }
+            if !posts.isEmpty {
+                box("updates", "School updates", sources: [],
+                    rows: { _ in posts.map(Row.post) })
+            }
+            box("school", "School", empty: "Nothing from school", sources: [.messages, .notices],
+                rows: { i in
+                    i.schoolThreads(classes).filter { !i.isNew($0) }.map(Row.thread)
+                        + i.otherNotices(classes).map(Row.notice)
+                })
+            if where_ == .last { classesBox }
         }
     }
 

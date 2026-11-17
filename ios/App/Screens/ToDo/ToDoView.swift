@@ -13,8 +13,6 @@ enum ToDoLayout: String, CaseIterable {
 /// or (Urgent first) by how soon it's due.
 struct ToDoView: View {
     @Environment(AppModel.self) private var model
-    /// The open Duo: rows open on the right, and the sidebar can pick one class.
-    @Environment(\.split) private var split
     @AppStorage(ToDoLayout.key) private var layoutID = ToDoLayout.week.rawValue
     @State private var filter: DayFilter? = Demo.startDay
     @Environment(\.dynamicTypeSize) private var typeSize
@@ -40,8 +38,7 @@ struct ToDoView: View {
 
     var body: some View {
         NavigationStack(path: $path) {
-            let classFilter = split?.classFilter
-            let items = model.todoItems().filter { classFilter == nil || $0.sectionId == classFilter }
+            let items = model.todoItems()
             let now = Date()
             // The reader lets Plan's grip scroll the list while a row is held at an edge.
             ScrollViewReader { proxy in
@@ -75,8 +72,7 @@ struct ToDoView: View {
             }
         }
         .onChange(of: model.deepLinkAssignment, initial: true) { _, id in
-            // The open Duo's shell opens it on the right.
-            guard let id, split == nil else { return }
+            guard let id else { return }
             path = [AssignmentRoute(id: id)]
             model.deepLinkAssignment = nil
         }
@@ -92,8 +88,7 @@ struct ToDoView: View {
     }()
 
     private var layout: ToDoLayout { ToDoLayout(rawValue: layoutID) ?? .week }
-    /// On the open Duo, Plan has the right half, so the list here is always List.
-    private var mode: ToDoMode { split != nil ? .list : ToDoMode(rawValue: modeID) ?? .list }
+    private var mode: ToDoMode { ToDoMode(rawValue: modeID) ?? .list }
 
     // ── Header: date, title, gear, week strip ───────────────────
 
@@ -128,16 +123,6 @@ struct ToDoView: View {
                 // The strip and its chevron: the tour's month step points here.
                 .coachTarget("todo.calendar")
             }
-            if let sid = split?.classFilter, let c = model.course(sid) {
-                HStack(spacing: Theme.Space.s) {
-                    Circle().fill(model.classColor(sid)).frame(width: 9, height: 9)
-                    Text("Only \(c.shortTitle)").font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary).oneLine()
-                    Spacer()
-                    Button("Show all") { withAnimation(.snappy(duration: 0.2)) { split?.classFilter = nil } }
-                        .font(Theme.footnote.weight(.semibold))
-                }
-                .padding(.horizontal, 4)
-            }
             if let f = filter {
                 HStack(spacing: Theme.Space.s) {
                     Text(filterTitle(f, now: now)).font(Theme.footnote.weight(.semibold)).foregroundStyle(Theme.secondary)
@@ -166,11 +151,11 @@ struct ToDoView: View {
         return ViewThatFits(in: .horizontal) {
             HStack(alignment: .firstTextBaseline, spacing: Theme.Space.l) {
                 currentTitle
-                if split == nil { modeSwitch(other) }
+                modeSwitch(other)
             }
             VStack(alignment: .leading, spacing: Theme.Space.xs) {
                 currentTitle
-                if split == nil { modeSwitch(other) }
+                modeSwitch(other)
             }
         }
     }
@@ -298,24 +283,9 @@ struct ToDoView: View {
         }
     }
 
-    private struct Group { let key: String; let title: String; let items: [ItemState] }
+    private typealias Group = TodoGroup
 
-    private func grouped(_ items: [ItemState]) -> [Group] {
-        var bySection: [String: [ItemState]] = [:]
-        for it in items { bySection[it.sectionId ?? (it.mine ? "mine" : ""), default: []].append(it) }
-        var out: [Group] = []
-        for c in model.courses {
-            if let list = bySection.removeValue(forKey: c.sectionId), !list.isEmpty {
-                out.append(Group(key: c.sectionId, title: c.shortTitle, items: sortItems(list)))
-            }
-        }
-        if let mine = bySection.removeValue(forKey: "mine"), !mine.isEmpty {
-            out.append(Group(key: "mine", title: "My tasks", items: sortItems(mine)))
-        }
-        let rest = bySection.values.flatMap { $0 }
-        if !rest.isEmpty { out.append(Group(key: "other", title: "Other", items: sortItems(rest))) }
-        return out
-    }
+    private func grouped(_ items: [ItemState]) -> [Group] { model.todoGroups(items) }
 
     /// Urgent first: Late, Today, Next 7 days, Later, then everything done (sorted last, as in Week).
     private func urgentGroups(_ items: [ItemState], now: Date) -> [Group] {
@@ -329,16 +299,7 @@ struct ToDoView: View {
         return out
     }
 
-    /// Unfinished first, then done but not handed in (it may still need turning in),
-    /// then turned in or submitted; each by due date (overdue oldest first, upcoming soonest first).
-    private func sortItems(_ items: [ItemState]) -> [ItemState] {
-        func rank(_ it: ItemState) -> Int { model.isPending(it) ? 0 : (it.turnedIn || it.submitted) ? 2 : 1 }
-        return items.sorted { a, b in
-            let ra = rank(a), rb = rank(b)
-            if ra != rb { return ra < rb }
-            return (a.due ?? .distantFuture) < (b.due ?? .distantFuture)
-        }
-    }
+    private func sortItems(_ items: [ItemState]) -> [ItemState] { model.todoSorted(items) }
 
     /// The top of a catalog card: a class-colour dot (or the call number when shown,
     /// see CallNumber), the class, and at most one stamp for the most urgent state in
@@ -405,11 +366,8 @@ struct ToDoView: View {
             .zoomSource(it.schoologyId, in: zoom)
             // Every separator starts under the checkbox, whatever the row holds.
             .alignmentGuide(.listRowSeparatorLeading) { d in d[.leading] }
-            // A line on the class's catalog card; tinted while it's open on the right (the open Duo).
-            .listRowBackground(ZStack {
-                Theme.card
-                if split?.isOpen(AssignmentRoute(id: it.schoologyId, sectionId: it.sectionId)) == true { SelectedRow(inset: 0) }
-            })
+            // A line on the class's catalog card.
+            .listRowBackground(Theme.card)
             .listRowSeparatorTint(Theme.catalogLine)
             .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                 if it.mine && it.type == .task {
@@ -452,8 +410,6 @@ struct ToDoView: View {
     private func open(_ it: ItemState) {
         if it.mine {
             editing = TaskTarget(task: it)
-        } else if let split {
-            split.open(AssignmentRoute(id: it.schoologyId, sectionId: it.sectionId))
         } else {
             path.append(AssignmentRoute(id: it.schoologyId))
         }
@@ -488,6 +444,41 @@ struct ToDoView: View {
     /// The assignment page: its Submit button opens Schoology's own dialog.
     private func submitURL(_ it: ItemState) -> URL {
         URL(string: "\(Engine.origin.absoluteString)/assignment/\(it.schoologyId)")!
+    }
+}
+
+/// One catalog card on To Do: a class's work (or "My tasks", "Other"), sorted.
+struct TodoGroup { let key: String; let title: String; let items: [ItemState] }
+
+extension AppModel {
+    /// To Do's items by class, in Course Dashboard order, then the student's own tasks,
+    /// then anything from a course that isn't listed. The phone's list and the Duo's board.
+    func todoGroups(_ items: [ItemState]) -> [TodoGroup] {
+        var bySection: [String: [ItemState]] = [:]
+        for it in items { bySection[it.sectionId ?? (it.mine ? "mine" : ""), default: []].append(it) }
+        var out: [TodoGroup] = []
+        for c in courses {
+            if let list = bySection.removeValue(forKey: c.sectionId), !list.isEmpty {
+                out.append(TodoGroup(key: c.sectionId, title: c.shortTitle, items: todoSorted(list)))
+            }
+        }
+        if let mine = bySection.removeValue(forKey: "mine"), !mine.isEmpty {
+            out.append(TodoGroup(key: "mine", title: "My tasks", items: todoSorted(mine)))
+        }
+        let rest = bySection.values.flatMap { $0 }
+        if !rest.isEmpty { out.append(TodoGroup(key: "other", title: "Other", items: todoSorted(rest))) }
+        return out
+    }
+
+    /// Unfinished first, then done but not handed in (it may still need turning in),
+    /// then turned in or submitted; each by due date (overdue oldest first, upcoming soonest first).
+    func todoSorted(_ items: [ItemState]) -> [ItemState] {
+        func rank(_ it: ItemState) -> Int { isPending(it) ? 0 : (it.turnedIn || it.submitted) ? 2 : 1 }
+        return items.sorted { a, b in
+            let ra = rank(a), rb = rank(b)
+            if ra != rb { return ra < rb }
+            return (a.due ?? .distantFuture) < (b.due ?? .distantFuture)
+        }
     }
 }
 
@@ -563,6 +554,11 @@ struct TodoRow: View {
     /// Only the text opens the assignment, so the status buttons never navigate
     /// (a row-wide link caught taps after the list re-sorted under the finger).
     let onOpen: () -> Void
+    /// A card on the open Duo's board (ToDoBoard): the circle as a full 44 pt button, the
+    /// type as a tag in the due line, and the status beside the one-tap action.
+    var board = false
+    /// The class name's colour (board cards that say their class).
+    var courseColor: Color?
     @Environment(\.dynamicTypeSize) private var typeSize
 
     private var progress: AppModel.Progress {
@@ -570,6 +566,68 @@ struct TodoRow: View {
     }
 
     var body: some View {
+        if board { boardBody } else { listBody }
+    }
+
+    /// One tap: to do ↔ done (a turned-in row goes back to done), like the extension.
+    private var checkButton: some View {
+        Button {
+            onSet(progress == .todo ? .done : progress == .done ? .todo : .done)
+        } label: {
+            CheckMark(item: item).doneRipple(progress != .todo)
+                .frame(width: 44, height: 44).contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .coachTarget("todo.check.\(item.schoologyId)")
+        .sensoryFeedback(.success, trigger: progress)
+        .accessibilityLabel("Status: \(item.submitted ? "Submitted on Schoology" : label(progress))")
+        .accessibilityHint(progress == .todo ? (item.type == .exam ? "Marks it studied" : "Marks it done") : "Marks it to do")
+    }
+
+    private var boardBody: some View {
+        HStack(alignment: .top, spacing: 0) {
+            checkButton
+            VStack(alignment: .leading, spacing: 4) {
+                // Only the text opens the assignment, as in the list.
+                VStack(alignment: .leading, spacing: 3) {
+                    if let course {
+                        Text(course).font(Theme.caption.weight(.semibold)).foregroundStyle(courseColor ?? Theme.secondary).oneLine()
+                    }
+                    Text(item.title)
+                        .font(Theme.subhead.weight(.semibold))
+                        .foregroundStyle(Theme.text)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        TypeTag(type: item.type).accessibilityHidden(true)
+                        dueText
+                    }
+                }
+                .padding(.top, 11)
+                .contentShape(Rectangle())
+                .onTapGesture(perform: onOpen)
+                .accessibilityElement(children: .combine)
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint(item.mine ? "Edits your task" : "Opens the assignment")
+                .accessibilityAction { onOpen() }
+                if hasAction || statusNote != nil {
+                    HStack(alignment: .center, spacing: Theme.Space.s) {
+                        if let (text, color, strong) = statusNote {
+                            // Beside a button, just the state ("Done"); the button says the rest.
+                            Text(hasAction ? text.components(separatedBy: " · ").first ?? text : text)
+                                .font(Theme.footnote.weight(strong ? .bold : .medium)).foregroundStyle(color)
+                        }
+                        Spacer(minLength: 0)
+                        if hasAction { action }
+                    }
+                }
+            }
+        }
+        .padding(.leading, Theme.Space.xs).padding(.trailing, Theme.Space.m)
+        .padding(.top, 1).padding(.bottom, Theme.Space.s)
+    }
+
+    private var listBody: some View {
         HStack(alignment: .top, spacing: Theme.Space.m) {
             // The text decides the row's height (at least checkbox + type bar);
             // the left column (below) fills it.
@@ -610,19 +668,7 @@ struct TodoRow: View {
         // height (a short row shows the bar without its label instead of growing).
         .overlay(alignment: .topLeading) {
             VStack(spacing: 4) {
-                // One tap: to do ↔ done (a turned-in row goes back to done), like the extension.
-                Button {
-                    onSet(progress == .todo ? .done : progress == .done ? .todo : .done)
-                } label: {
-                    CheckMark(item: item).doneRipple(progress != .todo)
-                        .frame(width: 44, height: 44).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .coachTarget("todo.check.\(item.schoologyId)")
-                .padding(-10)
-                .sensoryFeedback(.success, trigger: progress)
-                .accessibilityLabel("Status: \(item.submitted ? "Submitted on Schoology" : label(progress))")
-                .accessibilityHint(progress == .todo ? (item.type == .exam ? "Marks it studied" : "Marks it done") : "Marks it to do")
+                checkButton.padding(-10)
                 TypeBar(type: item.type)
             }
             .frame(width: 24)
@@ -645,16 +691,23 @@ struct TodoRow: View {
         if item.submitted {
             EmptyView()
         } else if item.turnedIn {
-            PillButton(title: "Undo", color: Theme.secondary) { onSet(.done) }
+            pill(PillButton(title: "Undo", color: Theme.secondary) { onSet(.done) })
                 .accessibilityLabel("Undo turned in for \(item.title)")
         } else if item.hasDropbox {
-            PillButton.submit(onSubmit)
+            pill(PillButton.submit(onSubmit))
                 .accessibilityLabel("Submit \(item.title) on Schoology")
         } else if item.type != .exam {
-            PillButton.turnIn { onSet(.turnedIn) }
+            pill(PillButton.turnIn { onSet(.turnedIn) })
                 .accessibilityLabel("Mark \(item.title) turned in")
                 .accessibilityHint("Only in this app. Use it when you handed it in on paper or another site.")
         }
+    }
+
+    /// On the board the pill takes touches 7 pt past its edge: a 44 pt target.
+    private func pill(_ b: PillButton) -> PillButton {
+        var b = b
+        b.hit = board ? 7 : 0
+        return b
     }
 
     private func label(_ p: AppModel.Progress) -> String {

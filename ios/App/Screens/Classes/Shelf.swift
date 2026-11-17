@@ -38,7 +38,7 @@ struct Shelf: View {
                 VStack(spacing: 0) {
                     HStack(alignment: .bottom, spacing: 5) {
                         ForEach(standing) { c in
-                            NavigationLink(value: c) {
+                            SplitLink(value: c, as: ClassPageRoute(course: c), inset: nil) {
                                 BookSpine(course: c, due: due(c, open, now), openCount: open.filter { $0.sectionId == c.sectionId }.count)
                             }
                             .buttonStyle(.plain)
@@ -55,7 +55,7 @@ struct Shelf: View {
                 .padding(.top, Theme.Space.l)
             }
             ForEach(lying) { c in
-                NavigationLink(value: c) {
+                SplitLink(value: c, as: ClassPageRoute(course: c), inset: nil) {
                     FlatBook(course: c, due: due(c, open, now), openCount: open.filter { $0.sectionId == c.sectionId }.count)
                 }
                 .buttonStyle(.plain)

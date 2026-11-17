@@ -7,44 +7,76 @@ struct ClassesView: View {
     @State private var path = NavigationPath()
     @State private var query = ""
     @State private var index = MaterialIndex.shared
+    /// The open Duo (nil on the phone).
+    @Environment(\.split) private var split
 
     var body: some View {
+        // The open Duo, wider than tall: the shelf left of the fold; right of it what was
+        // opened lately, until a class or a material is opened there.
+        let sideBySide = (split.map { !$0.upright } ?? false) && split?.details[3] == nil
+            && query.isEmpty && !RecentMaterials.list().isEmpty
         NavigationStack(path: $path) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 14) {
-                    ScreenHeader(title: "Classes") {
-                        Button { NotificationCenter.default.post(name: .showStudentID, object: nil) } label: {
-                            Image(systemName: "person.text.rectangle").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
-                                .frame(width: 44, height: 44)
+            Group {
+                if sideBySide, let split {
+                    HStack(alignment: .top, spacing: 0) {
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 14) { header; search; tiles }
+                                .padding(.horizontal, 16)
+                                .padding(.bottom, 24)
                         }
-                        .accessibilityLabel("Student ID")
-                        .coachTarget("classes.id")
-                        ScreenOptions(page: .classes)
+                        .refreshable { try? await model.loadCourses() }
+                        .frame(width: split.listWidth)
+                        ScrollView {
+                            VStack(alignment: .leading, spacing: 14) { recent }
+                                .padding(.horizontal, 16)
+                                .padding(.top, Theme.Space.s)
+                                .padding(.bottom, 24)
+                        }
                     }
-                    .padding(.top, Theme.Space.s)
-                    SearchField(text: $query, prompt: "Search every class's materials")
-                    if query.isEmpty {
-                        tiles
-                        recent
-                    } else {
-                        results
+                } else {
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 14) {
+                            header
+                            search
+                            if query.isEmpty {
+                                tiles
+                                recent
+                            } else {
+                                results
+                            }
+                        }
+                        .padding(.horizontal, 16)
+                        .padding(.bottom, 24)
                     }
+                    .refreshable { try? await model.loadCourses() }
                 }
-                .padding(.horizontal, 16)
-                .padding(.bottom, 24)
             }
             .background(Theme.background)
             .toolbar(.hidden, for: .navigationBar)
             .onChange(of: query) { _, q in if !q.isEmpty { index.build(model) } }
             .navigationDestination(for: Course.self) { MaterialsView(sectionId: $0.sectionId, folderId: nil, title: $0.shortTitle, trail: []) }
             .classDestinations()
-            .refreshable { try? await model.loadCourses() }
         }
         .environment(\.popFolders) { n, push in
             path.removeLast(min(n, path.count))
             if let push { path.append(push) }
         }
     }
+
+    private var header: some View {
+        ScreenHeader(title: "Classes") {
+            Button { NotificationCenter.default.post(name: .showStudentID, object: nil) } label: {
+                Image(systemName: "person.text.rectangle").font(Theme.title.weight(.regular)).foregroundStyle(Theme.secondary)
+                    .frame(width: 44, height: 44)
+            }
+            .accessibilityLabel("Student ID")
+            .coachTarget("classes.id")
+            ScreenOptions(page: .classes)
+        }
+        .padding(.top, Theme.Space.s)
+    }
+
+    private var search: some View { SearchField(text: $query, prompt: "Search every class's materials") }
 
     private var tiles: some View { Shelf() }
 
@@ -83,7 +115,10 @@ struct ClassesView: View {
                         .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
                         .contextMenu {
                             if let c = model.course(h.sectionId), let f = h.containingFolder(classTitle: c.shortTitle) {
-                                Button { path.append(c); path.append(f) } label: { Label("Show in \(f.title)", systemImage: "folder") }
+                                Button {
+                                    // On the open Duo the folder opens beside the results.
+                                    if let split { split.open(f) } else { path.append(c); path.append(f) }
+                                } label: { Label("Show in \(f.title)", systemImage: "folder") }
                             }
                         }
                 }
@@ -192,16 +227,16 @@ struct MaterialLink: View {
     private var content: some View {
         switch row.kind {
         case "folder":
-            NavigationLink(value: FolderRoute(sectionId: sectionId, folderId: row.id, title: row.title, trail: trail, trailIds: trailIds, onStack: onStack)) { label("folder", "›") }
+            SplitLink(value: FolderRoute(sectionId: sectionId, folderId: row.id, title: row.title, trail: trail, trailIds: trailIds, onStack: onStack), inset: 0) { label("folder", "›") }
                 .simultaneousGesture(TapGesture().onEnded { MaterialIndex.shared.markSeen(sectionId, [row.key]) })
         case "assignment":
             if let id = row.id {
-                NavigationLink(value: AssignmentRoute(id: id, sectionId: sectionId)) { label("doc.text", "›") }
+                SplitLink(value: AssignmentRoute(id: id, sectionId: sectionId), inset: 0) { label("doc.text", "›") }
                     .simultaneousGesture(TapGesture().onEnded { opened() })
             } else { webButton }
         case "page", "other":
             if let url = absURL, Self.isMaterialPage(url) {
-                NavigationLink(value: MaterialPageRoute(row: row)) { label(row.kind == "page" ? "doc.plaintext" : "link", "›", word: row.kind == "page" ? "Page" : "Link") }
+                SplitLink(value: MaterialPageRoute(row: row), inset: 0) { label(row.kind == "page" ? "doc.plaintext" : "link", "›", word: row.kind == "page" ? "Page" : "Link") }
                     .simultaneousGesture(TapGesture().onEnded { opened() })
             } else { webButton }
         case "document":

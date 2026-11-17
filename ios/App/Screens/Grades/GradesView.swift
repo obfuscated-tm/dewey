@@ -8,6 +8,15 @@ struct GradesView: View {
     @Environment(AppModel.self) private var model
     @AppStorage(GradesLook.reportCardKey) private var reportCard = false
     @AppStorage(GradesLook.hiddenKey) private var hiddenRaw = ""
+    /// The open Duo (nil on the phone).
+    @Environment(\.split) private var split
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// The open Duo with nothing open beside the list: the report card runs the full
+    /// width, the class left of the fold and its latest score right of it.
+    private var wide: Bool { (split?.twoColumns(1) ?? false) && !typeSize.isAccessibilitySize }
+    /// How far the fold is from the left edge of the page's content (inside its 16 pt margin).
+    private var fold: CGFloat { (split?.listWidth ?? 0) - 16 }
 
     /// The classes shown here; read from `hiddenRaw` so hiding one redraws the screen.
     private var visible: [Course] {
@@ -32,7 +41,8 @@ struct GradesView: View {
                     }
                     newCard
                     classList
-                    recent
+                    // The open Duo has the room to show every class's latest score; no second list.
+                    if split == nil { recent }
                 }
                 .padding(.horizontal, 16)
                 .padding(.bottom, 24)
@@ -63,7 +73,7 @@ struct GradesView: View {
                 .padding(.bottom, Theme.Space.s)
                 .overlay(alignment: .bottom) { Theme.catalogRule.frame(height: 1.5) }
                 ForEach(Array(visible.enumerated()), id: \.element.sectionId) { i, c in
-                    SplitLink(value: c) { ClassGradeRow(course: c, showLetter: !reportCard) }
+                    SplitLink(value: c) { ClassGradeRow(course: c, showLetter: !reportCard, foldAt: wide ? fold - Theme.Space.l : nil) }
                         .buttonStyle(.plain)
                         .coachTarget("grades.class.\(c.sectionId)")
                         .overlay(alignment: .top) { if i > 0 { Theme.catalogLine.frame(height: 1) } }
@@ -103,7 +113,7 @@ struct GradesView: View {
             .padding(.top, Theme.Space.s)
             .accessibilityElement(children: .contain)
             .accessibilityLabel("\(rows.count) new grades")
-            gradeList(rows, showNew: false)
+            gradeList(rows, showNew: false, columns: wide ? 2 : 1)
         }
     }
 
@@ -121,31 +131,38 @@ struct GradesView: View {
         }
     }
 
-    private func gradeList(_ rows: [(Course, CourseGrade.Item)], showNew: Bool) -> some View {
-        VStack(spacing: 0) {
-            ForEach(Array(rows.enumerated()), id: \.element.1.id) { i, r in
-                SplitLink(value: GradeRoute(sectionId: r.0.sectionId, itemId: r.1.id)) {
-                    let isNew = showNew && model.isNewGrade(r.1.id)
-                    HStack(alignment: .top) {
-                        VStack(alignment: .leading, spacing: 3) {
-                            HStack(spacing: 6) {
-                                Text(r.1.title).font(Theme.subhead.weight(.semibold)).oneLine()
-                                if isNew { NewTag() }
-                            }
-                            Text(r.0.shortTitle).font(Theme.footnote).foregroundStyle(Theme.secondary)
+    /// `columns` 2 (the open Duo): a pair of columns that part at the fold.
+    private func gradeList(_ rows: [(Course, CourseGrade.Item)], showNew: Bool, columns: Int = 1) -> some View {
+        let list = ForEach(Array(rows.enumerated()), id: \.element.1.id) { i, r in
+            SplitLink(value: GradeRoute(sectionId: r.0.sectionId, itemId: r.1.id)) {
+                let isNew = showNew && model.isNewGrade(r.1.id)
+                HStack(alignment: .top) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        HStack(spacing: 6) {
+                            Text(r.1.title).font(Theme.subhead.weight(.semibold)).oneLine()
+                            if isNew { NewTag() }
                         }
-                        Spacer()
-                        VStack(alignment: .trailing, spacing: 3) {
-                            Text(scoreText(r.1)).font(Theme.subhead.weight(.semibold).monospacedDigit())
-                            if let i = r.1.impact { Text(Fmt.signed(i)).font(Theme.caption.monospacedDigit()).foregroundStyle(Fmt.impactColor(i)) }
-                        }
+                        Text(r.0.shortTitle).font(Theme.footnote).foregroundStyle(Theme.secondary)
                     }
-                    .padding(.vertical, 10)
-                    .contentShape(Rectangle())
-                    .accessibilityElement(children: .combine)
-                    .overlay(alignment: .top) { if i > 0 { Theme.divider.frame(height: 1) } }
+                    Spacer()
+                    VStack(alignment: .trailing, spacing: 3) {
+                        Text(scoreText(r.1)).font(Theme.subhead.weight(.semibold).monospacedDigit())
+                        if let i = r.1.impact { Text(Fmt.signed(i)).font(Theme.caption.monospacedDigit()).foregroundStyle(Fmt.impactColor(i)) }
+                    }
                 }
-                .buttonStyle(.plain)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
+                .accessibilityElement(children: .combine)
+                .overlay(alignment: .top) { if i >= columns { Theme.divider.frame(height: 1) } }
+            }
+            .buttonStyle(.plain)
+        }
+        return Group {
+            if columns == 2 {
+                LazyVGrid(columns: [GridItem(.fixed(max(200, fold - Theme.Space.m)), spacing: Theme.Space.xl, alignment: .top),
+                                    GridItem(.flexible(), alignment: .top)], spacing: 0) { list }
+            } else {
+                VStack(spacing: 0) { list }
             }
         }
     }
@@ -264,29 +281,44 @@ struct ClassGradeRow: View {
     let course: Course
     /// The letter, when the report card row above is hidden.
     var showLetter = false
+    /// The open Duo: how far the fold is from this row's left edge. The class stays left
+    /// of it and the latest score starts right of it, on one line.
+    var foldAt: CGFloat?
 
     var body: some View {
         let g = model.grades[course.sectionId]
         let cutoff = model.courseState(course.sectionId).aCutoff ?? 93
         let newCount = model.newGradeCount(course.sectionId)
         let last = g?.items.filter { $0.earned != nil }.min(by: model.gradedFirst)
+        let name = HStack(spacing: 6) {
+            Text(course.shortTitle).font(Theme.body.weight(.medium)).oneLine()
+            if newCount > 0 {
+                Circle().fill(Theme.accent).frame(width: 7, height: 7).accessibilityHidden(true)
+            }
+        }
+        // The latest score, then its title: the score comes first, so a long title is
+        // what gets cut, never the points. (The period lives on the class screen.)
+        let latest = last.map {
+            Text(scoreText($0)).fontWeight(.semibold).foregroundStyle(Theme.text) + Text("  " + $0.title)
+        }
         HStack(alignment: .center, spacing: Theme.Space.m) {
-            spine
-            VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(course.shortTitle).font(Theme.body.weight(.medium)).oneLine()
-                    if newCount > 0 {
-                        Circle().fill(Theme.accent).frame(width: 7, height: 7).accessibilityHidden(true)
+            if let foldAt {
+                HStack(spacing: Theme.Space.m) { spine; name }
+                    .frame(width: max(140, foldAt - Theme.Space.m), alignment: .leading)
+                (latest ?? Text(""))
+                    .font(Theme.subhead.monospacedDigit()).foregroundStyle(Theme.secondary).oneLine()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.leading, Theme.Space.m)
+            } else {
+                spine
+                VStack(alignment: .leading, spacing: 2) {
+                    name
+                    if let latest {
+                        latest.font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary).oneLine()
                     }
                 }
-                // The latest score, then its title: the score comes first, so a long title is
-                // what gets cut, never the points. (The period lives on the class screen.)
-                if let last {
-                    (Text(scoreText(last)).fontWeight(.semibold).foregroundStyle(Theme.text) + Text("  " + last.title))
-                        .font(Theme.footnote.monospacedDigit()).foregroundStyle(Theme.secondary).oneLine()
-                }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
             if let g, g.pct != nil {
                 // The % with the latest score's effect under it, so the row never gets wider.
                 VStack(alignment: .trailing, spacing: 1) {

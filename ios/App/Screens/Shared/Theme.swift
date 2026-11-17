@@ -293,6 +293,8 @@ struct PillButton: View {
     var filled = false
     var icon: String?
     var external = false
+    /// How far past its edge it takes touches (a 30 pt pill that needs a 44 pt target).
+    var hit: CGFloat = 0
     let action: () -> Void
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.tag, style: .continuous)
@@ -307,7 +309,7 @@ struct PillButton: View {
             .foregroundStyle(filled ? Theme.onAccent : color)
             .background(filled ? color : Color.clear, in: shape)
             .overlay(shape.strokeBorder(filled ? Color.clear : color, lineWidth: 1.5))
-            .contentShape(shape)
+            .contentShape(hit > 0 ? AnyShape(Rectangle().inset(by: -hit)) : AnyShape(shape))
         }
         .buttonStyle(PressStyle())
     }

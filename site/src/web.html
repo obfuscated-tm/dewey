@@ -53,18 +53,17 @@
     --shadow: 0 14px 34px -14px rgba(0, 0, 0, .7); color-scheme: dark;
   }
 
-  /* Home → web: the page slides in from the right; going back, index.html
-     slides it out the same way. Browsers without cross-document view
-     transitions just change page. */
+  /* Home ↔ web: a quick cross-fade, with the logo and the theme button
+     gliding to their new spots (index.html has the same rules). Browsers
+     without cross-document view transitions just change page. */
   @view-transition { navigation: auto; }
   .top > a { view-transition-name: logo; }
   .theme { view-transition-name: theme; }
-  @media (prefers-reduced-motion: no-preference) {
-    ::view-transition-old(root) { animation: .5s cubic-bezier(.3, .7, .2, 1) both to-left; }
-    ::view-transition-new(root) { animation: .5s cubic-bezier(.3, .7, .2, 1) both from-right; }
+  ::view-transition-group(*) { animation-duration: .3s; animation-timing-function: cubic-bezier(.2, .8, .2, 1); }
+  ::view-transition-old(root), ::view-transition-new(root) { animation-duration: .22s; }
+  @media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*), ::view-transition-old(*), ::view-transition-new(*) { animation: none !important; }
   }
-  @keyframes to-left { to { transform: translateX(-100%); } }
-  @keyframes from-right { from { transform: translateX(100%); } }
 
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.55 var(--sans); -webkit-font-smoothing: antialiased; overflow-x: hidden; }

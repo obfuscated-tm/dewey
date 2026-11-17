@@ -20,6 +20,12 @@
         ],
         "createdAt": "2026-11-17T05:05:27.686Z",
         "reason": "Claude: /web is a mock preview of the app with sample classes and grades (Biology, AP Lang, B+), repeated across its demo screens on purpose; file came in unchanged from site-motion"
+      },
+      {
+        "rule": "overused-font",
+        "value": "arial",
+        "createdAt": "2026-11-15T09:12:38.372Z",
+        "reason": "Claude: extension/test/grades-page.html is a test stand-in for Schoology's own page, which uses Arial; it predates this session and is not Dewey UI"
       }
     ]
   }

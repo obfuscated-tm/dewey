@@ -32,6 +32,7 @@ extension Notification.Name {
 /// library or attendance scanner, and the number under it.
 struct StudentIDCard: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.scenePhase) private var phase
     @State private var number = StudentID.number
     @State private var editing = false
     @State private var savedBrightness: CGFloat?
@@ -77,17 +78,29 @@ struct StudentIDCard: View {
                 NavigationStack { StudentIDSetup(onSaved: { editing = false }) }
             }
         }
-        .onAppear {
-            UIApplication.shared.isIdleTimerDisabled = true
-            if let screen = Self.screen {
-                savedBrightness = screen.brightness
-                screen.brightness = 1
-            }
+        .onAppear(perform: brighten)
+        .onDisappear(perform: restore)
+        // Swiping home or locking the phone is leaving too: brightness back, card closed,
+        // so it's never stuck bright behind the Home Screen.
+        .onChange(of: phase) { _, p in
+            guard p != .active else { return }
+            restore()
+            dismiss()
         }
-        .onDisappear {
-            UIApplication.shared.isIdleTimerDisabled = false
-            if let b = savedBrightness { Self.screen?.brightness = b }
+    }
+
+    private func brighten() {
+        UIApplication.shared.isIdleTimerDisabled = true
+        if let screen = Self.screen, savedBrightness == nil {
+            savedBrightness = screen.brightness
+            screen.brightness = 1
         }
+    }
+
+    private func restore() {
+        UIApplication.shared.isIdleTimerDisabled = false
+        if let b = savedBrightness { Self.screen?.brightness = b }
+        savedBrightness = nil
     }
 
     private static var screen: UIScreen? {

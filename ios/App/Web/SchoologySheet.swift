@@ -74,7 +74,9 @@ private struct SchoologyWebSheet: View {
                     }
                 }
         }
+        .onAppear { AppLog.note("sheet open \(target.url.host ?? "")") }
         .onDisappear {
+            AppLog.note("sheet closed \(target.url.host ?? "")")
             guard let id = target.assignmentId else { return }
             Task { await model.recheckAfterSheet(id) }
         }
@@ -114,5 +116,29 @@ enum LinkOpener {
             return
         }
         sheet(SheetTarget(url: url, assignmentId: assignmentId))
+    }
+}
+
+extension View {
+    /// Shows the Schoology sheet from the root, above both layouts, so opening or
+    /// closing the Duo (which swaps tabs for the open layout) doesn't close it.
+    func schoologySheet(_ item: Binding<SheetTarget?>) -> some View { modifier(RootSheet(item: item)) }
+}
+
+private struct RootSheet: ViewModifier {
+    @Environment(AppModel.self) private var model
+    @Binding var item: SheetTarget?
+
+    func body(content: Content) -> some View {
+        // The tour's pretend week runs in a cover with its own model: its sheet stays local.
+        if model.practice {
+            content.sheet(item: $item) { SchoologySheet(target: $0) }
+        } else {
+            content.onChange(of: item) { _, t in
+                guard let t else { return }
+                model.sheet = t
+                item = nil
+            }
+        }
     }
 }

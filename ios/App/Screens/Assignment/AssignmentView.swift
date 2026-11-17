@@ -78,9 +78,11 @@ struct AssignmentView: View {
             }
         }
         .safeAreaInset(edge: .bottom) { bottomBar }
-        .sheet(item: $sheet) { SchoologySheet(target: $0) }
+        .schoologySheet($sheet)
         .sheet(item: $file) { FileViewer(target: $0) }
         .task { counting = WidgetBridge.activity(for: id) != nil }
+        .onAppear { AppLog.note("assignment open \(id)") }
+        .onDisappear { AppLog.note("assignment closed \(id)") }
         .task { await load() }
         .onChange(of: model.revision) { _, _ in
             if let s = it?.statusState { status = SubmissionStatus(state: s, late: it?.statusLate); checkedAt = it?.statusCheckedAt }

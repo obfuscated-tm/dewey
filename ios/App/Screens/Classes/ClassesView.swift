@@ -40,6 +40,8 @@ struct ClassesView: View {
             .classDestinations()
             .refreshable { try? await model.loadCourses() }
         }
+        .onChange(of: path.count) { o, n in AppLog.note("classes stack \(o) → \(n)") }
+        .onAppear { AppLog.note("classes tab built") }
         .environment(\.popFolders) { n, push in
             path.removeLast(min(n, path.count))
             if let push { path.append(push) }
@@ -184,7 +186,7 @@ struct MaterialLink: View {
     var body: some View {
         content
             .buttonStyle(.plain)
-            .sheet(item: $sheet) { SchoologySheet(target: $0) }
+            .schoologySheet($sheet)
             .sheet(item: $file) { FileViewer(target: $0) }
     }
 

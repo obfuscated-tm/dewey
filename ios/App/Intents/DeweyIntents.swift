@@ -1,3 +1,4 @@
+import SwiftUI
 import AppIntents
 import SwiftData
 import WidgetKit
@@ -164,17 +165,41 @@ extension Notification.Name {
     static let openTodo = Notification.Name("classwork.openTodo")
 }
 
-/// "Show my student ID": opens the app on the ID card (StudentIDCard).
+/// "Show my student ID": the barcode in a card over whatever is on screen, closed with Done,
+/// without opening the app (like a Shortcut's Quick Look). Runs in the app's process in the
+/// background, so the number still comes from the Keychain and never from the shared widget data.
 struct ShowStudentIDIntent: AppIntent {
     static let title: LocalizedStringResource = "Show Student ID"
-    static let description = IntentDescription("Opens Dewey on your student ID barcode, at full brightness.")
-    static let openAppWhenRun = true
+    static let description = IntentDescription("Shows your student ID barcode without opening Dewey.")
+    static let openAppWhenRun = false
 
     @MainActor
-    func perform() async throws -> some IntentResult {
-        NotificationCenter.default.post(name: .showStudentID, object: nil)
-        return .result()
+    func perform() async throws -> some IntentResult & ProvidesDialog & ShowsSnippetView {
+        guard let number = StudentID.number, Code39.canEncode(number) else {
+            return .result(dialog: "Add your student ID in Dewey first: Settings, Student ID.", view: EmptyView().eraseToAnyView())
+        }
+        return .result(dialog: "Your student ID", view: IDSnippet(number: number).eraseToAnyView())
     }
+}
+
+/// Black on white whatever the theme, as on the full-screen card.
+private struct IDSnippet: View {
+    let number: String
+    var body: some View {
+        VStack(spacing: 8) {
+            Barcode(value: number).frame(height: 110)
+            Text(number).font(.system(.title, design: .monospaced, weight: .semibold)).foregroundStyle(.black)
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity)
+        .background(Color.white, in: RoundedRectangle(cornerRadius: Theme.Radius.card, style: .continuous))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Student ID barcode, \(number)")
+    }
+}
+
+private extension View {
+    func eraseToAnyView() -> AnyView { AnyView(self) }
 }
 
 /// "Add a task in Dewey": a task of the student's own, on the phone only.

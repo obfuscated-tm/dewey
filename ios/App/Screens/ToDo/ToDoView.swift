@@ -68,7 +68,7 @@ struct ToDoView: View {
             .navigationDestination(for: AssignmentRoute.self) { r in AssignmentView(id: r.id).zoomDestination(r.id, in: zoom) }
             .navigationDestination(isPresented: $showGuide) { StatusGuideView() }
             .toolbar(.hidden, for: .navigationBar)
-            .sheet(item: $sheet) { SchoologySheet(target: $0) }
+            .schoologySheet($sheet)
             .sheet(item: $editing) { t in
                 // New: the quick sheet (type it, or tap chips). An existing task: the full editor.
                 if let task = t.task { TaskEditor(task: task) } else { QuickTask(sectionId: t.sectionId) }
@@ -648,8 +648,14 @@ struct TodoRow: View {
             PillButton(title: "Undo", color: Theme.secondary) { onSet(.done) }
                 .accessibilityLabel("Undo turned in for \(item.title)")
         } else if item.hasDropbox {
-            PillButton.submit(onSubmit)
-                .accessibilityLabel("Submit \(item.title) on Schoology")
+            // Both ways to hand it in: a class can have a dropbox and still take paper.
+            HStack(spacing: 6) {
+                PillButton.turnInCheck { onSet(.turnedIn) }
+                    .accessibilityLabel("Mark \(item.title) turned in")
+                    .accessibilityHint("Only in this app. Schoology will still say not submitted.")
+                PillButton.submit(onSubmit)
+                    .accessibilityLabel("Submit \(item.title) on Schoology")
+            }
         } else if item.type != .exam {
             PillButton.turnIn { onSet(.turnedIn) }
                 .accessibilityLabel("Mark \(item.title) turned in")

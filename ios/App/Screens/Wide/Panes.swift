@@ -39,7 +39,7 @@ struct PlanPane: View {
         .contentMargins(.top, 0, for: .scrollContent)
         .scrollContentBackground(.hidden)
         .background(Theme.background)
-        .sheet(item: $sheet) { SchoologySheet(target: $0) }
+        .schoologySheet($sheet)
         .sheet(item: $editing) { t in
             if let task = t.task { TaskEditor(task: task) } else { QuickTask(sectionId: t.sectionId) }
         }
@@ -149,6 +149,6 @@ struct InboxPane: View {
             .padding(.vertical, Theme.Space.l)
         }
         .background(Theme.background)
-        .sheet(item: $sheet) { SchoologySheet(target: $0) }
+        .schoologySheet($sheet)
     }
 }

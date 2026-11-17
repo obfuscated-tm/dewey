@@ -75,6 +75,7 @@ import androidx.compose.ui.unit.sp
 import com.owenleung.dewey.ui.SubmitButton
 import com.owenleung.dewey.ui.TaskTarget
 import com.owenleung.dewey.ui.TurnInButton
+import com.owenleung.dewey.ui.TurnInCheckButton
 import java.time.YearMonth
 import com.owenleung.dewey.engine.Engine
 import com.owenleung.dewey.neoplan.NeoPlanClient
@@ -480,7 +481,10 @@ private fun RowAction(item: ItemState, submitUrl: String, beforeSet: () -> Unit)
         item.mine && item.type == ItemType.TASK -> {}
         item.submitted -> {}
         item.turnedIn -> PillButton("Undo", color = C.secondary, modifier = m) { model.setProgress(item, AppModel.Progress.DONE) }
-        item.hasDropbox -> SubmitButton(m) { beforeSet(); nav.openSheet(SheetTarget(submitUrl, item.schoologyId)) }
+        item.hasDropbox -> Row(m, horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            TurnInCheckButton("Mark ${item.title} turned in") { beforeSet(); setFromRow(model, item, AppModel.Progress.TURNED_IN) }
+            SubmitButton { beforeSet(); nav.openSheet(SheetTarget(submitUrl, item.schoologyId)) }
+        }
         !item.isExam -> TurnInButton(m) { beforeSet(); setFromRow(model, item, AppModel.Progress.TURNED_IN) }
     }
 }

@@ -75,7 +75,7 @@ struct MaterialsView: View {
             }
         }
         .refreshable { await load() }
-        .sheet(item: $sheet) { SchoologySheet(target: $0) }
+        .schoologySheet($sheet)
         .task {
             if rows == nil, let c = Cache.load(cacheKey, as: [MaterialRow].self) { rows = c.value; asOf = c.savedAt }
             await load()
@@ -291,7 +291,7 @@ struct MaterialView: View {
                 ToolbarItem(placement: .primaryAction) { Button { sheet = SheetTarget(url: url) } label: { Label("Open in Schoology", systemImage: "globe").labelStyle(.iconOnly) } }
             }
         }
-        .sheet(item: $sheet) { SchoologySheet(target: $0) }
+        .schoologySheet($sheet)
         .sheet(item: $file) { FileViewer(target: $0) }
         .task { await load() }
     }

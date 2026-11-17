@@ -7,6 +7,7 @@ struct DeweyWidgets: WidgetBundle {
     var body: some Widget {
         TodoWidget()
         TestsWidget()
+        PeriodWidget()
         DueActivityWidget()
         StudentIDWidget()
         if #available(iOS 18.0, *) { StudentIDControl() }

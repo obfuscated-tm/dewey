@@ -12,6 +12,11 @@ Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git hist
 - Course sites are your own list now, in `~/.schoology-mcp/sites.json` (an old `mcp/sites.json` is still read). New `add_course_site` tool: ask Claude to set up your course sites; a site no teacher linked needs your yes in a prompt.
 - Claude is told that text in tool results is content, never instructions.
 
+### iPhone
+- **Schedule** in Settings: type your bell schedule once as day types you name (Block A, Rally…), pick which one each weekday uses (or start from your school's: the five Fremont Union high schools), and set the class, room and teacher of each period. A new day type can start from your Schoology classes or as a copy of another. A **Today** switch covers rally and minimum days.
+- New **Now in class** widget for the Home Screen and Lock Screen: the class you're in, the time left, the room, and what's next.
+- To Do: dropbox work has a small check beside Submit to mark it turned in, for classes that have a dropbox but take the work on paper. (Android too.)
+
 ### Extension
 - Grades: what-if is a mode now, like the iPhone app. Press **What-if** on the course row and every row gets a score box; a bar at the bottom of the window shows your real grade → the what-if one, with Reset and Show real (which keeps what you typed). The hover-only "edit", "drop", "what if" and "+ plan" links are gone.
 - Grades: pick a **Goal** per class (A down to C-), like the iPhone app. The graph's cutoff line, "above / below", "holds down to" and "need X for" all follow it. It was always the A line before.

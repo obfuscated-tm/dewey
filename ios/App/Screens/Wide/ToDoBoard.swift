@@ -63,7 +63,7 @@ struct ToDoBoard: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(Theme.background)
-        .sheet(item: $sheet) { SchoologySheet(target: $0) }
+        .schoologySheet($sheet)
         .sheet(item: $editing) { t in
             if let task = t.task { TaskEditor(task: task) } else { QuickTask(sectionId: t.sectionId) }
         }

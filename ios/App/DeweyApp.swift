@@ -10,6 +10,7 @@ struct DeweyApp: App {
     @Environment(\.scenePhase) private var phase
 
     init() {
+        AppLog.note("launch")
         Theme.styleNavigationBars()
         try? Tips.configure()
         BGTaskScheduler.shared.register(forTaskWithIdentifier: Self.refreshTask, using: nil) { task in
@@ -62,6 +63,7 @@ struct DeweyApp: App {
                 .onAppear { AppModel.live = model }
         }
         .onChange(of: phase) { _, p in
+            AppLog.note("app \(p)")
             if p == .active { WidgetBridge.publish(model) }
             if p == .background {
                 Self.scheduleRefresh()
@@ -83,9 +85,15 @@ final class AppDelegate: NSObject, UIApplicationDelegate {
 struct RootView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.horizontalSizeClass) private var sizeClass
+    @Environment(\.scenePhase) private var phase
+    /// Which layout is showing. It follows the width only while the app is on screen: iOS can
+    /// redraw a backgrounded app at other sizes for the app switcher, and swapping layouts then
+    /// would rebuild every tab and drop the student's place.
+    @State private var wide: Bool?
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
 
     var body: some View {
+        @Bindable var model = model
         Group {
             switch model.session {
             case .checking:
@@ -97,10 +105,21 @@ struct RootView: View {
                 SignInView()
             case .signedIn:
                 // The open iPhone Duo (regular width): a rail of tabs, and what you tap opens over the right half.
-                if sizeClass == .regular { WideShell() } else { MainTabs() }
+                if wide ?? (sizeClass == .regular) { WideShell() } else { MainTabs() }
             }
         }
+        .onChange(of: sizeClass, initial: true) { _, c in
+            AppLog.note("width \(c == .regular ? "wide" : "narrow") while \(phase)")
+            if phase != .background || wide == nil { wide = c == .regular }
+        }
+        .onChange(of: wide) { o, n in AppLog.note("layout \(n == true ? "open Duo" : "tabs")\(o == nil ? "" : " (switched)")") }
+        .onChange(of: model.session) { _, s in AppLog.note("session \(s)") }
+        .onChange(of: phase) { _, p in
+            if p == .active { wide = sizeClass == .regular }
+        }
         .task { await model.boot() }
+        .sheet(item: $model.sheet) { SchoologySheet(target: $0) }
+        .onChange(of: model.sheet) { _, t in AppLog.note(t == nil ? "sheet closed" : "sheet open") }
         .overlay(alignment: .bottom) {
             if let t = model.toast {
                 Text(t)
@@ -120,7 +139,7 @@ struct RootView: View {
 
 struct MainTabs: View {
     @Environment(AppModel.self) private var model
-    @State private var tab = Demo.startTab
+    @State private var tab: Int
     @State private var schoologyURL: URL?
     @AppStorage(TourView.shownKey) private var tourShown = false
     /// The tour's "Take me there" opens a tab fresh: its screens are rebuilt (practice only).
@@ -128,6 +147,9 @@ struct MainTabs: View {
     @State private var showTour = false
     @State private var showID = false
     @Environment(\.scenePhase) private var phase
+
+    /// Starts on the tab the open layout was on (the Duo just closed).
+    init() { _tab = State(initialValue: AppModel.live?.tab ?? Demo.startTab) }
 
     var body: some View {
         TabView(selection: $tab) {
@@ -155,6 +177,7 @@ struct MainTabs: View {
                 .tabItem { Label("Schoology", systemImage: "globe") }
                 .tag(4)
         }
+        .onChange(of: tab, initial: true) { _, t in AppLog.note("tab \(t)"); model.tab = t }
         .onReceive(NotificationCenter.default.publisher(for: .openTodo)) { _ in tab = 0 }
         .onReceive(NotificationCenter.default.publisher(for: .showStudentID)) { _ in showID = true }
         .fullScreenCover(isPresented: $showID) { StudentIDCard() }

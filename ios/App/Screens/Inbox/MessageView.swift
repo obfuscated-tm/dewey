@@ -45,7 +45,7 @@ struct MessageView: View {
                 Button(markRead ? "Reply" : "Open in Schoology") { sheet = SheetTarget(url: schoologyURL) }
             }
         }
-        .sheet(item: $sheet) { SchoologySheet(target: $0) }
+        .schoologySheet($sheet)
         .task { if markRead { await load() } }
     }
 

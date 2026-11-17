@@ -33,6 +33,10 @@ final class AppModel {
     var revision = 0
     /// Set by a widget / Live Activity link; the To Do tab opens it.
     var deepLinkAssignment: String?
+    /// The open Schoology sheet and tab, kept here so the Duo opening or closing
+    /// (a new layout, built from scratch) leaves the student where they were.
+    var sheet: SheetTarget?
+    var tab = Demo.startTab
 
     var toast: String?
 

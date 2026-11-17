@@ -95,9 +95,9 @@ struct ClassPageRoute: Hashable { let course: Course }
 
 struct WideShell: View {
     @Environment(AppModel.self) private var model
-    @State private var split = Split()
+    @State private var split: Split
     /// Tabs opened so far: each is built the first time and kept, like a tab bar's.
-    @State private var built: Set<Int> = [Demo.startTab]
+    @State private var built: Set<Int>
     @State private var showID = false
     @State private var showTour = false
     @AppStorage(TourView.shownKey) private var tourShown = false
@@ -107,6 +107,14 @@ struct WideShell: View {
     static let barHeight: CGFloat = 56
     /// Narrower than this, the window is upright: tab bar, opened items full screen.
     static let uprightBelow: CGFloat = 800
+
+    /// Starts on the tab the tab bar was on (the Duo just opened).
+    init() {
+        let s = Split()
+        s.tab = AppModel.live?.tab ?? Demo.startTab
+        _split = State(initialValue: s)
+        _built = State(initialValue: [s.tab])
+    }
 
     var body: some View {
         GeometryReader { geo in
@@ -136,7 +144,7 @@ struct WideShell: View {
         }
         .background(Theme.background)
         .environment(split)
-        .onChange(of: split.tab, initial: true) { _, t in built.insert(t) }
+        .onChange(of: split.tab, initial: true) { _, t in built.insert(t); model.tab = t }
         .onReceive(NotificationCenter.default.publisher(for: .openTodo)) { _ in split.tab = 0 }
         .onReceive(NotificationCenter.default.publisher(for: .showStudentID)) { _ in showID = true }
         .fullScreenCover(isPresented: $showID) { StudentIDCard() }
@@ -154,7 +162,6 @@ struct WideShell: View {
         }
         .task {
             if !tourShown && Demo.showTour && !model.practice { showTour = true }
-            split.tab = Demo.startTab
             if Demo.on || model.todoAsOf == nil || Date().timeIntervalSince(model.todoAsOf!) > 120 {
                 await model.refreshTodo(quick: true)
             }

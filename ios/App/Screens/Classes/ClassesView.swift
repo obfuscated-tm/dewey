@@ -57,6 +57,8 @@ struct ClassesView: View {
             .navigationDestination(for: Course.self) { MaterialsView(sectionId: $0.sectionId, folderId: nil, title: $0.shortTitle, trail: []) }
             .classDestinations()
         }
+        .onChange(of: path.count) { o, n in AppLog.note("classes stack \(o) → \(n)") }
+        .onAppear { AppLog.note("classes tab built") }
         .environment(\.popFolders) { n, push in
             path.removeLast(min(n, path.count))
             if let push { path.append(push) }
@@ -219,7 +221,7 @@ struct MaterialLink: View {
     var body: some View {
         content
             .buttonStyle(.plain)
-            .sheet(item: $sheet) { SchoologySheet(target: $0) }
+            .schoologySheet($sheet)
             .sheet(item: $file) { FileViewer(target: $0) }
     }
 

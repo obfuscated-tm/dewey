@@ -58,7 +58,7 @@ struct GradeDetailView: View {
         .background(Theme.background)
         .navigationTitle(item?.title ?? "Graded work")
         .navigationBarTitleDisplayMode(.inline)
-        .sheet(item: $sheet) { SchoologySheet(target: $0) }
+        .schoologySheet($sheet)
         .sheet(item: $file) { FileViewer(target: $0) }
         .sheet(isPresented: $whatIf) { WhatIfSheet(itemId: itemId, sectionId: sectionId) }
         .task { await load() }

@@ -260,8 +260,8 @@ fun PillButton(title: String, color: Color = C.accent, filled: Boolean = false, 
             .clickable(role = Role.Button, onClick = onClick).padding(horizontal = 10.dp, vertical = 5.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (icon != null) { Icon(icon, null, tint = if (filled) C.onAccent else color, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(4.dp)) }
-        Text(title, style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = if (filled) C.onAccent else color, maxLines = 1)
+        if (icon != null) { Icon(icon, null, tint = if (filled) C.onAccent else color, modifier = Modifier.size(14.dp)); if (title.isNotEmpty()) Spacer(Modifier.width(4.dp)) }
+        if (title.isNotEmpty()) Text(title, style = Theme.footnote.copy(fontWeight = FontWeight.SemiBold), color = if (filled) C.onAccent else color, maxLines = 1)
         if (external) {
             Spacer(Modifier.width(3.dp))
             Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, tint = if (filled) C.onAccent else color, modifier = Modifier.size(13.dp))
@@ -276,6 +276,11 @@ fun PillButton(title: String, color: Color = C.accent, filled: Boolean = false, 
 @Composable
 fun TurnInButton(modifier: Modifier = Modifier, onClick: () -> Unit) =
     PillButton("Turn in", color = C.text, icon = Icons.Outlined.Check, modifier = modifier, onClick = onClick)
+
+/** Turn in with no words: the check alone, beside Submit on dropbox work (a class can have a dropbox and still take paper). */
+@Composable
+fun TurnInCheckButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) =
+    PillButton("", color = C.text, icon = Icons.Outlined.Check, modifier = modifier.semantics { contentDescription = label }, onClick = onClick)
 
 @Composable
 fun SubmitButton(modifier: Modifier = Modifier, onClick: () -> Unit) =

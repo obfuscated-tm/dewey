@@ -3,7 +3,7 @@ import UserNotifications
 
 /// A page in Settings. The gear on To Do, Grades, Inbox and Classes opens Settings on its own page.
 enum SettingsPage: Hashable {
-    case schoology, notifications, todo, grades, classes, inbox, help, about, studentID
+    case schoology, notifications, todo, grades, classes, inbox, help, about, studentID, schedule
 }
 
 /// 4b · A short list of pages: Schoology, Notifications, one page per tab
@@ -54,6 +54,7 @@ struct SettingsView: View {
                 }
                 Section {
                     row(.studentID, "person.text.rectangle", 2, "Student ID", value: StudentID.number == nil ? "Not added" : "Added")
+                    row(.schedule, "clock", 4, "Schedule", value: BellStore.load().isEmpty ? "Not set" : nil)
                 }
                 Section {
                     row(.todo, "checklist", 1, "To Do", value: (ToDoLayout(rawValue: todoLayout) ?? .week).title)
@@ -101,6 +102,7 @@ struct SettingsView: View {
             case .help: HelpSettings(connected: $connected)
             case .about: AboutSettings()
             case .studentID: StudentIDSetup(showsCard: true)
+            case .schedule: ScheduleSettings()
             }
         }
         .toolbar { done }
@@ -465,6 +467,10 @@ struct DeveloperView: View {
 
     var body: some View {
         DewForm {
+            #if DEBUG
+            Section("Now in class widget") { WidgetTestButton() }
+            #endif
+            Section("What the app did") { AppLogList() }
             Section("Scheduled reminders (\(scheduled.count))") {
                 ForEach(scheduled, id: \.identifier) { r in
                     VStack(alignment: .leading, spacing: 2) {
@@ -522,3 +528,16 @@ struct DeveloperView: View {
     }
 }
 
+
+/// AppLog, newest first, with Clear.
+private struct AppLogList: View {
+    @State private var lines = AppLog.lines
+
+    var body: some View {
+        ForEach(Array(lines.reversed().enumerated()), id: \.offset) { _, l in
+            Text(l).font(Theme.caption.monospacedDigit()).textSelection(.enabled)
+        }
+        Button("Clear") { AppLog.clear(); lines = [] }
+            .onAppear { lines = AppLog.lines }
+    }
+}

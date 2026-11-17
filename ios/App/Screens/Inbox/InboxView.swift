@@ -74,7 +74,7 @@ struct InboxView: View {
             .navigationDestination(for: MessageThread.self) { MessageView(thread: $0) }
             .navigationDestination(for: AssignmentLink.self) { AssignmentView(id: $0.id) }
             .toolbar(.hidden, for: .navigationBar)
-            .sheet(item: $sheet) { SchoologySheet(target: $0) }
+            .schoologySheet($sheet)
             .task {
                 if inbox.asOf == nil || Date().timeIntervalSince(inbox.asOf!) > 120 { await inbox.refresh(model) }
             }

@@ -122,7 +122,7 @@ struct CourseGradesView: View {
             newIds.formUnion(fresh)
             model.markGradesSeen(fresh)
         }
-        .sheet(item: $sheet) { SchoologySheet(target: $0) }
+        .schoologySheet($sheet)
     }
 
     private var gradesURL: URL { URL(string: "\(Engine.origin.absoluteString)/course/\(course.sectionId)/student_grades")! }

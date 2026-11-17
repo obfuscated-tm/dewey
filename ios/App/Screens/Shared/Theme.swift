@@ -301,7 +301,7 @@ struct PillButton: View {
         Button(action: action) {
             HStack(spacing: 4) {
                 if let icon { Image(systemName: icon).imageScale(.small).fontWeight(.bold) }
-                Text(title)
+                if !title.isEmpty { Text(title) }
                 if external { Image(systemName: "arrow.up.right").imageScale(.small).fontWeight(.bold) }
             }
             .font(Theme.footnote.weight(.semibold))
@@ -320,6 +320,11 @@ struct PillButton: View {
 extension PillButton {
     static func turnIn(_ action: @escaping () -> Void) -> PillButton {
         PillButton(title: "Turn in", color: Theme.text, icon: "checkmark", action: action)
+    }
+    /// Turn in with no words: the check alone, beside Submit on dropbox work, for a class
+    /// that has a dropbox but takes the work on paper or another site.
+    static func turnInCheck(_ action: @escaping () -> Void) -> PillButton {
+        PillButton(title: "", color: Theme.text, icon: "checkmark", action: action)
     }
     static func submit(_ action: @escaping () -> Void) -> PillButton {
         PillButton(title: "Submit", filled: true, icon: "globe", external: true, action: action)

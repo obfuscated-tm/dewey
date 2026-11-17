@@ -11,6 +11,15 @@
         ],
         "createdAt": "2026-11-11T08:20:17.150Z",
         "reason": "Claude: tour figcaptions have padding-bottom 18px above their border on desktop and no border on phones; checked in 1440px and 390px renders"
+      },
+      {
+        "rule": "repeated-container-text",
+        "value": "*",
+        "files": [
+          "site/src/web.html"
+        ],
+        "createdAt": "2026-11-17T05:05:27.686Z",
+        "reason": "Claude: /web is a mock preview of the app with sample classes and grades (Biology, AP Lang, B+), repeated across its demo screens on purpose; file came in unchanged from site-motion"
       }
     ]
   }

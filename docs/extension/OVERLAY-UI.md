@@ -226,6 +226,14 @@ CSS gradient, a background-image on a non-`img` element without an inline `style
 attribute, or canvas-drawn UI may invert incorrectly or not re-invert at all; we
 accept that trade for not having to track Schoology's markup.
 
+## To Do sidebars (home and a course's)
+
+The sidebar is the extension's spine ([CATCH-UP-SPEC.md](CATCH-UP-SPEC.md)). These rules are shared with the iOS app (`TodoLogic`, `ToDoView.dueText`) and live in `overlays/todologic.js`; change them in both places.
+
+- **Due line:** the full date and time, then one tail: **"· 3 days late"** (red, semibold; "· late" when it was due earlier today), **"· in 3 days"** / "· tomorrow" / "· today" on a test not yet studied, or **"· 5 h 12 min left"** on work still owed in its last 12 hours. Ticks once a minute.
+- **Late** (`showsLate`): past due and not handed in. Work ticked Done but not turned in **stays late**: its "Done, not submitted" goes red too, until it's turned in. A test is late only when it's a Schoology quiz not yet studied for. Missing (Schoology's own gradebook mark) keeps its pill.
+- **Class heading** (home only): the class dot and name, the count, then **one stamp** at the right, the most urgent: **LATE** (red) when any row there is late, else **DUE TODAY** (ink) when owed work is due later today; outlined, straight, nothing for tomorrow. Under it a 2 px rule in the class colour, **red** while the class has late work. No call numbers.
+
 ## Grade math
 
 - Category % = points earned / points possible for graded items in that category.

@@ -11,6 +11,7 @@ import {
   isClassCard, shortName, cardKey, groupEvents, formatDue, formatOverdue, visibleItems, fetchEvents,
   cacheIsFresh, cacheSkipsFetch, tagFor,
 } from '../overlays/todo.js';
+import { cardStamp, showsLate, isOwed, dueTail } from '../overlays/todologic.js';
 
 const NOW = new Date('2026-09-27T12:00:00');
 
@@ -96,16 +97,55 @@ test('groupEvents: within a class, overdue first (oldest overdue first), then up
   assert.deepEqual(apcs.items.map((i) => i.schoology_id), ['10', '11', '14', '15']); // both Sunday items, then Tue 10:05, then Tue 4pm
 });
 
-test('groupEvents: "Due today" shows on a group with anything due today', () => {
-  const groups = groupEvents({ overdue: OVERDUE, upcoming: UPCOMING, cards: CARDS, now: NOW });
-  assert.equal(groups.find((g) => g.name === 'AP Biology').dueToday, true);
-  assert.equal(groups.find((g) => g.name === 'Chemistry H').dueToday, false);
+test('cardStamp: LATE beats DUE TODAY; DUE TODAY only for owed work due later today', () => {
+  const now = new Date('2026-09-27T12:00:00');
+  const late = { due: '2026-09-20T23:59:00', late: true, owed: true };
+  const today = { due: '2026-09-27T23:59:00', late: false, owed: true };
+  assert.equal(cardStamp([today, late], now), 'late');
+  assert.equal(cardStamp([today], now), 'dueToday');
+  assert.equal(cardStamp([{ ...today, owed: false }], now), null); // studied, or turned in
+  assert.equal(cardStamp([{ ...today, due: '2026-09-27T08:00:00' }], now), null); // earlier today: not "due today"
+  assert.equal(cardStamp([{ due: '2026-09-28T08:00:00', late: false, owed: true }], now), null); // tomorrow: nothing
+  assert.equal(cardStamp([{ ...late, late: false }], now), null); // past due but handed in
+  assert.equal(cardStamp([], now), null);
 });
 
-test('formatOverdue and formatDue: always the full specific date, no relative words', () => {
-  assert.equal(formatOverdue(12), '12 d overdue');
-  assert.equal(formatOverdue(11), '11 d overdue');
-  assert.equal(formatOverdue(6), '6 d overdue');
+test('showsLate and isOwed: done but not turned in stays late; a test only when it is a quiz not studied', () => {
+  const over = { overdue: true };
+  assert.equal(showsLate({ ...over, kind: 'todo' }), true);
+  assert.equal(showsLate({ ...over, kind: 'ready' }), true); // ticked Done, never handed in
+  assert.equal(showsLate({ ...over, kind: 'missing' }), true);
+  assert.equal(showsLate({ ...over, kind: 'unknown' }), true); // no neo-plan answer yet: Schoology says overdue
+  assert.equal(showsLate({ ...over, kind: 'submitted' }), false);
+  assert.equal(showsLate({ ...over, kind: 'graded' }), false);
+  assert.equal(showsLate({ ...over, kind: 'removed' }), false);
+  assert.equal(showsLate({ overdue: false, kind: 'todo' }), false);
+  assert.equal(showsLate({ ...over, kind: 'todo', exam: true, quiz: true }), true);
+  assert.equal(showsLate({ ...over, kind: 'ready', exam: true, quiz: true }), false);
+  assert.equal(showsLate({ ...over, kind: 'todo', exam: true, quiz: false }), false); // an in-class test
+  assert.equal(isOwed({ kind: 'ready' }), true);
+  assert.equal(isOwed({ kind: 'ready', exam: true }), false);
+  assert.equal(isOwed({ kind: 'submitted' }), false);
+});
+
+test('dueTail: N days late, a test countdown, or the last 12 hours left', () => {
+  const now = new Date('2026-09-27T12:00:00');
+  assert.deepEqual(dueTail({ overdue: true, days: 3, kind: 'ready' }, now), { text: '3 days late', late: true });
+  assert.deepEqual(dueTail({ overdue: true, days: 3, kind: 'submitted' }, now), { text: '', late: false });
+  assert.deepEqual(dueTail({ due: '2026-09-27T17:12:00', kind: 'todo' }, now), { text: '5 h 12 min left', late: false });
+  assert.deepEqual(dueTail({ due: '2026-09-27T12:42:00', kind: 'ready' }, now), { text: '42 min left', late: false }); // done, still owed
+  assert.deepEqual(dueTail({ due: '2026-09-28T08:00:00', kind: 'todo' }, now), { text: '', late: false }); // 20 h out
+  assert.deepEqual(dueTail({ due: '2026-09-27T17:00:00', kind: 'submitted' }, now), { text: '', late: false });
+  assert.deepEqual(dueTail({ due: '2026-09-30T08:00:00', kind: 'todo', exam: true }, now), { text: 'in 3 days', late: false });
+  assert.deepEqual(dueTail({ due: '2026-09-28T08:00:00', kind: 'todo', exam: true }, now), { text: 'tomorrow', late: false });
+  assert.deepEqual(dueTail({ due: '2026-09-27T15:00:00', kind: 'todo', exam: true }, now), { text: 'today', late: false });
+  assert.deepEqual(dueTail({ due: '2026-09-30T08:00:00', kind: 'ready', exam: true }, now), { text: '', late: false }); // studied
+});
+
+test('formatOverdue (N days late) and formatDue: always the full specific date, no relative words', () => {
+  assert.equal(formatOverdue(12), '12 days late');
+  assert.equal(formatOverdue(1), '1 day late');
+  assert.equal(formatOverdue(0), 'late'); // due earlier today
   assert.equal(formatDue('2026-09-27T23:59:00', NOW), 'Sun Sep 27, 11:59 pm'); // today, but still specific
   assert.equal(formatDue('2026-09-28T08:30:00', NOW), 'Mon Sep 28, 8:30 am'); // tomorrow, but still specific
   assert.equal(formatDue('2026-09-29T10:05:00', NOW), 'Tue Sep 29, 10:05 am');

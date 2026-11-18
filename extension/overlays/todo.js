@@ -28,8 +28,8 @@ import { parseEventsJson, nextEventsUrl } from '../reader/parse/sync.js';
 import { createHost, el, keepEvents, onOverlay, isOverlayOn, debounce } from './ui.js';
 import { limitedFetch } from '../reader/ratelimit.js';
 import {
-  calendarDays, formatDue, formatOverdue, annotateItems, sortDueItems,
-  ROW_CSS, tagFor, buildRow,
+  formatDue, formatOverdue, annotateItems, sortDueItems,
+  ROW_CSS, tagFor, buildRow, cardStamp,
 } from './todorows.js';
 
 // Re-exported: test/todo.test.js imports these from here.
@@ -116,7 +116,7 @@ export function colorIndexOf(name) {
  * included (even with nothing due); a non-class card only when it has items;
  * an event matching no card goes in a trailing "Other" group. Within a group:
  * overdue first (oldest due first), then upcoming (soonest first).
- * → [{ key, name, colorIndex, isOther, dueToday, items: [{ ...event, overdue, days? }] }]
+ * → [{ key, name, colorIndex, isOther, items: [{ ...event, overdue, days? }] }]
  */
 export function groupEvents({ overdue = [], upcoming = [], cards = [], now = new Date() } = {}) {
   const byKey = new Map(); // cardKey → group
@@ -145,10 +145,7 @@ export function groupEvents({ overdue = [], upcoming = [], cards = [], now = new
   for (const item of annotateItems({ overdue, upcoming, now })) place(item);
 
   const groups = order.filter((g) => g.isClass || g.items.length).concat(other.items.length ? [other] : []);
-  for (const g of groups) {
-    g.items = sortDueItems(g.items);
-    g.dueToday = g.items.some((it) => it.due && calendarDays(new Date(it.due), now) === 0);
-  }
+  for (const g of groups) g.items = sortDueItems(g.items);
   return groups;
 }
 
@@ -213,10 +210,19 @@ function cardContainerIn(doc) {
 const CSS = ROW_CSS + `
 .group { margin: 0 0 14px; }
 .group:last-child { margin-bottom: 0; }
-.ghead { display: flex; align-items: center; gap: 8px; padding: 2px 0 6px; border-bottom: 1px solid var(--line); }
+/* A rule in the class's colour under its name, red while the class has late work. */
+.ghead { display: flex; align-items: center; gap: 8px; padding: 2px 0 6px; border-bottom: 2px solid var(--cls, var(--line)); }
+.ghead.late { border-bottom-color: var(--bad); }
 .gname { font-weight: 600; }
 .gcount { margin-left: auto; color: var(--faint); }
-.gtoday { color: var(--bad); background: var(--bad-soft); border-radius: var(--radius-sm); padding: 1px 6px; font-size: 11px; font-weight: 600; }
+/* The class's one stamp (the iOS app's CardStampView): LATE in red, DUE TODAY in
+   ink. Straight, outlined, no fill. */
+.stamp {
+  font-size: 10px; line-height: 14px; font-weight: 800; letter-spacing: .06em; white-space: nowrap;
+  padding: 0 4px; border: 1.5px solid currentColor; border-radius: 3px; color: var(--ink);
+}
+.stamp.late { color: var(--bad); }
+.stamp[hidden] { display: none; }
 `;
 
 function renderGroup(g, expanded) {
@@ -224,25 +230,37 @@ function renderGroup(g, expanded) {
   const head = el('div', 'ghead');
   const dot = el('span', 'dot');
   dot.style.background = g.isOther ? 'var(--class-none)' : `var(--class-${g.colorIndex})`;
-  head.append(dot, el('span', 'gname', g.name));
-  if (g.dueToday) head.append(el('span', 'gtoday', 'Due today'));
-  head.append(el('span', 'gcount', String(g.items.length)));
+  if (!g.isOther) head.style.setProperty('--cls', `var(--class-${g.colorIndex})`);
+  const stamp = el('span', 'stamp');
+  stamp.hidden = true;
+  head.append(dot, el('span', 'gname', g.name), el('span', 'gcount', String(g.items.length)), stamp);
   box.append(head);
   if (!g.items.length) {
     box.append(el('div', 'nothing', 'Nothing due'));
-    return { box, rows: [] };
+    return { box, rows: [], drawStamp: () => {} };
   }
   const { shown, more, older } = visibleItems(g.items, { expanded });
   const rows = shown.map(buildRow);
-  for (const r of rows) box.append(r.el);
+  // The stamp follows the rows' states (marks.js draws them after this), so
+  // each row redraws it when its own state arrives or changes.
+  const drawStamp = (now = new Date()) => {
+    const which = cardStamp(rows.map((r) => r.stampRow()), now);
+    head.classList.toggle('late', which === 'late');
+    stamp.hidden = !which;
+    stamp.className = which === 'late' ? 'stamp late' : 'stamp';
+    stamp.textContent = which === 'late' ? 'LATE' : which === 'dueToday' ? 'DUE TODAY' : '';
+    if (which) stamp.setAttribute('aria-label', which === 'late' ? 'Has late work' : 'Work due today');
+  };
+  for (const r of rows) { r.onChange = drawStamp; box.append(r.el); }
+  drawStamp();
   if (more > 0) {
     const btn = el('button', 'more', older === more ? `${older} older` : `+${more} more`);
     if (older) btn.title = `${older} more than ${OLDER_DAYS} days overdue`;
     btn.type = 'button';
     box.append(btn);
-    return { box, rows, moreBtn: btn };
+    return { box, rows, moreBtn: btn, drawStamp };
   }
-  return { box, rows };
+  return { box, rows, drawStamp };
 }
 
 /**
@@ -261,6 +279,7 @@ export function start({
   let host = null, root = null;
   let schoologyBlock = null;
   let rows = []; // the live row descriptors, for marks.js
+  let stamps = []; // each group's drawStamp, for the minute tick
   let marksHost = null; // { scan() }, set by home.js once startMarks exists
   let loaded = false; // a successful fetch happened at least once
   let readAt = 0;
@@ -306,9 +325,11 @@ export function start({
     const frag = el('div', 'panel'); // a light panel, for contrast with Schoology's white column
     frag.append(el('div', 'todo-h', 'To Do')); // Schoology's own heading is in the block we hide
     rows = [];
+    stamps = [];
     for (const g of groups) {
-      const { box, rows: groupRows, moreBtn } = renderGroup(g, expanded.has(g.key));
+      const { box, rows: groupRows, moreBtn, drawStamp } = renderGroup(g, expanded.has(g.key));
       rows.push(...groupRows);
+      stamps.push(drawStamp);
       if (moreBtn) moreBtn.addEventListener('click', () => { expanded.add(g.key); render(); });
       frag.append(box);
     }
@@ -403,6 +424,15 @@ export function start({
 
   async function refresh() { await loadCardOrder(); await read(); }
 
+  // Once a minute: "5 h 12 min left" counts down, and work that just passed its
+  // due time turns late (its row and its class's stamp).
+  const tick = setInterval(() => {
+    const t = now();
+    for (const r of rows) r.drawDue(t);
+    for (const f of stamps) f(t);
+  }, 60_000);
+  tick.unref?.(); // node tests: don't hold the process open
+
   bodyObserver.observe(doc.body, { childList: true, subtree: true });
   watchCards();
   const ready = (async () => { await loadEventsCache(); await refresh(); })();
@@ -416,6 +446,6 @@ export function start({
     rowsIn: () => rows,
     active: () => loaded && !!findSchoologyBlock(),
     setMarks: (m) => { marksHost = m; },
-    stop: () => { bodyObserver.disconnect(); cardObserver.disconnect(); },
+    stop: () => { bodyObserver.disconnect(); cardObserver.disconnect(); clearInterval(tick); },
   };
 }

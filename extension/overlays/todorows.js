@@ -15,11 +15,13 @@ import { TIP_KEY, TIP_CSS, tipNode } from './statusguide.js';
 import {
   calendarDays, formatOverdue, formatDue, annotateItems, sortDueItems,
   TYPE_LABEL, tagFor, AUTO_ADD_OVERDUE_DAYS, autoAddable, typeFor,
+  formatLate, showsLate, isOwed, cardStamp, timeLeft, testCountdown, dueTail,
 } from './todologic.js';
 
 export {
   calendarDays, formatOverdue, formatDue, annotateItems, sortDueItems,
   TYPE_LABEL, tagFor, AUTO_ADD_OVERDUE_DAYS, autoAddable, typeFor,
+  formatLate, showsLate, isOwed, cardStamp, timeLeft, testCountdown, dueTail,
 };
 
 // ── CSS shared by every "To Do" panel ────────────────────────────────────
@@ -56,8 +58,8 @@ a.title.exam { font-weight: 700; }
   grid-column: 2; grid-row: 2; display: flex; align-items: center; flex-wrap: wrap; gap: 4px 6px; min-width: 0;
   font-size: 12px; color: var(--dim); font-variant-numeric: tabular-nums;
 }
-.due { white-space: nowrap; }
-.due.over { color: var(--bad); }
+.due, .tail { white-space: nowrap; }
+.due.over, .tail.over { color: var(--bad); font-weight: 600; }
 .status { grid-column: 2; grid-row: 3; min-width: 0; font-size: 12px; }
 ${TIP_CSS}.status[hidden] { display: none; }
 .mark-col { grid-column: 3; grid-row: 1 / span 3; align-self: center; padding-left: 8px; }
@@ -75,12 +77,24 @@ export function buildRow(item) {
   a.href = item.url || `/assignment/${item.schoology_id}`;
   a.title = item.title;
   wrap.append(a);
+  // The due line: the full date, then "· 3 days late" (red), "· in 3 days" (a
+  // test to study) or "· 5 h 12 min left" (owed work, its last 12 hours). Which
+  // one follows the row's state, so it's drawn again on every onState.
   const sub = el('div', 'sub');
-  if (item.overdue) {
-    sub.append(el('span', 'due over', formatDue(item.due)), document.createTextNode(` · ${formatOverdue(item.days)}`));
-  } else {
-    sub.append(el('span', 'due', formatDue(item.due)));
-  }
+  const dueEl = el('span', 'due', formatDue(item.due));
+  const tailEl = el('span', 'tail');
+  sub.append(dueEl, tailEl);
+  const quiz = typeFor(item) === 'exam'; // a Schoology quiz (/assessments/)
+  let kind = item.graded ? 'graded' : 'unknown';
+  let exam = quiz;
+  const facts = () => ({ due: item.due, overdue: item.overdue, days: item.days, kind, exam, quiz });
+  const drawDue = (now = new Date()) => {
+    const t = dueTail(facts(), now);
+    dueEl.classList.toggle('over', t.late);
+    tailEl.className = t.late ? 'tail over' : 'tail';
+    tailEl.textContent = t.text ? ` · ${t.text}` : '';
+  };
+  drawDue();
   // The state's words ("○ To do", "● Done, not submitted", "✓ Turned in") on
   // a line under the due date; its buttons (Done, Turn in, Undo) stacked in a
   // column at the row's right (marks.js, marker.js's `actions`).
@@ -92,7 +106,12 @@ export function buildRow(item) {
   tipSlot.hidden = true;
   rowEl.append(tag, wrap, sub, statusSlot, markSlot, tipSlot);
   const onTick = (kind) => showTip(tipSlot, kind);
+  let onChange = null; // the class heading's stamp (todo.js), redrawn when a row's state changes
   const onState = (state, planItem) => {
+    if (!item.graded) kind = state.kind;
+    exam = planItem ? planItem.type === 'exam' : quiz;
+    drawDue();
+    onChange?.();
     const { text, cls } = tagFor(planItem);
     tag.className = `tag ${cls}`.trim();
     tag.textContent = text;
@@ -102,7 +121,11 @@ export function buildRow(item) {
     statusSlot.hidden = markSlot.hidden = state.kind === 'unknown';
   };
   return {
-    el: rowEl, titleEl: a, markSlot, statusSlot, onState, onTick,
+    el: rowEl, titleEl: a, markSlot, statusSlot, onState, onTick, drawDue,
+    // marks.js: whether the state it just drew is still late (done, not turned in → red).
+    isLate: (s, planItem) => showsLate({ ...facts(), kind: item.graded ? 'graded' : s.kind, exam: planItem ? planItem.type === 'exam' : quiz }),
+    stampRow: () => ({ due: item.due, late: showsLate(facts()), owed: isOwed(facts()) }),
+    set onChange(fn) { onChange = fn; },
     schoology_id: item.schoology_id, title: item.title, section_id: item.section_id || null, graded: item.graded,
     due: item.due || null, type: typeFor(item), autoAdd: autoAddable(item),
     turnIn: true, // the sidebars' rows: icon buttons for done / Turn in / its undo (marks.js)

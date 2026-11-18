@@ -8,9 +8,85 @@
 const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
 export const calendarDays = (a, b) => Math.round((startOfDay(a) - startOfDay(b)) / 86_400_000);
 
-/** "12 d overdue" (days is always ≥ 0; the caller only calls this for overdue items). */
-export function formatOverdue(days) {
-  return `${Math.max(0, Math.round(days))} d overdue`;
+/**
+ * "12 days late", "1 day late", or "late" when it was due earlier today: the
+ * iOS app's words (ToDoView's dueText). days is calendar days overdue, ≥ 0.
+ */
+export function formatLate(days) {
+  const n = Math.max(0, Math.round(days || 0));
+  return n === 0 ? 'late' : `${n} day${n === 1 ? '' : 's'} late`;
+}
+/** The old name, kept for its importers. */
+export const formatOverdue = formatLate;
+
+// ── Late, owed, the class stamp and the countdowns (the iOS app's TodoLogic) ──
+// `kind` is matstate.js's rowState() kind; `exam` whether it's a test.
+
+const DONE_KINDS = new Set(['submitted', 'graded', 'removed']);
+
+/**
+ * Whether a row says late (red): due in the past and not handed in. A test is
+ * late only when it's a Schoology quiz not yet studied for (TodoLogic.showsLate);
+ * work ticked Done but not turned in stays late until it is. Pure.
+ */
+export function showsLate({ overdue, kind, exam, quiz }) {
+  if (!overdue || DONE_KINDS.has(kind)) return false;
+  if (exam) return !!quiz && kind !== 'ready';
+  return true;
+}
+
+/** Whether the row is still owed: not handed in, and a test not studied yet. Pure. */
+export function isOwed({ kind, exam }) {
+  if (DONE_KINDS.has(kind)) return false;
+  return exam ? kind !== 'ready' : true;
+}
+
+/**
+ * The one stamp a class heading carries: 'late' when any row there shows late,
+ * else 'dueToday' when owed work is due later today, else null (TodoLogic.cardStamp).
+ * rows: [{ due, late, owed }]. Pure.
+ */
+export function cardStamp(rows, now = new Date()) {
+  const at = (r) => (r.due ? new Date(r.due) : null);
+  if (rows.some((r) => r.late && at(r) && at(r) < now)) return 'late';
+  if (rows.some((r) => r.owed && at(r) && at(r) >= now && calendarDays(at(r), now) === 0)) return 'dueToday';
+  return null;
+}
+
+/** "5 h 12 min left" / "42 min left" in the last 12 hours before the due time, else ''. Pure. */
+export function timeLeft(due, now = new Date()) {
+  if (!due) return '';
+  const ms = new Date(due) - now;
+  if (!(ms > 0) || ms > 12 * 3_600_000) return '';
+  const m = Math.ceil(ms / 60_000);
+  return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min left` : `${m} min left`;
+}
+
+/** A test's countdown: "today", "tomorrow", "in 3 days"; '' once it's past (Reminders.testCountdown). Pure. */
+export function testCountdown(due, now = new Date()) {
+  if (!due) return '';
+  const d = new Date(due);
+  if (!(d > now)) return '';
+  const days = calendarDays(d, now);
+  return days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days} days`;
+}
+
+/**
+ * The words after the due date on a sidebar row, and whether they're red:
+ * "· 3 days late" (late), "· in 3 days" (a test still to study), "· 5 h 12 min
+ * left" (owed work in its last 12 hours), or nothing. Pure.
+ */
+export function dueTail({ due, overdue, days, kind, exam, quiz }, now = new Date()) {
+  if (showsLate({ overdue, kind, exam, quiz })) return { text: formatLate(days), late: true };
+  if (exam && isOwed({ kind, exam })) {
+    const c = testCountdown(due, now);
+    if (c) return { text: c, late: false };
+  }
+  if (!exam && isOwed({ kind, exam })) {
+    const left = timeLeft(due, now);
+    if (left) return { text: left, late: false };
+  }
+  return { text: '', late: false };
 }
 
 function formatTime(d) {
@@ -40,7 +116,7 @@ export function formatDue(due, now = new Date()) {
 
 /**
  * overdue + upcoming events, each tagged `{ overdue, days? }` (days: how many
- * calendar days overdue, for formatOverdue). Order is not meaningful yet —
+ * calendar days overdue, for formatLate). Order is not meaningful yet —
  * sortDueItems does that. Pure.
  */
 export function annotateItems({ overdue = [], upcoming = [], now = new Date() } = {}) {

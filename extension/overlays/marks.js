@@ -32,6 +32,9 @@ const CSS = MARK_CSS + `
 :host([data-line]) .right { display: flex; flex-direction: column; align-items: stretch; gap: 4px; height: auto; }
 :host([data-status]) { display: block; white-space: normal; }
 :host([data-status]) .right { display: flex; flex-wrap: wrap; gap: 4px 8px; height: auto; }
+/* Done but not handed in, and past due: still late, so red until it's turned in. */
+:host([data-late]) .st.done { color: var(--bad); }
+:host([data-late]) .st.done .circle { background: var(--bad); border-color: var(--bad); }
 `;
 const TAG = 'np-mark';
 const RETRY_MS = [3_000, 10_000, 30_000]; // after a failed items request; then wait for the next redraw
@@ -98,6 +101,7 @@ export function startMarks({ rowsIn, doc = document, loc = location, call = np }
     if (err) words.push(el('span', 'bad', err));
     if (m.statusRoot) {
       m.statusHost.hidden = !words.length;
+      m.statusHost.toggleAttribute('data-late', !!row.isLate?.(s, it));
       const line = el('span', 'right');
       line.append(...words);
       m.statusRoot.replaceChildren(m.statusRoot.firstChild, line);

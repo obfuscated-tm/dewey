@@ -152,6 +152,10 @@ export function start({
 
   onOverlay(() => { applyHiding(); ensureHost(); });
 
+  // Once a minute: the countdowns tick, and work that just passed its due time turns late.
+  const tick = setInterval(() => { const t = now(); for (const r of rows) r.drawDue(t); }, 60_000);
+  tick.unref?.(); // node tests: don't hold the process open
+
   bodyObserver.observe(doc.body, { childList: true, subtree: true });
   const ready = (async () => { await loadEventsCache(); await read(); })();
   try {
@@ -164,6 +168,6 @@ export function start({
     rowsIn: () => rows,
     active: () => loaded && !!findSchoologyBlock(),
     setMarks: (m) => { marksHost = m; },
-    stop: () => { bodyObserver.disconnect(); },
+    stop: () => { bodyObserver.disconnect(); clearInterval(tick); },
   };
 }

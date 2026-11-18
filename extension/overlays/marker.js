@@ -64,7 +64,7 @@ const ICON = {
   undo: '<path d="M5.5 3.5l-3 3 3 3M2.5 6.5H9.5a3.5 3.5 0 010 7H7"/>',
 };
 /** A sidebar button: a glyph, then a short word; the full action in its tooltip/aria-label. */
-function iconBtn(icon, text, cls, label, fn, busy) {
+export function iconBtn(icon, text, cls, label, fn, busy) {
   const b = el('button', `ib ${cls}`.trim());
   b.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true">${ICON[icon]}</svg>`;
   b.append(el('span', null, text));

@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  chipState, findItem, signed, zeroCost, whatIfGrade, rankIn, rankText, lateDays, lateText, pointsFromText, inArchive,
+  chipState, findItem, signed, zeroCost, whatIfGrade, rankIn, rankText, lateDays, lateText, pointsFromText, inArchive, stampFor,
 } from '../overlays/asgstate.js';
 import { folderHolding, folderName } from '../overlays/coursedata.js';
 
@@ -109,4 +109,20 @@ test('the folder holding an assignment, and its name from the parent row', () =>
   assert.equal(folderName(tree, '8'), 'Lesson 8');
   assert.equal(folderName(tree, 'root'), 'Materials');
   assert.equal(folderName(tree, 'x'), null);
+});
+
+test('the card stamp: late in red, due today, due, handed in in green', () => {
+  const now = new Date(2026, 8, 29, 19, 47);
+  const sep23 = new Date(2026, 8, 23, 23, 59).toISOString();
+  const tonight = new Date(2026, 8, 29, 23, 59).toISOString();
+  const oct2 = new Date(2026, 9, 2, 8, 0).toISOString();
+  assert.deepEqual(stampFor({ kind: 'missing', due: sep23, late: true, days: 6, owed: true }, now), { tone: 'late', s1: 'Due Sep 23', s2: '6 days late' });
+  assert.deepEqual(stampFor({ kind: 'todo', due: tonight, late: false, days: 0, owed: true }, now), { tone: '', s1: '11:59 pm', s2: 'Due today' });
+  // Studied for today's test: no longer owed, so just its date.
+  assert.deepEqual(stampFor({ kind: 'ready', due: tonight, late: false, owed: false }, now), { tone: '', s1: 'Due', s2: 'Sep 29' });
+  assert.deepEqual(stampFor({ kind: 'todo', due: oct2, late: false, owed: true }, now), { tone: '', s1: 'Due', s2: 'Oct 2' });
+  assert.deepEqual(stampFor({ kind: 'submitted', due: sep23, word: 'Turned in' }, now), { tone: 'good', s1: '', s2: 'Turned in' });
+  assert.equal(stampFor({ kind: 'graded', due: sep23 }, now), null); // the score says it
+  assert.equal(stampFor({ kind: 'todo', due: null, owed: true }, now), null);
+  assert.equal(stampFor({ kind: 'removed', due: sep23 }, now), null);
 });

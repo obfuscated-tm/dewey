@@ -383,7 +383,8 @@ export function parseAssignmentPage(doc, url) {
       if (m) { section = m[1]; break; }
     }
   }
-  const dueEl = doc.querySelector('.assignment-details .due-date, p.due-date');
+  // The title bar has an empty p.due-date of its own, before the one that says it.
+  const dueEl = [...doc.querySelectorAll('.assignment-details .due-date, p.due-date')].find((p) => cleanText(p)) || null;
   const title = cleanText(anchor) || squash((doc.querySelector('title')?.textContent || '').split(' | ')[0]);
   return {
     schoology_id: assignmentIdOf(url),

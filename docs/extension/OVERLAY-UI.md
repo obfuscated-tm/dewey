@@ -361,13 +361,13 @@ In what-if mode:
 
 ## 3. Assignment page
 
-- **Chip** (one line, under Schoology's due date), replacing the current chip:
-  - not submitted: class dot + name · Missing (if missing) · "A zero costs −N.NN" ·
-    "Remove from neo-plan". No Turn in button.
-  - after a Schoology submit: "Submitted" (green) · "Cleared in neo-plan" · "Late by N days" if late.
-  - graded: "Graded" · "Moved your course grade ±N.NN" · "Nth lowest of M in <category>".
-  - not in neo-plan: "Add to neo-plan"; removed: "Removed · Add back" (as now).
-- **Sidebar**, under Schoology's Grade box, only when ungraded: "What if I get [ ] / pts" →
-  "Course grade NN.NN% ±delta".
+Reworked 2026-11-18 ([CATCH-UP-SPEC.md](CATCH-UP-SPEC.md); mockups of both places in [design/assignment-block.html](design/assignment-block.html), Owen left the pick to Claude: the right column). One **card** at the top of Schoology's right column, above its Submit button, styled like a To Do sidebar row. It replaced the chip under the due date and the separate what-if box (one in, one out). On a quiz's start page it sits under the title; on a page with neither, it floats bottom right.
+
+- **Head:** the class (dot + short name) and a rule in the class colour, red while it's late. The **stamp**, tilted over the card's top right, is the card's one strong detail (the iOS Assignment page's DueStamp): "Due · Sep 23", "Due Sep 23 · 6 days late" (red), "11:59 pm · Due today", "Submitted" / "Turned in" (green). None once it's graded (the score says it) or removed. It slams in only when its words change while the page is open; no slam with Reduce Motion.
+- **Status:** Missing (Schoology's word, until handed in) · ○ To do / ● Done, not submitted (dropbox) or Done, not turned in, red while late / Submitted (+ "Late by N days") / Turned in / the score. Tests: □ Not studied / ■ Studied. Then the full due date with the sidebar's tail: "N days late", "5 h 12 min left", a test's "in 3 days".
+- **Buttons** (the sidebar's): ✓ Done (Studied) ↔ Not done, ↑ Turn in for work with no Schoology dropbox (paper, a lab site), Undo after a Turn in. **Dropbox work is handed in only with Schoology's own Submit**, right under the card; submit detection clears it.
+- **Grade line:** "A zero costs −N.NN" (missing) and a dashed **What if?** that opens "If I get [ ] / pts → NN.NN% ±delta" in place (Esc closes; never saved). Graded: "Moved your course grade ±N.NN", then "Nth lowest of M in <category>".
+- **Type:** HW · Test · Task · CW, one tap to change; **⋯** holds Remove from list. Not in neo-plan: "+ Add to list"; removed: "Removed · Add back".
+- Late, owed and the countdowns follow the To Do sidebars' rules (§To Do sidebars). With no answer from neo-plan, the card shows only the due date and the what-if: it doesn't claim late.
 - No "Also in <folder name>" list below the instructions (removed 2026-09-27:
   Owen found it cluttered the page without adding much).

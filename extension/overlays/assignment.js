@@ -1,21 +1,31 @@
-// The assignment page (docs/extension/OVERLAY-UI.md §3), and submit detection. Two
-// additions, each in a shadow root of its own; Schoology's page stays as it is:
+// The assignment page (docs/extension/OVERLAY-UI.md §3), and submit detection.
+// One addition, in a shadow root of its own; Schoology's page stays as it is:
 //
-//   chip      one line under Schoology's due date (overlays/asgstate.js says
-//             which state): the class, then Missing · "A zero costs −N.NN" ·
-//             Remove from neo-plan; or Submitted · Cleared in neo-plan · Late
-//             by N days; or Graded · Moved your course grade ±N.NN · Nth
-//             lowest of M in <category>; or Add to neo-plan; or Removed · Add
-//             back. Then HW · Test · Task · CW, the item's type in neo-plan,
-//             one tap to change it. There is no Turn in here: work is turned in only with
-//             Schoology's own Submit button, and submit detection clears it.
-//   what-if   in Schoology's sidebar, under its Grade box, only while
-//             ungraded: "What if I get [ ] / pts" → "Course grade NN.NN% ±delta".
-//             Never saved.
+//   card      at the top of Schoology's right column, above its Submit button
+//             (under the title on a quiz's start page, or floating when the
+//             page has neither). Styled like a To Do sidebar row:
+//               head    the class, and the stamp: "Due Sep 23", "6 days late"
+//                       (red), "Due today", "Submitted" / "Turned in" (green);
+//                       a rule in the class colour, red while it's late
+//               status  Missing · ○ To do / ● Done, not submitted (red while
+//                       late) / Submitted / the score; then the full due date
+//                       with "N days late", "5 h left" or a test's "in 3 days"
+//               buttons ✓ Done (Studied) ↔ Not done, ↑ Turn in for work with
+//                       no dropbox, Undo after a Turn in. Dropbox work is
+//                       handed in only with Schoology's own Submit button,
+//                       right under the card, and submit detection clears it.
+//               grade   "A zero costs −N.NN" / "Moved your course grade ±N.NN ·
+//                       Nth lowest of M in <category>", and "What if?", which
+//                       opens "If I get [ ] / pts → NN.NN% ±delta" in place
+//                       (never saved)
+//               type    HW · Test · Task · CW, one tap to change it; ⋯ holds
+//                       Remove from list
+//             Not in neo-plan: "+ Add to list"; removed: "Removed · Add back".
+//             The rules for late, the stamp and the countdowns are the To Do
+//             sidebars' (overlays/todologic.js), which are the iOS app's.
 //
 // What it reads (overlays/coursedata.js, cached with the Materials page's):
-// the course's gradebook. (An "Also in <folder>" list of the folder's other
-// items used to sit under the instructions; it was clutter, and is gone.)
+// the course's gradebook.
 //
 // Submit detection: when this page shows the submission as made (on load, or
 // after the submit dialog changes it), the service worker posts a one-item
@@ -27,61 +37,87 @@ import { cleanText } from '../util.js';
 import { np, pageUserId, createHost, el, classDot, onClick, debounce, failText, keepEvents } from './ui.js';
 import { periodsFromRows, impact, grade as courseGrade } from './grademath.js';
 import { openCourse, chromeStore, fetchDoc, loadWeights } from './coursedata.js';
+import { rowState, scoreText } from './matstate.js';
+import { MARK_CSS, iconBtn } from './marker.js';
+import { rippleFrom } from './ripple.js';
+import { formatDue, dueTail, showsLate, isOwed, calendarDays } from './todologic.js';
 import {
-  chipState, findItem, signed, zeroCost, whatIfGrade, rankIn, rankText, lateDays, lateText, pointsFromText,
+  chipState, findItem, signed, zeroCost, whatIfGrade, rankIn, rankText, lateDays, lateText, pointsFromText, stampFor,
 } from './asgstate.js';
 
 const EPS = 0.005;
 
-const CHIP_CSS = `
-:host { display: block; margin: 8px 0 12px; }
-:host(.float) { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; margin: 0; }
-.chip {
-  display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px 12px; max-width: 100%;
-  padding: 5px 10px; background: var(--surface);
-  border: 1px solid var(--line); border-radius: var(--radius);
+const CARD_CSS = MARK_CSS + `
+:host { display: block; margin: 0 0 14px; }
+:host(.inflow) { max-width: 360px; margin: 10px 0 14px; }
+:host(.float) { position: fixed; right: 16px; bottom: 16px; z-index: 2147483000; margin: 0; width: 280px; }
+.card {
+  position: relative; display: grid; gap: 0; padding: 10px 12px 12px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
 }
-.sep { width: 1px; height: 14px; background: var(--line); flex: none; }
-.cls { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
-.num { font-family: var(--sans); font-variant-numeric: tabular-nums; }
-.pill { font: 500 12px/18px var(--sans); padding: 0 6px; border-radius: var(--radius-sm); }
-.pill.bad { color: var(--bad); background: var(--bad-soft); }
-.pill.ok { color: var(--good); background: var(--good-soft); }
-.linkbtn { color: var(--accent); text-decoration: underline; text-underline-offset: 2px; }
-/* The type switch: HW · Test · Task · CW, the current one filled. */
+.head { display: flex; align-items: center; gap: 6px; min-height: 26px; padding: 0 0 7px; border-bottom: 2px solid var(--cls, var(--line)); }
+.head.late { border-bottom-color: var(--bad); }
+.cls { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; min-width: 0; }
+/* The stamp: the card's one strong detail. Tilted, outlined, never filled. */
+.stamp {
+  position: absolute; top: -10px; right: 8px; display: inline-grid; justify-items: center;
+  padding: 3px 8px 4px; border: 2px solid currentColor; border-radius: 4px; background: var(--surface);
+  color: var(--ink); transform: rotate(-6deg); white-space: nowrap;
+  font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+}
+.stamp .s1 { font-size: 10px; line-height: 12px; }
+.stamp .s2 { font-size: 15px; line-height: 18px; }
+.stamp.late { color: var(--bad); }
+.stamp.good { color: var(--good); }
+.stamp.slam { animation: slam 300ms cubic-bezier(.2, .8, .3, 1); }
+@keyframes slam { from { transform: rotate(-6deg) scale(1.8); opacity: 0; } to { transform: rotate(-6deg) scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .stamp.slam { animation: none; } }
+.lines { display: grid; gap: 3px; padding: 9px 0 0; }
+.status { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.st { font-weight: 500; }
+.st.late { color: var(--bad); }
+.st.late .circle { border-color: var(--bad); }
+.st.done.late .circle { background: var(--bad); border-color: var(--bad); }
+.due { color: var(--dim); font-variant-numeric: tabular-nums; }
+.due span { white-space: nowrap; }
+.due .over { color: var(--bad); font-weight: 600; }
+.acts { display: flex; gap: 6px; padding: 10px 0 0; }
+.acts .ib { flex: 1; justify-content: center; height: 26px; font-size: 12px; }
+.acts .ib svg { width: 13px; height: 13px; }
+.foot { display: grid; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.grade { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--dim); }
+.grade .rank { flex-basis: 100%; }
+.head[hidden] + .lines { padding-top: 0; }
+.row2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.imp { padding: 0 5px; border-radius: var(--radius-sm); font: 500 11px/16px var(--sans); font-variant-numeric: tabular-nums; }
+.imp.pos { color: var(--good); background: var(--good-soft); }
+.imp.neg { color: var(--bad); background: var(--bad-soft); }
+.whatif { color: var(--accent); border-bottom: 1px dashed var(--accent); line-height: 16px; }
+input {
+  width: 48px; padding: 1px 5px; border: 1px solid var(--accent); border-radius: var(--radius-sm);
+  background: var(--accent-soft); color: var(--ink); text-align: right;
+  font: 13px/18px var(--sans); font-variant-numeric: tabular-nums;
+}
+input::placeholder { color: var(--accent); opacity: .7; }
+input[type=number] { -moz-appearance: textfield; }
+input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+b.num { font-weight: 600; color: var(--ink); }
+/* The type switch: HW · Test · Task · CW, the current one filled like its tag. */
 .types { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; }
-.types button { font: 500 11px/18px var(--sans); padding: 0 7px; color: var(--dim); }
+.types button { font: 500 11px/20px var(--sans); padding: 0 8px; color: var(--dim); }
 .types button + button { border-left: 1px solid var(--line); }
-.types button[aria-pressed="true"] { color: var(--surface); background: var(--ink); }
+.types button[aria-pressed="true"] { color: var(--ink); background: var(--sunk); }
+.types button[aria-pressed="true"].test { color: var(--surface); background: var(--ink); }
 .types button:disabled { cursor: default; }
+.more { width: 26px; height: 22px; border-radius: var(--radius-sm); color: var(--dim); font-size: 16px; line-height: 1; letter-spacing: 1px; }
+.more:hover, .more[aria-expanded="true"] { background: var(--sunk); }
+.menu { display: flex; justify-content: flex-end; }
+.err { padding: 8px 0 0; }
 `;
 
 // The type switch's choices, in neo-plan's order (lib/parse.ts TYPE_ORDER), with
 // the To Do sidebars' short names. Meetings aren't offered: one is made as one.
 export const TYPE_CHOICES = [['assignment', 'HW'], ['exam', 'Test'], ['task', 'Task'], ['classwork', 'CW']];
-
-const WHATIF_CSS = `
-:host { display: block; margin: 12px 0; }
-.box {
-  display: grid; gap: 6px; padding: 10px 12px; color: var(--dim);
-  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
-}
-input {
-  width: 60px; margin: 0 2px; padding: 2px 6px; border: 1px dashed var(--accent); border-radius: var(--radius-sm);
-  background: var(--surface); color: var(--ink); text-align: right;
-  font: 13px/18px var(--sans); font-variant-numeric: tabular-nums;
-}
-input.pts { width: 48px; }
-input::placeholder { color: var(--accent); opacity: .7; }
-input:not(:placeholder-shown) { border-style: solid; background: var(--accent-soft); }
-input[type=number] { -moz-appearance: textfield; }
-input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-.num { font-family: var(--sans); font-variant-numeric: tabular-nums; }
-b.num { font-weight: 500; color: var(--ink); }
-.imp { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: var(--radius-sm); font: 500 11px/16px var(--sans); font-variant-numeric: tabular-nums; }
-.imp.pos { color: var(--good); background: var(--good-soft); }
-.imp.neg { color: var(--bad); background: var(--bad-soft); }
-`;
 
 // ── Where things go on Schoology's page ──────────────────────────────────
 
@@ -122,42 +158,41 @@ export function start({
   const page = quiz ? quiz.page : parseAssignmentPage(doc, loc.href);
   const section = page.section_id;
 
-  const chipHost = createHost('np-chip', CHIP_CSS);
-  const chip = el('div', 'chip');
-  chip.setAttribute('role', 'status');
-  chipHost.root.append(chip);
-
-  const wiHost = createHost('np-asg-whatif', WHATIF_CSS);
-  keepEvents(wiHost.host);
-  const wiBox = el('div', 'box');
-  wiHost.root.append(wiBox);
-  wiHost.host.hidden = true;
+  const cardHost = createHost('np-asg-card', CARD_CSS);
+  keepEvents(cardHost.host);
+  const card = el('div', 'card');
+  card.setAttribute('role', 'group');
+  card.setAttribute('aria-label', 'Your status');
+  cardHost.root.append(card);
 
   const state = {
     item: undefined, error: null, busy: false,
-    submitted: false, late: undefined, submittedAt: null,
+    submitted: false, late: undefined, submittedAt: null, dropbox: false,
     course: null, periods: [], weights: {},
-    points: null, typedPoints: null, whatIf: null,
+    points: null, typedPoints: null, whatIf: false, menu: false,
   };
 
   // ── Placing ──
   function mount() {
-    const anchor = chipAnchor(doc, page);
-    if (!chipHost.host.isConnected || (anchor && chipHost.host.previousElementSibling !== anchor)) {
-      if (anchor?.parentNode) {
-        chipHost.host.classList.remove('float');
-        anchor.insertAdjacentElement('afterend', chipHost.host);
-      } else {
-        chipHost.host.classList.add('float');
-        doc.body.append(chipHost.host);
+    const rc = !page.quiz && doc.querySelector('#right-column-inner, #right-column');
+    if (rc) {
+      if (cardHost.host.parentNode !== rc || rc.firstElementChild !== cardHost.host) {
+        cardHost.host.classList.remove('float', 'inflow');
+        rc.prepend(cardHost.host);
       }
+      return;
     }
-    const inFlow = !chipHost.host.classList.contains('float');
-    if (!wiHost.host.isConnected) {
-      // Schoology's Grade sits in the title bar; the what-if goes at the foot of the sidebar.
-      const rc = doc.querySelector('#right-column-inner, #right-column');
-      if (rc) rc.append(wiHost.host);
-      else if (inFlow) chipHost.host.insertAdjacentElement('afterend', wiHost.host);
+    const anchor = chipAnchor(doc, page);
+    if (anchor?.parentNode) {
+      if (cardHost.host.previousElementSibling !== anchor) {
+        cardHost.host.classList.remove('float');
+        cardHost.host.classList.add('inflow');
+        anchor.insertAdjacentElement('afterend', cardHost.host);
+      }
+    } else if (!cardHost.host.isConnected) {
+      cardHost.host.classList.remove('inflow');
+      cardHost.host.classList.add('float');
+      doc.body.append(cardHost.host);
     }
   }
 
@@ -166,85 +201,131 @@ export function start({
   const possible = () => state.points ?? found()?.item.possible ?? state.typedPoints;
   const gradeHere = () => state.course?.gradeOf(id);
 
-  // ── The chip ──
-  function draw() {
-    const kind = chipState(gradeHere(), state.item, state.submitted);
+  // ── The facts the card is drawn from ──
+  function facts() {
     const it = state.item;
-    const segs = []; // [nodes] per segment; separators go between them
-    const seg = (...nodes) => segs.push(nodes.filter(Boolean));
+    const ck = chipState(gradeHere(), it, state.submitted);
+    const kind = ck === 'open' ? rowState(undefined, it).kind : ck; // missing / ready / todo, or the chip's
+    const exam = it ? it.type === 'exam' : !!page.quiz;
+    const due = page.due_at || it?.due?.at || null;
+    const t = now();
+    const dueMs = due ? Date.parse(due) : NaN;
+    const overdue = !Number.isNaN(dueMs) && dueMs < t;
+    const days = overdue ? calendarDays(new Date(t), new Date(dueMs)) : 0;
+    const f = { kind, exam, quiz: !!page.quiz, due, overdue, days };
+    // neo-plan hasn't said (or there's none): don't claim it's late or owed.
+    if (kind === 'unknown') return { ...f, overdue: false, it, late: false, owed: false };
+    return { ...f, it, late: showsLate(f), owed: isOwed(f) };
+  }
 
-    if (it?.class && kind !== 'none' && kind !== 'removed') {
+  // ── The card ──
+  const sections = {
+    head: el('div', 'head'), lines: el('div', 'lines'), acts: el('div', 'acts'),
+    foot: el('div', 'foot'), err: el('div', 'err'),
+  };
+  card.append(...Object.values(sections));
+  let lastStamp = null; // the stamp's words last drawn: it slams only when they change
+
+  function draw() {
+    const f = facts();
+    const { kind } = f;
+    const t = new Date(now());
+    drawHead(f, t);
+    drawLines(f, t);
+    const btns = buttons(f);
+    sections.acts.replaceChildren(...btns);
+    sections.acts.hidden = !btns.length;
+    drawFoot(f);
+    sections.err.replaceChildren();
+    if (state.error) sections.err.append(el('span', state.error.quiet ? 'dim' : 'bad', state.error.text));
+    sections.err.hidden = !state.error;
+    // Nothing to say yet (neo-plan hasn't answered, no due date, no grade): no card.
+    cardHost.host.hidden = kind === 'unknown' && !f.due && !sections.foot.childNodes.length && !state.error;
+  }
+
+  function drawHead(f, t) {
+    const { it } = f;
+    const head = sections.head;
+    head.className = `head${f.late ? ' late' : ''}`;
+    head.replaceChildren();
+    const n = Number(it?.class?.colour_index);
+    head.style.setProperty('--cls', it?.class ? `var(--class-${n >= 1 && n <= 8 ? n : 'none'})` : 'var(--line)');
+    if (it?.class && f.kind !== 'none' && f.kind !== 'removed') {
       const c = el('span', 'cls');
-      c.append(classDot(it.class), document.createTextNode(it.class.short_code || it.class.name || ''));
-      seg(c);
+      c.append(classDot(it.class), el('span', null, it.class.short_code || it.class.name || ''));
+      head.append(c);
     }
-    if (kind === 'graded') {
-      seg(el('span', 'dim', 'Graded'));
-      const f = found();
-      if (f) {
-        const d = impact(f.course, id, { weights: state.weights });
-        if (d != null) {
-          if (Math.abs(d) < EPS) seg(el('span', 'dim', 'Didn’t move your course grade'));
-          else {
-            const s = el('span', 'dim', 'Moved your course grade ');
-            s.append(el('span', `num ${d < 0 ? 'bad' : 'good'}`, signed(d)));
-            seg(s);
-          }
-        }
-        const r = rankIn(f.category, id);
-        if (r) seg(el('span', 'dim', rankText(r, f.category.title)));
-      }
-    } else if (kind === 'removed') {
-      seg(el('span', 'dim', 'Removed'), button('Add back', 'Add back to your list', () => change('restore')));
-    } else if (kind === 'submitted') {
-      const word = state.submitted || !it ? 'Submitted' : clearedWord(it);
-      seg(el('span', 'pill ok', word));
-      if (it?.cleared) seg(el('span', 'dim', it.local ? 'Cleared from your list' : 'Cleared in neo-plan'));
-      const due = page.due_at || it?.due?.at || null;
+    const word = state.submitted || !it ? 'Submitted' : clearedWord(it);
+    const s = stampFor({ ...f, word }, t);
+    head.hidden = !s && !head.childNodes.length;
+    if (!s) { lastStamp = ''; return; }
+    const stamp = el('span', `stamp ${s.tone}`.trim());
+    if (s.s1) stamp.append(el('span', 's1', s.s1));
+    stamp.append(el('span', 's2', s.s2));
+    stamp.setAttribute('aria-label', [s.s2, s.s1].filter(Boolean).join(', '));
+    const sig = `${s.s1}|${s.s2}`;
+    if (lastStamp && sig !== lastStamp) stamp.classList.add('slam'); // feedback: only when it changes, never on load
+    lastStamp = sig;
+    head.append(stamp);
+  }
+
+  const circle = (exam) => { const c = el('span', exam ? 'circle sq' : 'circle'); c.setAttribute('aria-hidden', 'true'); return c; };
+  function st(cls, exam, word) { const s = el('span', `st ${cls}`.trim()); s.append(circle(exam), el('span', null, word)); return s; }
+
+  function drawLines(f, t) {
+    const { it, kind, exam, late } = f;
+    const status = el('div', 'status');
+    // Missing is Schoology's word and stays until it's handed in; your own Done shows beside it.
+    if (kind === 'missing') status.append(el('span', 'pill', 'Missing'), it.work === 'ready'
+      ? st(`done${late ? ' late' : ''}`, exam, exam ? 'Studied' : state.dropbox ? 'Done, not submitted' : 'Done, not turned in')
+      : st(late ? 'late' : '', exam, exam ? 'Not studied' : 'To do'));
+    else if (kind === 'todo') status.append(st(exam ? 'exam' : '', exam, exam ? 'Not studied' : 'To do'));
+    else if (kind === 'ready') status.append(st(`done${late ? ' late' : ''}`, exam, exam ? 'Studied' : state.dropbox ? 'Done, not submitted' : 'Done, not turned in'));
+    else if (kind === 'submitted') {
+      status.append(st('cleared', false, state.submitted || !it ? 'Submitted' : clearedWord(it)));
       const at = state.submittedAt ?? (it?.cleared_at ? Date.parse(it.cleared_at) : null);
-      const days = lateDays(due, at);
-      if (state.late === true || (state.late !== false && days > 0)) seg(el('span', 'dim', lateText(days)));
+      const d = lateDays(f.due, at);
+      if (state.late === true || (state.late !== false && d > 0)) status.append(el('span', 'dim', lateText(d)));
+    } else if (kind === 'graded') {
+      const g = gradeHere();
+      status.append(st('cleared', false, scoreText(g.earned, g.possible)));
+    } else if (kind === 'removed') {
+      status.append(el('span', 'removed', 'Removed'), linkBtn('Add back', 'Add back to your list', () => change('restore')));
     } else if (kind === 'none') {
-      seg(button('Add to list', 'Add to your list', add));
-    } else if (kind === 'open') {
-      if (it.missing) seg(el('span', 'pill bad', 'Missing'));
-      const f = found();
-      const z = f ? zeroCost(f.course, id, possible(), state.weights) : null;
-      if (z != null && Math.abs(z) >= EPS) {
-        const s = el('span', 'dim', 'A zero costs ');
-        s.append(el('span', 'num bad', signed(z)));
-        seg(s);
-      }
-      seg(button('Remove from list', 'Remove from your list', () => change('remove'), 'linkbtn dim'));
+      status.append(linkBtn('+ Add to list', 'Add to your list', add));
     }
-    // HW / Test / Task / CW, for any item neo-plan has and hasn't removed.
-    if (it && kind !== 'removed' && it.type !== 'meeting') seg(typeSwitch(it));
-    if (state.error) seg(el('span', state.error.quiet ? 'dim' : 'bad', state.error.text));
-
-    chip.replaceChildren();
-    segs.filter((s) => s.length).forEach((nodes, i) => {
-      if (i) chip.append(el('span', 'sep'));
-      chip.append(...nodes);
-    });
-    chipHost.host.hidden = !chip.childNodes.length;
-    drawWhatIf();
+    const lines = [status];
+    if (f.due) {
+      const due = el('div', 'due', formatDue(f.due, t));
+      const tail = kind === 'submitted' || kind === 'graded' ? { text: '' } : dueTail(f, t);
+      if (tail.text) due.append(' · ', el('span', tail.late ? 'over' : null, tail.text));
+      lines.push(due);
+    }
+    sections.lines.replaceChildren(...lines.filter((n) => n.childNodes.length));
+    sections.lines.hidden = !sections.lines.childNodes.length;
   }
 
-  function typeSwitch(it) {
-    const box = el('span', 'types');
-    box.setAttribute('role', 'group');
-    box.setAttribute('aria-label', 'Type');
-    for (const [type, word] of TYPE_CHOICES) {
-      const b = el('button', '', word);
-      b.setAttribute('aria-pressed', String(it.type === type));
-      b.disabled = state.busy;
-      if (it.type !== type) onClick(b, () => setType(type));
-      box.append(b);
+  function buttons(f) {
+    const { it, kind, exam } = f;
+    if (!it || state.error?.offline) return [];
+    const out = [];
+    const done = kind === 'ready' || (kind === 'missing' && it.work === 'ready');
+    if (!done && (kind === 'missing' || kind === 'todo')) {
+      out.push(iconBtn('check', exam ? 'Studied' : 'Done', '', exam ? 'Mark studied' : 'Mark done', (e) => setWork('ready', e?.currentTarget), state.busy));
+    } else if (done) {
+      out.push(iconBtn('undo', exam ? 'Not studied' : 'Not done', '', exam ? 'Mark not studied' : 'Mark not done', () => setWork('todo'), state.busy));
     }
-    return box;
+    // Turn in: work with no Schoology dropbox (paper, a lab site). Dropbox work
+    // is handed in with Schoology's own Submit, right under the card.
+    if (it.type === 'assignment' && !state.dropbox && !page.quiz && (kind === 'missing' || kind === 'todo' || kind === 'ready')) {
+      out.push(iconBtn('turnIn', 'Turn in', 'go', 'Turn in', () => change('turnIn'), state.busy));
+    } else if (kind === 'submitted' && it.cleared && it.cleared_by !== 'schoology' && !state.submitted) {
+      out.push(iconBtn('undo', 'Undo', '', 'Undo turn in', () => change('putBack'), state.busy));
+    }
+    return out;
   }
 
-  function button(text, label, fn, cls = 'linkbtn') {
+  function linkBtn(text, label, fn, cls = 'linkbtn') {
     const b = el('button', cls, text);
     b.setAttribute('aria-label', label);
     b.disabled = state.busy;
@@ -252,19 +333,21 @@ export function start({
     return b;
   }
 
-  // ── The sidebar what-if ──
-  const score = input('What-if score');
+  // ── The foot: the grade, the what-if, the type ──
+  const score = numInput('What-if score');
   score.placeholder = 'score';
-  const pts = input('Points it is out of', 'pts');
+  const pts = numInput('Points it is out of');
   pts.placeholder = 'pts';
-  const out = el('span');
-  const line = el('span');
-  wiBox.append(line, out);
+  const wiOut = el('span', 'grade');
+  const wiLine = el('div', 'grade');
   score.addEventListener('input', drawWhatIf);
-  pts.addEventListener('input', () => { state.typedPoints = num(pts.value); draw(); });
+  pts.addEventListener('input', () => { state.typedPoints = num(pts.value); drawWhatIf(); });
+  for (const i of [score, pts]) {
+    i.addEventListener('keydown', (e) => { if (e.key === 'Escape') { state.whatIf = false; draw(); } });
+  }
 
-  function input(label, cls) {
-    const i = el('input', cls);
+  function numInput(label) {
+    const i = el('input');
     i.type = 'number';
     i.min = '0';
     i.step = 'any';
@@ -273,24 +356,109 @@ export function start({
     return i;
   }
 
+  /** The course's grade is known, and this one isn't graded: a what-if can be worked out. */
+  function canWhatIf() {
+    const f = found();
+    return !!f && !gradeHere() && courseGrade(f.course, { weights: state.weights }).pct != null;
+  }
+
   let wiShape = '';
   function drawWhatIf() {
     const f = found();
-    const show = !!f && !gradeHere() && courseGrade(f.course, { weights: state.weights }).pct != null;
-    wiHost.host.hidden = !show;
-    if (!show) return;
-    // "/ 10" when the page says what it's out of, else a box for it.
+    if (!f) return;
+    // "/ 10" when the page or the gradebook says what it's out of, else a box for it.
     const shape = state.points ?? f.item.possible ?? 'typed';
-    if (shape !== wiShape) {
+    if (shape !== wiShape || !wiLine.childNodes.length) {
       wiShape = shape;
-      line.replaceChildren(document.createTextNode('What if I get '), score, document.createTextNode(' / '));
-      if (shape === 'typed') line.append(pts); else line.append(el('span', 'num', String(shape)));
+      wiLine.replaceChildren(document.createTextNode('If I get'), score, document.createTextNode('/'));
+      wiLine.append(shape === 'typed' ? pts : el('span', 'num', String(shape)));
+      wiLine.append(wiOut);
     }
     const r = whatIfGrade(f.course, id, num(score.value), possible(), state.weights);
-    out.replaceChildren();
+    wiOut.replaceChildren();
     if (!r) return;
-    out.append(document.createTextNode('Course grade '), el('b', 'num', `${r.pct.toFixed(2)}%`));
-    if (r.delta != null && Math.abs(r.delta) >= EPS) out.append(el('span', `imp ${r.delta < 0 ? 'neg' : 'pos'}`, signed(r.delta)));
+    wiOut.append(document.createTextNode('→'), el('b', 'num', `${r.pct.toFixed(2)}%`));
+    if (r.delta != null && Math.abs(r.delta) >= EPS) wiOut.append(el('span', `imp num ${r.delta < 0 ? 'neg' : 'pos'}`, signed(r.delta)));
+  }
+
+  function gradeLine(f) {
+    const { kind } = f;
+    const line = el('div', 'grade');
+    const fd = found();
+    if (kind === 'graded') {
+      if (!fd) return line;
+      const d = impact(fd.course, id, { weights: state.weights });
+      if (d != null) {
+        if (Math.abs(d) < EPS) line.append('Didn’t move your course grade');
+        else line.append('Moved your course grade', el('span', `imp num ${d < 0 ? 'neg' : 'pos'}`, signed(d)));
+      }
+      const r = rankIn(fd.category, id);
+      if (r) line.append(el('span', 'rank', rankText(r, fd.category.title)));
+      return line;
+    }
+    if (kind === 'removed' || kind === 'submitted' || !canWhatIf()) return line;
+    if (kind === 'missing') {
+      const z = zeroCost(fd.course, id, possible(), state.weights);
+      if (z != null && Math.abs(z) >= EPS) line.append('A zero costs', el('span', 'imp num neg', signed(z)), '·');
+    }
+    const w = el('button', 'whatif', 'What if?');
+    w.setAttribute('aria-expanded', 'false');
+    onClick(w, () => { state.whatIf = true; draw(); setTimeout(() => score.focus()); });
+    line.append(w);
+    return line;
+  }
+
+  function drawFoot(f) {
+    const { it, kind } = f;
+    const foot = sections.foot;
+    // While the what-if is open and still makes sense, leave its line (and the
+    // focus in its boxes) alone: only its result is redrawn.
+    const keepWi = state.whatIf && canWhatIf() && kind !== 'removed' && kind !== 'submitted';
+    if (!keepWi) state.whatIf = false;
+    const kids = [];
+    if (keepWi) { drawWhatIf(); kids.push(wiLine); } else {
+      const g = gradeLine(f);
+      if (g.childNodes.length) kids.push(g);
+    }
+    const open = kind === 'missing' || kind === 'todo' || kind === 'ready';
+    if (it && kind !== 'removed' && it.type !== 'meeting') {
+      const row = el('div', 'row2');
+      row.append(typeSwitch(it));
+      if (open) {
+        const more = el('button', 'more', '⋯');
+        more.title = 'More';
+        more.setAttribute('aria-label', 'More');
+        more.setAttribute('aria-expanded', String(state.menu));
+        onClick(more, () => { state.menu = !state.menu; draw(); });
+        row.append(more);
+      }
+      kids.push(row);
+      if (open && state.menu) {
+        const m = el('div', 'menu');
+        m.append(linkBtn('Remove from list', 'Remove from your list', () => { state.menu = false; change('remove'); }, 'linkbtn dim'));
+        kids.push(m);
+      }
+    }
+    // Keep the what-if line where it is: swap the rest around it.
+    if (keepWi && foot.firstChild === wiLine) {
+      while (wiLine.nextSibling) wiLine.nextSibling.remove();
+      foot.append(...kids.slice(1));
+    } else foot.replaceChildren(...kids);
+    foot.hidden = !kids.length;
+  }
+
+  function typeSwitch(it) {
+    const box = el('span', 'types');
+    box.setAttribute('role', 'group');
+    box.setAttribute('aria-label', 'Type');
+    for (const [type, word] of TYPE_CHOICES) {
+      const b = el('button', type === 'exam' ? 'test' : '', word);
+      b.setAttribute('aria-pressed', String(it.type === type));
+      b.disabled = state.busy;
+      if (it.type !== type) onClick(b, () => setType(type));
+      box.append(b);
+    }
+    return box;
   }
 
   // ── neo-plan: this assignment ──
@@ -340,6 +508,22 @@ export function start({
     draw();
   }
 
+  // Done ↔ not done (studied ↔ not studied): flips at once, back if neo-plan refuses.
+  // Marking it done plays the To Do sidebars' done ripple from the button.
+  async function setWork(work, button) {
+    const it = state.item;
+    if (state.busy || !it) return;
+    if (work === 'ready' && button) rippleFrom(button, card);
+    state.busy = true; state.error = null;
+    state.item = { ...it, work };
+    draw();
+    const r = await call('work', { id: it.id, work });
+    state.busy = false;
+    if (r.ok && r.data) state.item = r.data;
+    else { state.item = it; fail(r); }
+    draw();
+  }
+
   // ── Submit detection ──────────────────────────────────────────────────
   let reported = false;
   let checked = false; // the first look: a submission seen later was made in this view
@@ -351,6 +535,8 @@ export function start({
     const st = parseSubmissionStatus(doc, loc.href);
     const first = !checked;
     checked = true;
+    const dropbox = st.state === 'submitted' || st.state === 'not_submitted';
+    if (dropbox !== state.dropbox) { state.dropbox = dropbox; draw(); }
     if (st.state !== 'submitted') return;
     if (typeof st.late === 'boolean') state.late = st.late;
     if (!state.submitted) {
@@ -387,14 +573,18 @@ export function start({
   });
   observer.observe(doc.body, { childList: true, subtree: true });
 
+  // The countdown and "N days late" move with the clock.
+  const tick = setInterval(draw, 60_000);
+  tick.unref?.();
+
   state.points = pagePoints(doc);
   mount();
   draw();
   checkSubmitted();
   const ready = Promise.all([load(), readCourse().catch((e) => console.debug('[neo-plan overlay]', e))]);
   return {
-    host: chipHost.host, chip, whatIf: wiHost.host, state, ready,
-    checkSubmitted, observer, stop: () => observer.disconnect(),
+    host: cardHost.host, card, state, ready,
+    checkSubmitted, observer, stop: () => { observer.disconnect(); clearInterval(tick); },
   };
 }
 

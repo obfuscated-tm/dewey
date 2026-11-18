@@ -11,6 +11,7 @@
 //   unknown    neo-plan hasn't answered      (nothing yet)
 
 import { impact, grade } from './grademath.js';
+import { calendarDays, formatLate } from './todologic.js';
 
 /** grade: { earned } | undefined. item: Item, null or undefined. pageSubmitted: the page shows a submission. */
 export function chipState(grade, item, pageSubmitted) {
@@ -106,4 +107,26 @@ export function pointsFromText(text) {
 export function inArchive(manifest, key) {
   const it = key && manifest?.items?.[key];
   return !!(it && !it.removed && it.files?.length);
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const shortDate = (d) => `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+function clock(d) {
+  const h = d.getHours();
+  return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, '0')} ${h >= 12 ? 'pm' : 'am'}`;
+}
+
+/**
+ * The card's stamp, the iOS Assignment page's DueStamp in words: { tone, s1, s2 }
+ * or null. kind: rowState kind, or 'submitted' / 'graded' / 'removed' / 'none'.
+ * word: what a handed-in one says. Pure.
+ */
+export function stampFor({ kind, due, late, days, owed, word }, now = new Date()) {
+  if (kind === 'submitted') return { tone: 'good', s1: '', s2: word || 'Submitted' };
+  if (kind === 'graded' || kind === 'removed' || kind === 'unknown') return null;
+  const d = due ? new Date(due) : null;
+  if (!d || Number.isNaN(d.getTime())) return null;
+  if (late) return { tone: 'late', s1: `Due ${shortDate(d)}`, s2: formatLate(days) };
+  if (owed && d >= now && calendarDays(d, now) === 0) return { tone: '', s1: clock(d), s2: 'Due today' };
+  return { tone: '', s1: 'Due', s2: shortDate(d) };
 }

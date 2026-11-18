@@ -11,6 +11,7 @@
        ?a=802  Lab 3.1: missing (default)            ?a=803  done, not submitted
        ?a=804  Quiz 3.1: graded                       ?a=806  not in neo-plan
        ?a=805  removed                                ?notoken  no neo-plan token
+       ?paper  no dropbox (paper work: Turn in shows)  ?now=2026-09-23T20:00  the clock
      "Submit" plays Schoology's submit dialog finishing (late). -->
 <html><head><meta charset="utf-8"><title>Assignment stand-in</title>
 <style>
@@ -84,7 +85,7 @@ document.getElementById('due').textContent = `Due ${title.due}`;
 document.getElementById('body').innerHTML = `Do <a href="#">${title.t}</a>. Hand in your lab report as a PDF.`;
 const graded = GB.flatMap(([, , its]) => its).find(([id]) => id === ID)?.[2];
 document.getElementById('gv').textContent = graded && graded !== '—' ? graded : 'N/A';
-if (graded && graded !== '—') document.getElementById('submit').remove();
+if ((graded && graded !== '—') || q.has('paper')) document.getElementById('submit').remove();
 
 const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 function tableHtml(fid) {
@@ -126,6 +127,7 @@ async function getDoc(url) {
   return new DOMParser().parseFromString(html, 'text/html');
 }
 const asItem = (id) => ({ id: `np-${id}`, source_id: id, type: 'assignment', class: CLASS, ...ITEMS[id] });
+const NOW = q.get('now') ? Date.parse(q.get('now')) : null;
 async function call(op, args) {
   await wait(150);
   if (q.has('notoken')) return { ok: false, status: 401, data: { error: 'unauthorized' } };
@@ -134,6 +136,9 @@ async function call(op, args) {
   const id = String(args.id).replace(/^np-/, '');
   if (op === 'remove') { ITEMS[id] = { ...ITEMS[id], removed: true }; return { ok: true, status: 200, data: asItem(id) }; }
   if (op === 'restore') { ITEMS[id] = { ...ITEMS[id], removed: false }; return { ok: true, status: 200, data: asItem(id) }; }
+  if (op === 'work') { ITEMS[id] = { ...ITEMS[id], work: args.work }; return { ok: true, status: 200, data: asItem(id) }; }
+  if (op === 'turnIn') { ITEMS[id] = { ...ITEMS[id], cleared: true, cleared_by: 'student', missing: false }; return { ok: true, status: 200, data: asItem(id) }; }
+  if (op === 'putBack') { ITEMS[id] = { ...ITEMS[id], cleared: false, cleared_by: null, work: 'ready' }; return { ok: true, status: 200, data: asItem(id) }; }
   // neo-plan's typeChange: no date, no test (?nodate to see the refusal).
   if (op === 'setType') {
     if (args.itemType === 'exam' && q.has('nodate')) return { ok: false, status: 409, data: { error: 'type', problem: 'Set a date first' } };
@@ -158,5 +163,5 @@ document.getElementById('submit')?.addEventListener('click', () => {
 globalThis.__npNoAutoStart = true;
 const { start } = await import('../overlays/assignment.js');
 const loc = { pathname: `/assignment/${ID}/info`, search: '', origin: location.origin, host: 'district.schoology.com', href: `${location.origin}/assignment/${ID}/info` };
-window.overlay = start({ loc, call, getDoc, store, send });
+window.overlay = start({ loc, call, getDoc, store, send, ...(NOW ? { now: () => NOW } : {}) });
 </script></body></html>

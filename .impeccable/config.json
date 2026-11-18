@@ -35,6 +35,15 @@
         ],
         "createdAt": "2026-11-18T16:30:00.000Z",
         "reason": "Claude: extension/test/assignment-page.html is a test stand-in for Schoology's assignment page; its h1 title then h3 Comments copy Schoology's own markup (.comment-container h3) and predate this session; not Dewey UI"
+      },
+      {
+        "rule": "overused-font",
+        "value": "instrument sans",
+        "files": [
+          "docs/extension/design/grade-row.html"
+        ],
+        "createdAt": "2026-11-18T23:47:38.639Z",
+        "reason": "Claude: mockup copies the shipped overlay's font, documented in docs/extension/OVERLAY-UI.md; not a new font choice"
       }
     ]
   }

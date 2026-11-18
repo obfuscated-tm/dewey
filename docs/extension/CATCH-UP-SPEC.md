@@ -14,7 +14,7 @@ Settled with Owen on 2026-11-17, after a stress-test of "the extension's feature
 | Sidebar class headings | LATE / DUE TODAY stamp at the right (one per class, most urgent) plus a rule in the class colour, red when the class has late work; no call numbers, no "P1 · N open" | Some character without crowding a narrow column |
 | Due line | Full date and time, plus "5 h left" in the last 12 hours of work still owed, and "in N days" on tests | Matches iOS without losing the exact date |
 | Assignment page | Status can be marked there, styled like a sidebar row (✓ Done / ↑ Turn in, glyph + word); the due stamp is the one strong detail. Dropbox work still turns in only with Schoology's Submit | The old "Submit only" rule fails for paper, lab sites, Done and Studied |
-| Assignment block placement | **Open:** HTML mockups of the right column vs a wide strip under the title, then Owen picks | He asked to see both |
+| Assignment block placement | **Open:** HTML mockups of the right column vs a wide strip under the title ([design/assignment-block.html](design/assignment-block.html)), then Owen picks | He asked to see both |
 | Views | A Plan chip by the To Do title (List ↔ Plan); By class vs Urgent first is set once in Settings | The sidebar never changes layout unless you switch it |
 | Search all materials | A box at the top of the sidebar; results over the sidebar, Esc goes back | It's on every page the sidebar is on |
 | Customization | One on/off switch per add-on in Settings (To Do sidebar, grade impact, Materials markers, what-if, …) | Strangers keep only what they want |

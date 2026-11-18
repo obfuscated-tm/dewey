@@ -1,0 +1,394 @@
+<!doctype html>
+<!-- Mockup, 2026-11-17 (docs/extension/CATCH-UP-SPEC.md, order step 2): where the
+     assignment page's status block goes. A = a card at the top of Schoology's
+     right column; B = a strip under the title. Both replace today's chip and
+     the what-if box (one in, one out). Serve the repo root and open
+     /docs/extension/design/assignment-block.html. Not wired to anything. -->
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assignment block mockups</title>
+<style>
+@font-face { font-family: "Instrument Sans"; font-weight: 400; src: url(../../../extension/overlays/fonts/instrument-sans-latin-400.woff2) format("woff2"); }
+@font-face { font-family: "Instrument Sans"; font-weight: 500; src: url(../../../extension/overlays/fonts/instrument-sans-latin-500.woff2) format("woff2"); }
+@font-face { font-family: "Instrument Sans"; font-weight: 600 800; src: url(../../../extension/overlays/fonts/instrument-sans-latin-600.woff2) format("woff2"); }
+:root {
+  color-scheme: light;
+  /* The overlay's tokens (extension/overlays/ui.js BASE_CSS). */
+  --accent: #1D5EA8; --accent-soft: #E7EFF8;
+  --ink: #1F2429; --dim: #5E6670; --faint: #8A929B;
+  --line: #DCE0E5; --sunk: #F6F7F9; --surface: #FFFFFF;
+  --bad: #B8430F; --bad-soft: #FBEDE5;
+  --good: #23794A; --good-soft: #E6F3EC;
+  --class-1: #1D5EA8; --class-2: #23794A; --class-4: #A8324A;
+  --sans: "Instrument Sans", "Helvetica Neue", Arial, sans-serif;
+  --serif: ui-serif, "New York", Georgia, "Times New Roman", serif;
+  --radius: 8px; --radius-sm: 6px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #E9ECEF; color: var(--ink); font: 13px/18px var(--sans); padding-inline: 16px; padding-block: 16px 48px; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; margin: 0; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ── Mockup controls (not part of the design) ── */
+.bar { max-width: 1040px; margin: 0 auto 12px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.bar h1 { font-size: 15px; margin: 0 8px 0 0; font-weight: 600; }
+.seg { display: inline-flex; flex-wrap: wrap; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 2px; }
+.seg button { padding: 4px 10px; border-radius: var(--radius-sm); color: var(--dim); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: #fff; }
+
+/* ── Schoology's page, roughly ── */
+.sgy { max-width: 1040px; margin: 0 auto; background: #fff; border-radius: 4px; overflow: hidden; font: 13px/1.4 Arial, sans-serif; color: #333; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+.sgy-top { background: #333F48; color: #E9EDF1; display: flex; gap: 20px; padding: 10px 20px; font-size: 12px; font-weight: bold; letter-spacing: .02em; }
+.sgy-top span:first-child { font-size: 15px; letter-spacing: 0; }
+.sgy-main { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 28px; padding: 20px 24px 32px; }
+.crumb a { color: #0677BA; text-decoration: none; font-size: 12px; display: block; }
+.crumb a + a { font-size: 14px; }
+h1.ptitle { margin: 6px 0 2px; font-size: 22px; font-weight: bold; }
+.sgy-due { color: #777; margin: 0; }
+.sgy-body { margin-top: 14px; font-size: 14px; line-height: 1.5; max-width: 62ch; }
+.sgy-body a { color: #0677BA; }
+.posted { color: #777; font-size: 12px; margin-top: 14px; }
+.attach { margin-top: 10px; }
+.attach a { color: #0677BA; }
+.comments h3 { font-size: 14px; margin: 22px 0 6px; }
+.rcol { display: flex; flex-direction: column; gap: 14px; }
+.submit { display: block; border: 1px solid #c9c9c9; background: linear-gradient(#fff, #f1f1f1); border-radius: 3px; padding: 8px 12px; font: bold 13px Arial, sans-serif; text-align: center; color: #333; }
+.sgy-sub { border: 1px solid #e3e3e3; border-radius: 3px; padding: 10px 12px; font-size: 12px; }
+.sgy-sub.late { color: #b8430f; }
+@media (max-width: 820px) { .sgy-main { grid-template-columns: 1fr; } }
+
+/* ── Dewey: shared pieces (marker.js .ib / .st, todorows.js) ── */
+.dw { font: 13px/18px var(--sans); color: var(--ink); }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.cls { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; }
+.num { font-variant-numeric: tabular-nums; }
+.dim { color: var(--dim); }
+.bad { color: var(--bad); }
+.pill { padding: 0 6px; border-radius: var(--radius-sm); color: var(--bad); background: var(--bad-soft); font-weight: 500; font-size: 11px; line-height: 16px; }
+.circle { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 1.5px solid var(--dim); flex: none; position: relative; }
+.circle.sq { border-radius: 2px; border-color: var(--ink); }
+.st { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; }
+.st.done { color: var(--accent); }
+.st.done .circle { background: var(--accent); border-color: var(--accent); }
+.st.late, .st.late.done { color: var(--bad); }
+.st.late.done .circle { background: var(--bad); border-color: var(--bad); }
+.st.cleared { color: var(--good); }
+.st.cleared .circle { background: var(--good); border-color: var(--good); }
+.st.cleared .circle::after { content: ""; position: absolute; left: 3px; top: 0.5px; width: 3px; height: 6px; border: solid #fff; border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); }
+.ib { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 26px; padding: 0 10px 0 8px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); color: var(--dim); font-size: 12px; font-weight: 500; white-space: nowrap; }
+.ib svg { width: 13px; height: 13px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ib:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.ib.go { color: var(--accent); border-color: var(--accent); }
+.more { width: 26px; height: 26px; border-radius: var(--radius); color: var(--dim); display: inline-grid; place-items: center; font-size: 16px; line-height: 1; letter-spacing: 1px; }
+.more:hover { background: var(--sunk); }
+.types { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius-sm); overflow: hidden; flex: none; }
+.types button { font: 500 11px/20px var(--sans); padding: 0 8px; color: var(--dim); }
+.types button + button { border-left: 1px solid var(--line); }
+.types button[aria-pressed="true"] { color: var(--ink); background: var(--sunk); }
+.types button[aria-pressed="true"].test { color: #fff; background: var(--ink); }
+.whatif { color: var(--accent); border-bottom: 1px dashed var(--accent); line-height: 16px; }
+.wi-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; color: var(--dim); }
+.wi-line input { width: 44px; padding: 1px 5px; border: 1px solid var(--accent); border-radius: var(--radius-sm); font: 13px/18px var(--sans); text-align: right; background: var(--accent-soft); color: var(--ink); }
+.imp { padding: 0 5px; border-radius: var(--radius-sm); font: 500 11px/16px var(--sans); }
+.imp.pos { color: var(--good); background: var(--good-soft); }
+.imp.neg { color: var(--bad); background: var(--bad-soft); }
+
+/* The stamp: the one strong detail. Tilted, outlined, ink / red / green. */
+.stamp {
+  display: inline-grid; justify-items: center; padding: 3px 8px 4px; border: 2px solid currentColor; border-radius: 4px;
+  color: var(--ink); transform: rotate(-6deg); white-space: nowrap; background: rgba(255,255,255,.85);
+  font-weight: 800; letter-spacing: .04em; text-transform: uppercase;
+}
+.stamp .s1 { font-size: 10px; line-height: 12px; }
+.stamp .s2 { font-size: 15px; line-height: 18px; }
+.stamp.late { color: var(--bad); }
+.stamp.good { color: var(--good); }
+.stamp.slam { animation: slam 300ms cubic-bezier(.2,.8,.3,1); }
+@keyframes slam { from { transform: rotate(-6deg) scale(1.8); opacity: 0; } to { transform: rotate(-6deg) scale(1); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .stamp.slam { animation: none; } }
+
+/* ── A: a card at the top of the right column ── */
+.card { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 12px 12px; }
+.card .head { display: flex; align-items: center; gap: 6px; padding: 0 0 7px; border-bottom: 2px solid var(--cls); min-height: 26px; }
+.card .head.late { border-bottom-color: var(--bad); }
+.card .head .stamp { position: absolute; top: -10px; right: 8px; }
+.card .lines { display: grid; gap: 3px; padding: 9px 0 10px; }
+.card .lines .due { color: var(--dim); }
+.card .acts { display: flex; gap: 6px; align-items: center; }
+.card .acts .ib { flex: 1; }
+.card .foot { display: grid; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.card .foot .row2 { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* ── B: a strip under the title ── */
+.strip { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 4px 16px; margin: 12px 0 4px; padding: 10px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.strip .stamp { grid-row: 1 / span 2; }
+.strip .l1 { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.strip .l2 { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; color: var(--dim); grid-column: 2; }
+.strip .acts { grid-column: 3; grid-row: 1; display: flex; gap: 6px; justify-self: end; }
+.strip .types { grid-column: 3; grid-row: 2; justify-self: end; }
+.sep { color: var(--faint); }
+@media (max-width: 640px) { .strip { grid-template-columns: minmax(0, 1fr) auto; } .strip .stamp { grid-row: auto; justify-self: start; } .strip .l2, .strip .acts, .strip .types { grid-column: auto; grid-row: auto; justify-self: start; } }
+
+/* ── The To Do sidebar (todo.js), short, under Schoology's blocks ── */
+.panel { background: var(--sunk); border: 1px solid var(--line); border-radius: var(--radius); padding: 12px 14px; }
+.todo-h { font-family: var(--serif); font-size: 17px; font-weight: 700; padding: 0 0 6px; margin: 0 0 10px; border-bottom: 1px solid var(--line); }
+.ghead { display: flex; align-items: center; gap: 8px; padding: 2px 0 6px; border-bottom: 2px solid var(--cls); }
+.ghead.late { border-bottom-color: var(--bad); }
+.gcount { margin-left: auto; color: var(--faint); }
+.sstamp { font-size: 10px; line-height: 14px; font-weight: 800; letter-spacing: .06em; padding: 0 4px; border: 1.5px solid currentColor; border-radius: 3px; color: var(--ink); }
+.sstamp.late { color: var(--bad); }
+.group + .group { margin-top: 14px; }
+.srow { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.srow:last-child { border-bottom: 0; }
+.srow.here { background: var(--accent-soft); margin: 0 -6px; padding: 6px; border-radius: var(--radius-sm); border-bottom-color: transparent; }
+.srow .t { font-weight: 500; display: block; }
+.srow .s { font-size: 12px; color: var(--dim); }
+.srow .s .over { color: var(--bad); font-weight: 600; }
+.note { max-width: 1040px; margin: 10px auto 0; color: var(--dim); font-size: 12px; }
+</style></head>
+<body>
+<div class="bar">
+  <h1>Assignment page</h1>
+  <div class="seg" id="place" role="group" aria-label="Placement">
+    <button data-v="a" aria-pressed="true">A · Right column</button>
+    <button data-v="b" aria-pressed="false">B · Under the title</button>
+  </div>
+  <div class="seg" id="state" role="group" aria-label="State">
+    <button data-v="missing" aria-pressed="true">Missing</button>
+    <button data-v="doneLate" aria-pressed="false">Done, not submitted</button>
+    <button data-v="paper" aria-pressed="false">Paper, due today</button>
+    <button data-v="turnedIn" aria-pressed="false">Turned in</button>
+    <button data-v="graded" aria-pressed="false">Graded</button>
+    <button data-v="test" aria-pressed="false">Test in 3 days</button>
+  </div>
+</div>
+
+<div class="sgy">
+  <div class="sgy-top"><span>schoology</span><span>COURSES</span><span>GROUPS</span><span>RESOURCES</span><span>GRADES</span></div>
+  <div class="sgy-main">
+    <div>
+      <div class="crumb"><a href="#">AP Biology: RiveraM p2 T1</a><a href="#" id="folder">Unit 3 - Cell Energy</a></div>
+      <h1 class="ptitle" id="ptitle"></h1>
+      <p class="sgy-due" id="sgydue"></p>
+      <div id="stripSlot"></div>
+      <div class="sgy-body" id="sgybody"></div>
+      <div class="posted">Posted Wed Sep 16, 2026 at 2:56 pm</div>
+      <div class="attach" id="attach"></div>
+      <div class="comments"><h3>Comments</h3><span style="color:#777">There are no comments</span></div>
+    </div>
+    <div class="rcol" id="rcol"></div>
+  </div>
+</div>
+<p class="note">Today is Tue Sep 29, 7:47 pm in this mockup. Buttons work: Done, Turn in, Undo and the type switch change the state, and the stamp slams when what it says changes.</p>
+
+<script>
+const ICON = {
+  check: '<path d="M3.5 8.5l3 3 6-7"/>',
+  turnIn: '<path d="M8 10V2.5M5 5.5l3-3 3 3M2.5 9.5v4h11v-4"/>',
+  undo: '<path d="M5.5 3.5l-3 3 3 3M2.5 6.5H9.5a3.5 3.5 0 010 7H7"/>',
+};
+const LAB = { title: 'Lab 3.1 Leaf Disk Photosynthesis', folder: 'Unit 3 - Cell Energy', sgyDue: 'Due Wednesday, September 23, 2026 at 11:59 pm', due: 'Wed Sep 23, 11:59 pm', body: 'Follow the procedure in the handout. Hand in your lab report as a PDF in the dropbox.', file: 'Lab 3.1 handout.pdf', dropbox: true };
+const READ = { title: 'Read Ch. 9 and take notes', folder: 'Unit 3 - Cell Energy', sgyDue: 'Due Tuesday, September 29, 2026 at 11:59 pm', due: 'Tue Sep 29, 11:59 pm', body: 'Read sections 9.1–9.3. Bring your handwritten notes to class.', file: 'Chapter 9 reading.pdf', dropbox: false };
+const TEST = { title: 'Unit 3 Test: Cell Energy', folder: 'Unit 3 - Cell Energy', sgyDue: 'Due Friday, October 2, 2026 at 8:00 am', due: 'Fri Oct 2, 8:00 am', body: 'In class. Covers photosynthesis and cellular respiration.', file: 'Unit 3 review sheet.pdf', dropbox: false };
+
+// kind: missing | todo | ready | submitted | graded (matstate.js rowState kinds)
+const STATES = {
+  missing:  { page: LAB, kind: 'missing', type: 'assignment', late: 6 },
+  doneLate: { page: LAB, kind: 'ready', type: 'assignment', late: 6 },
+  paper:    { page: READ, kind: 'todo', type: 'assignment', left: '4 h 12 min left', today: true },
+  turnedIn: { page: READ, kind: 'submitted', word: 'Turned in', type: 'assignment', on: 'Sep 29' },
+  graded:   { page: LAB, kind: 'graded', type: 'assignment', score: '18 / 20', on: 'Sep 25', moved: '−0.31' },
+  test:     { page: TEST, kind: 'todo', type: 'exam', countdown: 'in 3 days' },
+};
+let place = 'a';
+let key = 'missing';
+let s = structuredClone(STATES[key]);
+let lastStamp = '';
+let wiOpen = false;
+
+const h = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+const exam = () => s.type === 'exam';
+const isLate = () => !!s.late && (s.kind === 'missing' || s.kind === 'todo' || s.kind === 'ready');
+
+function stamp() {
+  const e = h('span', 'stamp');
+  let a, b;
+  if (s.kind === 'graded') { e.classList.add('good'); a = s.on; b = 'Submitted'; }
+  else if (s.kind === 'submitted') { e.classList.add('good'); a = s.on; b = 'Turned in'; }
+  else if (isLate()) { e.classList.add('late'); a = `Due ${s.page.due.split(',')[0].slice(4)}`; b = `${s.late} days late`; }
+  else if (s.today) { a = '11:59 pm'; b = 'Due today'; }
+  else { a = 'Due'; b = s.page.due.split(',')[0].slice(4); }
+  e.append(h('span', 's1', a), h('span', 's2', b));
+  const sig = a + b;
+  if (lastStamp && sig !== lastStamp) e.classList.add('slam');
+  lastStamp = sig;
+  e.setAttribute('aria-label', `${b}${a && a !== 'Due' ? `, ${a}` : ''}`);
+  return e;
+}
+
+function status() {
+  const wrap = h('span', null);
+  wrap.style.cssText = 'display:inline-flex;align-items:center;gap:8px;flex-wrap:wrap';
+  const circ = () => h('span', exam() ? 'circle sq' : 'circle');
+  if (s.kind === 'missing') { const st = h('span', 'st late'); st.append(circ(), h('span', null, 'To do')); wrap.append(h('span', 'pill', 'Missing'), st); }
+  else if (s.kind === 'todo') { const st = h('span', 'st'); st.append(circ(), h('span', null, exam() ? 'Not studied' : 'To do')); wrap.append(st); }
+  else if (s.kind === 'ready') { const st = h('span', `st done${isLate() ? ' late' : ''}`); st.append(circ(), h('span', null, exam() ? 'Studied' : s.page.dropbox ? 'Done, not submitted' : 'Done, not turned in')); wrap.append(st); }
+  else if (s.kind === 'submitted') { const st = h('span', 'st cleared'); st.append(circ(), h('span', null, s.word)); wrap.append(st); }
+  else if (s.kind === 'graded') { const st = h('span', 'st cleared'); st.append(circ(), h('span', 'num', s.score)); wrap.append(st, h('span', 'dim', 'Submitted late')); }
+  return wrap;
+}
+
+function dueLine() {
+  const e = h('span', 'due num');
+  e.append(s.page.due);
+  let tail = '';
+  if (isLate()) tail = `${s.late} days late`;
+  else if (exam() && s.kind === 'todo') tail = s.countdown;
+  else if (s.kind === 'todo' || s.kind === 'ready') tail = s.left || '';
+  if (tail) { e.append(' · '); const t = h('span', isLate() ? 'bad' : null, tail); if (isLate()) t.style.fontWeight = '600'; e.append(t); }
+  return e;
+}
+
+function btn(icon, word, go, fn) {
+  const b = h('button', `ib${go ? ' go' : ''}`);
+  b.innerHTML = `<svg viewBox="0 0 16 16" aria-hidden="true">${ICON[icon]}</svg>`;
+  b.append(h('span', null, word));
+  b.onclick = () => { fn(); draw(); };
+  return b;
+}
+function actions() {
+  const out = [];
+  const k = s.kind;
+  if (k === 'missing' || k === 'todo') out.push(btn('check', exam() ? 'Studied' : 'Done', false, () => { s.kind = 'ready'; }));
+  if (k === 'ready') out.push(btn('undo', exam() ? 'Not studied' : 'Not done', false, () => { s.kind = STATES[key].kind === 'missing' ? 'missing' : 'todo'; }));
+  // Dropbox work turns in with Schoology's own Submit; Turn in is for everything else.
+  if (!s.page.dropbox && !exam() && (k === 'todo' || k === 'ready')) out.push(btn('turnIn', 'Turn in', true, () => { s.kind = 'submitted'; s.word = 'Turned in'; s.on = 'Sep 29'; }));
+  if (k === 'submitted') out.push(btn('undo', 'Undo', false, () => { s.kind = 'todo'; s.left = '4 h 12 min left'; s.today = true; }));
+  return out;
+}
+function moreBtn() { const b = h('button', 'more', '⋯'); b.title = 'Remove from To Do'; b.setAttribute('aria-label', 'More: Remove from To Do'); return b; }
+
+function types() {
+  const t = h('span', 'types');
+  t.setAttribute('role', 'group'); t.setAttribute('aria-label', 'Type');
+  for (const [v, w] of [['assignment', 'HW'], ['exam', 'Test'], ['task', 'Task'], ['classwork', 'CW']]) {
+    const b = h('button', v === 'exam' ? 'test' : null, w);
+    b.setAttribute('aria-pressed', String(s.type === v));
+    b.onclick = () => { s.type = v; draw(); };
+    t.append(b);
+  }
+  return t;
+}
+
+// The grade: the chip's zero cost / effect, and the what-if (was its own box).
+function grade() {
+  const e = h('span', 'wi-line');
+  if (s.kind === 'graded') {
+    e.append('Moved your course grade', h('span', 'imp neg num', s.moved), h('span', 'dim', '· 2nd lowest of 6 in Labs'));
+    return e;
+  }
+  if (wiOpen) {
+    const inp = h('input'); inp.value = '17'; inp.setAttribute('aria-label', 'Points you might get');
+    e.append('If I get', inp, '/ 20 →', h('b', 'num', '94.12%'), h('span', 'imp neg num', '−0.53'));
+    return e;
+  }
+  if (s.kind === 'missing') e.append('A zero costs', h('span', 'imp neg num', '−4.86'), '·');
+  else e.append(h('span', 'dim', s.page.dropbox ? 'Not graded · 20 pts' : 'Not graded'), '·');
+  const w = h('button', 'whatif', 'What if?'); w.onclick = () => { wiOpen = true; draw(); };
+  e.append(w);
+  return e;
+}
+
+function clsLabel() { const c = h('span', 'cls'); const d = h('span', 'dot'); d.style.background = 'var(--class-2)'; c.append(d, 'AP Bio'); return c; }
+
+function cardA() {
+  const c = h('div', 'card dw');
+  c.style.setProperty('--cls', 'var(--class-2)');
+  const head = h('div', `head${isLate() ? ' late' : ''}`);
+  head.append(clsLabel(), stamp());
+  const lines = h('div', 'lines');
+  lines.append(status(), dueLine());
+  const acts = h('div', 'acts');
+  acts.append(...actions());
+  const foot = h('div', 'foot');
+  const r2 = h('div', 'row2');
+  r2.append(types(), moreBtn());
+  foot.append(grade(), r2);
+  c.append(head, lines);
+  if (acts.children.length) c.append(acts);
+  c.append(foot);
+  return c;
+}
+
+function stripB() {
+  const st = h('div', 'strip dw');
+  const l1 = h('div', 'l1');
+  l1.append(clsLabel(), status());
+  const l2 = h('div', 'l2');
+  l2.append(dueLine(), grade());
+  const acts = h('div', 'acts');
+  acts.append(...actions(), moreBtn());
+  st.append(stamp(), l1, acts, l2, types());
+  return st;
+}
+
+function sidebar() {
+  const p = h('div', 'panel dw');
+  p.append(h('div', 'todo-h', 'To Do'));
+  const late = isLate();
+  const g1 = h('div', 'group');
+  const gh = h('div', `ghead${late ? ' late' : ''}`); gh.style.setProperty('--cls', 'var(--class-2)');
+  const d = h('span', 'dot'); d.style.background = 'var(--class-2)';
+  gh.append(d, h('b', null, 'AP Bio'), h('span', 'gcount', '3'));
+  if (late) gh.append(h('span', 'sstamp late', 'LATE')); else if (s.today && s.kind !== 'submitted') gh.append(h('span', 'sstamp', 'DUE TODAY'));
+  g1.append(gh);
+  const row = (t, sub, here) => { const r = h('div', `srow${here ? ' here' : ''}`); r.append(h('span', 't', t)); const x = h('span', 's'); x.innerHTML = sub; r.append(x); return r; };
+  const subHere = () => {
+    const due = s.page.due;
+    if (isLate()) return `${due} · <span class="over">${s.late} days late</span>`;
+    if (s.kind === 'submitted') return `${due} · Turned in`;
+    if (s.kind === 'graded') return `18 / 20`;
+    return `${due}${exam() ? ` · ${s.countdown}` : s.left ? ` · ${s.left}` : ''}`;
+  };
+  g1.append(row(s.page.title, subHere(), true));
+  if (s.page.title !== LAB.title) g1.append(row('Lab 3.1 Leaf Disk Photosynthesis', 'Wed Sep 23, 11:59 pm · <span class="over">6 days late</span>'));
+  g1.append(row('Lab 3.2 Yeast Respiration', 'Wed Sep 30, 11:59 pm'));
+  const g2 = h('div', 'group');
+  const gh2 = h('div', 'ghead'); gh2.style.setProperty('--cls', 'var(--class-1)');
+  const d2 = h('span', 'dot'); d2.style.background = 'var(--class-1)';
+  gh2.append(d2, h('b', null, 'Algebra 2'), h('span', 'gcount', '1'));
+  g2.append(gh2, row('Problem set 4.2', 'Thu Oct 1, 11:59 pm'));
+  p.append(g1, g2);
+  return p;
+}
+
+function draw() {
+  const pg = s.page;
+  document.getElementById('ptitle').textContent = pg.title;
+  document.getElementById('sgydue').textContent = pg.sgyDue;
+  document.getElementById('sgybody').textContent = pg.body;
+  document.getElementById('attach').innerHTML = `<a href="#">${pg.file}</a>`;
+  const strip = document.getElementById('stripSlot');
+  const rcol = document.getElementById('rcol');
+  strip.replaceChildren();
+  rcol.replaceChildren();
+  if (place === 'a') rcol.append(cardA()); else strip.append(stripB());
+  // Schoology's own blocks: Submit while the dropbox is open, then the submission.
+  if (pg.dropbox && (s.kind === 'missing' || s.kind === 'todo' || s.kind === 'ready')) rcol.append(h('button', 'submit', 'Submit Assignment'));
+  if (s.kind === 'graded') rcol.append(h('div', 'sgy-sub late', 'Submitted late: Lab 3.1 report.pdf'));
+  rcol.append(sidebar());
+}
+
+function seg(id, set) {
+  const box = document.getElementById(id);
+  box.addEventListener('click', (e) => {
+    const b = e.target.closest('button'); if (!b) return;
+    for (const x of box.children) x.setAttribute('aria-pressed', String(x === b));
+    set(b.dataset.v); draw();
+  });
+}
+seg('place', (v) => { place = v; lastStamp = ''; });
+seg('state', (v) => { key = v; s = structuredClone(STATES[v]); lastStamp = ''; wiOpen = false; });
+draw();
+</script>
+</body></html>

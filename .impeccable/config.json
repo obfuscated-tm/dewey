@@ -26,6 +26,15 @@
         "value": "arial",
         "createdAt": "2026-11-15T09:12:38.372Z",
         "reason": "Claude: extension/test/grades-page.html is a test stand-in for Schoology's own page, which uses Arial; it predates this session and is not Dewey UI"
+      },
+      {
+        "rule": "skipped-heading",
+        "value": "*",
+        "files": [
+          "extension/test/assignment-page.html"
+        ],
+        "createdAt": "2026-11-18T16:30:00.000Z",
+        "reason": "Claude: extension/test/assignment-page.html is a test stand-in for Schoology's assignment page; its h1 title then h3 Comments copy Schoology's own markup (.comment-container h3) and predate this session; not Dewey UI"
       }
     ]
   }

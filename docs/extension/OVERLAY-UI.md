@@ -201,7 +201,7 @@ dark themes like the page's colours (`paint(hex, dark)`). Inverted as-is, white
 surfaces come out pure black, harsh against the theme's page, so dark themes also
 set `--surface` (the page mixed 7% towards white), `--sunk` (the page) and
 `--line` (16% towards white), pre-inverted: our cards sit a step above the page. The settings menu's
-swatches, and the grades page's what-if bar (an inline style on Schoology's cell),
+swatches, and the grades page's tried-score row marker (an inline style on Schoology's cell),
 are painted the same way.
 Every `createHost` root gets a second `<style data-np-theme>` (kept in sync by
 `ui.js`, which learns the current theme's CSS from a small hook `theme.js`
@@ -273,38 +273,53 @@ The sidebar is the extension's spine ([CATCH-UP-SPEC.md](CATCH-UP-SPEC.md)). The
 The first cut of this had every control always on screen (a dashed input on
 every ungraded row, a permanent "+ Plan…" row under each category): too loud.
 The second hid them all until a row was hovered: quiet, but nobody could find
-them. Now what-if is a **mode**, as in the iOS app (docs/ios/SCREENS.md 2b):
-off, the page shows facts only; one visible What-if button turns it on.
+them. The third made what-if a mode with one What-if button, as in the iOS
+app, and a summary line under the course grade: tidy, but Owen found it flat
+("doesn't feel satisfying"). Since 2026-11-18 it follows gunn.one: one big
+number to watch, and every score is something you can click and type into,
+with no mode to turn on first (mockup:
+[design/class-card.html](design/class-card.html); the drafts before it are in
+[design/grade-row.html](design/grade-row.html)).
 
 Always:
 
-- **Summary line** (2026-11-18, mockups in [design/grade-row.html](design/grade-row.html);
-  Bessy and gunn.one checked): one pale row of ours right under the course
-  grade, indented like a category, holding everything that changes this
-  class's numbers, left to right. It's the one place to look. Schoology's own
-  row gets nothing beside its grade. On the line:
-  - **Graph:** the sparkline and the word, a toggle for a row under the line
-    with a step chart of the replayed history: y axis around the grade range,
-    a dashed goal line, hover crosshair + tooltip (date, %, item that changed
-    it), and a dashed projection while what-if mode has changes. The chart
-    starts closed on /grades/grades (it made that page long) and open on a
-    class's own Grades page, for that visit only.
-  - **"6.25 above [Goal A ▾]"** (or "below"): course grade minus the goal,
+- **Class card:** a block of ours just above each class's table, holding
+  everything that changes this class's numbers. It sticks to the top of the
+  window (under Schoology's top bar if that is fixed; measured, not assumed)
+  while that class's table scrolls by, and lets go where the table's box ends,
+  so on /grades/grades the next class's card takes over. It gets a soft shadow
+  while stuck. Schoology's course row gets nothing. On the card, left to
+  right:
+  - **The grade**, large (28px), with its letter. While any score is being
+    tried the card turns accent-soft, the big number and letter are the
+    what-if ones in the accent, and the real number sits before them, faint:
+    "94.76 → 85.60% B". "Doesn't match: NN.NN%" (red) replaces the number
+    and sentence when the math and Schoology's course percent still disagree.
+  - **"6.25 above [Goal A ▾]"** (or "below"): the shown grade minus the goal,
     with the Goal select (a chip: "Goal A" down to "Goal C-", the iOS app's
-    scale) inside the sentence it changes. The goal is saved per course
-    (`gradeGoals`), the A line (93%) until picked. Wherever this section says
-    "A" (the graph's dashed line, "A holds down to", "for an A"), the page
-    shows the goal's letter. While what-if has changes the number is the
-    what-if one, in the accent, followed by "what-if". "Doesn't match:
-    NN.NN%" (red) replaces the sentence when the math and Schoology's course
-    percent still disagree.
-  - **What-if** at the right end (a pill; filled and reading "Show real" while
-    the mode is on, "What-if · N changes" when scores are waiting).
+    scale). The goal is saved per course (`gradeGoals`), the A line (93%)
+    until picked. Wherever this section says "A" (the graph's dashed line,
+    "A holds down to", "for an A"), the page shows the goal's letter.
+  - **Reset N**, only while N scores are tried, items left out or planned
+    scores set: puts everything back as Schoology has it.
+  - **Graph:** the sparkline and the word, a toggle for a block under the
+    card (not sticky) with a step chart of the replayed history: y axis
+    around the grade range, a dashed goal line, hover crosshair + tooltip
+    (date, %, item that changed it), and a dashed projection while scores are
+    tried. Closed on /grades/grades (it made that page long), open on a
+    class's own Grades page, for that visit only.
 - **Click a score** to try one: on an item row, Schoology's own score ("19 /
-  20", or "—") underlines in the accent on hover with the tip "Try a score";
-  a click turns what-if mode on for that class and puts the cursor in that
-  row's score box, so a long gradebook needs no scrolling back up. Only
-  listeners and that hover underline touch Schoology's cell.
+  20", or "—") underlines in the accent on hover with the tip "Try a score".
+  A click opens a box in that cell, cursor in it; every number on the page
+  (card, category, impact tags) follows each keystroke. Enter or clicking
+  away keeps it, shown as "→ 12" in the accent beside Schoology's score
+  (click it to change it); Esc puts the real score back. Typing the real
+  score again counts as no change. A "—" row's box comes with a points box,
+  since the row doesn't say what it's out of ("→ 18/20"). Beside a graded
+  row's box, a faint **Leave out** drops the item from the math:
+  Schoology's score is struck through and faded and the right column offers
+  **Count it**. Only listeners, the hover underline and the strike touch
+  Schoology's cell. Several classes can have tried scores at once.
 - **New grades:** a small "New" pill beside a graded item's percent when its
   score appeared or changed since the student last looked at this course's
   grades (`overlays/newgrades.js`; the saved copy is `gradesSeen`). A course's
@@ -324,30 +339,13 @@ Always:
   tag in the right column. An item Schoology leaves out of the category (Grade
   math, above) says "not counted" there instead ("may not count" for a guess;
   the tooltip says why) and gets no score box.
-
-In what-if mode:
-
-- **Every item row** gets a score box in its grade cell. On a graded row the
-  placeholder is the real score and blank keeps it; typing overrides the item,
-  the percent beside it and its impact tag follow, and Esc clears it. Beside
-  the box, a faint **Leave out** drops the item from the math: Schoology's
-  score in that row is struck through and faded and the right column offers
-  **Count it**. A "—" row also gets a points box, since it doesn't say what
-  it's out of.
-- **Category rows:** "→ NN.N%" beside Schoology's percent when it changed, and
-  **+ Upcoming test** (or assignment) beside the name, which opens a row of our
-  own under the category: name / worth / score / "need X/pts for an A" (or
-  "any score keeps an A" / "out of reach with this alone") and Remove.
-- **The bar**, pinned to the bottom of the window so it stays in view far down
-  a long gradebook: "What-if", "N changes" (or "Type a score on any row"),
-  real → what-if letter and percent, the difference, **Reset** (clears every
-  score, left-out item and planned score) and **Show real**.
-- **Show real** (the bar's button or the line's pill) switches the mode off without
-  clearing anything: every number on the page is real again and the pill reads
-  "What-if · N changes". Only one course is in what-if mode at a time on
-  /grades/grades.
-- **Row marker:** a changed row gets a 3px inset left bar on its first cell,
-  only while the overlay is on.
+- **Category rows** also get "→ NN.N%" beside Schoology's percent when a
+  tried score moves it, and **+ Upcoming test** (or assignment) beside the
+  name, which opens a row of our own under the category: name / worth /
+  score / "need X/pts for an A" (or "any score keeps an A" / "out of reach
+  with this alone") and Remove.
+- **Row marker:** a row with a tried score gets a 3px inset left bar on its
+  first cell, only while the overlay is on.
 - What-if scores, left-out items and planned items are per-page-view only.
   Never saved.
 

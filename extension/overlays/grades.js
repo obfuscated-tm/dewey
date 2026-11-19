@@ -2,37 +2,33 @@
 // each course on /grades/grades, inline
 // in Schoology's own table. Schoology's rows, grades and buttons stay as they
 // are; this only adds, and only what the page doesn't already show:
-//   summary line   a row of ours under the course grade: Graph (a step
-//                  chart of the replayed term, in a row under it; closed on
-//                  /grades/grades), "X.XX above [Goal A]" (the grade to aim
-//                  for, A down to C-, saved per course; the A line until
-//                  picked: every "A" below is that goal's letter) and the
-//                  What-if button. Clicking a score on any item also starts
-//                  what-if, with the cursor in that row's box
-//   category rows  "A holds down to NN.N%"; a weight box only when Schoology
-//                  shows no (N%) for the category
+//   class card     a block of ours just above the class's table, sticky while
+//                  that table scrolls by (it lets go at the next class): the
+//                  grade large with its letter, "X.XX above [Goal A]" (the
+//                  grade to aim for, A down to C-, saved per course; the A
+//                  line until picked: every "A" below is that goal's letter),
+//                  Reset N while anything is tried, and Graph (a step chart
+//                  of the replayed term under the card; closed on
+//                  /grades/grades). While scores are tried the big number is
+//                  the what-if one, the real one before it ("93.22 →")
+//   category rows  "A holds down to NN.N%", "→ NN.N%" when a tried score
+//                  moves it, "+ Upcoming test" (or assignment: a row of our
+//                  own under the category, name / worth / score / "need X
+//                  for an A"); a weight box only when Schoology shows no (N%)
 //   graded items   a small percent beside Schoology's score (Settings: on by
 //                  default) and the impact tag; "not counted" on an item
 //                  Schoology leaves out of the category (grademath.calibrate)
-// What-if is a mode, as in the iOS app (docs/ios/SCREENS.md 2b), off until
-// the What-if button is pressed. While it's on:
-//   every item     a score box in its grade cell: blank keeps the real score
-//                  (shown as the placeholder); a "—" row also gets a points
-//                  box, since it doesn't say what it's out of. Graded rows
-//                  get "Leave out" (dropped from the math, Schoology's score
-//                  struck through, "Count it" to undo)
-//   category rows  "→ NN.N%" when changed, and "+ Upcoming test" (or
-//                  assignment), which opens a row of our own under the
-//                  category: name / worth / score / "need X for an A"
-//   the bar        pinned to the bottom of the window: real → what-if grade,
-//                  the difference, Reset, Show real
-// "Show real" switches the mode off and keeps the scores ("What-if · N
-// changes" brings them back); Reset clears them. A changed row gets a thin
-// inset left bar. The right-hand column is a <td> of ours appended to every
-// row; it and our own rows vanish with the Overlay switch like every host.
-// Schoology hides its Course Grade row, so the course-level additions sit on
-// the current period's row then. What-if scores, left-out items and planned
-// items live only in this page view; typed weights are saved per course.
+// Trying a score has no mode (gunn.one, not the iOS app): click any score,
+// or a "—", and a box opens in its cell; typing moves every number at once.
+// Enter or clicking away keeps it ("→ 12" in the accent, beside Schoology's
+// own score), Esc puts the real one back. Beside the box, "Leave out" drops
+// the item (Schoology's score struck through, "Count it" to undo). A changed
+// row gets a thin inset left bar. The right-hand column is a <td> of ours
+// appended to every row; it, the card and our own rows vanish with the
+// Overlay switch like every host. Schoology hides its Course Grade row, so
+// the course-level additions sit on the current period's row then. Tried
+// scores, left-out items and planned items live only in this page view;
+// typed weights are saved per course.
 //
 // Only the current grading period (grademath.currentPeriod) is annotated.
 
@@ -48,10 +44,6 @@ import { freshGrades } from './newgrades.js';
 import { THEMES, themeOf, paint } from './theme.js';
 
 const EPS = 0.005;
-
-// Only one course is in what-if mode at a time (/grades/grades has several):
-// this switches the one that is back to real.
-let activeOff = null;
 
 const CSS = `
 .imp {
@@ -90,6 +82,11 @@ const INLINE_CSS = CSS + `
 :host { display: inline-flex; align-items: center; gap: 6px; margin-left: 8px; vertical-align: middle; }
 :host([hidden]) { display: none !important; }
 .wi-pts { width: 44px; }
+.wi-val {
+  color: var(--accent); font: 500 12px/16px var(--sans); font-variant-numeric: tabular-nums;
+  padding: 0 3px; border-radius: var(--radius-sm);
+}
+.wi-val:hover { background: var(--accent-soft); }
 .wi-score { width: 56px; }
 .w { width: 44px; }
 `;
@@ -110,54 +107,46 @@ const ROW_CSS = CSS + `
 }
 .tip b { font-weight: 500; font-variant-numeric: tabular-nums; }
 .tip .s { opacity: .7; }
-/* The summary line under the course grade: graph · N above [Goal] · What-if */
-.line {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 6px 8px 6px 10px;
-  background: var(--sunk); border-radius: var(--radius-sm); font-size: 12px; line-height: 16px; color: var(--dim);
+`;
+
+// The class card, sticky above the table, and the graph under it.
+const CARD_CSS = ROW_CSS + `
+:host { display: block; }
+.card {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 6px 20px; padding: 10px 14px;
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  font-family: var(--sans); color: var(--ink); transition: background-color .15s, box-shadow .15s;
 }
-.line .sum { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.line .num { color: var(--ink); }
-.line .wi .num { color: var(--accent); }
-.line .wi-tag { color: var(--accent); }
-.line .go { margin-left: auto; }
-.spark {
-  display: inline-flex; align-items: center; gap: 6px; padding: 2px 6px 2px 4px; border-radius: var(--radius-sm);
-  color: var(--accent); font-size: 12px; font-weight: 500; white-space: nowrap;
-}
-.spark:hover { background: var(--accent-soft); }
-.spark svg { display: block; }
+.card.stuck { box-shadow: 0 4px 12px rgba(31, 36, 41, .12); }
+.card.changed { background: var(--accent-soft); }
+.big { display: flex; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; }
+.big .was { color: var(--faint); font-size: 15px; line-height: 20px; }
+.big .n { font-size: 28px; line-height: 32px; font-weight: 600; }
+.big .n small { font-size: 18px; font-weight: 500; }
+.big .let { font-size: 15px; line-height: 20px; font-weight: 600; color: var(--dim); }
+.changed .big .n, .changed .big .let { color: var(--accent); }
+.gap { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; color: var(--dim); }
+.gap .num { color: var(--ink); font-weight: 600; }
+.gap .note { font-size: 13px; }
+.end { margin-left: auto; display: flex; align-items: center; gap: 8px; }
 .pill {
-  display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px;
-  border: 1px solid var(--accent); color: var(--accent); font-size: 12px; font-weight: 500; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); color: var(--dim); font-size: 13px; font-weight: 500; white-space: nowrap;
 }
-.pill:hover { background: var(--accent-soft); }
-.pill.on, .pill.on:hover { background: var(--accent); color: var(--surface); }
+.pill:hover { color: var(--ink); border-color: var(--faint); }
+.pill.on, .pill.accent { border-color: var(--accent); color: var(--accent); }
+.pill svg { display: block; }
 select.goal {
-  font: 500 12px/16px var(--sans); color: var(--ink); background: var(--surface); margin: 0;
-  height: 24px; padding: 0 4px 0 8px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
+  font: 500 12px/16px var(--sans); color: var(--dim); background: var(--surface); margin: 0;
+  height: 26px; padding: 0 4px 0 8px; border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
 }
-select.goal:hover { border-color: var(--faint); }
+select.goal:hover { color: var(--ink); border-color: var(--faint); }
+.chartwrap { padding: 4px 4px 8px; }
 `;
 
 // "N new" after a class's name on /grades/grades.
 const PILL_CSS = CSS + `
 .new { font: 600 11px/16px var(--sans); color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 0 6px; white-space: nowrap; }
-`;
-const BAR_CSS = CSS + `
-:host { position: fixed; left: 50%; bottom: 16px; transform: translateX(-50%); z-index: 2147483000; }
-.bar {
-  display: flex; align-items: center; gap: 16px; padding: 10px 12px 10px 16px; max-width: calc(100vw - 32px);
-  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
-  box-shadow: 0 6px 24px rgba(31, 36, 41, .18); white-space: nowrap;
-}
-.t { font-weight: 600; color: var(--accent); }
-.s { font-size: 12px; line-height: 16px; color: var(--dim); }
-.nums { display: flex; align-items: baseline; gap: 8px; font-variant-numeric: tabular-nums; }
-.real { color: var(--dim); }
-.now { font: 600 15px/20px var(--sans); font-variant-numeric: tabular-nums; }
-.btn { padding: 4px 10px; border: 1px solid var(--line); border-radius: var(--radius-sm); font-size: 12px; font-weight: 500; }
-.btn:hover { background: var(--sunk); }
-.btn.primary, .btn.primary:hover { background: var(--accent); border-color: var(--accent); color: var(--surface); }
 `;
 
 // ── Small helpers ────────────────────────────────────────────────────────
@@ -360,7 +349,6 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
   const L = () => letter(goal);
   const aL = () => `${/^A/.test(L()) ? 'an' : 'a'} ${L()}`;
   let setGoal = () => {};
-  let mode = false; // what-if mode. Off: the page shows the real grade, whatever is typed
   let chartOpen = !all; // open on a class's own page, closed on /grades/grades (keeps it short); for this visit only
 
   const weights = () => {
@@ -371,18 +359,9 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
   const extras = (except) => [...plans].filter(([t, p]) => t !== except && p && p.score != null && p.possible > 0)
     .map(([t, p]) => ({ category: t, earned: p.score, possible: p.possible }));
   const whatIfOpts = () => Object.fromEntries([...whatIf].filter(([, v]) => v.earned != null && v.possible > 0));
-  const opts = (exceptPlan) => (mode
-    ? { weights: weights(), whatIf: whatIfOpts(), extra: extras(exceptPlan), drop: [...dropped] }
-    : { weights: weights() });
+  const opts = (exceptPlan) => ({ weights: weights(), whatIf: whatIfOpts(), extra: extras(exceptPlan), drop: [...dropped] });
   const changeCount = () => Object.keys(whatIfOpts()).length + extras().length + dropped.size;
-  const anyWhatIf = () => mode && changeCount() > 0;
-  const off = () => { mode = false; update(); };
-  function setMode(on) {
-    if (on && activeOff && activeOff !== off) activeOff();
-    if (on) activeOff = off;
-    mode = on;
-    update();
-  }
+  const anyWhatIf = () => changeCount() > 0;
 
   // Schoology hides its "Course Grade" row (display: none) and shows the grade
   // in a box under the table; then the current period's row, at the top,
@@ -470,38 +449,29 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
     return { tr, root };
   }
 
-  // ── Course row: the summary line ──
-  // One line of ours under the course grade holds everything that changes
-  // this class's numbers, left to right: Graph (opens the chart under it) ·
-  // "6.25 above [Goal A]" · What-if. Schoology's row itself gets nothing.
+  // ── The class card ──
+  // A block of ours just above the class's table, holding everything that
+  // changes this class's numbers: the grade, "6.25 above [Goal A]", Reset,
+  // Graph. It sticks under any fixed bar at the top of the window while the
+  // table scrolls by, and lets go where the table's box ends (the next class
+  // on /grades/grades). The graph opens in a second block under it, not
+  // sticky. Schoology's course row gets nothing.
+  const tableEl = courseRow.el.closest('table');
   const hist = plotPoints(history(course, { weights: weights() }));
+  const { host: cardHost, root: cardRoot } = createHost('np-grade-card', CARD_CSS);
+  keepEvents(cardHost);
+  cardHost.style.cssText = 'display: none; position: sticky; top: 0; z-index: 50; margin: 0 0 8px;';
+  const { host: chartHost, root: chartRoot } = createHost('np-grade-chart', CARD_CSS);
+  keepEvents(chartHost);
+  chartHost.style.cssText = 'display: none; margin: 0 0 8px;';
+  (tableEl || courseRow.el).before(cardHost, chartHost);
+  let stickTop = 0; // px: the bottom of a fixed bar at the top of the window, if Schoology has one
   {
-    const tr = courseRow.el;
-    const indentLike = course.categories[0]?.src.el || tr;
-    // The chart row first: each ourRow goes straight after `tr`, so the line,
-    // made second, sits above it.
-    const chart = hist.length >= 2 ? ourRow(tr, () => chartOpen && isShown(tr), indentLike) : null;
-    const { root: lineRoot } = ourRow(tr, () => isShown(tr), indentLike);
-    const line = el('div', 'line');
-
-    let spark = null;
-    if (chart) {
-      spark = el('button', 'spark');
-      spark.type = 'button';
-      spark.title = 'Your grade over the term';
-      spark.addEventListener('click', () => { chartOpen = !chartOpen; update(); });
-      updates.push(() => {
-        spark.innerHTML = sparkSvg(plotPoints(history(course, { weights: weights() })));
-        spark.append(el('span', null, 'Graph'));
-        spark.setAttribute('aria-expanded', String(chartOpen));
-        spark.setAttribute('aria-label', chartOpen ? 'Hide graph' : 'Show graph');
-        if (chartOpen) {
-          const box = el('div');
-          drawChart(box, plotPoints(history(course, { weights: weights() })), anyWhatIf() ? grade(course, opts()).pct : null, goal);
-          chart.root.replaceChildren(chart.root.firstChild, box);
-        }
-      });
-    }
+    const card = el('div', 'card');
+    const big = el('div', 'big');
+    const gap = el('div', 'gap');
+    const sum = el('span', 'sum');
+    const end = el('div', 'end');
 
     // Goal: a plain <select>, drawn as a chip, inside the sentence it changes.
     const goalSel = el('select', 'goal');
@@ -520,20 +490,11 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
       update();
     };
     goalSel.addEventListener('change', () => setGoal(Number(goalSel.value)));
-    const sum = el('span', 'sum');
+    gap.append(sum, goalSel);
 
-    const modeBtn = el('button', 'pill go');
-    modeBtn.type = 'button';
-    modeBtn.addEventListener('click', () => setMode(!mode));
-    line.append(...[spark, sum, modeBtn].filter(Boolean));
-    lineRoot.append(line);
-
-    const { host: barHost, root: barRoot } = createHost('np-grade-bar', BAR_CSS);
-    keepEvents(barHost);
-    barHost.hidden = true;
-    doc.body.append(barHost);
-    const reset = el('button', 'btn', 'Reset');
-    reset.title = 'Clear every what-if score';
+    const reset = el('button', 'pill accent');
+    reset.type = 'button';
+    reset.title = 'Put every score back as Schoology has it';
     reset.addEventListener('click', () => {
       whatIf.clear();
       dropped.clear();
@@ -541,58 +502,91 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
       for (const f of resetters) f();
       update();
     });
-    const done = el('button', 'btn primary', 'Show real');
-    done.title = 'Back to your real grade. Your what-if scores stay until you reset or leave the page.';
-    done.addEventListener('click', () => setMode(false));
+    end.append(reset);
 
-    let padded = false; // this course's bar has made room under the page
+    if (hist.length >= 2) {
+      const graphBtn = el('button', 'pill');
+      graphBtn.type = 'button';
+      graphBtn.title = 'Your grade over the term';
+      graphBtn.addEventListener('click', () => { chartOpen = !chartOpen; update(); });
+      end.append(graphBtn);
+      updates.push(() => {
+        graphBtn.innerHTML = sparkSvg(plotPoints(history(course, { weights: weights() })));
+        graphBtn.append(el('span', null, 'Graph'));
+        graphBtn.classList.toggle('on', chartOpen);
+        graphBtn.setAttribute('aria-expanded', String(chartOpen));
+        if (chartOpen) {
+          const box = el('div', 'chartwrap');
+          drawChart(box, plotPoints(history(course, { weights: weights() })), anyWhatIf() ? grade(course, opts()).pct : null, goal);
+          chartRoot.replaceChildren(chartRoot.firstChild, box);
+        }
+      });
+    }
+    card.append(big, gap, end);
+    cardRoot.append(card);
+
     const shown = statedPct((course.src || courseRow).grade) || statedPct(courseRow.grade);
     updates.push(() => {
       const base = grade(course, { weights: weights() }).pct;
       const now = grade(course, opts()).pct;
       const changes = changeCount();
-      modeBtn.textContent = mode ? 'Show real' : changes ? `What-if · ${changes} change${changes === 1 ? '' : 's'}` : 'What-if';
-      modeBtn.classList.toggle('on', mode);
-      modeBtn.setAttribute('aria-pressed', String(mode));
-      modeBtn.title = mode ? done.title : 'Try scores and see what they do to your grade. Or click any score.';
-      barHost.hidden = !mode;
-      // Room under the page's last row, so the bar never sits on it.
-      const pad = mode && isOverlayOn();
-      if (pad !== padded) { padded = pad; doc.body.style.paddingBottom = pad ? '72px' : ''; }
-      if (mode) {
-        const bar = el('div', 'bar');
-        const head = el('div');
-        head.append(el('div', 't', 'What-if'), el('div', 's', changes ? `${changes} change${changes === 1 ? '' : 's'}` : 'Type a score on any row'));
-        const nums = el('div', 'nums');
-        if (changes && base != null && now != null) {
-          nums.append(el('span', 'real', `${letter(base)} ${fmt(base)}%`), el('span', 'real', '→'), el('span', 'now', `${letter(now)} ${fmt(now)}%`),
-            impTag(now - base, 'What-if course grade minus the real one') || el('span', 'real', '±0.00%'));
-        } else if (base != null) nums.append(el('span', 'now', `${letter(base)} ${fmt(base)}%`));
-        bar.append(head, nums, changes ? reset : '', done);
-        barRoot.replaceChildren(barRoot.firstChild, bar);
-      }
-
-      // The sentence: "6.25 above [Goal A]", the what-if number while one is set.
-      cell(tr);
-      if (base == null) return sum.replaceChildren(goalSel);
+      const wi = changes > 0 && now != null;
+      card.classList.toggle('changed', wi);
+      reset.hidden = !changes;
+      reset.textContent = `Reset ${changes}`;
+      cell(courseRow.el);
+      if (base == null) { big.replaceChildren(); return sum.replaceChildren(); }
       if (shown && Math.abs(base - shown.pct) > shown.tol + 1e-9) {
+        big.replaceChildren();
         const n = el('span', 'note warn', `Doesn't match: ${fmt(base)}%`);
         n.title = `Schoology shows ${shown.pct}%. The overlay's math doesn't match it, so its numbers on this page are off. If a category has no weight, type it in beside the category's name.`;
-        return sum.replaceChildren(n, goalSel);
+        return sum.replaceChildren(n);
       }
-      const wi = anyWhatIf() && now != null;
-      const d = (wi ? now : base) - goal;
-      const n = el('span', wi ? 'wi' : null);
-      n.append(el('span', 'num', fmt(Math.abs(d))), d >= 0 ? ' above' : ' below');
-      n.title = wi ? `What-if course grade minus your goal (${goal}%)` : `Course grade minus your goal (${goal}%)`;
-      sum.replaceChildren(n, goalSel, ...(wi ? [el('span', 'wi-tag', 'what-if')] : []));
+      const v = wi ? now : base;
+      const n = el('span', 'n', fmt(v));
+      n.append(el('small', null, '%'));
+      big.replaceChildren(...(wi ? [el('span', 'was', `${fmt(base)} →`)] : []), n, el('span', 'let', letter(v)));
+      big.title = wi ? `With the scores you're trying. Schoology has ${fmt(base)}%.` : 'Your grade in this class';
+      const d = v - goal;
+      sum.replaceChildren(el('span', 'num', fmt(Math.abs(d))), d >= 0 ? ' above' : ' below');
+      sum.title = `${wi ? 'What-if grade' : 'Course grade'} minus your goal (${goal}%)`;
     });
+
+    // Stuck: the card has reached the top and the table is scrolling under it.
+    const stuckNow = () => {
+      if (cardHost.style.display === 'none' || !tableEl) return;
+      const r = cardHost.getBoundingClientRect();
+      card.classList.toggle('stuck', r.top <= stickTop + 1 && tableEl.getBoundingClientRect().top < r.bottom - 1);
+    };
+    let frame = 0;
+    try {
+      window.addEventListener('scroll', () => {
+        if (frame) return;
+        frame = requestAnimationFrame(() => { frame = 0; stuckNow(); });
+      }, { passive: true });
+    } catch { /* tests */ }
+    updates.push(stuckNow);
   }
 
-  // Click a score to try one: Schoology's score on an item row turns what-if
-  // on for this class and puts the cursor in that row's box. Only listeners
-  // and a hover underline (reverted on leave) touch Schoology's cell.
-  function tryScore(tr, box) {
+  /** The bottom of whatever fixed or sticky bar covers the top of the window (not ours), or 0. */
+  function topBar() {
+    let bottom = 0;
+    try {
+      for (const e of doc.elementsFromPoint(window.innerWidth / 2, 2)) {
+        for (let n = e; n && n !== doc.documentElement; n = n.parentElement) {
+          if (/^NP-/.test(n.tagName)) break;
+          const pos = getComputedStyle(n).position;
+          if (pos === 'fixed' || pos === 'sticky') { bottom = Math.max(bottom, n.getBoundingClientRect().bottom); break; }
+        }
+      }
+    } catch { /* tests */ }
+    return Math.max(0, Math.round(bottom));
+  }
+
+  // Click a score to try one: Schoology's score on an item row opens that
+  // row's box. Only listeners and a hover underline (reverted on leave)
+  // touch Schoology's cell. `can` says whether the row takes a score now.
+  function tryScore(tr, start, can) {
     const gc = gradeCell(tr);
     const marks = () => [...gc.querySelectorAll('.awarded-grade, .max-grade, .no-grade')];
     const ours = (e) => /^NP-/.test(e.target.tagName || '');
@@ -605,13 +599,12 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
       gc.style.cursor = on ? 'pointer' : '';
       if (on) gc.setAttribute('title', 'Try a score'); else gc.removeAttribute('title');
     };
-    gc.addEventListener('mouseover', (e) => light(isOverlayOn() && !mode && !ours(e)));
+    gc.addEventListener('mouseover', (e) => light(isOverlayOn() && !ours(e) && can()));
     gc.addEventListener('mouseleave', () => light(false));
     gc.addEventListener('click', (e) => {
-      if (!isOverlayOn() || ours(e) || !marks().length) return;
+      if (!isOverlayOn() || ours(e) || !marks().length || !can()) return;
       light(false);
-      if (!mode) setMode(true);
-      box.focus();
+      start();
     });
   }
 
@@ -659,8 +652,8 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
       const tr = it.src.el;
 
       if (it.earned != null) {
-        // A percent beside Schoology's score; in what-if mode, a score box
-        // (blank keeps the real score) and "Leave out".
+        // A percent beside Schoology's score; a click on the score opens a
+        // box (blank keeps the real score) and "Leave out".
         const { host, root } = inline(gradeCell(tr), 'np-grade-pct');
         const pctSpan = el('span', 'pct');
         root.append(pctSpan);
@@ -685,59 +678,95 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
           continue;
         }
 
-        const score = input('number', 'wi-score', `What-if score for ${it.title}, out of ${it.possible}`, String(it.earned));
+        // Trying a score: click Schoology's score (or the "→ 12" of one being
+        // tried) and a box opens here; clicking away or Enter closes it and
+        // keeps what's typed, Esc puts the real score back.
+        const tried = el('button', 'wi-val');
+        tried.type = 'button';
+        tried.title = 'Change the score you are trying';
+        pctSpan.before(tried);
+        const score = input('number', 'wi-score', `Score to try for ${it.title}, out of ${it.possible}`, String(it.earned));
         const dropBtn = el('button', 'linkbtn quiet', 'Leave out');
+        dropBtn.type = 'button';
         dropBtn.title = 'See your grade without this item';
         const editWrap = el('span', 'wrap');
         editWrap.append(score, dropBtn); // no "/ possible": Schoology's own score, just left of it, says so
         root.append(editWrap);
 
+        let editing = false;
+        const edit = (on) => {
+          if (on === editing) return;
+          editing = on;
+          if (on) { const w = whatIf.get(it.id); score.value = w ? String(w.earned) : ''; }
+          update();
+          if (on) { score.focus(); score.select(); }
+        };
+        editWrap.addEventListener('focusout', (e) => { if (!editWrap.contains(e.relatedTarget)) edit(false); });
         const clear = () => { score.value = ''; whatIf.delete(it.id); };
-        dropBtn.addEventListener('click', () => { clear(); dropped.add(it.id); update(); });
+        dropBtn.addEventListener('mousedown', (e) => e.preventDefault()); // keep the box's focus until the click lands
+        dropBtn.addEventListener('click', () => { clear(); dropped.add(it.id); editing = false; update(); });
         const undo = el('button', 'linkbtn', 'Count it');
         undo.addEventListener('click', () => { dropped.delete(it.id); update(); });
+        tried.addEventListener('click', () => edit(true));
         score.addEventListener('input', () => {
           const earned = num(score.value);
-          if (earned == null) whatIf.delete(it.id); else whatIf.set(it.id, { earned, possible: it.possible });
+          if (earned == null || earned === it.earned) whatIf.delete(it.id); else whatIf.set(it.id, { earned, possible: it.possible });
           update();
         });
-        score.addEventListener('keydown', (e) => { if (e.key === 'Escape') { clear(); update(); } });
+        score.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') score.blur();
+          if (e.key === 'Escape') { clear(); score.blur(); update(); }
+        });
         resetters.push(() => { score.value = ''; });
-        tryScore(tr, score);
+        tryScore(tr, () => edit(true), () => !editing && !dropped.has(it.id));
 
         updates.push(() => {
-          const isDropped = mode && dropped.has(it.id);
+          const isDropped = dropped.has(it.id);
           strike(tr, isDropped);
           host.hidden = isDropped;
           if (isDropped) {
             tint(tr, false);
             return cell(tr, undo); // the struck-through score says it's left out
           }
-          const wi = mode ? whatIf.get(it.id) : null;
+          const wi = whatIf.get(it.id);
           const val = wi && wi.earned != null ? wi.earned : it.earned;
           const pct = it.possible > 0 ? (val / it.possible) * 100 : null;
           pctSpan.hidden = !getSettings().percent;
           pctSpan.textContent = pct == null ? '' : pctText(pct);
-          editWrap.hidden = !mode;
+          editWrap.hidden = !editing;
+          tried.hidden = editing || !wi;
+          if (wi) tried.replaceChildren('→ ', el('span', 'num', String(wi.earned)));
           tint(tr, wi != null);
-          // Untouched rows keep the impact as it really is; a row we've
-          // overridden shows its impact under everything else set right now.
-          const impactOpts = wi != null ? opts() : { weights: weights(), drop: mode ? [...dropped] : [] };
+          // Untouched rows keep the impact as it really is; a row being
+          // tried shows its impact under everything else tried right now.
+          const impactOpts = wi != null ? opts() : { weights: weights(), drop: [...dropped] };
           cell(tr, impTag(impact(course, it.id, impactOpts), 'Course grade with this item minus without it'));
         });
         continue;
       }
 
-      // A "—" row: nothing of ours until what-if mode, then a score box and,
-      // since the row doesn't say what it's out of, a points box.
+      // A "—" row: nothing of ours until its "—" is clicked, then a score box
+      // and, since the row doesn't say what it's out of, a points box.
       const { host, root } = inline(gradeCell(tr), 'np-grade-whatif');
-      const score = input('number', 'wi-score', `What-if score for ${it.title}`, '—');
+      const tried = el('button', 'wi-val');
+      tried.type = 'button';
+      tried.title = 'Change the score you are trying';
+      const score = input('number', 'wi-score', `Score to try for ${it.title}`, '—');
       const wrap = el('span', 'wrap');
       wrap.append(score, '/');
       let pts = null;
       if (it.possible != null) wrap.append(el('span', 'tnum', String(it.possible)));
       else { pts = input('number', 'wi-pts', `Points ${it.title} is out of`, 'pts'); wrap.append(pts); }
-      root.append(wrap);
+      root.append(tried, wrap);
+      let editing = false;
+      const edit = (on) => {
+        if (on === editing) return;
+        editing = on;
+        update();
+        if (on) { score.focus(); score.select(); }
+      };
+      wrap.addEventListener('focusout', (e) => { if (!wrap.contains(e.relatedTarget)) edit(false); });
+      tried.addEventListener('click', () => edit(true));
       const read = () => {
         const earned = num(score.value), possible = pts ? num(pts.value) : it.possible;
         if (earned == null && possible == null) whatIf.delete(it.id); else whatIf.set(it.id, { earned, possible });
@@ -746,24 +775,32 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
       const restore = () => { score.value = ''; if (pts) pts.value = ''; whatIf.delete(it.id); update(); };
       score.addEventListener('input', read);
       pts?.addEventListener('input', read);
-      score.addEventListener('keydown', (e) => { if (e.key === 'Escape') restore(); });
-      pts?.addEventListener('keydown', (e) => { if (e.key === 'Escape') restore(); });
+      for (const box of [score, pts].filter(Boolean)) {
+        box.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') box.blur();
+          if (e.key === 'Escape') { restore(); box.blur(); }
+        });
+      }
       resetters.push(() => { score.value = ''; if (pts) pts.value = ''; });
-      tryScore(tr, score);
+      tryScore(tr, () => edit(true), () => !editing);
       updates.push(() => {
         const v = whatIf.get(it.id);
-        host.hidden = !mode;
-        tint(tr, mode && !!(v && v.earned != null && v.possible > 0));
-        cell(tr);
+        const set = !!(v && v.earned != null && v.possible > 0);
+        host.hidden = !editing && !set;
+        wrap.hidden = !editing;
+        tried.hidden = editing || !set;
+        if (set) tried.replaceChildren('→ ', el('span', 'num', `${v.earned}/${v.possible}`));
+        tint(tr, set);
+        cell(tr, set ? impTag(impact(course, it.id, opts()), 'Course grade with this score minus without it') : null);
       });
     }
 
     // The planning row goes after the category's last row of items, and
-    // exists (is `shown`) only in what-if mode while a plan for this category
-    // is open; "+ Upcoming test" in the category's own row opens it.
+    // exists (is `shown`) only while a plan for this category is open;
+    // "+ Upcoming test" in the category's own row opens it.
     const last = cat.items.length ? cat.items[cat.items.length - 1].src.el : ctr;
     const lead = cat.items.length ? cat.items[0].src.el : ctr;
-    const plan = ourRow(last, () => mode && isShown(lead) && !!plans.get(cat.title), cat.items.length ? lead : ctr);
+    const plan = ourRow(last, () => isShown(lead) && !!plans.get(cat.title), cat.items.length ? lead : ctr);
     plans.set(cat.title, null);
     const kind = /test|quiz|exam|assess/i.test(cat.title) ? 'test' : 'assignment';
 
@@ -804,7 +841,7 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
     drawPlan();
     updates.push(() => {
       const p = plans.get(cat.title);
-      planBtnHost.hidden = !mode || !!p;
+      planBtnHost.hidden = !!p;
       if (!p || !need) return;
       if (!(p.possible > 0)) return need.replaceChildren();
       const r = needFor(course, { category: cat.title, possible: p.possible, target: goal }, opts(cat.title));
@@ -869,11 +906,24 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
   }
   try { window.addEventListener('resize', debounce(() => { titleW = null; pinTitles(); }, 150)); } catch { /* tests */ }
 
-  // Our own rows follow the overlay switch and Schoology's collapsing.
+  // Our own rows and the card follow the overlay switch and Schoology's collapsing.
   function syncRows() {
     const col = isOverlayOn() ? '' : 'none';
     for (const td of ourCells) if (td.style.display !== col) td.style.display = col;
     pinTitles();
+    const cardOn = isOverlayOn() && isShown(tableEl || courseRow.el);
+    const cd = cardOn ? 'block' : 'none';
+    if (cardHost.style.display !== cd) cardHost.style.display = cd;
+    const chd = cardOn && chartOpen && chartRoot.childElementCount > 1 ? 'block' : 'none';
+    if (chartHost.style.display !== chd) chartHost.style.display = chd;
+    if (cardOn) {
+      // As wide as the table, no wider; under Schoology's fixed bar, if it has one.
+      const w = tableEl ? `${Math.round(tableEl.getBoundingClientRect().width)}px` : '';
+      for (const h of [cardHost, chartHost]) if (h.style.maxWidth !== w) h.style.maxWidth = w;
+      stickTop = topBar();
+      const top = `${stickTop}px`;
+      if (cardHost.style.top !== top) cardHost.style.top = top;
+    }
     for (const r of ourRows) {
       const d = isOverlayOn() && r.shown() ? '' : 'none';
       if (r.tr.style.display !== d) r.tr.style.display = d;
@@ -896,7 +946,7 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
   onSettings(() => update());
   update();
   return {
-    update, whatIf, plans, dropped, setMode, setGoal: pct => setGoal(pct), fresh, seen,
+    update, whatIf, plans, dropped, setGoal: pct => setGoal(pct), fresh, seen,
   };
 }
 

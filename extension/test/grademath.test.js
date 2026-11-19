@@ -11,7 +11,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import {
   parseScore, parseDue, weightFromText, periodsFromRows, currentPeriod,
-  grade, impact, history, categoryFloor, needFor, letter, calibrate, statedPct,
+  grade, impact, history, categoryFloor, needFor, letter, calibrate, statedPct, ticks,
 } from '../overlays/grademath.js';
 
 const L = 'Labs & Homework', T = 'Tests & Quizzes';
@@ -263,4 +263,15 @@ test('freshGrades: a first look marks nothing; new and changed scores are fresh 
   assert.deepEqual(freshGrades(next, same, 2000 + NEW_FOR_MS).fresh, {});
   // opened (fresh cleared): nothing is new
   assert.deepEqual(freshGrades({ scores: next.scores, fresh: {} }, same, 3000).fresh, {});
+});
+
+test('ticks: a bounded 1/2/5 step, whatever the range', () => {
+  assert.deepEqual(ticks(92, 100), [92, 94, 96, 98, 100]);
+  assert.deepEqual(ticks(75, 100), [75, 80, 85, 90, 95, 100]);
+  assert.deepEqual(ticks(40, 100), [40, 50, 60, 70, 80, 90, 100]);
+  assert.deepEqual(ticks(97, 100), [97, 98, 99, 100]);
+  // a class whose replay hits a huge % (a 5 / 0 bonus, say) used to loop for millions of lines
+  assert.ok(ticks(-1, 1e9).length <= 7);
+  assert.deepEqual(ticks(92, Infinity), []);
+  assert.deepEqual(ticks(NaN, 100), []);
 });

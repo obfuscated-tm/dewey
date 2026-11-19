@@ -264,6 +264,20 @@ export function history(course, opts = {}) {
 }
 
 /**
+ * Gridline values for a chart from lo to hi: a 1/2/5 × 10ⁿ step, at most
+ * about `max` lines, never under 1. [] when the range isn't a real number.
+ */
+export function ticks(lo, hi, max = 6) {
+  if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) return [];
+  const raw = Math.max((hi - lo) / max, 1);
+  const mag = 10 ** Math.floor(Math.log10(raw));
+  const step = [1, 2, 5, 10].map((m) => m * mag).find((s) => s >= raw);
+  const out = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v);
+  return out;
+}
+
+/**
  * The lowest this category's % can drop, the others unchanged, with the course
  * still at `target` or above. ≤ 0: any score holds it. > 100: it can't, with
  * this category alone. null: the category has no grades yet.

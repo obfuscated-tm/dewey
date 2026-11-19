@@ -38,7 +38,7 @@
 
 import { parseGrades } from '../reader/parse/grades.js';
 import {
-  periodsFromRows, currentPeriod, grade, impact, history, categoryFloor, needFor, letter, statedPct, A_CUTOFF, GOALS,
+  periodsFromRows, currentPeriod, grade, impact, history, categoryFloor, needFor, letter, statedPct, ticks, A_CUTOFF, GOALS,
 } from './grademath.js';
 import {
   createHost, el, onOverlay, isOverlayOn, debounce, keepEvents, getSettings, onSettings,
@@ -203,7 +203,7 @@ function plotPoints(hist) {
   const t = today();
   const pts = [];
   for (const p of hist) {
-    if (p.pct == null) continue;
+    if (!Number.isFinite(p.pct)) continue;
     const day = p.day || t;
     const last = pts[pts.length - 1];
     if (last && last.day === day) { last.pct = p.pct; last.items.push(...p.items); } else pts.push({ day, pct: p.pct, items: [...p.items] });
@@ -226,6 +226,7 @@ function sparkSvg(pts) {
 /** The step chart into `box`, with a dashed line to `proj` when a what-if is set. */
 function drawChart(box, pts, proj, goal = A_CUTOFF) {
   const w = 600, h = 200, m = { l: 36, r: 76, t: 12, b: 24 };
+  if (!Number.isFinite(proj)) proj = null;
   const tNum = dayNum(today());
   const x0 = dayNum(pts[0].day);
   const xEnd = Math.max(dayNum(pts[pts.length - 1].day), tNum);
@@ -240,8 +241,7 @@ function drawChart(box, pts, proj, goal = A_CUTOFF) {
   const sans = 'font-family="ov Instrument Sans, Instrument Sans, sans-serif"';
 
   let g = '';
-  const range = ymax - ymin, step = range <= 12 ? 2 : range <= 30 ? 5 : 10;
-  for (let v = Math.ceil(ymin / step) * step; v <= ymax; v += step) {
+  for (const v of ticks(ymin, ymax)) {
     g += `<line x1="${m.l}" x2="${w - m.r}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--sunk)"/><text x="${m.l - 8}" y="${Y(v) + 4}" text-anchor="end" font-size="11" fill="var(--faint)" ${numFont}>${v}</text>`;
   }
   g += `<line x1="${m.l}" x2="${w - m.r}" y1="${Y(goal)}" y2="${Y(goal)}" stroke="var(--dim)" stroke-dasharray="3 3"/><text x="${w - m.r + 6}" y="${Y(goal) + 4}" font-size="11" fill="var(--dim)" ${sans}>${letter(goal)} cutoff</text>`;

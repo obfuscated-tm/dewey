@@ -40,7 +40,8 @@
         "rule": "overused-font",
         "value": "instrument sans",
         "files": [
-          "docs/extension/design/grade-row.html"
+          "docs/extension/design/grade-row.html",
+          "docs/extension/design/class-card.html"
         ],
         "createdAt": "2026-11-18T23:47:38.639Z",
         "reason": "Claude: mockup copies the shipped overlay's font, documented in docs/extension/OVERLAY-UI.md; not a new font choice"

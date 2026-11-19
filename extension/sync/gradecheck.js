@@ -5,23 +5,20 @@
 // shared limiter; read-only, like everything else here.
 
 import { periodsFromRows, currentPeriod } from '../overlays/grademath.js';
-import { freshGrades, SEEN_KEY, HIDDEN_KEY } from '../overlays/newgrades.js';
+import { freshGrades, SEEN_KEY } from '../overlays/newgrades.js';
 
 export const GRADE_CHECK_MIN = 30;
 
 /**
  * courses: [{ section_id }]. getRows(sectionId) → the gradebook's rows
  * (reader/parse/grades.js), or null when the page couldn't be read. A class
- * hidden on the Grades page is skipped. A class that fails is left as it was.
+ * that fails is left as it was.
  * → how many scores are new, over every class.
  */
 export async function checkGrades({ courses, getRows, storage, now = Date.now() }) {
-  const got = await storage.get([SEEN_KEY, HIDDEN_KEY]);
-  const hidden = new Set(got[HIDDEN_KEY] || []);
   const next = {};
   for (const c of courses) {
     const id = String(c.section_id);
-    if (hidden.has(id)) continue;
     const rows = await getRows(id);
     const course = rows?.length ? currentPeriod(periodsFromRows(rows)) : null;
     if (!course) continue;
@@ -32,12 +29,12 @@ export async function checkGrades({ courses, getRows, storage, now = Date.now() 
   }
   const all = { ...((await storage.get(SEEN_KEY))[SEEN_KEY] || {}), ...next };
   await storage.set({ [SEEN_KEY]: all });
-  return newCount(all, hidden);
+  return newCount(all);
 }
 
-/** The badge's number: unopened new scores in every class that isn't hidden. */
-export function newCount(seen = {}, hidden = new Set()) {
+/** The badge's number: unopened new scores in every class. */
+export function newCount(seen = {}) {
   let n = 0;
-  for (const [id, c] of Object.entries(seen || {})) if (!hidden.has(id)) n += Object.keys(c?.fresh || {}).length;
+  for (const c of Object.values(seen || {})) n += Object.keys(c?.fresh || {}).length;
   return n;
 }

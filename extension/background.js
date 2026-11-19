@@ -12,7 +12,7 @@ import { handleLocal, markSubmittedLocal, LOCAL_OPS, storeKey, readRecord, setPo
 import { toPort, portItems } from './outputs/local/port.js';
 import { isSchoolHost } from './util.js';
 import { GRADE_CHECK_MIN, newCount } from './sync/gradecheck.js';
-import { SEEN_KEY, HIDDEN_KEY } from './overlays/newgrades.js';
+import { SEEN_KEY } from './overlays/newgrades.js';
 
 const SYNC_ALARM = 'neoplan-sync';
 const SYNC_SOON_ALARM = 'neoplan-sync-soon';
@@ -408,18 +408,21 @@ async function ensureGradeAlarm() {
 // The toolbar badge: how many scores are new, from the saved copy, so it also
 // drops the moment a Grades page marks a class seen.
 async function paintBadge() {
-  const got = await chrome.storage.local.get([SEEN_KEY, HIDDEN_KEY]);
-  const n = newCount(got[SEEN_KEY], new Set(got[HIDDEN_KEY] || []));
+  const got = await chrome.storage.local.get(SEEN_KEY);
+  const n = newCount(got[SEEN_KEY]);
   await chrome.action.setBadgeBackgroundColor({ color: '#0F766E' });
   await chrome.action.setBadgeText({ text: n ? String(n) : '' });
   await chrome.action.setTitle({ title: n ? `Dewey: ${n} new grade${n === 1 ? '' : 's'}` : 'Dewey' });
 }
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && (changes[SEEN_KEY] || changes[HIDDEN_KEY])) paintBadge().catch(() => {});
+  if (area === 'local' && changes[SEEN_KEY]) paintBadge().catch(() => {});
 });
 paintBadge().catch(() => {});
 ensureGradeAlarm().catch(() => {});
-chrome.runtime.onInstalled.addListener(() => { ensureAlarm(); ensureMcpAlarm(); });
+chrome.runtime.onInstalled.addListener(() => {
+  ensureAlarm(); ensureMcpAlarm();
+  chrome.storage.local.remove('gradesHidden').catch(() => {}); // the old Hide on /grades/grades (removed 2026-11-18)
+});
 chrome.runtime.onStartup.addListener(() => { ensureAlarm(); ensureMcpAlarm(); restorePausedUntil(); });
 ensureAlarm().catch(() => {}); // and whenever the worker starts, in case the alarm was lost
 ensureMcpAlarm().catch(() => {});

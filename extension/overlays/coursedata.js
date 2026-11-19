@@ -18,7 +18,7 @@ import { parseFolderRows } from '../reader/parse/materials.js';
 import { parseGrades } from '../reader/parse/grades.js';
 import { parseScore } from './grademath.js';
 import { limitedFetch } from '../reader/ratelimit.js';
-import { SEEN_KEY, HIDDEN_KEY } from './newgrades.js';
+import { SEEN_KEY } from './newgrades.js';
 
 export const ROOT = 'root';
 const CACHE_KEY = 'materialsCache'; // { [section]: { grades: { at, rows }, folders: { [fid]: folder }, used } }
@@ -215,14 +215,6 @@ export async function saveGoal(courseId, pct) {
     if (pct == null) delete all[courseId]; else all[courseId] = pct;
     await chrome.storage.local.set({ [GOALS_KEY]: all });
   } catch { /* not in the extension */ }
-}
-
-/** The course ids hidden from /grades/grades. */
-export async function loadHidden() {
-  try { return (await chrome.storage.local.get(HIDDEN_KEY))?.[HIDDEN_KEY] || []; } catch { return []; }
-}
-export async function saveHidden(ids) {
-  try { await chrome.storage.local.set({ [HIDDEN_KEY]: [...ids] }); } catch { /* not in the extension */ }
 }
 
 /** The last copy of a course's scores a Grades page saved, or null. */

@@ -251,9 +251,9 @@ test('runSync: an upcoming assignment neo-plan has no item for is added, with it
   assert.ok(snap2.errors.some((e) => /add 5: 409/.test(e)));
 });
 
-test('checkGrades: first read marks nothing, a new score counts, hidden and unreadable classes are skipped', async () => {
+test('checkGrades: first read marks nothing, a new score counts, unreadable classes are skipped', async () => {
   const { checkGrades, newCount } = await import('../sync/gradecheck.js');
-  const mem = { gradesHidden: ['3'] };
+  const mem = {};
   const storage = {
     get: async (k) => Object.fromEntries([].concat(k).map((x) => [x, mem[x]])),
     set: async (o) => Object.assign(mem, structuredClone(o)),
@@ -268,10 +268,11 @@ test('checkGrades: first read marks nothing, a new score counts, hidden and unre
   const getRows = async (id) => { read.push(id); return books[id]; };
   const courses = [{ section_id: '1' }, { section_id: '2' }, { section_id: '3' }];
   assert.equal(await checkGrades({ courses, getRows, storage, now: 1000 }), 0);
-  assert.deepEqual(read, ['1', '2']); // 3 is hidden
-  assert.deepEqual(mem.gradesSeen, { 1: { scores: { 1: '9/10' }, fresh: {} } });
+  assert.deepEqual(read, ['1', '2', '3']);
+  assert.deepEqual(mem.gradesSeen, { 1: { scores: { 1: '9/10' }, fresh: {} }, 3: { scores: { 1: '1/1' }, fresh: {} } });
   books = { 1: book(['9 / 10', '8 / 10']), 2: null };
   assert.equal(await checkGrades({ courses, getRows, storage, now: 2000 }), 1);
   assert.deepEqual(mem.gradesSeen[1].fresh, { 2: 2000 });
-  assert.equal(newCount(mem.gradesSeen, new Set(['1'])), 0);
+  assert.equal(newCount(mem.gradesSeen), 1);
+  assert.equal(newCount({}), 0);
 });

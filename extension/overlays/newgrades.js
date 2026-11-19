@@ -5,7 +5,6 @@
 // Pure; the saved copy lives in chrome.storage.local (coursedata.js).
 
 export const SEEN_KEY = 'gradesSeen'; // { [course id]: { scores, fresh } }
-export const HIDDEN_KEY = 'gradesHidden'; // [course id] hidden on /grades/grades
 export const NEW_FOR_MS = 7 * 24 * 60 * 60 * 1000; // a mark nobody opened goes after a week, like the iOS app
 
 const key = (it) => `${it.earned}/${it.possible}`;

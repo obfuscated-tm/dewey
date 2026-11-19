@@ -278,19 +278,33 @@ off, the page shows facts only; one visible What-if button turns it on.
 
 Always:
 
-- **Course row:** a small sparkline button ("Hide graph" / "Graph"; open by default) that toggles a row under it
-  with a step chart of the replayed history: y axis around the grade range, a
-  dashed A-cutoff line, hover crosshair + tooltip (date, %, item that changed
-  it), and a dashed projection while what-if mode has changes. Beside it the
-  **What-if** button (a pill; filled and reading "Show real" while the mode is
-  on, "What-if · N changes" when scores are waiting). Right column: "X.XX
-  above A", or "Doesn't match: NN.NN%" when the math and Schoology's course
-  percent still disagree.
-- **Goal** (a small select beside What-if: "Goal A" down to "Goal C-", the
-  iOS app's scale): the grade this class aims for, saved per course
-  (`gradeGoals`), the A line (93%) until picked. Wherever this section says
-  "A" (the graph's dashed cutoff, "above A", "A holds down to", "for an A"),
-  the page shows the goal's letter.
+- **Summary line** (2026-11-18, mockups in [design/grade-row.html](design/grade-row.html);
+  Bessy and gunn.one checked): one pale row of ours right under the course
+  grade, indented like a category, holding everything that changes this
+  class's numbers, left to right. It's the one place to look. Schoology's own
+  row gets nothing beside its grade. On the line:
+  - **Graph:** the sparkline and the word, a toggle for a row under the line
+    with a step chart of the replayed history: y axis around the grade range,
+    a dashed goal line, hover crosshair + tooltip (date, %, item that changed
+    it), and a dashed projection while what-if mode has changes. The chart
+    starts closed on /grades/grades (it made that page long) and open on a
+    class's own Grades page, for that visit only.
+  - **"6.25 above [Goal A ▾]"** (or "below"): course grade minus the goal,
+    with the Goal select (a chip: "Goal A" down to "Goal C-", the iOS app's
+    scale) inside the sentence it changes. The goal is saved per course
+    (`gradeGoals`), the A line (93%) until picked. Wherever this section says
+    "A" (the graph's dashed line, "A holds down to", "for an A"), the page
+    shows the goal's letter. While what-if has changes the number is the
+    what-if one, in the accent, followed by "what-if". "Doesn't match:
+    NN.NN%" (red) replaces the sentence when the math and Schoology's course
+    percent still disagree.
+  - **What-if** at the right end (a pill; filled and reading "Show real" while
+    the mode is on, "What-if · N changes" when scores are waiting).
+- **Click a score** to try one: on an item row, Schoology's own score ("19 /
+  20", or "—") underlines in the accent on hover with the tip "Try a score";
+  a click turns what-if mode on for that class and puts the cursor in that
+  row's score box, so a long gradebook needs no scrolling back up. Only
+  listeners and that hover underline touch Schoology's cell.
 - **New grades:** a small "New" pill beside a graded item's percent when its
   score appeared or changed since the student last looked at this course's
   grades (`overlays/newgrades.js`; the saved copy is `gradesSeen`). A course's
@@ -299,13 +313,9 @@ Always:
   there. A first look marks nothing; an unopened mark goes after a week.
   Between visits the background worker reads each class's gradebook every 30
   minutes (`sync/gradecheck.js`: one GET per class through the shared limiter,
-  skipped during a quiz, a sync or an archive, and for hidden classes) and the
+  skipped during a quiz, a sync or an archive) and the
   toolbar button's badge shows how many scores are new. The badge is painted
   from the saved copy, so it drops as soon as a Grades page marks a class seen.
-- **On /grades/grades only:** a faint **Hide** under each class's name takes
-  the class off the page (`gradesHidden`); "Hidden" under the last class lists
-  them as pills, and clicking one brings it back. With the overlay off every
-  class shows. Not offered when the page has one class.
 - **Category rows:** "weight N%" beside the name, only when Schoology shows no
   (N%) itself; right column "A holds down to NN.N%" (lowest this category can
   drop, the others unchanged, and still keep the A).
@@ -332,7 +342,7 @@ In what-if mode:
   a long gradebook: "What-if", "N changes" (or "Type a score on any row"),
   real → what-if letter and percent, the difference, **Reset** (clears every
   score, left-out item and planned score) and **Show real**.
-- **Show real** (the bar's button or the pill) switches the mode off without
+- **Show real** (the bar's button or the line's pill) switches the mode off without
   clearing anything: every number on the page is real again and the pill reads
   "What-if · N changes". Only one course is in what-if mode at a time on
   /grades/grades.

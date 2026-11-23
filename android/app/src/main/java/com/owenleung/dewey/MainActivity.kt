@@ -110,6 +110,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        lockPhonesPortrait(resources.configuration)
         current = WeakReference(this)
         val model = AppModel.get(this)
         handle(intent, model)
@@ -126,6 +127,21 @@ class MainActivity : ComponentActivity() {
             }
             override fun onStop(owner: LifecycleOwner) { WebConfig.keepSession() }
         })
+    }
+
+    /**
+     * Phones stay portrait, like iOS (AppDelegate): a screen under 600 dp either way. A bigger one
+     * (an unfolded foldable, a tablet) turns, and a wide window gets the wide layout (ui/wide). The
+     * manifest's configChanges keep the activity (and the app's state) through turns, resizes and folds.
+     */
+    private fun lockPhonesPortrait(c: android.content.res.Configuration) {
+        requestedOrientation = if (c.smallestScreenWidthDp < 600) android.content.pm.ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            else android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        lockPhonesPortrait(newConfig)
     }
 
     override fun onDestroy() {

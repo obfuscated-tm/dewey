@@ -24,6 +24,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -98,25 +99,66 @@ fun ClassesScreen() {
     val model = model
     val nav = nav
     var query by rememberSaveable { mutableStateOf("") }
-    ScrollPage(refresh = { runCatching { model.loadCourses() } }, spacing = 14.dp) {
-        ScreenHeader("Classes") {
-            IconButton(onClick = { nav.showID = true }, modifier = Modifier.size(44.dp).coachTarget("classes.id")) {
-                Icon(Icons.Outlined.Badge, "Student ID", tint = C.secondary)
+    // A wide window (ui/wide), nothing open over the right half: search and the shelf left of the
+    // middle, Recently opened right of it.
+    val split = com.owenleung.dewey.ui.wide.LocalSplit.current
+    if (split != null && split.twoColumns(com.owenleung.dewey.ui.Nav.CLASSES) && query.isEmpty() && RecentMaterials.list().isNotEmpty()) {
+        Row(Modifier.fillMaxSize()) {
+            Box(Modifier.width(split.listWidth)) {
+                ScrollPage(refresh = { runCatching { model.loadCourses() } }, spacing = 14.dp) {
+                    ClassesHeader()
+                    SearchField(query, "Search every class's materials") { q -> query = q; if (q.isNotEmpty()) MaterialIndex.build(model) }
+                    if (model.classes.isEmpty()) SkeletonRows(4) else Shelf()
+                }
             }
-            ScreenOptions(SettingsPage.CLASSES)
+            Box(Modifier.weight(1f)) {
+                ScrollPage(spacing = 14.dp) { Recent(Modifier) }
+            }
         }
+        return
+    }
+    ScrollPage(refresh = { runCatching { model.loadCourses() } }, spacing = 14.dp) {
+        ClassesHeader()
         SearchField(query, "Search every class's materials") { q ->
             query = q
             if (q.isNotEmpty()) MaterialIndex.build(model)
         }
         if (query.isEmpty()) {
             if (model.classes.isEmpty()) SkeletonRows(4) else Shelf()
-            val recent = RecentMaterials.list()
-            if (recent.isNotEmpty()) {
-                Text("Recently opened", style = Theme.title, color = C.text, modifier = Modifier.padding(top = 8.dp))
-                Card { recent.take(6).forEachIndexed { i, e -> if (i > 0) Divider(); MaterialLink(e.sectionId, e.row, model.course(e.sectionId)?.shortTitle) } }
-            }
+            Recent(Modifier.padding(top = 8.dp))
         } else {
+            SearchResults(query)
+        }
+    }
+}
+
+@Composable
+private fun ClassesHeader() {
+    val nav = nav
+    ScreenHeader("Classes") {
+            IconButton(onClick = { nav.showID = true }, modifier = Modifier.size(44.dp).coachTarget("classes.id")) {
+                Icon(Icons.Outlined.Badge, "Student ID", tint = C.secondary)
+            }
+            ScreenOptions(SettingsPage.CLASSES)
+        }
+}
+
+@Composable
+private fun Recent(titleModifier: Modifier) {
+    val model = model
+    val recent = RecentMaterials.list()
+    if (recent.isNotEmpty()) {
+        Text("Recently opened", style = Theme.title, color = C.text, modifier = titleModifier)
+        Card { recent.take(6).forEachIndexed { i, e -> if (i > 0) Divider(); MaterialLink(e.sectionId, e.row, model.course(e.sectionId)?.shortTitle) } }
+    }
+}
+
+@Composable
+private fun SearchResults(query: String) {
+    val model = model
+    val nav = nav
+    run {
+        run {
             val hits = MaterialIndex.search(query)
             if (MaterialIndex.building) Row(verticalAlignment = Alignment.CenterVertically) {
                 CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = C.secondary)

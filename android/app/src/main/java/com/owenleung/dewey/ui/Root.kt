@@ -101,9 +101,9 @@ private fun Toast(text: String?, modifier: Modifier) {
     }
 }
 
-private data class TabItem(val title: String, val icon: ImageVector)
+data class TabItem(val title: String, val icon: ImageVector)
 
-private val tabs = listOf(
+val tabs = listOf(
     TabItem("To Do", Icons.AutoMirrored.Outlined.FormatListBulleted),
     TabItem("Grades", Icons.Outlined.BarChart),
     TabItem("Inbox", Icons.Outlined.Inbox),
@@ -121,8 +121,11 @@ fun MainScreen() {
     // The pretend week never loads the real site.
     val schoologyWeb = remember { if (model.practice) null else WebController(ctx, "${Engine.ORIGIN}/home") }
 
-    BackHandler(enabled = nav.stacks[nav.tab].isNotEmpty() || (nav.tab == Nav.SCHOOLOGY && schoologyWeb?.canGoBack == true)) {
-        if (!nav.pop() && nav.tab == Nav.SCHOOLOGY) schoologyWeb?.goBack()
+    BackHandler(enabled = nav.pane?.stacks?.get(nav.tab)?.isNotEmpty() == true || nav.stacks[nav.tab].isNotEmpty() ||
+        (nav.tab == Nav.SCHOOLOGY && schoologyWeb?.canGoBack == true)) {
+        // A wide window: a page over the tab first, then what's open over the right half.
+        if (nav.stacks[nav.tab].isNotEmpty()) nav.pop()
+        else if (nav.pane?.pop() != true && nav.tab == Nav.SCHOOLOGY) schoologyWeb?.goBack()
     }
 
     LaunchedEffect(model.deepLink) {
@@ -150,6 +153,46 @@ fun MainScreen() {
         if (at == null || System.currentTimeMillis() - at.time > 120_000) model.refreshTodo(quick = true)
     }
 
+    // A wide window (an unfolded foldable, a tablet): the rail and the right half (ui/wide).
+    // The phone layout below is unchanged.
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
+        if (com.owenleung.dewey.ui.wide.Wide.isWide(maxWidth, maxHeight)) com.owenleung.dewey.ui.wide.WideShell(schoologyWeb)
+        else PhoneTabs(holder, schoologyWeb)
+    }
+    Overlays()
+}
+
+/** The sheets over everything, for this LocalNav (the wide window's right half has its own). */
+@Composable
+fun Overlays() {
+    val model = model
+    val nav = nav
+    nav.sheet?.let {
+        if (model.practice) PracticeDropbox(it, model) { nav.sheet = null }
+        else SchoologySheet(it) { nav.sheet = null }
+    }
+    nav.file?.let { FileViewer(it) { nav.file = null } }
+    nav.whatIf?.let { (item, section) -> WhatIfSheet(item, section) { nav.whatIf = null } }
+    com.owenleung.dewey.ui.todo.TaskSheets()
+    if (nav.showID) com.owenleung.dewey.ui.settings.StudentIDCard { nav.showID = false }
+}
+
+/** A tab's own screen, at its root. */
+@Composable
+fun TabRoot(tab: Int, schoologyWeb: WebController?) {
+    when (tab) {
+        Nav.TODO -> ToDoScreen()
+        Nav.GRADES -> GradesScreen()
+        Nav.INBOX -> InboxScreen()
+        Nav.CLASSES -> ClassesScreen()
+        else -> schoologyWeb?.let { SchoologyTab(it) } ?: PracticeSchoologyTab()
+    }
+}
+
+@Composable
+private fun PhoneTabs(holder: androidx.compose.runtime.saveable.SaveableStateHolder, schoologyWeb: WebController?) {
+    val model = model
+    val nav = nav
     Scaffold(
         containerColor = C.background,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
@@ -184,27 +227,10 @@ fun MainScreen() {
             val key = "${nav.tab}:${nav.stacks[nav.tab].size}:${route?.key ?: "root"}"
             holder.SaveableStateProvider(key) {
                 if (route != null) RouteScreen(route)
-                else Box(Modifier.statusBarsPadding()) {
-                    when (nav.tab) {
-                        Nav.TODO -> ToDoScreen()
-                        Nav.GRADES -> GradesScreen()
-                        Nav.INBOX -> InboxScreen()
-                        Nav.CLASSES -> ClassesScreen()
-                        else -> schoologyWeb?.let { SchoologyTab(it) } ?: PracticeSchoologyTab()
-                    }
-                }
+                else Box(Modifier.statusBarsPadding()) { TabRoot(nav.tab, schoologyWeb) }
             }
         }
     }
-
-    nav.sheet?.let {
-        if (model.practice) PracticeDropbox(it, model) { nav.sheet = null }
-        else SchoologySheet(it) { nav.sheet = null }
-    }
-    nav.file?.let { FileViewer(it) { nav.file = null } }
-    nav.whatIf?.let { (item, section) -> WhatIfSheet(item, section) { nav.whatIf = null } }
-    com.owenleung.dewey.ui.todo.TaskSheets()
-    if (nav.showID) com.owenleung.dewey.ui.settings.StudentIDCard { nav.showID = false }
 }
 
 @Composable

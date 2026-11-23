@@ -12,6 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -54,7 +55,10 @@ fun DetailScaffold(
                 TopAppBar(
                     title = { Text(title, style = Theme.headline, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     navigationIcon = {
-                        IconButton(onClick = { nav.pop() }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = C.text) }
+                        // The first page over a wide window's right half closes it (ui/wide).
+                        if (com.owenleung.dewey.ui.wide.LocalPaneRoot.current)
+                            IconButton(onClick = { nav.pop() }) { Icon(Icons.Outlined.Close, "Close", tint = C.text) }
+                        else IconButton(onClick = { nav.pop() }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = C.text) }
                     },
                     actions = actions,
                     windowInsets = TopAppBarDefaults.windowInsets,

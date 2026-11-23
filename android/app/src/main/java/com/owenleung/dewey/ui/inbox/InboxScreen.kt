@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -97,7 +98,8 @@ fun InboxScreen() {
         val at = inbox.asOf
         if (at == null || System.currentTimeMillis() - at.time > 120_000) inbox.refresh(model)
     }
-    ScrollPage(refresh = { inbox.refresh(model); shown.clear() }) {
+    val refresh: suspend () -> Unit = { inbox.refresh(model); shown.clear() }
+    val header: @Composable () -> Unit = {
         ScreenHeader("Inbox") {
             IconButton(onClick = { nav.openSheet(SheetTarget("${Engine.ORIGIN}/messages/new")) }) {
                 Icon(Icons.Outlined.EditNote, "New message in Schoology", tint = C.secondary)
@@ -105,25 +107,46 @@ fun InboxScreen() {
             ScreenOptions(SettingsPage.INBOX)
         }
         AsOfBanner(inbox.asOf, inbox.error)
-        if (inbox.asOf == null) {
-            val e = inbox.error
-            if (e != null) ErrorState(e, retry = { scope.launch { inbox.refresh(model) } }) else SkeletonRows(4)
-            return@ScrollPage
-        }
-        // A new school message sits at the top until it's opened, then goes back under School.
-        val newSchool = inbox.schoolThreads(classes).filter(inbox::isNew)
-        if (newSchool.isNotEmpty()) InboxBox("newSchool", "New from school", shown, sources = emptySet()) { newSchool.map(InboxRow::Thread) }
-        InboxBox("teachers", "From teachers", shown, empty = "No messages from teachers", sources = setOf(Source.MESSAGES)) {
-            it.teacherThreads(classes).map(InboxRow::Thread)
-        }
+    }
+    val classesBox: @Composable () -> Unit = {
         InboxBox("classes", "New in your classes", shown, empty = "Nothing new", sources = setOf(Source.NOTICES)) {
             it.classNotices(classes).map(InboxRow::Notice)
         }
-        // Only groups: a course switched to a class in Settings drops out right away.
-        val posts = inbox.posts.filter { p -> classes.none { it.sectionId == p.sectionId } }
-        if (posts.isNotEmpty()) InboxBox("updates", "School updates", shown, sources = emptySet()) { posts.map(InboxRow::Post) }
-        InboxBox("school", "School", shown, empty = "Nothing from school", sources = setOf(Source.MESSAGES, Source.NOTICES)) { i ->
-            i.schoolThreads(classes).filter { !i.isNew(it) }.map(InboxRow::Thread) + i.otherNotices(classes).map(InboxRow::Notice)
+    }
+    /** `classesAt`: where New in your classes goes: 0 in its place, 1 last, -1 not here (right of the middle). */
+    val boxes: @Composable (Int) -> Unit = { classesAt ->
+        if (inbox.asOf == null) {
+            val e = inbox.error
+            if (e != null) ErrorState(e, retry = { scope.launch { inbox.refresh(model) } }) else SkeletonRows(4)
+        } else {
+            // A new school message sits at the top until it's opened, then goes back under School.
+            val newSchool = inbox.schoolThreads(classes).filter(inbox::isNew)
+            if (newSchool.isNotEmpty()) InboxBox("newSchool", "New from school", shown, sources = emptySet()) { newSchool.map(InboxRow::Thread) }
+            InboxBox("teachers", "From teachers", shown, empty = "No messages from teachers", sources = setOf(Source.MESSAGES)) {
+                it.teacherThreads(classes).map(InboxRow::Thread)
+            }
+            if (classesAt == 0) classesBox()
+            // Only groups: a course switched to a class in Settings drops out right away.
+            val posts = inbox.posts.filter { p -> classes.none { it.sectionId == p.sectionId } }
+            if (posts.isNotEmpty()) InboxBox("updates", "School updates", shown, sources = emptySet()) { posts.map(InboxRow::Post) }
+            InboxBox("school", "School", shown, empty = "Nothing from school", sources = setOf(Source.MESSAGES, Source.NOTICES)) { i ->
+                i.schoolThreads(classes).filter { !i.isNew(it) }.map(InboxRow::Thread) + i.otherNotices(classes).map(InboxRow::Notice)
+            }
+            if (classesAt == 1) classesBox()
+        }
+    }
+    val split = com.owenleung.dewey.ui.wide.LocalSplit.current
+    if (split == null) ScrollPage(refresh = refresh) { header(); boxes(0) }
+    else {
+        // A wide window (ui/wide): the boxes left of the middle, New in your classes right of it. Beside an
+        // opened message there's one column, with the classes box last so nothing above it moves.
+        val paneOpen = split.isOpen(com.owenleung.dewey.ui.Nav.INBOX)
+        Column(Modifier.fillMaxSize()) {
+            Column(Modifier.padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) { header() }
+            Row(Modifier.weight(1f)) {
+                Box(if (paneOpen) Modifier.weight(1f) else Modifier.width(split.listWidth)) { ScrollPage(refresh = refresh) { boxes(if (paneOpen) 1 else -1) } }
+                if (!paneOpen && inbox.asOf != null) Box(Modifier.weight(1f)) { ScrollPage(refresh = refresh) { classesBox() } }
+            }
         }
     }
 }

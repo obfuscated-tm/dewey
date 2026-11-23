@@ -19,6 +19,8 @@ import com.owenleung.dewey.web.WebConfig
 /** A screen pushed on a tab (NavigationStack destinations on iOS). */
 sealed class Route {
     open val key: String get() = toString()
+    /** On a wide window, opened from a tab's own screen, it opens over the right half (WideShell). Settings cover the tab. */
+    val opensInPane: Boolean get() = this !is Settings && this !is SettingsPage && this !is Developer
     data class Assignment(val id: String, val sectionId: String? = null) : Route()
     /** The student's own task, opened from somewhere other than To Do (a widget, a class page). */
     data class MineTask(val id: String) : Route()
@@ -72,7 +74,21 @@ class Nav(val model: AppModel) {
     /** The student ID card, full screen. */
     var showID by mutableStateOf(false)
 
-    fun push(r: Route) { stacks[tab] += r }
+    /**
+     * A wide window's right half (ui/wide/WideShell): a Nav of its own whose stacks are what each
+     * tab has open there. Null on the phone layout.
+     */
+    var pane by mutableStateOf<Nav?>(null)
+
+    /** On a wide window, a row on a tab's own screen opens over the right half, replacing what was there. */
+    fun push(r: Route) {
+        val p = pane
+        if (p != null && stacks[tab].isEmpty() && r.opensInPane) {
+            p.tab = tab
+            p.stacks[tab].clear()
+            p.stacks[tab] += r
+        } else stacks[tab] += r
+    }
 
     /** A To Do row: a Schoology item opens its Assignment screen; the student's own task, its editor. */
     fun open(it: com.owenleung.dewey.store.ItemState) {

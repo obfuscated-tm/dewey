@@ -302,9 +302,9 @@ private fun filterTitle(f: DayFilter, now: Date) = when (f) {
 }
 
 /** `sectionId` is set for a class's card (Week); Urgent first's sections have none. */
-private data class Group(val key: String, val title: String, val items: List<ItemState>, val sectionId: String? = null)
+internal data class Group(val key: String, val title: String, val items: List<ItemState>, val sectionId: String? = null)
 
-private fun grouped(m: AppModel, items: List<ItemState>): List<Group> {
+internal fun grouped(m: AppModel, items: List<ItemState>): List<Group> {
     val bySection = items.groupBy { it.sectionId ?: if (it.mine) "mine" else "" }.toMutableMap()
     val out = mutableListOf<Group>()
     for (c in m.courses) {
@@ -334,7 +334,7 @@ private fun urgentGroups(m: AppModel, items: List<ItemState>, now: Date): List<G
  * Unfinished first, then done but not handed in (it may still need turning in),
  * then turned in or submitted; each by due date (overdue oldest first, upcoming soonest first).
  */
-private fun sortItems(m: AppModel, items: List<ItemState>) =
+internal fun sortItems(m: AppModel, items: List<ItemState>) =
     items.sortedWith(compareBy<ItemState> { if (m.isPending(it)) 0 else if (it.turnedIn || it.submitted) 2 else 1 }.thenBy { it.dueAt ?: Long.MAX_VALUE })
 
 /**
@@ -346,7 +346,7 @@ private fun sortItems(m: AppModel, items: List<ItemState>) =
  * hold to set the number.
  */
 @Composable
-private fun CardHeading(g: Group, now: Date, layout: ToDoLayout) {
+internal fun CardHeading(g: Group, now: Date, layout: ToDoLayout) {
     val model = model
     val course = model.course(g.sectionId)
     val showNumbers = CallNumber.shown
@@ -395,9 +395,12 @@ fun CardStampView(stamp: TodoLogic.CardStamp) {
 
 // ── One row ──────────────────────────────────────────────────────────────
 
-/** `inPlan`: a Plan row, whose hold starts a drag (no menu); `beforeSet` runs before a mark from the row (Plan keeps the row in place). */
+/**
+ * `inPlan`: a Plan row, whose hold starts a drag (no menu); `beforeSet` runs before a mark from the row (Plan keeps the row in place).
+ * `board`: a card in a wide window's narrow board column (ui/wide), with the action on its own line under the due line.
+ */
 @Composable
-fun TodoRowItem(item: ItemState, now: Date, course: String? = null, inPlan: Boolean = false, beforeSet: () -> Unit = {}) {
+fun TodoRowItem(item: ItemState, now: Date, course: String? = null, inPlan: Boolean = false, beforeSet: () -> Unit = {}, board: Boolean = false) {
     // ItemState is mutable and the same instance: read the revision so a mark redraws this.
     model.revision.intValue
     val model = model
@@ -438,7 +441,10 @@ fun TodoRowItem(item: ItemState, now: Date, course: String? = null, inPlan: Bool
                     overflow = TextOverflow.Ellipsis)
                 Text(item.title, style = Theme.body, color = C.text)
                 // The one-tap action (Submit / Turn in / Undo) sits at the right end of the due line.
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                if (board) {
+                    DueText(item, now, Modifier)
+                    RowAction(item, submitUrl, beforeSet)
+                } else Row(verticalAlignment = Alignment.CenterVertically) {
                     DueText(item, now, Modifier.weight(1f))
                     RowAction(item, submitUrl, beforeSet)
                 }

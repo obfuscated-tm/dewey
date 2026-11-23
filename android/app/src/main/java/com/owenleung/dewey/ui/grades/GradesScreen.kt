@@ -104,6 +104,11 @@ fun GradesScreen() {
     LaunchedEffect(Unit) { model.twoAtATime(model.classes) { model.loadGrades(it.sectionId) } }
     val visible = model.gradeClasses
     val reportCard = GradesLook.reportCard
+    // A wide window with nothing open beside the list (ui/wide): new grades in two columns that part
+    // at the middle, each class's latest score right of it, and no Recently graded list.
+    val split = com.owenleung.dewey.ui.wide.LocalSplit.current
+    val fold = if (split?.twoColumns(com.owenleung.dewey.ui.Nav.GRADES) == true && LocalDensity.current.fontScale < 1.6f)
+        split.listWidth - 16.dp else null
     ScrollPage(refresh = { model.twoAtATime(model.classes) { model.loadGrades(it.sectionId, force = true) } }, spacing = 12.dp) {
         ScreenHeader("Grades", kicker = model.classes.firstNotNullOfOrNull { model.grades[it.sectionId]?.period }) { ScreenOptions(SettingsPage.GRADES) }
         if (model.classes.isEmpty()) SkeletonRows(4)
@@ -118,7 +123,7 @@ fun GradesScreen() {
                 Text("Mark all seen", style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.secondary,
                     modifier = Modifier.clickable { model.markAllGradesSeen() }.padding(4.dp))
             }
-            GradeList(fresh, showNew = false)
+            GradeList(fresh, showNew = false, fold = fold)
         }
         if (model.classes.isNotEmpty()) {
             // A card, like a report card, with the red rule under its heading; a bigger gap
@@ -132,7 +137,7 @@ fun GradesScreen() {
                     visible.forEachIndexed { i, c ->
                         key(c.sectionId) {
                             if (i > 0) Box(Modifier.fillMaxWidth().height(1.dp).background(C.catalogLine))
-                            ClassGradeRow(c, showLetter = !reportCard)
+                            ClassGradeRow(c, showLetter = !reportCard, foldAt = fold?.let { it - Theme.Space.l })
                         }
                     }
                 }
@@ -143,7 +148,7 @@ fun GradesScreen() {
         }
         val rows = visible.flatMap { c -> (model.grades[c.sectionId]?.items ?: emptyList()).filter { it.earned != null }.map { c to it } }
             .sortedWith { a, b -> model.gradedOrder(a.second, b.second) }
-        if (rows.isNotEmpty()) {
+        if (rows.isNotEmpty() && split == null) {
             Text("Recently graded", style = Theme.headline, color = C.text, modifier = Modifier.padding(top = Theme.Space.l).semantics { heading() })
             GradeList(rows.take(8), showNew = true)
         }
@@ -191,27 +196,43 @@ private fun ReportCardRow(classes: List<Course>, modifier: Modifier = Modifier) 
     }
 }
 
+/** `fold` (a wide window, ui/wide): two columns that part at the middle of the window, this far from the list's left edge. */
 @Composable
-private fun GradeList(rows: List<Pair<Course, CourseGrade.Item>>, showNew: Boolean) {
+private fun GradeList(rows: List<Pair<Course, CourseGrade.Item>>, showNew: Boolean, fold: androidx.compose.ui.unit.Dp? = null) {
+    if (fold != null) Column {
+        rows.chunked(2).forEachIndexed { i, pair ->
+            if (i > 0) Divider()
+            Row {
+                Box(Modifier.width(maxOf(200.dp, fold - Theme.Space.m))) { GradeLine(pair[0], showNew) }
+                Spacer(Modifier.width(Theme.Space.xl))
+                Box(Modifier.weight(1f)) { pair.getOrNull(1)?.let { GradeLine(it, showNew) } }
+            }
+        }
+    } else Column {
+        rows.forEachIndexed { i, r ->
+            if (i > 0) Divider()
+            GradeLine(r, showNew)
+        }
+    }
+}
+
+@Composable
+private fun GradeLine(r: Pair<Course, CourseGrade.Item>, showNew: Boolean) {
     val model = model
     val nav = nav
-    Column {
-        rows.forEachIndexed { i, (c, it) ->
-            if (i > 0) Divider()
-            Row(Modifier.fillMaxWidth().clickable { nav.push(Route.GradeDetail(c.sectionId, it.id)) }.padding(vertical = 10.dp), verticalAlignment = Alignment.Top) {
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(it.title, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text, maxLines = 1,
-                            overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
-                        if (showNew && model.isNewGrade(it.id)) { Spacer(Modifier.width(6.dp)); NewTag() }
-                    }
-                    Text(c.shortTitle, style = Theme.footnote, color = C.secondary)
-                }
-                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(scoreText(it), style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text)
-                    it.impact?.let { d -> Text(Fmt.signed(d), style = Theme.caption, color = impactColor(d)) }
-                }
+    val (c, it) = r
+    Row(Modifier.fillMaxWidth().clickable { nav.push(Route.GradeDetail(c.sectionId, it.id)) }.padding(vertical = 10.dp), verticalAlignment = Alignment.Top) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(it.title, style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
+                if (showNew && model.isNewGrade(it.id)) { Spacer(Modifier.width(6.dp)); NewTag() }
             }
+            Text(c.shortTitle, style = Theme.footnote, color = C.secondary)
+        }
+        Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+            Text(scoreText(it), style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = C.text)
+            it.impact?.let { d -> Text(Fmt.signed(d), style = Theme.caption, color = impactColor(d)) }
         }
     }
 }
@@ -223,7 +244,7 @@ private fun GradeList(rows: List<Pair<Course, CourseGrade.Item>>, showNew: Boole
  * Press and hold to hide it from Grades.
  */
 @Composable
-private fun ClassGradeRow(course: Course, showLetter: Boolean) {
+private fun ClassGradeRow(course: Course, showLetter: Boolean, foldAt: androidx.compose.ui.unit.Dp? = null) {
     val model = model
     val nav = nav
     var menu by remember { mutableStateOf(false) }
@@ -240,20 +261,32 @@ private fun ClassGradeRow(course: Course, showLetter: Boolean) {
                     g?.pct?.let { "${g.letter ?: ""}, ${String.format(Locale.US, "%.1f", it)} percent" }).joinToString(", ")
             }
             .padding(vertical = 10.dp), horizontalArrangement = Arrangement.spacedBy(Theme.Space.m), verticalAlignment = Alignment.CenterVertically) {
-            Spine(course)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            val name: @Composable () -> Unit = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(course.shortTitle, style = Theme.body.copy(fontWeight = FontWeight.Medium), color = C.text, maxLines = 1,
                         overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f, fill = false))
                     if (newCount > 0) { Spacer(Modifier.width(6.dp)); Box(Modifier.size(7.dp).clip(CircleShape).background(C.accent)) }
                 }
-                // The latest score, then its title: the score comes first, so a long title is
-                // what gets cut, never the points. (The period lives on the class screen.)
-                val text = C.text
-                if (last != null) Text(buildAnnotatedString {
-                    withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = text)) { append(scoreText(last)) }
-                    append("  " + last.title)
-                }, style = Theme.footnote, color = C.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            // The latest score, then its title: the score comes first, so a long title is
+            // what gets cut, never the points. (The period lives on the class screen.)
+            val text = C.text
+            val latest = last?.let { l -> buildAnnotatedString {
+                withStyle(SpanStyle(fontWeight = FontWeight.SemiBold, color = text)) { append(scoreText(l)) }
+                append("  " + l.title)
+            } }
+            if (foldAt != null) {
+                // A wide window: the class left of the middle, its latest score right of it, on one line.
+                Row(Modifier.width(maxOf(140.dp, foldAt - Theme.Space.m)), horizontalArrangement = Arrangement.spacedBy(Theme.Space.m),
+                    verticalAlignment = Alignment.CenterVertically) { Spine(course); name() }
+                Text(latest ?: buildAnnotatedString { }, style = Theme.subhead, color = C.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f))
+            } else {
+                Spine(course)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    name()
+                    if (latest != null) Text(latest, style = Theme.footnote, color = C.secondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
             when {
                 g?.pct != null -> {

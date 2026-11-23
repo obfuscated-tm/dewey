@@ -41,6 +41,11 @@ import androidx.compose.material3.rememberTimePickerState
 import com.owenleung.dewey.store.CalendarSync
 import com.owenleung.dewey.store.SchoolDay
 import com.owenleung.dewey.store.StudentID
+import com.owenleung.dewey.store.AppLog
+import com.owenleung.dewey.store.BellSchedule
+import com.owenleung.dewey.store.BellStore
+import com.owenleung.dewey.widget.PeriodWidget
+import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.Checklist
 import androidx.compose.material.icons.outlined.Contrast
@@ -285,6 +290,9 @@ fun SettingsScreen() {
                 PageRow(Icons.Outlined.Badge, 2, "Student ID", if (StudentID.number == null) "Not added" else "Added", divider = false) {
                     nav.push(Route.SettingsPage(SettingsPage.STUDENT_ID))
                 }
+                PageRow(Icons.Outlined.Schedule, 4, "Schedule", if (BellStore.load().isEmpty) "Not set" else null) {
+                    nav.push(Route.SettingsPage(SettingsPage.SCHEDULE))
+                }
             }
             Card {
                 PageRow(Icons.Outlined.Checklist, 1, "To Do", ToDoLayout.current.title, divider = false) { nav.push(Route.SettingsPage(SettingsPage.TODO)) }
@@ -318,6 +326,7 @@ fun SettingsPageScreen(page: SettingsPage) {
         SettingsPage.CALL_NUMBERS -> CallNumberSettings()
         SettingsPage.STATUS_GUIDE -> StatusGuideScreen()
         SettingsPage.NEOPLAN -> NeoPlanScreen()
+        SettingsPage.SCHEDULE -> ScheduleSettings()
     }
 }
 
@@ -675,7 +684,7 @@ fun DeveloperScreen() {
         "gradebook" to """{"sectionId":""}""", "dropbox" to """{"url":"/assignment/ID/dropbox/view/N"}""",
         "rubric" to """{"rubricId":"","enrollmentId":"","itemId":""}""", "materials" to """{"sectionId":""}""",
         "material" to """{"path":"/page/ID"}""", "feed" to """{"sectionId":"","page":0}""",
-        "notifications" to """{"page":0}""", "messages" to """{"page":0}""",
+        "notifications" to """{"page":0}""", "messages" to """{"page":0}""", "account" to "{}",
     )
     fun fill(s: String) = model.classes.firstOrNull()?.sectionId?.let { s.replace("\"sectionId\":\"\"", "\"sectionId\":\"$it\"") } ?: s
     var op by remember { mutableStateOf("courses") }
@@ -685,6 +694,8 @@ fun DeveloperScreen() {
     var menu by remember { mutableStateOf(false) }
     DetailScaffold("Developer") { pad ->
         ScrollPage(pad, spacing = 22.dp) {
+            if (ctx.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE != 0) Section("Now in class widget") { WidgetTestRow() }
+            Section("What the app did") { AppLogList() }
             val planned = Reminders.planned()
             Section("Scheduled reminders (${planned.size})", if (Reminders.exactAllowed) "Exact times allowed." else "Exact times not allowed: each can come up to 10 minutes late.") {
                 Action("Test reminder in 1 minute", divider = false) { Reminders.testInOneMinute() }
@@ -743,6 +754,39 @@ fun DeveloperScreen() {
             }
         }
     }
+}
+
+/**
+ * Debug builds only: a pretend half hour (BellSchedule.test) so the Now in class widget can be watched
+ * through a bell, a passing period and lunch without waiting for school. The real schedule is untouched.
+ */
+@Composable
+private fun WidgetTestRow() {
+    val ctx = LocalContext.current
+    var until by remember { mutableStateOf(BellStore.testUntil) }
+    Action(if (until == null) "Test the widget for 30 minutes" else "Stop the widget test", divider = false) {
+        if (until == null) {
+            val now = Date()
+            val end = Date(now.time + 31 * 60_000)
+            BellStore.startTest(BellSchedule.test(BellStore.load(), now), end)
+            until = end
+        } else {
+            BellStore.stopTest()
+            until = null
+        }
+        PeriodWidget.refresh(ctx)
+    }
+}
+
+/** AppLog, newest first, with Clear. */
+@Composable
+private fun AppLogList() {
+    Prefs.revision.intValue
+    val lines = AppLog.lines.reversed()
+    lines.forEachIndexed { i, l ->
+        RowLine(i > 0) { SelectionContainer { Text(l, style = Theme.code, color = C.text) } }
+    }
+    Action("Clear", divider = lines.isNotEmpty()) { AppLog.clear() }
 }
 
 /**

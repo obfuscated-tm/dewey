@@ -39,7 +39,7 @@ sealed class Route {
 }
 
 /** A page in Settings. The gear on To Do, Grades, Inbox and Classes opens Settings on its own page. */
-enum class SettingsPage { SCHOOLOGY, NOTIFICATIONS, STUDENT_ID, TODO, GRADES, CLASSES, INBOX, HELP, ABOUT, CALL_NUMBERS, STATUS_GUIDE, NEOPLAN }
+enum class SettingsPage { SCHOOLOGY, NOTIFICATIONS, STUDENT_ID, TODO, GRADES, CLASSES, INBOX, HELP, ABOUT, CALL_NUMBERS, STATUS_GUIDE, NEOPLAN, SCHEDULE }
 
 /** What the Schoology sheet (1c) opens. `assignmentId`: re-check its dropbox on close. `google`: offer the full-screen frame. */
 data class SheetTarget(val url: String, val assignmentId: String? = null, val google: Boolean = false)

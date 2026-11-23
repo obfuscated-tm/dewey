@@ -86,6 +86,11 @@ fun SchoologySheet(target: SheetTarget, onClose: () -> Unit) {
         target.assignmentId?.let(model::recheckAfterSheet)
     }
     DisposableEffect(web) { onDispose { web.destroy() } }
+    DisposableEffect(target) {
+        val host = Uri.parse(target.url).host ?: ""
+        com.owenleung.dewey.store.AppLog.note("sheet open $host")
+        onDispose { com.owenleung.dewey.store.AppLog.note("sheet closed $host") }
+    }
 
     Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         BackHandler { if (web.canGoBack) web.goBack() else close() }

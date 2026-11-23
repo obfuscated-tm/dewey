@@ -43,6 +43,8 @@ fun DetailScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     topExtra: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
+    /** The back arrow; a page with its own sub-pages (Settings → Schedule) steps back through them first. */
+    onBack: (() -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val nav = nav
@@ -54,7 +56,7 @@ fun DetailScaffold(
                 TopAppBar(
                     title = { Text(title, style = Theme.headline, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     navigationIcon = {
-                        IconButton(onClick = { nav.pop() }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = C.text) }
+                        IconButton(onClick = { onBack?.invoke() ?: nav.pop() }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = C.text) }
                     },
                     actions = actions,
                     windowInsets = TopAppBarDefaults.windowInsets,

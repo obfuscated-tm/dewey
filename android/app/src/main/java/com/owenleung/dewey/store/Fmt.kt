@@ -44,6 +44,8 @@ object Fmt {
     /** A clock time with no date: "8:00 AM". */
     fun clock(hour: Int, minute: Int): String = java.time.LocalTime.of(hour, minute).format(java.time.format.DateTimeFormatter.ofPattern("h:mm a", java.util.Locale.US)).replace("AM", "am").replace("PM", "pm")
     fun weekdayTime(d: Date) = fmt("EEE h:mm a", d)
+    /** AppLog's "Nov 16 21:08:33". */
+    fun logStamp(d: Date) = fmt("MMM d HH:mm:ss", d)
     fun dayTime(d: Date) = fmt("EEE MMM d, h:mm a", d)
     fun header(d: Date) = fmt("EEEE, MMM d", d)
     fun short(d: Date) = fmt("MMM d", d)

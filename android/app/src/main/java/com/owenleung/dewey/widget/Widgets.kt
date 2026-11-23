@@ -55,7 +55,7 @@ import java.util.Date
 // Home-screen widgets (Widgets/DeweyWidgets.swift). They can't reach
 // Schoology: the app updates them after each refresh or mark.
 
-private object W {
+internal object W {
     val bg = ColorProvider(Color(0xFFFFFFFF), Color(0xFF1C1C1E))
     val text = ColorProvider(Color(0xFF15191D), Color(0xFFF2F2F7))
     val secondary = ColorProvider(Color(0xFF4F5761), Color(0xFFC1C5CC))

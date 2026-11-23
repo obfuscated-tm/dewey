@@ -5,4 +5,5 @@
     <string name="shortcut_student_id">Student ID</string>
     <string name="widget_todo_desc">What\'s due, soonest first. Tap the circle to mark it done in Dewey.</string>
     <string name="widget_tests_desc">Your next tests and latest grades.</string>
+    <string name="widget_period_desc">The class you\'re in, a timer to the bell, and what\'s next.</string>
 </resources>

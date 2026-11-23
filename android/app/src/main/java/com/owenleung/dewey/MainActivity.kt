@@ -115,8 +115,10 @@ class MainActivity : ComponentActivity() {
         handle(intent, model)
         setContent { RootView(model) }
         model.engine.attach(findViewById(android.R.id.content))
+        com.owenleung.dewey.store.AppLog.note("launch")
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
+                com.owenleung.dewey.store.AppLog.note("app active")
                 WidgetBridge.publish(model)
                 // Back after 10 minutes away: To Do refreshes by itself.
                 val at = model.todoAsOf
@@ -124,7 +126,10 @@ class MainActivity : ComponentActivity() {
                     model.scope.launch { model.refreshTodo(quick = true) }
                 }
             }
-            override fun onStop(owner: LifecycleOwner) { WebConfig.keepSession() }
+            override fun onStop(owner: LifecycleOwner) {
+                com.owenleung.dewey.store.AppLog.note("app background")
+                WebConfig.keepSession()
+            }
         })
     }
 

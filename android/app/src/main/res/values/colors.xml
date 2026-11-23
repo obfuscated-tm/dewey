@@ -2,4 +2,6 @@
 <resources>
     <color name="background">#F2F3F5</color>
     <color name="ic_background">#E1F5EE</color>
+    <!-- The widgets' text (Widgets.kt W.text), for the Now in class countdown's RemoteViews. -->
+    <color name="widget_text">#15191D</color>
 </resources>

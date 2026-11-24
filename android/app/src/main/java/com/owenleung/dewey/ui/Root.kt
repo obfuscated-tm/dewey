@@ -156,7 +156,8 @@ fun MainScreen() {
     // A wide window (an unfolded foldable, a tablet): the rail and the right half (ui/wide).
     // The phone layout below is unchanged.
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
-        if (com.owenleung.dewey.ui.wide.Wide.isWide(maxWidth, maxHeight)) com.owenleung.dewey.ui.wide.WideShell(schoologyWeb)
+        // The tour (practice) stays on the phone layout, as on iOS: its coach steps point at phone-only targets.
+        if (!model.practice && com.owenleung.dewey.ui.wide.Wide.isWide(maxWidth, maxHeight)) com.owenleung.dewey.ui.wide.WideShell(schoologyWeb)
         else PhoneTabs(holder, schoologyWeb)
     }
     Overlays()

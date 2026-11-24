@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The Now in class widget's countdown: a Chronometer counts down by itself, like iOS's timer text. -->
+<Chronometer xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/period_timer"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:countDown="true"
+    android:maxLines="1"
+    android:fontFeatureSettings="tnum"
+    android:textStyle="bold"
+    android:textColor="@color/widget_text" />

@@ -58,6 +58,14 @@
             </intent-filter>
             <meta-data android:name="android.appwidget.provider" android:resource="@xml/tests_widget" />
         </receiver>
+        <receiver android:name=".widget.PeriodWidgetReceiver" android:exported="false" android:label="Now in class">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/period_widget" />
+        </receiver>
+        <!-- The Now in class widget's minute redraw (a non-waking alarm, so it waits while the screen is off). -->
+        <receiver android:name=".widget.PeriodTickReceiver" android:exported="false" />
 
         <provider
             android:name="androidx.core.content.FileProvider"

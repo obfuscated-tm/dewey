@@ -101,6 +101,14 @@ fun StudentIDCard(onClose: () -> Unit) {
                 w?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
             }
         }
+        // Going Home or locking the phone is leaving too: the card closes (and the brightness goes back with it),
+        // so it's never waiting bright when the app comes back (StudentIDView.swift, 2026-11-15).
+        val lifecycle = androidx.lifecycle.compose.LocalLifecycleOwner.current
+        DisposableEffect(lifecycle) {
+            val o = androidx.lifecycle.LifecycleEventObserver { _, e -> if (e == androidx.lifecycle.Lifecycle.Event.ON_STOP) onClose() }
+            lifecycle.lifecycle.addObserver(o)
+            onDispose { lifecycle.lifecycle.removeObserver(o) }
+        }
         Column(Modifier.fillMaxSize().background(C.background).statusBarsPadding().navigationBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text("Student ID", style = Theme.headline, color = C.text, modifier = Modifier.weight(1f).padding(start = 12.dp))

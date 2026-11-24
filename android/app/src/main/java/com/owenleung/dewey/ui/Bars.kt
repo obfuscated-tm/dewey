@@ -44,6 +44,8 @@ fun DetailScaffold(
     actions: @Composable RowScope.() -> Unit = {},
     topExtra: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
+    /** The back arrow; a page with its own sub-pages (Settings → Schedule) steps back through them first. */
+    onBack: (() -> Unit)? = null,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val nav = nav
@@ -55,10 +57,10 @@ fun DetailScaffold(
                 TopAppBar(
                     title = { Text(title, style = Theme.headline, maxLines = 1, overflow = TextOverflow.Ellipsis) },
                     navigationIcon = {
-                        // The first page over a wide window's right half closes it (ui/wide).
-                        if (com.owenleung.dewey.ui.wide.LocalPaneRoot.current)
+                        // A page's own sub-page (onBack) goes back inside it; the first page over a wide window's right half closes it (ui/wide).
+                        if (onBack == null && com.owenleung.dewey.ui.wide.LocalPaneRoot.current)
                             IconButton(onClick = { nav.pop() }) { Icon(Icons.Outlined.Close, "Close", tint = C.text) }
-                        else IconButton(onClick = { nav.pop() }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = C.text) }
+                        else IconButton(onClick = { onBack?.invoke() ?: nav.pop() }) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back", tint = C.text) }
                     },
                     actions = actions,
                     windowInsets = TopAppBarDefaults.windowInsets,

@@ -122,7 +122,10 @@ class PeriodWidget : GlanceAppWidget() {
             val small = TextStyle(fontSize = 13.sp, fontWeight = FontWeight.Medium, color = W.secondary)
             Row(verticalAlignment = Alignment.Bottom) {
                 if (!inClass) Text("in ", style = small)
-                AndroidRemoteViews(timerViews(ctx, if (inClass) b.end else b.start, size))
+                // Glance sizes a RemoteViews box as if its text were default size, so the big
+                // countdown got its lower half cut off by the line below. Give it its own height.
+                AndroidRemoteViews(timerViews(ctx, if (inClass) b.end else b.start, size),
+                    modifier = GlanceModifier.height((size * 1.45f).dp))
                 if (inClass) Text(" left", style = small)
             }
         }
@@ -240,14 +243,21 @@ class PeriodWidget : GlanceAppWidget() {
          */
         fun scheduleNext(ctx: Context) {
             val now = Date()
-            val m = BellStore.widgetSchedule(now).moment(now)
+            val schedule = BellStore.widgetSchedule(now)
+            val m = schedule.moment(now)
             var at = LocalDate.now().plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
             val start = m.dayStart
             val end = m.dayEnd
             if (start != null && end != null && now.before(end)) at = maxOf((now.time / 60_000 + 1) * 60_000, start.time - 3_600_000)
+            // Redraw on the bell itself too: past its target the Chronometer counts on below zero ("-00:04").
+            schedule.blocks(now).flatMap { listOf(it.start.time, it.end.time) }.filter { it > now.time }.minOrNull()
+                ?.let { at = minOf(at, it) }
             BellStore.testUntil?.let { at = minOf(at, it.time) }
             val am = ctx.getSystemService(AlarmManager::class.java) ?: return
-            am.setWindow(AlarmManager.RTC, at, 10_000, pending(ctx))
+            // Exact when "Alarms & reminders" is allowed (Settings asks for it for reminders); otherwise Android
+            // may stretch a short window, and the countdown can sit below zero until the redraw comes.
+            if (android.os.Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()) am.setExact(AlarmManager.RTC, at, pending(ctx))
+            else am.setWindow(AlarmManager.RTC, at, 10_000, pending(ctx))
         }
 
         fun cancel(ctx: Context) {

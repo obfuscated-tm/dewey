@@ -15,7 +15,7 @@ Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git hist
 ### iPhone
 - **Schedule** in Settings: type your bell schedule once as day types you name (Block A, Rally…), pick which one each weekday uses (or start from your school's: the five Fremont Union high schools), and set the class, room and teacher of each period. A new day type can start from your Schoology classes or as a copy of another. A **Today** switch covers rally and minimum days.
 - New **Now in class** widget for the Home Screen and Lock Screen: the class you're in, the time left, the room, and what's next.
-- To Do: dropbox work has a small check beside Submit to mark it turned in, for classes that have a dropbox but take the work on paper. (Android too.)
+- To Do: dropbox work has a small check beside Submit to mark it turned in, for classes that have a dropbox but take the work on paper. (Android has had it since 0.5.)
 
 ### Extension
 - Grades: what-if is a mode now, like the iPhone app. Press **What-if** on the course row and every row gets a score box; a bar at the bottom of the window shows your real grade → the what-if one, with Reset and Show real (which keeps what you typed). The hover-only "edit", "drop", "what if" and "+ plan" links are gone.
@@ -27,6 +27,18 @@ Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git hist
 - Fix: the course grade matches Schoology's when a teacher set some items to count for nothing. Schoology doesn't mark those rows, so Dewey checks each category against the percent Schoology shows for it and leaves out the items that don't fit (marked "not counted"). The iPhone and Android apps get the same fix through the shared engine.
 - Done, Studied, Turn in and Remove work without neo-plan. With no token saved they're kept in this browser, one copy per Schoology account, so the daily Schoology sign-out doesn't lose them and another student on the same Chrome sees only their own. With a token, neo-plan holds them as before, and connecting moves the marks made in this browser onto the board (where neo-plan hasn't got a mark of its own).
 - Fix: visiting one of Schoology's own sites (like developers.schoology.com) no longer makes sync, the Claude add-on and the toolbar button use that site instead of your school's.
+
+## 2026-11-24 — Android 0.6
+
+Tag: `android-v0.6` (beta, sideloaded APK)
+
+### Android
+- Catches up with the iPhone app again.
+- **Schedule** in Settings: your bell schedule as day types you name, which one each weekday uses (or start from your school's: the five Fremont Union high schools), and the class, room and teacher of each period, filled in from your Schoology classes. A **Today** switch covers rally and minimum days.
+- New **Now in class** home-screen widget (2×2 and 4×2): the class you're in, a countdown to the bell, the room, and what's next. Allow "Alarms & reminders" for it to change right on the bell.
+- **Wide screens** (an unfolded foldable, a tablet, a window at least 840 dp wide): the tabs move to a rail on the left, To Do becomes a board with one column per class, plus Calendar and Plan views, and a tapped item opens on the right half while the list stays live. Phones are unchanged.
+- Student ID: Fill in from Schoology works again. The card closes when you leave the app.
+- Grades: the course grade matches Schoology's when a teacher set some items to count for nothing (the shared engine's fix).
 
 ## 2026-11-10 — Android 0.5
 

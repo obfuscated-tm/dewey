@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lookingText, pageGroups, matchesQuery, highlight, orderCourses, searchWalks, placeOf, walkCourse } from '../overlays/search.js';
+import { lookingText, pageGroups, rowsFromTree, staleClasses, WALK_FRESH_MS, matchesQuery, highlight, orderCourses, searchWalks, placeOf, walkCourse } from '../overlays/search.js';
 import { classCourses } from '../overlays/todo.js';
 
 test('matchesQuery: every word, in the title or the folder path, any case', () => {
@@ -107,4 +107,29 @@ test('pageGroups: a class page shows its class and hides the others behind a cou
   assert.equal(pageGroups([g('2', 3)], '1', { hereRead: true }).shown.length, 1);
   // This class not read yet: nothing, and no count.
   assert.deepEqual(pageGroups([g('2', 3)], '1', { hereRead: false }), { shown: [], hidden: 0 });
+});
+
+test('rowsFromTree: a Materials page tree becomes search rows with folder paths', () => {
+  const tree = {
+    root: { i: [{ k: 'folder', title: 'Unit 3', fid: '8' }, { k: 'document', title: 'Syllabus', key: 'n-1', url: 'https://x/f.pdf' }] },
+    8: { i: [{ k: 'assignment', title: 'Lab 6', id: '55', url: 'https://x/assignment/55' }] },
+  };
+  const { rows } = rowsFromTree(tree, '99', 'https://x');
+  assert.deepEqual(rows.map((r) => [r.kind, r.title, r.path]), [['folder', 'Unit 3', ''], ['document', 'Syllabus', ''], ['assignment', 'Lab 6', 'Unit 3']]);
+  assert.equal(rows[0].url, 'https://x/course/99/materials?f=8');
+  assert.equal(rows[2].id, '55');
+  // A folder the page never read: not a whole class, so search walks it itself.
+  assert.equal(rowsFromTree({ root: tree.root }, '99'), null);
+  assert.equal(rowsFromTree({}, '99'), null);
+});
+
+test('staleClasses: no copy or a day-old copy is read again', () => {
+  const now = 10 * WALK_FRESH_MS;
+  const classes = [{ section_id: '1' }, { section_id: '2' }, { section_id: '3' }, { section_id: '4' }];
+  const walks = new Map([
+    ['1', { at: now - 60_000, rows: [] }],
+    ['2', { at: now - WALK_FRESH_MS - 1, rows: [] }],
+    ['3', { error: 'x' }],
+  ]);
+  assert.deepEqual(staleClasses(classes, walks, now).map((c) => c.section_id), ['2', '3', '4']);
 });

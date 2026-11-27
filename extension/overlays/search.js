@@ -10,19 +10,27 @@
 // class of the page you're on first. Two lines each: the name, then where it
 // is. "/" focuses the box, ↑↓ move, Enter opens, Esc (or ×) gives the To Do back.
 //
-// Data: the same walk as the MCP's find_material (mcp/src/materialwalk.js),
-// done here with the page's own fetch through the shared limiter: each class's
-// /course/{id}/materials, then every folder under it (breadth first, at most
-// MAX_FOLDERS per class), parsed by reader/parse/mcp.js's materialsFull. A walk
-// starts the first time the box gets focus, not on page load, and is kept in
-// chrome.storage.local for WALK_TTL_MS so the next page doesn't walk again.
+// Data: an index of every class's Materials, kept in chrome.storage.local
+// (WALK_CACHE_KEY) and loaded as the page opens, so typing searches memory and
+// answers at once. Schoology allows 15 requests per 5 s for the whole browser
+// (reader/ratelimit.js), so a class can't be read on demand in a second; it is
+// read ahead instead. A class is read again once its copy is a day old (the
+// iOS app's MaterialIndex rule): quietly once the page is idle, or at once when
+// the box gets focus; the old copy answers until the new one lands. On a
+// Materials page the class comes from that page's own walk (`currentWalk`,
+// overlays/materials.js), never read twice. Otherwise: the same walk as the
+// MCP's find_material (mcp/src/materialwalk.js) through the shared limiter,
+// each class's /course/{id}/materials then every folder under it (breadth
+// first, at most MAX_FOLDERS), parsed by reader/parse/mcp.js's materialsFull.
 
 import { el } from './ui.js';
 import { limitedFetch } from '../reader/ratelimit.js';
 import { parseMcpKind } from '../reader/parse/mcp.js';
 
-export const WALK_TTL_MS = 10 * 60 * 1000;
-export const WALK_CACHE_KEY = 'materialsWalkCache';
+export const WALK_FRESH_MS = 24 * 60 * 60 * 1000; // read a class again after this
+export const WALK_DROP_MS = 30 * 24 * 60 * 60 * 1000; // a class not seen for this long leaves the index
+export const WALK_CACHE_KEY = 'materialsWalkCache'; // { host, walks: { [section]: { at, rows, truncated } } }
+const IDLE_MS = 3000; // how long after the page settles the quiet read starts
 const MAX_FOLDERS = 200;
 const MAX_DEPTH = 6;
 const CONCURRENCY = 3;
@@ -163,6 +171,42 @@ async function listFolder(sectionId, folderId, fetchImpl) {
   return parsed.data || [];
 }
 
+/**
+ * A class's rows from a Materials page's own folder tree (overlays/coursedata.js:
+ * fid → { i: [{ k, title, fid?, url? }] }), in the walk's shape, or null when
+ * the tree is missing a folder (that page stops at 80), so a full walk runs.
+ */
+export function rowsFromTree(tree, sectionId, origin = '') {
+  if (!tree?.root) return null;
+  const rows = [];
+  const queue = [{ fid: 'root', path: '', d: 1 }];
+  const seen = new Set();
+  while (queue.length) {
+    const { fid, path, d } = queue.shift();
+    if (seen.has(fid)) continue;
+    seen.add(fid);
+    const f = tree[fid];
+    if (!f || !Array.isArray(f.i)) return null;
+    for (const r of f.i) {
+      if (r.k === 'folder') {
+        rows.push({ kind: 'folder', title: r.title, id: r.fid, url: `${origin}/course/${sectionId}/materials?f=${r.fid}`, path });
+        if (d < MAX_DEPTH) queue.push({ fid: r.fid, path: path ? `${path} / ${r.title}` : r.title, d: d + 1 });
+      } else {
+        rows.push({ kind: r.k, title: r.title, id: r.id || r.key || null, url: r.url || null, path });
+      }
+    }
+  }
+  return { rows, truncated: false };
+}
+
+/** Which classes need reading: no copy, or a copy older than WALK_FRESH_MS. Page's class first. */
+export function staleClasses(classes, walks, nowMs) {
+  return classes.filter((c) => {
+    const w = walks.get(String(c.section_id));
+    return !w || !w.rows || !(nowMs - (w.at || 0) < WALK_FRESH_MS);
+  });
+}
+
 /** One class's whole Materials tree: { rows: [{ kind, title, id, url, path }], truncated }. */
 export async function walkCourse(sectionId, { fetchImpl = limitedFetch } = {}) {
   const rows = [];
@@ -222,6 +266,11 @@ export function pageGroups(groups, currentSection, { hereRead = false, othersOpe
   return { shown: here, hidden: here.length ? hidden : 0 };
 }
 
+function defaultIdle(fn) {
+  const go = () => (typeof requestIdleCallback === 'function' ? requestIdleCallback(() => fn(), { timeout: 5000 }) : fn());
+  setTimeout(go, IDLE_MS);
+}
+
 // ── The box ─────────────────────────────────────────────────────────────────
 
 /**
@@ -233,6 +282,7 @@ export function pageGroups(groups, currentSection, { hereRead = false, othersOpe
 export function createSearch({
   doc = document, loc = location, courses = () => [], currentSection = null, currentName = null,
   walk = walkCourse, store = null, now = () => Date.now(), onSearching = () => {},
+  currentWalk = null, idle = defaultIdle,
 } = {}) {
   const box = el('label', 'sbox');
   box.append(icon('search'));
@@ -267,42 +317,80 @@ export function createSearch({
     }
     return all;
   }
-  const walks = new Map(); // section id → { rows } | { error }
+  const walks = new Map(); // section id → { at, rows, truncated } | { error }
   let walking = null;
+  let quiet = false; // the running read was started by the idle timer, not the box
+  let warmed = false;
   let sel = 0;
   let links = [];
   const expanded = new Set();
   let othersOpen = false;
 
+  // Takes any copy newer than ours (another tab may have read a class meanwhile).
   async function loadCache() {
     if (!store) return;
     try {
       const c = await store.get(WALK_CACHE_KEY);
-      if (!c || c.host !== loc.host || now() - c.at > WALK_TTL_MS) return;
-      for (const [id, w] of Object.entries(c.walks || {})) if (!walks.has(id)) walks.set(id, w);
+      if (!c || c.host !== loc.host) return;
+      for (const [id, w] of Object.entries(c.walks || {})) {
+        const at = w.at || c.at || 0; // copies saved before per-class times
+        if (!w.rows || now() - at > WALK_DROP_MS) continue;
+        const mine = walks.get(id);
+        if (!mine?.rows || (mine.at || 0) < at) walks.set(id, { ...w, at });
+      }
     } catch { /* no cache */ }
   }
-  function saveCache() {
+  async function saveCache() {
     if (!store) return;
+    await loadCache();
     const out = {};
-    for (const [id, w] of walks) if (w.rows) out[id] = w;
-    store.set(WALK_CACHE_KEY, { at: now(), host: loc.host, walks: out })?.catch?.(() => {});
+    for (const [id, w] of walks) if (w.rows && now() - (w.at || 0) <= WALK_DROP_MS) out[id] = w;
+    try { await store.set(WALK_CACHE_KEY, { host: loc.host, walks: out }); } catch { /* full or gone */ }
+  }
+  const loaded = loadCache().then(() => draw());
+
+  async function readClass(c) {
+    const id = String(c.section_id);
+    if (currentSection && id === String(currentSection) && currentWalk) {
+      try { const w = await currentWalk(); if (w?.rows) return w; } catch { /* walk it ourselves */ }
+    }
+    return walk(c.section_id);
   }
 
-  function startWalk() {
-    if (walking) return walking;
+  function startWalk({ fromIdle = false } = {}) {
+    if (walking) { if (!fromIdle) { quiet = false; draw(); } return walking; }
+    quiet = fromIdle;
     walking = (async () => {
+      await loaded;
       await loadCache();
-      const todo = list().filter((c) => !walks.has(String(c.section_id)));
       draw();
       // One class at a time, the page's own first; the limiter paces requests.
-      for (const c of todo) {
-        try { walks.set(String(c.section_id), await walk(c.section_id)); } catch (e) { walks.set(String(c.section_id), { error: String(e?.message || e) }); }
+      for (const c of staleClasses(list(), walks, now())) {
+        await loadCache(); // another tab may have just read it
+        const id = String(c.section_id);
+        if (!staleClasses([c], walks, now()).length) continue;
+        try {
+          const w = await readClass(c);
+          walks.set(id, { ...w, at: now() });
+          await saveCache();
+        } catch (e) {
+          if (!walks.get(id)?.rows) walks.set(id, { error: String(e?.message || e) });
+        }
         draw();
       }
-      if (todo.length) saveCache();
-    })().finally(() => { walking = null; draw(); });
+    })().finally(() => { walking = null; quiet = false; draw(); });
     return walking;
+  }
+
+  // Read ahead once the page settles, so the first search is already answered.
+  function warm() {
+    if (warmed) return;
+    warmed = true;
+    idle(async () => {
+      await loaded;
+      if (!list().length) { warmed = false; return; } // the class list isn't known yet
+      if (staleClasses(list(), walks, now()).length) startWalk({ fromIdle: true });
+    });
   }
 
   function done() {
@@ -323,7 +411,7 @@ export function createSearch({
     const groups = searchWalks(classes, walks, q);
     const found = groups.reduce((n, g) => n + g.hits.length, 0);
     const busy = !done();
-    if (busy) {
+    if (busy && !quiet) {
       const b = el('div', 'sbusy');
       b.setAttribute('aria-hidden', 'true');
       results.append(b);
@@ -413,6 +501,7 @@ export function createSearch({
   try { doc.addEventListener('keydown', onSlash); } catch { /* tests */ }
 
   return {
+    warm,
     attach(p) {
       // Moving the box into a new panel drops its focus; mounted() puts it back.
       refocus = input.getRootNode?.()?.activeElement === input;
@@ -420,6 +509,7 @@ export function createSearch({
       p.prepend(box);
       p.append(results);
       p.classList.toggle('searching', !!input.value.trim());
+      warm();
     },
     mounted() {
       if (!refocus) return;

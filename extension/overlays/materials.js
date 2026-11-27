@@ -23,7 +23,7 @@ import { np, createHost, el, onClick, debounce, failText, onOverlay, isOverlayOn
 import { rowState, OPEN, folderTotals, summaryParts, pctText, ago } from './matstate.js';
 import { openCourse, chromeStore, fetchDoc, ROOT } from './coursedata.js';
 import { MARK_CSS, markerFor } from './marker.js';
-import { createSearch, walkCourse, SEARCH_CSS } from './search.js';
+import { createSearch, walkCourse, rowsFromTree, SEARCH_CSS } from './search.js';
 import { CARD_ORDER_KEY, classCourses, shortName } from './todo.js';
 
 const ONLY_OPEN_KEY = 'materialsOnlyOpen';
@@ -97,6 +97,10 @@ export async function start({
 
   // Search all materials sits above the strip; while it has a query the strip
   // and Schoology's list give way to the results.
+  // This page walks the course's whole tree anyway (below): search takes the
+  // class from that walk instead of reading the same folders a second time.
+  let treeDone;
+  const treeWalk = new Promise((resolve) => { treeDone = resolve; });
   const wrap = el('div', 'panel');
   wrap.append(box);
   const pageTitle = doc.querySelector('#center-top .page-title, .page-title')?.textContent?.trim();
@@ -105,6 +109,7 @@ export async function start({
     courses: () => classCourses(cards),
     currentSection: section,
     currentName: pageTitle ? shortName(pageTitle) : null,
+    currentWalk: () => treeWalk,
     onSearching: (on) => {
       const table = doc.querySelector('table#folder-contents-table');
       if (table) table.style.display = on ? 'none' : '';
@@ -382,13 +387,16 @@ export async function start({
   observer.observe(doc.body, { childList: true, subtree: true });
 
   const ready = (async () => {
-    await ask(tree[here].a.map((a) => a.id));
-    await course.readGrades();
-    await course.walk();
-    walking = false;
-    await ask(Object.values(tree).flatMap((f) => f.a.map((a) => a.id)));
-    drawAll();
-    await course.saveCache();
+    try {
+      await ask(tree[here].a.map((a) => a.id));
+      await course.readGrades();
+      await course.walk();
+      treeDone(rowsFromTree(tree, section, loc.origin));
+      walking = false;
+      await ask(Object.values(tree).flatMap((f) => f.a.map((a) => a.id)));
+      drawAll();
+      await course.saveCache();
+    } finally { treeDone(null); } // no tree (a failed read): search walks the class itself
   })();
 
   return { ready, tree, known, get grades() { return course.grades; }, hosts, strip: () => strip, search, scan, stop: () => { observer.disconnect(); search.stop(); } };

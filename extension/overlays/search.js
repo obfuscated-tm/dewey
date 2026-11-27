@@ -57,6 +57,7 @@ export const SEARCH_CSS = `
 .sres .t mark { background: none; color: var(--accent); font-weight: 600; }
 .sres .p { display: block; color: var(--dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .smore { display: block; margin-top: 2px; color: var(--accent); font-size: 12px; font-weight: 600; }
+.smore.sothers { margin-top: 12px; font-size: 13px; }
 .sempty { padding: 14px 0 6px; text-align: center; }
 .sempty b { display: block; font-weight: 600; }
 .sempty span { color: var(--dim); font-size: 12px; }
@@ -205,6 +206,22 @@ export function lookingText(classes, walks, currentSection, groups = []) {
   return hereHits ? '' : `Nothing in ${here.name}`;
 }
 
+/**
+ * What a class page shows: only its own class's results, with the other
+ * classes' behind one "N more in other classes" row (`hidden`), unless they
+ * were opened or the class had no match (then they show straight away). Home
+ * (no current class) shows every group.
+ */
+export function pageGroups(groups, currentSection, { hereRead = false, othersOpen = false } = {}) {
+  if (!currentSection) return { shown: groups, hidden: 0 };
+  const isHere = (g) => String(g.course.section_id) === String(currentSection);
+  const here = groups.filter(isHere);
+  const others = groups.filter((g) => !isHere(g));
+  const hidden = others.reduce((n, g) => n + g.hits.length, 0);
+  if (othersOpen || (hereRead && !here.length)) return { shown: here.concat(others), hidden: 0 };
+  return { shown: here, hidden: here.length ? hidden : 0 };
+}
+
 // ── The box ─────────────────────────────────────────────────────────────────
 
 /**
@@ -255,6 +272,7 @@ export function createSearch({
   let sel = 0;
   let links = [];
   const expanded = new Set();
+  let othersOpen = false;
 
   async function loadCache() {
     if (!store) return;
@@ -310,10 +328,12 @@ export function createSearch({
       b.setAttribute('aria-hidden', 'true');
       results.append(b);
     }
-    const looking = busy ? lookingText(classes, walks, currentSection, groups) : '';
+    const hereRead = !!currentSection && walks.has(String(currentSection));
+    const { shown, hidden } = pageGroups(groups, currentSection, { hereRead, othersOpen });
+    const looking = busy || (currentSection && found) ? lookingText(classes, walks, currentSection, groups) : '';
     if (looking) results.append(el('div', 'scount', looking));
-    else if (found) results.append(el('div', 'scount', `${found} found in ${groups.length} ${groups.length === 1 ? 'class' : 'classes'}`));
-    for (const { course, hits } of groups) {
+    else if (found && !currentSection) results.append(el('div', 'scount', `${found} found in ${groups.length} ${groups.length === 1 ? 'class' : 'classes'}`));
+    for (const { course, hits } of shown) {
       const g = el('div', 'sgroup');
       const head = el('div', 'ghead');
       head.style.setProperty('--cls', `var(--class-${course.colorIndex || 'none'})`);
@@ -343,6 +363,12 @@ export function createSearch({
       }
       results.append(g);
     }
+    if (hidden) {
+      const more = el('button', 'smore sothers', `${hidden} more in other classes`);
+      more.type = 'button';
+      more.addEventListener('click', () => { othersOpen = true; draw(); });
+      results.append(more);
+    }
     if (!busy && !found) {
       const e = el('div', 'sempty');
       e.append(el('b', null, 'Nothing called that'), el('span', null, `in ${classes.length} ${classes.length === 1 ? 'class’s' : 'classes’'} Materials`));
@@ -360,11 +386,12 @@ export function createSearch({
     input.value = '';
     sel = 0;
     expanded.clear();
+    othersOpen = false;
     draw();
   }
 
   input.addEventListener('focus', () => { startWalk(); });
-  input.addEventListener('input', () => { sel = 0; expanded.clear(); draw(); });
+  input.addEventListener('input', () => { sel = 0; expanded.clear(); othersOpen = false; draw(); });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') { e.preventDefault(); if (input.value) reset(); else input.blur(); return; }
     if (!links.length) return;

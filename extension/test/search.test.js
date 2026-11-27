@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lookingText, matchesQuery, highlight, orderCourses, searchWalks, placeOf, walkCourse } from '../overlays/search.js';
+import { lookingText, pageGroups, matchesQuery, highlight, orderCourses, searchWalks, placeOf, walkCourse } from '../overlays/search.js';
 import { classCourses } from '../overlays/todo.js';
 
 test('matchesQuery: every word, in the title or the folder path, any case', () => {
@@ -93,4 +93,18 @@ test('lookingText: a class page only talks about its class; Home counts', () => 
   assert.equal(lookingText(classes, read, '1', [{ course: classes[0], hits: [{}] }]), '');
   assert.equal(lookingText(classes, read, '1', [{ course: classes[1], hits: [{}] }]), 'Nothing in AP Comp Sci A');
   assert.equal(lookingText(classes, new Map(), null), 'Looking through 2 classes');
+});
+
+test('pageGroups: a class page shows its class and hides the others behind a count', () => {
+  const g = (id, n) => ({ course: { section_id: id }, hits: Array(n).fill({}) });
+  const groups = [g('1', 2), g('2', 30), g('3', 2)];
+  assert.deepEqual(pageGroups(groups, null).shown, groups);
+  const page = pageGroups(groups, '1', { hereRead: true });
+  assert.deepEqual(page.shown.map((x) => x.course.section_id), ['1']);
+  assert.equal(page.hidden, 32);
+  assert.equal(pageGroups(groups, '1', { hereRead: true, othersOpen: true }).shown.length, 3);
+  // No match in this class: the others show straight away.
+  assert.equal(pageGroups([g('2', 3)], '1', { hereRead: true }).shown.length, 1);
+  // This class not read yet: nothing, and no count.
+  assert.deepEqual(pageGroups([g('2', 3)], '1', { hereRead: false }), { shown: [], hidden: 0 });
 });

@@ -196,11 +196,12 @@ export async function walkCourse(sectionId, { fetchImpl = limitedFetch } = {}) {
  * The busy line. On a class page it names that class until it's read, then
  * "your other classes"; on Home, how many classes.
  */
-export function lookingText(classes, walks, currentSection) {
+export function lookingText(classes, walks, currentSection, groups = []) {
   const here = currentSection && classes.find((c) => String(c.section_id) === String(currentSection));
   if (!here) return `Looking through ${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`;
   if (!walks.has(String(here.section_id))) return `Looking through ${here.name}`;
-  return 'Looking through your other classes';
+  const hereHits = groups.some((g) => String(g.course.section_id) === String(here.section_id));
+  return hereHits ? 'Looking through your other classes' : `Nothing in ${here.name} · looking through your other classes`;
 }
 
 // ── The box ─────────────────────────────────────────────────────────────────
@@ -308,7 +309,7 @@ export function createSearch({
       b.setAttribute('aria-hidden', 'true');
       results.append(b);
     }
-    if (busy) results.append(el('div', 'scount', lookingText(classes, walks, currentSection)));
+    if (busy) results.append(el('div', 'scount', lookingText(classes, walks, currentSection, groups)));
     else if (found) results.append(el('div', 'scount', `${found} found in ${groups.length} ${groups.length === 1 ? 'class' : 'classes'}`));
     for (const { course, hits } of groups) {
       const g = el('div', 'sgroup');

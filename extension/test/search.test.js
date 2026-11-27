@@ -89,6 +89,8 @@ test('walkCourse: opens every folder, tags each row with its path', { skip: type
 test('lookingText: a class page names its class, then the others; Home counts', () => {
   const classes = [{ section_id: '1', name: 'AP Comp Sci A' }, { section_id: '2', name: 'English 11' }];
   assert.equal(lookingText(classes, new Map(), '1'), 'Looking through AP Comp Sci A');
-  assert.equal(lookingText(classes, new Map([['1', { rows: [] }]]), '1'), 'Looking through your other classes');
+  const read = new Map([['1', { rows: [] }]]);
+  assert.equal(lookingText(classes, read, '1', [{ course: classes[0], hits: [{}] }]), 'Looking through your other classes');
+  assert.equal(lookingText(classes, read, '1', [{ course: classes[1], hits: [{}] }]), 'Nothing in AP Comp Sci A · looking through your other classes');
   assert.equal(lookingText(classes, new Map(), null), 'Looking through 2 classes');
 });

@@ -23,11 +23,15 @@ import { np, createHost, el, onClick, debounce, failText, onOverlay, isOverlayOn
 import { rowState, OPEN, folderTotals, summaryParts, pctText, ago } from './matstate.js';
 import { openCourse, chromeStore, fetchDoc, ROOT } from './coursedata.js';
 import { MARK_CSS, markerFor } from './marker.js';
+import { createSearch, walkCourse, rowsFromTree, SEARCH_CSS } from './search.js';
+import { CARD_ORDER_KEY, classCourses, shortName } from './todo.js';
 
 const ONLY_OPEN_KEY = 'materialsOnlyOpen';
 
-const STRIP_CSS = `
+const STRIP_CSS = SEARCH_CSS + `
 :host { display: block; margin: 0 0 8px; }
+.sbox { height: 36px; margin-bottom: 10px; }
+.sbox input { font-size: 14px; }
 .strip {
   display: flex; flex-wrap: wrap; align-items: center; gap: 8px 20px;
   padding: 8px 12px; border: 1px solid var(--line); border-radius: var(--radius);
@@ -56,10 +60,12 @@ const RIGHT_CSS = MARK_CSS + `
 
 export async function start({
   doc = document, loc = location, call = np, getDoc = fetchDoc, store = chromeStore(),
-  now = () => Date.now(),
+  now = () => Date.now(), walkMaterials = walkCourse,
 } = {}) {
   const section = (loc.pathname.match(/^\/course\/(\d+)/) || [])[1];
   if (!section) return null;
+  let cards = [];
+  try { const c = await store.get(CARD_ORDER_KEY); if (Array.isArray(c)) cards = c; } catch { /* none yet */ }
   const here = new URLSearchParams(loc.search || '').get('f') || ROOT;
   const archiveKey = `course:${loc.host}:${section}`;
 
@@ -88,6 +94,28 @@ export async function start({
   const count = el('span');
   const arch = el('span', 'sp');
   box.append(onlyLabel, count, arch);
+
+  // Search all materials sits above the strip; while it has a query the strip
+  // and Schoology's list give way to the results.
+  // This page walks the course's whole tree anyway (below): search takes the
+  // class from that walk instead of reading the same folders a second time.
+  let treeDone;
+  const treeWalk = new Promise((resolve) => { treeDone = resolve; });
+  const wrap = el('div', 'panel');
+  wrap.append(box);
+  const pageTitle = doc.querySelector('#center-top .page-title, .page-title')?.textContent?.trim();
+  const search = createSearch({
+    doc, loc, store, walk: walkMaterials,
+    courses: () => classCourses(cards),
+    currentSection: section,
+    currentName: pageTitle ? shortName(pageTitle) : null,
+    currentWalk: () => treeWalk,
+    onSearching: (on) => {
+      const table = doc.querySelector('table#folder-contents-table');
+      if (table) table.style.display = on ? 'none' : '';
+    },
+  });
+  search.attach(wrap);
   check.addEventListener('change', () => {
     onlyOpen = check.checked;
     store.set(ONLY_OPEN_KEY, onlyOpen);
@@ -326,7 +354,7 @@ export async function start({
     if (!strip || !strip.host.isConnected) {
       strip = createHost('np-materials-strip', STRIP_CSS);
       keepEvents(strip.host);
-      strip.root.append(box);
+      strip.root.append(wrap);
       table.parentNode.insertBefore(strip.host, table);
     }
     clearFilter();
@@ -359,14 +387,17 @@ export async function start({
   observer.observe(doc.body, { childList: true, subtree: true });
 
   const ready = (async () => {
-    await ask(tree[here].a.map((a) => a.id));
-    await course.readGrades();
-    await course.walk();
-    walking = false;
-    await ask(Object.values(tree).flatMap((f) => f.a.map((a) => a.id)));
-    drawAll();
-    await course.saveCache();
+    try {
+      await ask(tree[here].a.map((a) => a.id));
+      await course.readGrades();
+      await course.walk();
+      treeDone(rowsFromTree(tree, section, loc.origin));
+      walking = false;
+      await ask(Object.values(tree).flatMap((f) => f.a.map((a) => a.id)));
+      drawAll();
+      await course.saveCache();
+    } finally { treeDone(null); } // no tree (a failed read): search walks the class itself
   })();
 
-  return { ready, tree, known, get grades() { return course.grades; }, hosts, strip: () => strip, scan, stop: () => observer.disconnect() };
+  return { ready, tree, known, get grades() { return course.grades; }, hosts, strip: () => strip, search, scan, stop: () => { observer.disconnect(); search.stop(); } };
 }

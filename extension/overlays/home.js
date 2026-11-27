@@ -27,7 +27,7 @@ const REREAD_MS = 180_000; // Schoology's own response says `@cache.max_age: 180
 export { fetchEvents };
 
 export function start({
-  doc = document, loc = location, call, getEvents = fetchEvents, todoStore, now,
+  doc = document, loc = location, call, getEvents = fetchEvents, todoStore, now, walkMaterials,
 } = {}) {
   const withList = /^\/home\/assignments\/?$/.test(loc.pathname);
   const events = new Map(); // "title\u0000course" → { schoology_id, section_id, due }
@@ -61,7 +61,7 @@ export function start({
     return out;
   }
 
-  if (!withList) todo = startTodo({ doc, loc, getEvents, ...(todoStore ? { store: todoStore } : {}), ...(now ? { now } : {}) });
+  if (!withList) todo = startTodo({ doc, loc, getEvents, ...(todoStore ? { store: todoStore } : {}), ...(now ? { now } : {}), ...(walkMaterials ? { walkMaterials } : {}) });
 
   const rowsIn = (d) => {
     if (withList) return cardRows(d);

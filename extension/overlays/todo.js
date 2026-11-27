@@ -27,6 +27,7 @@
 import { parseEventsJson, nextEventsUrl } from '../reader/parse/sync.js';
 import { createHost, el, keepEvents, onOverlay, isOverlayOn, debounce } from './ui.js';
 import { limitedFetch } from '../reader/ratelimit.js';
+import { createSearch, SEARCH_CSS } from './search.js';
 import {
   formatDue, formatOverdue, annotateItems, sortDueItems,
   ROW_CSS, tagFor, buildRow, cardStamp,
@@ -167,9 +168,28 @@ export function visibleItems(items, { expanded = false, cap = CAP } = {}) {
   return { shown, more: items.length - shown.length, older };
 }
 
+/**
+ * The classes among the dashboard's cards, in order, for search all
+ * materials: [{ section_id, name, colorIndex }], coloured the way
+ * groupEvents colours them (by place among the classes).
+ */
+export function classCourses(cards = []) {
+  const out = [];
+  const seen = new Set();
+  let classes = 0;
+  for (const c of cards) {
+    if (!isClassCard(c.name)) continue;
+    const colorIndex = (classes++ % 8) + 1;
+    if (!c.section_id || seen.has(String(c.section_id))) continue;
+    seen.add(String(c.section_id));
+    out.push({ section_id: String(c.section_id), name: shortName(c.name), colorIndex });
+  }
+  return out;
+}
+
 // ── Course Dashboard cards: order, live and cached ──────────────────────────
 
-const CARD_ORDER_KEY = 'todoCardOrder';
+export const CARD_ORDER_KEY = 'todoCardOrder';
 // A handful of guesses at the dashboard's own markup; first one that matches wins.
 const CARD_CONTAINER_SELECTORS = ['.course-dashboard__inner ul.sgy-sortable', '.course-dashboard ul.sgy-sortable'];
 const CARD_SELECTORS = ['li.sgy-grid-layout__item'];
@@ -207,7 +227,7 @@ function cardContainerIn(doc) {
 // ── Rendering ────────────────────────────────────────────────────────────
 
 // The group/header chrome, on top of todorows.js's shared panel/row CSS.
-const CSS = ROW_CSS + `
+const CSS = ROW_CSS + SEARCH_CSS + `
 .group { margin: 0 0 14px; }
 .group:last-child { margin-bottom: 0; }
 /* A rule in the class's colour under its name, red while the class has late work. */
@@ -272,6 +292,7 @@ export function start({
   doc = document, loc = location, getEvents = fetchEvents,
   store = defaultStore,
   now = () => new Date(),
+  walkMaterials, // search all materials' walk; test/home-page.html fakes it
 } = {}) {
   const expanded = new Set(); // group key → expanded (memory only)
   let overdue = [], upcoming = [];
@@ -284,6 +305,7 @@ export function start({
   let loaded = false; // a successful fetch happened at least once
   let readAt = 0;
   let reading = null;
+  const search = createSearch({ doc, loc, courses: () => classCourses(cardOrder), store, ...(walkMaterials ? { walk: walkMaterials } : {}) });
 
   function findSchoologyBlock() {
     if (schoologyBlock?.isConnected) return schoologyBlock;
@@ -334,7 +356,9 @@ export function start({
       frag.append(box);
     }
     if (!groups.length) frag.append(el('div', 'nothing', 'Nothing due'));
+    search.attach(frag);
     root.replaceChildren(root.firstChild, frag);
+    search.mounted();
     applyHiding();
     marksHost?.scan?.();
   }
@@ -446,6 +470,7 @@ export function start({
     rowsIn: () => rows,
     active: () => loaded && !!findSchoologyBlock(),
     setMarks: (m) => { marksHost = m; },
-    stop: () => { bodyObserver.disconnect(); cardObserver.disconnect(); clearInterval(tick); },
+    search,
+    stop: () => { bodyObserver.disconnect(); cardObserver.disconnect(); clearInterval(tick); search.stop(); },
   };
 }

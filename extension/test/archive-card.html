@@ -79,12 +79,23 @@
   // same shape background.js writes, so a home page with no running job can
   // show it as its main content.
   const fakeHistory = withHistory ? {
-    'course:123456': {
+    todoCardOrder: [
+      { name: 'AP Biology - 1101: RiveraM p2 T1', section_id: '123456' },
+      { name: 'English 11 - 1303: Park p3 T1', section_id: '222222' },
+      { name: 'AP Computer Science A - 1707: Chen p4 T1', section_id: '333333' },
+      { name: 'French 3 - 1404: Dupont p5 T1', section_id: '444444' },
+    ],
+    'course:district.schoology.com:123456': {
       courseName: 'AP Biology',
       files: { a: 1, b: 1, c: 1, d: 1, e: 1, f: 1, g: 1, h: 1, i: 1, j: 1, k: 1, l: 1, m: 1, n: 1, o: 1, p: 1, q: 1, r: 1, s: 1, t: 1, u: 1, v: 1, w: 1, x: 1, y: 1, z: 1, aa: 1, ab: 1, ac: 1, ad: 1, ae: 1, af: 1, ag: 1, ah: 1, ai: 1, aj: 1, ak: 1, al: 1, am: 1, an: 1 },
       runs: [{ at: new Date(Date.now() - 86400000).toISOString(), stopped: false }],
     },
-    'course:987654': {
+    'course:district.schoology.com:333333': {
+      courseName: 'AP Computer Science A - 1707: Chen p4 T1',
+      files: Object.fromEntries(Array.from({ length: 160 }, (_, i) => ['f' + i, 1])),
+      runs: [{ at: new Date(Date.now() - 40 * 86400000).toISOString(), stopped: false }],
+    },
+    'course:district.schoology.com:987654': {
       courseName: 'US History',
       files: { a: 1, b: 1, c: 1, d: 1, e: 1, f: 1, g: 1, h: 1, i: 1, j: 1 },
       runs: [{ at: new Date(Date.now() - 3 * 86400000).toISOString(), stopped: true }],

@@ -67,6 +67,22 @@ course's host comes from `sender.url`, not anything the page claims),
 `archiveStop`, `archiveState`. Alt+Shift+K / `killEverything()` stops a running
 archive job too.
 
+**The shelf** (2026-11-27, [CATCH-UP-SPEC.md](CATCH-UP-SPEC.md)): the card opens on
+a row of upright books, one per class (`shelfBooks`): the dashboard's classes in
+the sidebar's order (`todoCardOrder`, coloured like the sidebar), then archived
+classes no longer on the dashboard (newest first), then the page's course if it is
+neither. A book's height grows with its item count (`spineHeight`, square root, so
+one huge class doesn't flatten the rest); its spine carries the last-archived date
+and fades toward the paper with age (`fadeFor`: nothing for two weeks, 35% by day
+60; never red, since an old archive isn't late). Classes never archived are dashed
+outlines. Tapping a spine picks it, on any page, home included: the picked book sits
+under the shelf as two lines ("40 items · archived yesterday", or "Not archived
+yet") with a date stamp, and the footer button archives that class ("Archive
+again" / "Archive this course"). The card starts on the page's class, or the
+running job's. While a job runs its book fills from the bottom and the meta line
+shows the job's count and status. Manifests are read from `course:<host>:<id>`
+(`{courseName, files, runs}`).
+
 Because the offscreen document only has `chrome.runtime`, everything else
 (`chrome.downloads.*`, `chrome.scripting.executeScript`, `chrome.tabs.*`,
 `chrome.storage.*`) is proxied to the service worker through
@@ -232,6 +248,7 @@ The sidebar is the extension's spine ([CATCH-UP-SPEC.md](CATCH-UP-SPEC.md)). The
 
 - **Due line:** the full date and time, then one tail: **"· 3 days late"** (red, semibold; "· late" when it was due earlier today), **"· in 3 days"** / "· tomorrow" / "· today" on a test not yet studied, or **"· 5 h 12 min left"** on work still owed in its last 12 hours. Ticks once a minute.
 - **Late** (`showsLate`): past due and not handed in. Work ticked Done but not turned in **stays late**: its "Done, not submitted" goes red too, until it's turned in. A test is late only when it's a Schoology quiz not yet studied for. Missing (Schoology's own gradebook mark) keeps its pill.
+- **Search** (`overlays/search.js`): one box for every class's Materials. On Home it tops the To Do sidebar; on a course it sits **above the Materials list** (over the "Only open work" strip, `overlays/materials.js`), not in the course's sidebar, and while it has a query the strip and Schoology's list give way to the results. Typing searches an index kept in `chrome.storage.local` (`materialsWalkCache`, per host, per class with its own time) and loaded as the page opens, so results come on the first keystroke. Schoology allows 15 requests per 5 s for the whole browser, so the index is read ahead, never on demand: a class is read again once its copy is **30 minutes** old (a pass over every class is a few hundred pages, 2–3 minutes of the limiter's share; the iOS app waits a day), quietly 3 s after the page settles, or at once when the box gets focus; the old copy answers until the new one lands, and a class unseen for 30 days drops out. One class at a time, the page's first, the same BFS as the MCP's `find_material`. On a Materials page the class comes from that page's own walk (`rowsFromTree`), not read a second time. Each query word must start a word in the title or folder path ("lab" finds "Labs", not "Syllabus"). Results replace the sidebar (on a course, the Materials list): grouped by class, the page's class first. On a course page only that class's results show, with the rest behind one "N more in other classes" row; if that class has no match the others show straight away under "Nothing in French 2". Within a class, title matches before path matches, two lines each (name, then where it is), 8 per class then "N more". "/" focuses, ↑↓ move, Enter opens, Esc clears. Progress: while any read runs, even the quiet one, a 2 px line along the box's bottom edge fills as folders are read (`passProgress`: classes done plus the current one's folders against its count last time). The line under the box: on Home, while some class was never read, "4 of 7 classes read"; on a course, "Looking through French 2" while it's read, then "Nothing in French 2 · looking through 4 more classes" (counting down, the others' results showing under it) or just "Nothing in French 2", and no line when it had matches; nothing found anywhere: "Nothing called that".
 - **Class heading** (home only): the class dot and name, the count, then **one stamp** at the right, the most urgent: **LATE** (red) when any row there is late, else **DUE TODAY** (ink) when owed work is due later today; outlined, straight, nothing for tomorrow. Under it a 2 px rule in the class colour, **red** while the class has late work. No call numbers.
 
 ## Grade math

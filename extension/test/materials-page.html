@@ -72,7 +72,24 @@ if (here !== 'root') document.getElementById('crumb').textContent += ` › ${FOL
 // Folder links stay on the stand-in.
 for (const link of document.querySelectorAll('.folder-title a')) link.href = `?f=${new URL(link.href).searchParams.get('f')}`;
 
-const mem = { 'course:district.schoology.com:7000375857': { courseName: 'AP Biology', runs: [{ at: new Date(Date.now() - 2 * 86400e3).toISOString() }] } };
+const mem = {
+  'course:district.schoology.com:7000375857': { courseName: 'AP Biology', runs: [{ at: new Date(Date.now() - 2 * 86400e3).toISOString() }] },
+  // The dashboard list Home saves, for search (?nocards plays a class page before Home was ever seen).
+  ...(q.has('nocards') ? {} : { todoCardOrder: [
+    { section_id: SECTION, name: 'AP Biology - 3410: RiveraM p2 T1' },
+    { section_id: '7000375901', name: 'AP Comp Sci A - 2350: McLeodT p2 T1' },
+    { section_id: '7000375902', name: 'English 11 - 1120: ParkJ p4 T1' },
+  ] }),
+};
+// Search's walk, faked: a few rows per class after a pause.
+const WALKS = {
+  [SECTION]: [['document', 'Lab 6 handout', 'Unit 3'], ['assignment', 'Lab 6 write-up', 'Unit 3 / Labs'], ['document', 'Syllabus 2026-27', '']],
+  7000375901: [['document', 'Lab 11.3 MyDrawingTool', 'Lesson 11'], ['page', 'Lesson 6 notes', 'Lesson 6']],
+  7000375902: [['document', 'The Great Gatsby ch. 6', 'Unit 2']],
+};
+window.walkLog = []; // when each class was read: search's read-ahead, checked by hand
+const walkMaterials = async (sid) => { window.walkLog.push([sid, Math.round(performance.now())]); await wait(900); return { rows: (WALKS[sid] || []).map(([kind, title, path], i) => ({ kind, title, path, id: `${sid}-${i}`, url: `/course/${sid}/materials/gp/${i}` })) }; };
+window.mem = mem;
 const watchers = [];
 const store = {
   async get(k) { return structuredClone(mem[k]); },
@@ -105,5 +122,5 @@ async function send() {
 globalThis.__npNoAutoStart = true;
 const { start } = await import('../overlays/materials.js');
 const loc = { pathname: `/course/${SECTION}/materials`, search: location.search, origin: location.origin, host: 'district.schoology.com', href: `${location.origin}/course/${SECTION}/materials${here === 'root' ? '' : `?f=${here}`}` };
-window.overlay = await start({ loc, call, getDoc, store, send });
+window.overlay = await start({ loc, call, getDoc, store, send, walkMaterials });
 </script></body></html>

@@ -1,0 +1,145 @@
+// node --test test/*.test.js   (from extension/)
+//
+// Search all materials (overlays/search.js): the match rule, the highlight
+// runs, the page's class first, grouping and the walk over a Materials tree.
+// The box itself is covered by opening test/home-page.html.
+
+import { test } from 'node:test';
+import assert from 'node:assert/strict';
+import { lookingText, passProgress, pageGroups, rowsFromTree, staleClasses, WALK_FRESH_MS, matchesQuery, highlight, orderCourses, searchWalks, placeOf, walkCourse } from '../overlays/search.js';
+import { classCourses } from '../overlays/todo.js';
+
+test('matchesQuery: every word, in the title or the folder path, any case', () => {
+  const row = { title: 'Lab 6 — Enzyme rates.pdf', path: 'Unit 4 / Labs' };
+  assert.equal(matchesQuery(row, 'lab 6'), true);
+  assert.equal(matchesQuery(row, 'RATES unit 4'), true);
+  assert.equal(matchesQuery(row, 'lab 7'), false);
+  assert.equal(matchesQuery(row, '   '), false);
+});
+
+test('matchesQuery: words match where a word starts, not in the middle', () => {
+  assert.equal(matchesQuery({ title: 'Syllabus 2026-27', path: '' }, 'lab 6'), false);
+  assert.equal(matchesQuery({ title: 'Labs', path: '' }, 'lab'), true);
+  assert.equal(matchesQuery({ title: '(Lab) week-6', path: '' }, 'lab 6'), true);
+  assert.equal(matchesQuery({ title: 'C++ notes', path: '' }, 'c++'), true);
+});
+
+test('highlight: marks each query word, merges neighbours, keeps the rest', () => {
+  assert.deepEqual(highlight('Lab 6 rates', 'rates lab'), [['Lab', true], [' 6 ', false], ['rates', true]]);
+  assert.deepEqual(highlight('Notes', ''), [['Notes', false]]);
+  assert.deepEqual(highlight('Syllabus lab', 'lab'), [['Syllabus ', false], ['lab', true]]);
+});
+
+test('orderCourses: the page\'s class first, the rest in dashboard order', () => {
+  const cs = [{ section_id: '1' }, { section_id: '2' }, { section_id: '3' }];
+  assert.deepEqual(orderCourses(cs, '3').map((c) => c.section_id), ['3', '1', '2']);
+  assert.deepEqual(orderCourses(cs, '9').map((c) => c.section_id), ['1', '2', '3']);
+  assert.deepEqual(orderCourses(cs, null).map((c) => c.section_id), ['1', '2', '3']);
+});
+
+test('searchWalks: grouped by class in the given order, title matches before path-only ones, empty classes left out', () => {
+  const cs = [{ section_id: '1', name: 'Bio' }, { section_id: '2', name: 'English' }, { section_id: '3', name: 'CS' }];
+  const walks = new Map([
+    ['1', { rows: [{ title: 'Syllabus', path: 'Lab notes' }, { title: 'Lab notes week 2', path: '' }] }],
+    ['2', { rows: [{ title: 'Gatsby', path: '' }] }],
+    ['3', { error: 'HTTP 500' }],
+  ]);
+  const out = searchWalks(cs, walks, 'lab notes');
+  assert.equal(out.length, 1);
+  assert.equal(out[0].course.name, 'Bio');
+  assert.deepEqual(out[0].hits.map((h) => h.title), ['Lab notes week 2', 'Syllabus']);
+});
+
+test('placeOf: folder path with ›, the top is Materials', () => {
+  assert.equal(placeOf({ path: 'Unit 4 / Labs' }), 'Unit 4 › Labs');
+  assert.equal(placeOf({ path: '' }), 'Materials');
+});
+
+test('classCourses: classes only, coloured by place among classes, one per section', () => {
+  const out = classCourses([
+    { name: 'School Hub: Gr10', section_id: '9' },
+    { name: 'Algebra 2 - 1202: ChenL p1', section_id: '1' },
+    { name: 'AP Biology - 1101: RiveraM p2', section_id: '2' },
+    { name: 'AP Biology - 1101: RiveraM p2', section_id: '2' },
+  ]);
+  assert.deepEqual(out, [
+    { section_id: '1', name: 'Algebra 2', colorIndex: 1 },
+    { section_id: '2', name: 'AP Biology', colorIndex: 2 },
+  ]);
+});
+
+// A tiny Materials tree, served as Schoology's own folder markup.
+function folderPage(rows) {
+  const trs = rows.map((r) => r.folder
+    ? `<tr id="f-${r.folder}" class="material-row-folder"><td class="folder-icon-wrapper"></td><td class="folder-title"><a href="/course/7/materials?f=${r.folder}">${r.title}</a></td></tr>`
+    : `<tr id="n-${r.id}" class="dr type-document"><td class="item-info"><span class="item-title"><a href="/course/7/materials/gp/${r.id}">${r.title}</a></span></td></tr>`).join('');
+  return `<html><head><title>Materials | Schoology</title></head><body><div id="center-top"></div><table id="folder-contents-table"><tbody>${trs}</tbody></table></body></html>`;
+}
+
+test('walkCourse: opens every folder, tags each row with its path', { skip: typeof DOMParser === 'undefined' && 'needs DOMParser (covered in test/home-page.html)' }, async () => {
+  const pages = {
+    '/course/7/materials': folderPage([{ folder: 11, title: 'Unit 1' }, { id: 1, title: 'Syllabus' }]),
+    '/course/7/materials?f=11': folderPage([{ id: 2, title: 'Notes' }]),
+  };
+  const fetchImpl = async (url) => ({ ok: true, status: 200, url: `https://x.schoology.com${url}`, text: async () => pages[url] });
+  const { rows } = await walkCourse('7', { fetchImpl });
+  assert.deepEqual(rows.map((r) => [r.title, r.path]), [['Unit 1', ''], ['Syllabus', ''], ['Notes', 'Unit 1']]);
+});
+
+test('lookingText: a class page only talks about its class; Home counts', () => {
+  const classes = [{ section_id: '1', name: 'AP Comp Sci A' }, { section_id: '2', name: 'English 11' }];
+  assert.equal(lookingText(classes, new Map(), '1'), 'Looking through AP Comp Sci A');
+  const read = new Map([['1', { rows: [] }]]);
+  assert.equal(lookingText(classes, read, '1', [{ course: classes[0], hits: [{}] }]), '');
+  assert.equal(lookingText(classes, read, '1', [{ course: classes[1], hits: [{}] }]), 'Nothing in AP Comp Sci A · looking through 1 more class');
+  const both = new Map([['1', { rows: [] }], ['2', { rows: [] }]]);
+  assert.equal(lookingText(classes, both, '1', []), 'Nothing in AP Comp Sci A');
+  assert.equal(lookingText(classes, read, null), '1 of 2 classes read');
+  assert.equal(lookingText(classes, both, null), '');
+});
+
+test('pageGroups: a class page shows its class and hides the others behind a count', () => {
+  const g = (id, n) => ({ course: { section_id: id }, hits: Array(n).fill({}) });
+  const groups = [g('1', 2), g('2', 30), g('3', 2)];
+  assert.deepEqual(pageGroups(groups, null).shown, groups);
+  const page = pageGroups(groups, '1', { hereRead: true });
+  assert.deepEqual(page.shown.map((x) => x.course.section_id), ['1']);
+  assert.equal(page.hidden, 32);
+  assert.equal(pageGroups(groups, '1', { hereRead: true, othersOpen: true }).shown.length, 3);
+  // No match in this class: the others show straight away.
+  assert.equal(pageGroups([g('2', 3)], '1', { hereRead: true }).shown.length, 1);
+  // This class not read yet: nothing, and no count.
+  assert.deepEqual(pageGroups([g('2', 3)], '1', { hereRead: false }), { shown: [], hidden: 0 });
+});
+
+test('rowsFromTree: a Materials page tree becomes search rows with folder paths', () => {
+  const tree = {
+    root: { i: [{ k: 'folder', title: 'Unit 3', fid: '8' }, { k: 'document', title: 'Syllabus', key: 'n-1', url: 'https://x/f.pdf' }] },
+    8: { i: [{ k: 'assignment', title: 'Lab 6', id: '55', url: 'https://x/assignment/55' }] },
+  };
+  const { rows } = rowsFromTree(tree, '99', 'https://x');
+  assert.deepEqual(rows.map((r) => [r.kind, r.title, r.path]), [['folder', 'Unit 3', ''], ['document', 'Syllabus', ''], ['assignment', 'Lab 6', 'Unit 3']]);
+  assert.equal(rows[0].url, 'https://x/course/99/materials?f=8');
+  assert.equal(rows[2].id, '55');
+  // A folder the page never read: not a whole class, so search walks it itself.
+  assert.equal(rowsFromTree({ root: tree.root }, '99'), null);
+  assert.equal(rowsFromTree({}, '99'), null);
+});
+
+test('staleClasses: no copy or a day-old copy is read again', () => {
+  const now = 10 * WALK_FRESH_MS;
+  const classes = [{ section_id: '1' }, { section_id: '2' }, { section_id: '3' }, { section_id: '4' }];
+  const walks = new Map([
+    ['1', { at: now - 60_000, rows: [] }],
+    ['2', { at: now - WALK_FRESH_MS - 1, rows: [] }],
+    ['3', { error: 'x' }],
+  ]);
+  assert.deepEqual(staleClasses(classes, walks, now).map((c) => c.section_id), ['2', '3', '4']);
+});
+
+test('passProgress: classes done plus the share of the current one', () => {
+  assert.equal(passProgress({ total: 0 }), 0);
+  assert.equal(passProgress({ total: 4, done: 1, read: 10, expect: 20 }), 0.375);
+  assert.ok(passProgress({ total: 1, done: 0, read: 50, expect: 20 }) < 1); // more folders than last time: never shows done early
+  assert.equal(passProgress({ total: 2, done: 2 }), 1);
+});

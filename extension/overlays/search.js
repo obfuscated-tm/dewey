@@ -14,9 +14,11 @@
 // (WALK_CACHE_KEY) and loaded as the page opens, so typing searches memory and
 // answers at once. Schoology allows 15 requests per 5 s for the whole browser
 // (reader/ratelimit.js), so a class can't be read on demand in a second; it is
-// read ahead instead. A class is read again once its copy is a day old (the
-// iOS app's MaterialIndex rule): quietly once the page is idle, or at once when
-// the box gets focus; the old copy answers until the new one lands. On a
+// read ahead instead. A class is read again once its copy is 30 minutes old
+// (a whole pass is a few hundred pages, 2–3 min of the limiter's share, so
+// more often would crowd the rest of the extension): quietly once the page is
+// idle, or at once when the box gets focus; the old copy answers until the new
+// one lands. On a
 // Materials page the class comes from that page's own walk (`currentWalk`,
 // overlays/materials.js), never read twice. Otherwise: the same walk as the
 // MCP's find_material (mcp/src/materialwalk.js) through the shared limiter,
@@ -27,7 +29,7 @@ import { el } from './ui.js';
 import { limitedFetch } from '../reader/ratelimit.js';
 import { parseMcpKind } from '../reader/parse/mcp.js';
 
-export const WALK_FRESH_MS = 24 * 60 * 60 * 1000; // read a class again after this
+export const WALK_FRESH_MS = 30 * 60 * 1000; // read a class again after this
 export const WALK_DROP_MS = 30 * 24 * 60 * 60 * 1000; // a class not seen for this long leaves the index
 export const WALK_CACHE_KEY = 'materialsWalkCache'; // { host, walks: { [section]: { at, rows, truncated } } }
 const IDLE_MS = 3000; // how long after the page settles the quiet read starts

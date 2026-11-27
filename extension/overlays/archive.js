@@ -8,10 +8,19 @@
 // shows whatever course is actually running even if it isn't the one on this
 // page — including in the Course row (a running job always wins there, even
 // if the current page is a different course or no course at all).
+//
+// The top of the card is a library shelf (docs/extension/CATCH-UP-SPEC.md,
+// "Archive card"; mockup docs/extension/design/search-archive.html, draft A):
+// one upright book per class, in its class colour, taller with more in it,
+// with its last-archived date on the spine and a fade as it gets older (never
+// red: an old archive isn't late work). Classes on the Course Dashboard that
+// haven't been archived are dashed outlines. The picked book (the page's
+// class, or the one running) is pulled out and shown under the shelf; a
+// running archive fills its book. Tapping another book picks that class.
 
 import { createHost, el, onClick } from './ui.js';
 import { onFolderChange } from './dialog.js';
-import { mascot } from './mascot.js';
+import { classCourses, shortName, CARD_ORDER_KEY } from './todo.js';
 import { OPTION_KEYS, DEFAULT_OPTIONS } from '../outputs/archive/state.js';
 
 const OPTIONS_KEY = 'archiverOptions';
@@ -105,12 +114,30 @@ fieldset input[type="checkbox"] { width: 16px; height: 16px; min-width: 16px; ma
   .progress .fill { animation: none; left: 0; width: 100%; opacity: .35; }
 }
 @keyframes np-arc-indeterminate { 0% { left: -40%; } 100% { left: 100%; } }
-.running { display: flex; align-items: center; gap: 12px; }
-.running .mascot { flex: none; }
-.running .status { flex: 1; min-width: 0; }
-.statusRow { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-top: 8px; }
-.statusRow strong { font-size: 13px; }
-.statusRow .counts { color: var(--dim); font-size: 12px; white-space: nowrap; }
+.shelf { display: flex; align-items: flex-end; justify-content: center; gap: 4px; min-height: 120px; padding: 12px 12px 0; border-bottom: 6px solid #CFC6B6; overflow-x: auto; }
+.spine {
+  position: relative; flex: none; width: 46px; padding: 0 0 18px; border-radius: 3px 3px 1px 1px;
+  background: var(--book); color: #fff; display: flex; align-items: center; justify-content: center; overflow: hidden;
+  transition: transform .15s ease;
+}
+.spine::before, .spine::after { content: ""; position: absolute; left: 4px; right: 4px; height: 1.5px; background: rgba(255,255,255,.55); }
+.spine::before { top: 7px; } .spine::after { bottom: 24px; }
+.spine .name { position: relative; writing-mode: vertical-rl; transform: rotate(180deg); font-weight: 600; font-size: 12px; line-height: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: calc(100% - 20px); }
+.spine .date { position: absolute; left: 0; right: 0; bottom: 5px; text-align: center; font-size: 11px; line-height: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.spine:hover { transform: translateY(-4px); }
+.spine.sel { transform: translateY(-10px); outline: 2px solid var(--ink); outline-offset: 1px; }
+.spine.ghost { padding: 0; background: none; border: 1.5px dashed var(--faint); color: var(--dim); }
+.spine.ghost::before, .spine.ghost::after { display: none; }
+.spine.filling { padding: 0 0 18px; background: color-mix(in srgb, var(--book) 30%, var(--surface)); color: var(--ink); border: 0; }
+.spine .ink { display: none; }
+.spine.filling .ink { display: block; position: absolute; left: 0; right: 0; bottom: 0; height: 45%; background: var(--book); animation: np-arc-fill 2.4s ease-in-out infinite alternate; }
+@keyframes np-arc-fill { from { height: 20%; } to { height: 70%; } }
+@media (prefers-reduced-motion: reduce) { .spine { transition: none; } .spine.filling .ink { animation: none; } }
+.book { display: grid; grid-template-columns: 6px minmax(0, 1fr) auto; column-gap: 10px; align-items: center; }
+.book .edge { grid-row: 1 / span 2; align-self: stretch; border-radius: 2px; background: var(--book); }
+.book .n { font-family: var(--serif); font-weight: 700; font-size: 16px; line-height: 20px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.book .m { grid-column: 2; color: var(--dim); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.book .stamp { grid-column: 3; grid-row: 1 / span 2; color: var(--dim); font-size: 11px; line-height: 13px; font-weight: 800; text-align: center; border: 1.5px solid currentColor; border-radius: 3px; padding: 1px 5px; transform: rotate(-4deg); font-variant-numeric: tabular-nums; }
 .log {
   margin: 8px 0 0; background: var(--sunk); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 8px 10px; height: 200px; flex: none; overflow: auto;
@@ -121,12 +148,6 @@ fieldset input[type="checkbox"] { width: 16px; height: 16px; min-width: 16px; ma
 .log .warn { color: var(--bad); }
 .log .error { color: var(--bad); font-weight: 600; }
 .log .done { color: var(--good); font-weight: 600; }
-.history ul { list-style: none; margin: 0; padding: 0; }
-.history { margin: 4px 0 0; }
-.history h3 { margin: 0 0 6px; font-size: 11px; font-weight: 600; color: var(--dim); text-transform: uppercase; letter-spacing: .03em; }
-.history li { display: flex; justify-content: space-between; gap: 12px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }
-.history li:first-child { border-top: 0; }
-.history .meta { color: var(--dim); font-size: 12px; }
 .foot { flex: none; padding: 12px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 8px; }
 .foot .hint { color: var(--bad); font-size: 12px; }
 .foot .row2 { display: flex; gap: 8px; }
@@ -152,6 +173,73 @@ const localStore = {
   get: (k) => (typeof chrome !== 'undefined' ? chrome.storage.local.get(k) : Promise.resolve({})),
   set: (o) => (typeof chrome !== 'undefined' ? chrome.storage.local.set(o) : Promise.resolve()),
 };
+
+// ── The shelf (pure; test/archive.test.js) ─────────────────────────────
+
+const DAY = 86_400_000;
+
+/**
+ * The books, left to right: the Course Dashboard's classes in order (archived
+ * or not), then classes archived on this host that aren't on the dashboard
+ * any more, newest first. The page's course is added if it's on neither.
+ * `all` is chrome.storage.local's whole contents (manifests under
+ * `course:<host>:<id>`, the dashboard order under todo.js's CARD_ORDER_KEY).
+ * → [{ id, name, colorIndex, items, lastAt, stopped }]; lastAt null = not archived.
+ */
+export function shelfBooks({ all = {}, host = '', pageCourseId = null, pageCourseName = null } = {}) {
+  const prefix = `course:${String(host).toLowerCase()}:`;
+  const archived = new Map();
+  for (const [k, v] of Object.entries(all || {})) {
+    if (!k.startsWith(prefix) || !v || typeof v !== 'object') continue;
+    const id = k.slice(prefix.length);
+    const runs = Array.isArray(v.runs) ? v.runs : [];
+    const last = runs.at(-1);
+    archived.set(id, {
+      name: shortName(v.courseName || `Course ${id}`),
+      items: Object.keys(v.files || {}).length,
+      lastAt: last?.at ? Date.parse(last.at) || null : null,
+      stopped: !!last?.stopped,
+    });
+  }
+  const books = [];
+  const seen = new Set();
+  for (const c of classCourses(Array.isArray(all?.[CARD_ORDER_KEY]) ? all[CARD_ORDER_KEY] : [])) {
+    const a = archived.get(c.section_id);
+    books.push({ id: c.section_id, name: c.name, colorIndex: c.colorIndex, items: a?.items || 0, lastAt: a?.lastAt ?? null, stopped: !!a?.stopped });
+    seen.add(c.section_id);
+  }
+  const rest = [...archived].filter(([id]) => !seen.has(id)).sort((x, y) => (y[1].lastAt || 0) - (x[1].lastAt || 0));
+  for (const [id, a] of rest) { books.push({ id, colorIndex: null, ...a }); seen.add(id); }
+  if (pageCourseId && !seen.has(String(pageCourseId))) {
+    books.push({ id: String(pageCourseId), name: shortName(pageCourseName || `Course ${pageCourseId}`), colorIndex: null, items: 0, lastAt: null, stopped: false });
+  }
+  return books;
+}
+
+/** Spine height in px: 96 for an empty book, up to 160 for the fullest on the shelf. */
+export function spineHeight(items, maxItems) {
+  if (!items || !maxItems) return 96;
+  return Math.round(96 + 64 * Math.sqrt(Math.min(items, maxItems) / maxItems));
+}
+
+/** How far toward the paper an archive has faded (0–35%): none for two weeks, all of it by two months. */
+export function fadeFor(lastAt, now = Date.now()) {
+  if (!lastAt) return 0;
+  const days = (now - lastAt) / DAY;
+  return Math.round(Math.max(0, Math.min(1, (days - 14) / 46)) * 35);
+}
+
+/** "today", "yesterday", "5 days ago", "3 weeks ago", "4 months ago". */
+export function agoText(lastAt, now = Date.now()) {
+  const days = Math.floor((now - lastAt) / DAY);
+  if (days < 1) return 'today';
+  if (days < 2) return 'yesterday';
+  if (days < 14) return `${days} days ago`;
+  if (days < 63) return `${Math.floor(days / 7)} weeks ago`;
+  return `${Math.max(2, Math.round(days / 30))} months ago`;
+}
+
+const shortDate = (t) => new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
 async function readOptions(storage) {
   const got = await storage.get(OPTIONS_KEY).catch(() => ({}));
@@ -196,9 +284,17 @@ export function start({
 
   const body = el('div', 'body');
 
-  const courseRow = el('div', 'row');
-  const courseValue = el('span', 'value muted');
-  courseRow.append(el('span', 'label', 'Course'), courseValue);
+  const shelf = el('div', 'shelf');
+  shelf.setAttribute('role', 'group');
+  shelf.setAttribute('aria-label', 'Archived classes');
+  const book = el('div', 'book');
+  const bookEdge = el('span', 'edge');
+  const bookName = el('span', 'n');
+  const bookMeta = el('span', 'm');
+  bookMeta.setAttribute('role', 'status');
+  const bookStamp = el('span', 'stamp');
+  bookStamp.setAttribute('aria-hidden', 'true');
+  book.append(bookEdge, bookName, bookMeta, bookStamp);
   const elsewhereHint = el('p', 'elsewhere');
   elsewhereHint.hidden = true;
 
@@ -241,18 +337,6 @@ export function start({
   const resultMeta = el('span', 'meta');
   resultBlock.append(resultText, resultMeta);
 
-  const statusSection = el('div', 'running');
-  statusSection.hidden = true;
-  const progress = el('div', 'progress');
-  progress.append(el('div', 'fill'));
-  const statusRow = el('div', 'statusRow');
-  const statusText = el('strong');
-  statusText.setAttribute('role', 'status');
-  const counts = el('span', 'counts');
-  statusRow.append(statusText, counts);
-  const statusBody = el('div', 'status');
-  statusBody.append(progress, statusRow);
-  statusSection.append(mascot('archiving', { size: 44, doc }), statusBody);
 
   const log = el('pre', 'log');
   log.hidden = true;
@@ -261,14 +345,10 @@ export function start({
   let logJobKey = undefined;
   let logLen = 0;
 
-  const historySection = el('div', 'history');
-  historySection.hidden = true;
-  historySection.append(el('h3', null, 'Archived courses'));
-  const historyList = el('ul');
-  historySection.append(historyList);
-  let historyCount = 0;
+  let books = [];
+  let pickedId = null; // a book the student tapped; null = the page's (or the running) class
 
-  body.append(courseRow, elsewhereHint, folderRow, details, resultBlock, statusSection, log, emptyState, historySection);
+  body.append(shelf, book, elsewhereHint, resultBlock, details, folderRow, log, emptyState);
 
   const hint = el('p', 'hint');
   hint.hidden = true;
@@ -313,62 +393,100 @@ export function start({
     log.scrollTop = log.scrollHeight;
   }
 
+  // The class the card is about: a tapped book, else the running job's, else the page's.
+  function targetId() {
+    if (pickedId) return pickedId;
+    if (jobState?.running && jobState.host === loc.host.toLowerCase()) return String(jobState.courseId);
+    return courseId ? String(courseId) : null;
+  }
+
+  function drawShelf(target, runningHere) {
+    const now = Date.now();
+    const max = Math.max(0, ...books.map((b) => b.items));
+    shelf.replaceChildren();
+    for (const b of books) {
+      const filling = runningHere && b.id === String(jobState.courseId);
+      const archivedBook = b.lastAt != null;
+      const spine = el('button', 'spine');
+      spine.type = 'button';
+      spine.classList.toggle('ghost', !archivedBook && !filling);
+      spine.classList.toggle('filling', filling);
+      spine.classList.toggle('sel', b.id === target);
+      spine.setAttribute('aria-pressed', String(b.id === target));
+      const colour = `var(--class-${b.colorIndex || 'none'})`;
+      spine.style.setProperty('--book', fadeFor(b.lastAt, now) && !filling
+        ? `color-mix(in srgb, ${colour} ${100 - fadeFor(b.lastAt, now)}%, var(--surface))` : colour);
+      spine.style.height = `${spineHeight(b.items, max)}px`;
+      spine.title = b.name;
+      spine.setAttribute('aria-label', archivedBook ? `${b.name}, archived ${agoText(b.lastAt, now)}` : `${b.name}, not archived yet`);
+      spine.append(el('span', 'ink'), el('span', 'name', b.name));
+      if (archivedBook && !filling) spine.append(el('span', 'date', shortDate(b.lastAt)));
+      onClick(spine, () => { pickedId = b.id; draw(); });
+      shelf.append(spine);
+    }
+    shelf.hidden = !books.length;
+  }
+
   function draw() {
     const running = !!jobState?.running;
     const finished = !!jobState && !running;
-    const sameCourse = running && String(jobState.courseId) === String(courseId) && jobState.host === loc.host.toLowerCase();
+    const runningHere = running && jobState.host === loc.host.toLowerCase();
+    const target = targetId();
+    const b = books.find((x) => x.id === target) || null;
+    const isJobCourse = !!jobState && target === String(jobState.courseId) && jobState.host === loc.host.toLowerCase();
 
-    // A running job always wins the Course row and the header subtitle, even
-    // if it isn't the one on this page — there's only ever one job.
-    const rowCourseName = running
-      ? (jobState.courseName || `Course ${jobState.courseId}`)
-      : (courseId ? pageCourseName() : null);
-    courseValue.textContent = rowCourseName || 'No course open';
-    courseValue.classList.toggle('muted', !rowCourseName);
+    drawShelf(target, runningHere);
 
-    courseRow.hidden = !rowCourseName;
-    details.hidden = running || !courseId;
-    elsewhereHint.hidden = !(running && !sameCourse);
-    if (running && !sameCourse) elsewhereHint.textContent = `Running on ${jobState.host}.`;
+    elsewhereHint.hidden = !(running && !runningHere);
+    if (running && !runningHere) elsewhereHint.textContent = `Running on ${jobState.host}.`;
 
-    sub.textContent = running ? 'Archiving…'
-      : finished ? (jobState.error ? 'Error' : jobState.stopped ? 'Stopped' : 'Done')
-      : (courseId ? pageCourseName() : '');
+    sub.textContent = running ? 'Archiving'
+      : `${books.filter((x) => x.lastAt != null).length} of ${books.length} classes`;
+    if (!books.length && !running) sub.textContent = '';
 
-    resultBlock.hidden = !finished;
-    if (finished) {
+    // The picked book, under the shelf: two lines and the date stamp.
+    book.hidden = !target;
+    if (target) {
+      const name = b?.name || (isJobCourse && jobState.courseName ? shortName(jobState.courseName) : (target === String(courseId) ? shortName(pageCourseName()) : `Course ${target}`));
+      bookName.textContent = name;
+      book.style.setProperty('--book', `var(--class-${b?.colorIndex || 'none'})`);
+      if (running && isJobCourse) {
+        bookMeta.textContent = [jobState.counts ? `${jobState.counts} items` : null, jobState.status || 'Archiving…'].filter(Boolean).join(' · ');
+        bookStamp.hidden = true;
+      } else if (b?.lastAt != null) {
+        bookMeta.textContent = `${b.items} items · archived ${agoText(b.lastAt)}${b.stopped ? ' · stopped' : ''}`;
+        const [mon, day] = shortDate(b.lastAt).split(' ');
+        bookStamp.replaceChildren(doc.createTextNode(mon.toUpperCase()), el('br'), doc.createTextNode(day));
+        bookStamp.hidden = false;
+      } else {
+        bookMeta.textContent = 'Not archived yet';
+        bookStamp.hidden = true;
+      }
+    }
+
+    resultBlock.hidden = !(finished && isJobCourse);
+    if (finished && isJobCourse) {
       const kind = jobState.error ? 'bad' : jobState.stopped ? 'dim' : 'good';
       resultBlock.className = `result ${kind}`;
       const icon = jobState.error ? '✕' : jobState.stopped ? '■' : '✓';
       resultText.textContent = jobState.error ? `${icon} ${jobState.error}` : `${icon} ${jobState.stopped ? 'Stopped.' : (jobState.summary || 'Done.')}`;
-      resultMeta.textContent = [
-        jobState.courseName || (jobState.courseId ? `Course ${jobState.courseId}` : null),
-        jobState.counts ? `${jobState.counts} items` : null,
-      ].filter(Boolean).join(' · ');
+      resultMeta.textContent = jobState.counts ? `${jobState.counts} items` : '';
     }
 
-    statusSection.hidden = !running;
-    if (running) {
-      statusText.textContent = jobState.status || 'Archiving…';
-      counts.textContent = jobState.counts ? `${jobState.counts} items` : '';
-    }
+    details.hidden = running || !target;
+    log.hidden = !((running && isJobCourse) || (finished && isJobCourse));
+    if (!log.hidden) renderLog(jobState.log || [], jobState.jobId);
 
-    log.hidden = !(running || finished);
-    if (running || finished) renderLog(jobState.log || [], jobState.jobId);
+    emptyState.hidden = !!target || running || books.length > 0;
 
-    const showEmpty = !courseId && !running && !finished;
-    emptyState.hidden = !showEmpty;
-
-    historySection.hidden = !(historyCount > 0 && !running);
-
-    // Footer.
+    // Footer: Stop while running; otherwise archive the picked class.
     stopBtn.hidden = !running;
     stopBtn.disabled = false;
-    startBtn.hidden = running || !courseId;
+    startBtn.hidden = running || !target;
     startBtn.disabled = false;
-    startBtn.textContent = finished ? 'Archive again' : 'Archive this course';
-    closeFootBtn.hidden = !finished;
-    foot.hidden = !(running || finished || courseId);
+    startBtn.textContent = b?.lastAt != null || (finished && isJobCourse) ? 'Archive again' : 'Archive this course';
+    closeFootBtn.hidden = !(finished && isJobCourse) || running;
+    foot.hidden = !(running || target);
   }
 
   async function refreshFolder() {
@@ -381,18 +499,9 @@ export function start({
     changeFolder.textContent = r.custom && !r.granted ? 'Allow again' : 'Change';
   }
 
-  async function refreshHistory() {
+  async function refreshShelf() {
     const all = await storage.get(null).catch(() => ({}));
-    const courses = Object.entries(all).filter(([k]) => k.startsWith('course:')).map(([, v]) => v);
-    historyCount = courses.length;
-    historyList.replaceChildren();
-    for (const c of courses.sort((a, b) => (b.runs?.at?.(-1)?.at || '').localeCompare(a.runs?.at?.(-1)?.at || '')).slice(0, 10)) {
-      const li = el('li');
-      const last = c.runs?.at?.(-1);
-      const meta = `${Object.keys(c.files || {}).length} items · ${last ? new Date(last.at).toLocaleDateString() : 'never'}${last?.stopped ? ' (stopped)' : ''}`;
-      li.append(el('span', null, c.courseName), el('span', 'meta', meta));
-      historyList.append(li);
-    }
+    books = shelfBooks({ all, host: loc.host, pageCourseId: courseId, pageCourseName: courseId ? pageCourseName() : null });
     draw();
   }
 
@@ -402,11 +511,12 @@ export function start({
 
   async function open() {
     courseId = courseIdOf(loc.pathname);
+    pickedId = null;
     const saved = await readOptions(storage);
     for (const k of OPTION_KEYS) checks[k].checked = saved[k];
     draw();
     refreshFolder();
-    refreshHistory();
+    refreshShelf();
     if (!isOpen) {
       isOpen = true;
       openerEl = doc.activeElement;
@@ -432,14 +542,15 @@ export function start({
   }
 
   async function startNow() {
-    if (!courseId) return;
+    const id = targetId();
+    if (!id) return;
     const options = currentOptions();
     storage.set({ [OPTIONS_KEY]: options }).catch(() => {});
     startBtn.disabled = true;
     hint.hidden = true;
     hint.textContent = '';
     let r = null;
-    try { r = await send({ type: 'archiveStart', courseId, options }); } catch { /* worker gone */ }
+    try { r = await send({ type: 'archiveStart', courseId: id, options }); } catch { /* worker gone */ }
     if (!r?.ok) {
       hint.textContent = r?.error === 'busy'
         ? 'An archive is already running. Stop it first.'
@@ -491,8 +602,10 @@ export function start({
       port = connect();
       port.onMessage.addListener((msg) => {
         if (msg?.type !== 'archiveState') return;
+        const wasRunning = !!jobState?.running;
         jobState = msg.state;
-        if (isOpen) draw();
+        // A job that just ended wrote its manifest: the shelf's book changes.
+        if (isOpen) { if (wasRunning && !jobState?.running) refreshShelf(); else draw(); }
       });
       port.onDisconnect.addListener(() => { port = null; setTimeout(connectPort, 1000); });
     } catch { /* no chrome: tests */ }

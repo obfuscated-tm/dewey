@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { matchesQuery, highlight, orderCourses, searchWalks, placeOf, walkCourse } from '../overlays/search.js';
+import { lookingText, matchesQuery, highlight, orderCourses, searchWalks, placeOf, walkCourse } from '../overlays/search.js';
 import { classCourses } from '../overlays/todo.js';
 
 test('matchesQuery: every word, in the title or the folder path, any case', () => {
@@ -84,4 +84,11 @@ test('walkCourse: opens every folder, tags each row with its path', { skip: type
   const fetchImpl = async (url) => ({ ok: true, status: 200, url: `https://x.schoology.com${url}`, text: async () => pages[url] });
   const { rows } = await walkCourse('7', { fetchImpl });
   assert.deepEqual(rows.map((r) => [r.title, r.path]), [['Unit 1', ''], ['Syllabus', ''], ['Notes', 'Unit 1']]);
+});
+
+test('lookingText: a class page names its class, then the others; Home counts', () => {
+  const classes = [{ section_id: '1', name: 'AP Comp Sci A' }, { section_id: '2', name: 'English 11' }];
+  assert.equal(lookingText(classes, new Map(), '1'), 'Looking through AP Comp Sci A');
+  assert.equal(lookingText(classes, new Map([['1', { rows: [] }]]), '1'), 'Looking through your other classes');
+  assert.equal(lookingText(classes, new Map(), null), 'Looking through 2 classes');
 });

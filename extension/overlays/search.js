@@ -1,11 +1,12 @@
-// Search all materials: a box at the top of the To Do sidebar (overlays/todo.js
-// on Home, overlays/coursetodo.js on a course page) that finds a file, page,
-// folder or assignment by name across every class's whole Materials tree.
+// Search all materials: a box at the top of the To Do sidebar on Home
+// (overlays/todo.js) and above the Materials list on a course's Materials page
+// (overlays/materials.js), that finds a file, page, folder or assignment by
+// name across every class's whole Materials tree, the page's class first.
 // docs/extension/CATCH-UP-SPEC.md ("Search all materials"), mockup
 // docs/extension/design/search-archive.html.
 //
-// While there's a query the results cover the To Do part of the panel
-// (`.panel.searching`), grouped by class in Course Dashboard order, with the
+// While there's a query the results cover the rest of the panel
+// (`.panel.searching`; on Materials, `onSearching` hides Schoology's list too), grouped by class in Course Dashboard order, with the
 // class of the page you're on first. Two lines each: the name, then where it
 // is. "/" focuses the box, ↑↓ move, Enter opens, Esc (or ×) gives the To Do back.
 //
@@ -46,7 +47,9 @@ export const SEARCH_CSS = `
 @keyframes np-sbusy { to { left: 100%; } }
 @media (prefers-reduced-motion: reduce) { .sbusy::after { animation: none; left: 0; width: 100%; opacity: .35; } }
 .sgroup + .sgroup { margin-top: 12px; }
-.sgroup .ghead { padding-bottom: 4px; }
+.sgroup .ghead { display: flex; align-items: center; gap: 8px; padding: 2px 0 4px; border-bottom: 2px solid var(--cls, var(--line)); }
+.sgroup .gname { font-weight: 600; }
+.sgroup .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .sres { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 8px; padding: 6px; margin: 0 -6px; border-radius: var(--radius-sm); color: var(--ink); text-decoration: none; }
 .sres:hover, .sres.sel { background: var(--accent-soft); }
 .sres svg { width: 14px; height: 14px; margin-top: 2px; fill: none; stroke: var(--dim); stroke-width: 1.8; stroke-linejoin: round; stroke-linecap: round; }
@@ -189,6 +192,17 @@ export async function walkCourse(sectionId, { fetchImpl = limitedFetch } = {}) {
   return { rows, truncated };
 }
 
+/**
+ * The busy line. On a class page it names that class until it's read, then
+ * "your other classes"; on Home, how many classes.
+ */
+export function lookingText(classes, walks, currentSection) {
+  const here = currentSection && classes.find((c) => String(c.section_id) === String(currentSection));
+  if (!here) return `Looking through ${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`;
+  if (!walks.has(String(here.section_id))) return `Looking through ${here.name}`;
+  return 'Looking through your other classes';
+}
+
 // ── The box ─────────────────────────────────────────────────────────────────
 
 /**
@@ -198,8 +212,8 @@ export async function walkCourse(sectionId, { fetchImpl = limitedFetch } = {}) {
  * the top and the bottom, with the query, results and focus kept.
  */
 export function createSearch({
-  doc = document, loc = location, courses = () => [], currentSection = null,
-  walk = walkCourse, store = null, now = () => Date.now(),
+  doc = document, loc = location, courses = () => [], currentSection = null, currentName = null,
+  walk = walkCourse, store = null, now = () => Date.now(), onSearching = () => {},
 } = {}) {
   const box = el('label', 'sbox');
   box.append(icon('search'));
@@ -224,6 +238,16 @@ export function createSearch({
 
   let panel = null;
   let refocus = false;
+  let wasOn = false;
+  // The classes to look through, the page's first. A class page is searched even
+  // when Home was never seen (no dashboard list yet).
+  function list() {
+    const all = orderCourses(courses(), currentSection);
+    if (currentSection && !all.some((c) => String(c.section_id) === String(currentSection))) {
+      all.unshift({ section_id: String(currentSection), name: currentName || 'This class', colorIndex: null });
+    }
+    return all;
+  }
   const walks = new Map(); // section id → { rows } | { error }
   let walking = null;
   let sel = 0;
@@ -249,7 +273,7 @@ export function createSearch({
     if (walking) return walking;
     walking = (async () => {
       await loadCache();
-      const todo = orderCourses(courses(), currentSection).filter((c) => !walks.has(String(c.section_id)));
+      const todo = list().filter((c) => !walks.has(String(c.section_id)));
       draw();
       // One class at a time, the page's own first; the limiter paces requests.
       for (const c of todo) {
@@ -262,20 +286,21 @@ export function createSearch({
   }
 
   function done() {
-    return courses().every((c) => walks.has(String(c.section_id)));
+    return list().every((c) => walks.has(String(c.section_id)));
   }
 
   function draw() {
     const q = input.value.trim();
     const on = !!q;
     panel?.classList.toggle('searching', on);
+    if (on !== wasOn) { wasOn = on; try { onSearching(on); } catch { /* host gone */ } }
     clear.hidden = !on;
     key.hidden = on;
     results.replaceChildren();
     links = [];
     if (!on) return;
-    const list = orderCourses(courses(), currentSection);
-    const groups = searchWalks(list, walks, q);
+    const classes = list();
+    const groups = searchWalks(classes, walks, q);
     const found = groups.reduce((n, g) => n + g.hits.length, 0);
     const busy = !done();
     if (busy) {
@@ -283,7 +308,7 @@ export function createSearch({
       b.setAttribute('aria-hidden', 'true');
       results.append(b);
     }
-    if (busy) results.append(el('div', 'scount', `Looking through ${list.length} classes`));
+    if (busy) results.append(el('div', 'scount', lookingText(classes, walks, currentSection)));
     else if (found) results.append(el('div', 'scount', `${found} found in ${groups.length} ${groups.length === 1 ? 'class' : 'classes'}`));
     for (const { course, hits } of groups) {
       const g = el('div', 'sgroup');
@@ -317,7 +342,7 @@ export function createSearch({
     }
     if (!busy && !found) {
       const e = el('div', 'sempty');
-      e.append(el('b', null, 'Nothing called that'), el('span', null, `in ${list.length} classes’ Materials`));
+      e.append(el('b', null, 'Nothing called that'), el('span', null, `in ${classes.length} ${classes.length === 1 ? 'class’s' : 'classes’'} Materials`));
       results.append(e);
     }
     if (sel >= links.length) sel = 0;

@@ -22,9 +22,7 @@ import { createHost, el, keepEvents, onOverlay, isOverlayOn, debounce } from './
 import { ROW_CSS, buildRow, annotateItems, sortDueItems } from './todorows.js';
 import {
   fetchEvents, TODO_LISTS, EVENTS_CACHE_KEY, cacheIsFresh, cacheSkipsFetch, defaultStore,
-  CARD_ORDER_KEY, classCourses,
 } from './todo.js';
-import { createSearch, SEARCH_CSS } from './search.js';
 
 const REREAD_MS = 180_000; // Schoology's own response says `@cache.max_age: 180` for these lists
 
@@ -39,7 +37,7 @@ export function courseItems({ overdue = [], upcoming = [], sectionId, now = new 
   return sortDueItems(mine);
 }
 
-const CSS = ROW_CSS + SEARCH_CSS;
+const CSS = ROW_CSS;
 
 /**
  * Mounts the panel on a course's pages. `getEvents`/`store`/`now`/`doc`/`loc`
@@ -57,11 +55,6 @@ export function start({
   let loaded = false; // a successful fetch happened at least once
   let readAt = 0;
   let reading = null;
-  // Search all materials: every class, this one first. The class list is the
-  // Course Dashboard's, last seen on Home (todo.js keeps it in storage).
-  let cards = [];
-  Promise.resolve().then(() => store.get(CARD_ORDER_KEY)).then((c) => { if (Array.isArray(c)) cards = c; }, () => {});
-  const search = createSearch({ doc, loc, courses: () => classCourses(cards), currentSection: section, store });
 
   function findSchoologyBlock() {
     if (schoologyBlock?.isConnected) return schoologyBlock;
@@ -99,9 +92,7 @@ export function start({
     rows = items.map(buildRow);
     for (const r of rows) frag.append(r.el);
     if (!items.length) frag.append(el('div', 'nothing', 'Nothing due'));
-    search.attach(frag);
     root.replaceChildren(root.firstChild, frag);
-    search.mounted();
     applyHiding();
     marksHost?.scan?.();
   }
@@ -177,7 +168,6 @@ export function start({
     rowsIn: () => rows,
     active: () => loaded && !!findSchoologyBlock(),
     setMarks: (m) => { marksHost = m; },
-    search,
-    stop: () => { bodyObserver.disconnect(); clearInterval(tick); search.stop(); },
+    stop: () => { bodyObserver.disconnect(); clearInterval(tick); },
   };
 }

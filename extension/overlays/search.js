@@ -193,15 +193,16 @@ export async function walkCourse(sectionId, { fetchImpl = limitedFetch } = {}) {
 }
 
 /**
- * The busy line. On a class page it names that class until it's read, then
- * "your other classes"; on Home, how many classes.
+ * The busy line. On Home, how many classes. On a class page it is only about
+ * that class: its name while it's read, "Nothing in <class>" if it had no
+ * match, then nothing (the other classes fill in quietly under the bar).
  */
 export function lookingText(classes, walks, currentSection, groups = []) {
   const here = currentSection && classes.find((c) => String(c.section_id) === String(currentSection));
   if (!here) return `Looking through ${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`;
   if (!walks.has(String(here.section_id))) return `Looking through ${here.name}`;
   const hereHits = groups.some((g) => String(g.course.section_id) === String(here.section_id));
-  return hereHits ? 'Looking through your other classes' : `Nothing in ${here.name} · looking through your other classes`;
+  return hereHits ? '' : `Nothing in ${here.name}`;
 }
 
 // ── The box ─────────────────────────────────────────────────────────────────
@@ -309,7 +310,8 @@ export function createSearch({
       b.setAttribute('aria-hidden', 'true');
       results.append(b);
     }
-    if (busy) results.append(el('div', 'scount', lookingText(classes, walks, currentSection, groups)));
+    const looking = busy ? lookingText(classes, walks, currentSection, groups) : '';
+    if (looking) results.append(el('div', 'scount', looking));
     else if (found) results.append(el('div', 'scount', `${found} found in ${groups.length} ${groups.length === 1 ? 'class' : 'classes'}`));
     for (const { course, hits } of groups) {
       const g = el('div', 'sgroup');

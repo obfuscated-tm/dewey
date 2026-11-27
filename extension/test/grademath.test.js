@@ -275,3 +275,59 @@ test('ticks: a bounded 1/2/5 step, whatever the range', () => {
   assert.deepEqual(ticks(92, Infinity), []);
   assert.deepEqual(ticks(NaN, 100), []);
 });
+
+// ── Items Schoology counts without saying so (fixtures/physics-grades.md) ──
+
+/** physics-grades.md → parseGrades()-shaped rows, with its exact values and gradebook-only columns. */
+function physicsRows() {
+  const md = readFileSync(new URL('./fixtures/physics-grades.md', import.meta.url), 'utf8');
+  return rowsFromMd(md).map((r) => {
+    const out = { ...r };
+    if (/ \[gc\]$/.test(out.title)) { out.title = out.title.replace(/ \[gc\]$/, ''); out.gradeOnly = true; }
+    const w = out.title.match(/ \((\d+)%\)$/);
+    if (w) { out.title = out.title.replace(w[0], ''); out.weight = Number(w[1]); }
+    const ex = out.grade.match(/ \{(%?)([\d.]+)\}$/);
+    if (ex) { out.grade = out.grade.replace(ex[0], ''); if (ex[1]) out.exactPct = Number(ex[2]); else out.exact = Number(ex[2]); }
+    if (out.level === 'item') out.id = out.title;
+    return out;
+  });
+}
+const physics = (marks) => currentPeriod(periodsFromRows(physicsRows(), { marks }));
+const cat = (course, t) => course.categories.find((c) => c.title === t);
+const out = (c) => c.items.filter((it) => it.uncounted).map((it) => [it.title, it.uncounted]);
+
+test('exact values: the score\'s and category\'s title beat the rounded text', () => {
+  const c = physics();
+  assert.equal(cat(c, 'Tests').items.find((it) => it.title === 'Unit 2b Test').earned, 97.4537);
+  assert.deepEqual(cat(c, 'Labs').stated, { pct: 98.795180722892, tol: 0.001 });
+  // Rounded, Labs' "98.8%" passed for the plain sum (98.86%); exact, it doesn't.
+  assert.equal(cat(c, 'Labs').adds, false);
+  close(grade(c).categories.find((x) => x.title === 'Labs').pct, 98.795180722892, 1e-6);
+});
+
+test('gradebook-only columns go first, and the course matches Schoology', () => {
+  const c = physics();
+  const tests = cat(c, 'Tests');
+  assert.deepEqual(out(tests).map(([, u]) => u), ['column', 'column', 'column', 'column', 'column']);
+  assert.equal(tests.adds, false); // something there doesn't show on the page; scaled
+  assert.equal(grade(c).categories.find((x) => x.title === 'Tests').possible, 305); // not 393 with the raw columns
+  assert.deepEqual(out(cat(c, 'Quizzes')), [['Quiz 1 (Raw)', 'guess'], ['Quiz 1 with Corrections', 'column']]);
+  assert.equal(cat(c, 'Quizzes').adds, true);
+  assert.equal(cat(c, 'Assignments').adds, true);
+  assert.deepEqual(out(cat(c, 'Assignments')), []); // a column that adds up is left alone
+  assert.equal(grade(c).pct.toFixed(2), '99.15');
+});
+
+test('the student\'s marks beat Dewey\'s guess', () => {
+  const c = physics({ 'Quiz 1 (Raw)': 'in', 'Take-Home Quiz 2.2': 'out' });
+  const q = cat(c, 'Quizzes');
+  assert.deepEqual(out(q), [['Quiz 1 with Corrections', 'column'], ['Take-Home Quiz 2.2', 'mine']]);
+  assert.equal(q.adds, true);
+  // A wrong mark: the category no longer adds up and is scaled to Schoology's percent.
+  const w = cat(physics({ 'Quiz 1.1': 'out', 'Quiz 1 (Raw)': 'in', 'Take home quiz': 'in', 'Take-Home Quiz 2.2': 'in', 'Quiz 1 with Corrections': 'in' }), 'Quizzes');
+  assert.equal(w.adds, false);
+  assert.ok(w.scale);
+  // Re-calibrating in place follows new marks.
+  calibrate(q, {});
+  assert.deepEqual(out(q), [['Quiz 1 (Raw)', 'guess'], ['Quiz 1 with Corrections', 'column']]);
+});

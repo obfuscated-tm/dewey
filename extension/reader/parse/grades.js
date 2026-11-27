@@ -30,6 +30,17 @@ export function parseGrades(root, { els = false } = {}) {
     // I-{assignment id}.
     if (level === 'category') row.weight = weightFromText((th?.querySelector('.percentage-contrib') || th)?.textContent);
     if (level === 'item') row.id = ((tr.getAttribute('data-id') || '').match(/^I-(\d+)$/) || [])[1] || null;
+    // The text is rounded ("97.45", "A (99.59%)"); the exact value is the
+    // title of the score's span (97.4537) and of the category's percent
+    // ("99.594248780488%"). A column typed straight into the gradebook (no
+    // material behind it: "Unit 1 Test Raw Score") has .is-grade-column.
+    const exact = tr.querySelector('.grade-column .rounded-grade')?.getAttribute('title');
+    if (level === 'item' && exact && Number.isFinite(Number(exact))) row.exact = Number(exact);
+    if (level === 'category' || level === 'period' || level === 'course') {
+      const t = [...tr.querySelectorAll('.grade-column [title]')].map((n) => n.getAttribute('title')).find((v) => /^\s*-?\d+(\.\d+)?\s*%\s*$/.test(v));
+      if (t) row.exactPct = parseFloat(t);
+    }
+    if (level === 'item' && tr.classList.contains('is-grade-column')) row.gradeOnly = true;
     // A rubric-graded item: { rubricId, enrollmentId } for rubric.js's two GETs
     // (null ids when neither the rendered button nor the page settings say).
     if (rubricBtn) row.rubric = rubricIds(rubricBtn, root);

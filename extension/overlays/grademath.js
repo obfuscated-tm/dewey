@@ -12,7 +12,8 @@
 // double) and shows a student no sign of it: the row reads "7 / 7" like any
 // other. The only trace is the category's own percent, so periodsFromRows
 // checks each category's sum against it (calibrate, below). An item with
-// `uncounted` set is left out of all the math.
+// `uncounted` set is left out of all the math; the student can say so
+// themselves (`marks`), which beats Dewey's guess.
 //
 // Every function takes the same `opts`:
 //   weights  { [category title]: percent } typed by Owen; beats the gradebook's
@@ -70,27 +71,71 @@ export function statedPct(text) {
 /** Is `pct` what Schoology showed, rounded or cut off to the digits it shows? */
 const agrees = (pct, s) => Math.abs(pct - s.pct) <= s.tol + 1e-9 || (pct > s.pct && pct - s.pct < 2 * s.tol);
 
+/** A percent Schoology gives exactly (a title attribute): its items' scores are
+ *  rounded to 4 places there, so allow a little more than the digits shown. */
+export function exactPct(pct) {
+  return Number.isFinite(pct) ? { pct, tol: 0.001 } : null;
+}
+
 /**
  * Makes a category's sum agree with the percent Schoology shows for it
- * (`cat.stated`). When they differ, some items don't count the way they read.
- * Looks for the fewest graded items (up to 4) that, left out, give Schoology's
- * percent, and marks them `uncounted`: 'sure' when only those items fit,
- * 'guess' when others with the same score would fit as well (the totals are
- * right either way). When no such set exists, or sets with different totals
- * fit, sets `cat.scale` instead: the factor that brings the category's earned
- * points to Schoology's percent.
+ * (`cat.stated`). When they differ, some items don't count the way they read
+ * (a teacher can weight an item ×0, ×½, ×2, and a student sees no sign of it).
+ *
+ * `marks` ({ [item id]: 'out' | 'in' }) are the student's own: 'out' never
+ * counts (uncounted 'mine'), 'in' always does. Dewey only guesses about the
+ * rest, in this order:
+ *   1. columns typed straight into the gradebook (`gradeOnly`: raw scores
+ *      beside the real one, mostly), all left out at once ('column') when that
+ *      brings the sum closer to Schoology's percent;
+ *   2. the fewest other graded items (up to 4) that, left out, give it:
+ *      'sure' when only those fit, 'guess' when others with the same score
+ *      would as well (the totals are right either way). If none do with the
+ *      columns out, the search runs again with them back in;
+ *   3. else `cat.scale`: the factor that brings what's left to Schoology's
+ *      percent.
+ * `cat.adds` is whether the items, left out as marked, give Schoology's
+ * percent without scaling (null when there's nothing to check against).
  */
-export function calibrate(cat) {
+export function calibrate(cat, marks = {}) {
+  delete cat.scale;
+  for (const it of cat.items) delete it.uncounted;
   const s = cat.stated;
-  const graded = cat.items.filter((it) => it.earned != null && it.possible != null && (it.possible > 0 || it.earned !== 0));
-  if (!s || !graded.length) return;
-  let E = 0, P = 0;
-  for (const it of graded) { E += it.earned; P += it.possible; }
-  if (P <= 0 || agrees((E / P) * 100, s)) return;
+  const isGraded = (it) => it.earned != null && it.possible != null && (it.possible > 0 || it.earned !== 0);
+  for (const it of cat.items) if (marks[it.id] === 'out') it.uncounted = 'mine';
+  const kept = cat.items.filter((it) => isGraded(it) && !it.uncounted);
+  cat.adds = null;
+  if (!s || !kept.length) return;
+  const sum = (xs) => xs.reduce((a, it) => [a[0] + it.earned, a[1] + it.possible], [0, 0]);
+  const pctOf = ([E, P]) => (P > 0 ? (E / P) * 100 : null);
+  const fits = (xs) => { const p = pctOf(sum(xs)); return p != null && agrees(p, s); };
+  if (fits(kept)) { cat.adds = true; return; }
 
+  const free = kept.filter((it) => marks[it.id] !== 'in');
+  const cols = free.filter((it) => it.gradeOnly);
+  const noCols = kept.filter((it) => !cols.includes(it));
+  const off = (xs) => Math.abs((pctOf(sum(xs)) ?? Infinity) - s.pct);
+  const tryCols = cols.length && noCols.length && off(noCols) < off(kept);
+  if (tryCols) {
+    for (const it of cols) it.uncounted = 'column';
+    if (fits(noCols)) { cat.adds = true; return; }
+    if (search(noCols, free.filter((it) => !cols.includes(it)), s)) { cat.adds = true; return; }
+    for (const it of cols) delete it.uncounted;
+  }
+  if (search(kept, free, s)) { cat.adds = true; return; }
+  if (tryCols) for (const it of cols) it.uncounted = 'column';
+  cat.adds = false;
+  const [E, P] = sum(tryCols ? noCols : kept);
+  if (E > 0) cat.scale = ((s.pct / 100) * P) / E;
+}
+
+/** Leaves out the fewest of `free` (up to 4) that make `pool` give `s`; false when no one set does. */
+function search(pool, free, s) {
+  let E = 0, P = 0;
+  for (const it of pool) { E += it.earned; P += it.possible; }
   // Items with the same score are interchangeable: choose how many of each.
   const groups = new Map();
-  for (const it of graded) {
+  for (const it of free) {
     const k = `${it.earned}/${it.possible}`;
     if (!groups.has(k)) groups.set(k, { earned: it.earned, possible: it.possible, items: [] });
     groups.get(k).items.push(it);
@@ -114,25 +159,26 @@ export function calibrate(cat) {
       pick[i] = 0;
     };
     walk(0, k, 0, 0);
-    if (budget <= 0) break;
+    if (budget <= 0) return false;
     if (!found.length) continue;
     const f = found[0];
-    if (!found.every((x) => Math.abs(x.e - f.e) < 1e-9 && Math.abs(x.p - f.p) < 1e-9)) break;
+    if (!found.every((x) => Math.abs(x.e - f.e) < 1e-9 && Math.abs(x.p - f.p) < 1e-9)) return false;
     gs.forEach((g, i) => {
       const sure = found.length === 1 && f.pick[i] === g.items.length;
       for (const it of g.items.slice(0, f.pick[i])) it.uncounted = sure ? 'sure' : 'guess';
     });
-    return;
+    return true;
   }
-  if (E > 0) cat.scale = ((s.pct / 100) * P) / E;
+  return false;
 }
 
 /**
  * parseGrades() rows → [{ title, categories }], one per grading period, in page
  * order. Category and item rows before any period row go in an untitled one.
  * Periods, categories and items keep the row they came from as `src`.
+ * `marks` is the student's own "counts / doesn't count" per item (calibrate).
  */
-export function periodsFromRows(rows) {
+export function periodsFromRows(rows, { marks = {} } = {}) {
   const periods = [];
   let period = null;
   let category = null;
@@ -144,14 +190,17 @@ export function periodsFromRows(rows) {
       category = null;
     } else if (r.level === 'category') {
       if (!period) periods.push((period = { title: '', categories: [] }));
-      category = { title: r.title, weight: r.weight ?? weightFromText(r.title), stated: statedPct(r.grade), items: [], src: r };
+      category = { title: r.title, weight: r.weight ?? weightFromText(r.title), stated: exactPct(r.exactPct) || statedPct(r.grade), items: [], src: r };
       period.categories.push(category);
     } else if (r.level === 'item' && category) {
-      const { earned, possible } = parseScore(r.grade);
-      category.items.push({ id: r.id ?? `${category.title}/${r.title}/${r.due}`, title: r.title, due: parseDue(r.due), earned, possible, src: r });
+      let { earned, possible } = parseScore(r.grade);
+      if (earned != null && Number.isFinite(r.exact)) earned = r.exact;
+      const item = { id: r.id ?? `${category.title}/${r.title}/${r.due}`, title: r.title, due: parseDue(r.due), earned, possible, src: r };
+      if (r.gradeOnly) item.gradeOnly = true;
+      category.items.push(item);
     }
   }
-  for (const p of periods) for (const c of p.categories) calibrate(c);
+  for (const p of periods) for (const c of p.categories) calibrate(c, marks);
   return periods;
 }
 

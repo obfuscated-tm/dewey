@@ -36,7 +36,7 @@ import { clearedWord } from '../panel/today-format.js';
 import { cleanText } from '../util.js';
 import { np, pageUserId, createHost, el, classDot, onClick, debounce, failText, keepEvents } from './ui.js';
 import { periodsFromRows, impact, grade as courseGrade } from './grademath.js';
-import { openCourse, chromeStore, fetchDoc, loadWeights } from './coursedata.js';
+import { openCourse, chromeStore, fetchDoc, loadWeights, loadMarks } from './coursedata.js';
 import { rowState, scoreText } from './matstate.js';
 import { MARK_CSS, iconBtn } from './marker.js';
 import { rippleFrom } from './ripple.js';
@@ -559,8 +559,9 @@ export function start({
     const course = await openCourse({ section, origin: loc.origin, store, getDoc, now });
     state.course = course;
     state.weights = await loadWeights(section);
+    const marks = await loadMarks(section);
     await course.readGrades();
-    state.periods = periodsFromRows(course.rows || []);
+    state.periods = periodsFromRows(course.rows || [], { marks });
     draw();
     await course.saveCache();
   }

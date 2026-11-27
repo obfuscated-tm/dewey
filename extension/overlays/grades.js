@@ -22,24 +22,27 @@
 // or a "—", and a box opens in its cell; typing moves every number at once.
 // Enter or clicking away keeps it ("→ 12" in the accent, beside Schoology's
 // own score), Esc puts the real one back. Beside the box, "Leave out" drops
-// the item (Schoology's score struck through, "Count it" to undo). A changed
+// the item (Schoology's score struck through, "Undo" to count it again). A changed
 // row gets a thin inset left bar. The right-hand column is a <td> of ours
 // appended to every row; it, the card and our own rows vanish with the
 // Overlay switch like every host. Schoology hides its Course Grade row, so
 // the course-level additions sit on the current period's row then. Tried
 // scores, left-out items and planned items live only in this page view;
-// typed weights are saved per course.
+// typed weights are saved per course, and so are the student's own marks on
+// what counts: "Never counts" beside "Undo" on a left-out item; a click
+// on "not counted" / "may not count" says it does count. A category whose items left out as marked
+// give Schoology's percent gets a faint ✓; one that doesn't add up, a ≈.
 //
 // Only the current grading period (grademath.currentPeriod) is annotated.
 
 import { parseGrades } from '../reader/parse/grades.js';
 import {
-  periodsFromRows, currentPeriod, grade, impact, history, categoryFloor, needFor, letter, statedPct, ticks, A_CUTOFF, GOALS,
+  periodsFromRows, calibrate, currentPeriod, grade, impact, history, categoryFloor, needFor, letter, statedPct, ticks, A_CUTOFF, GOALS,
 } from './grademath.js';
 import {
   createHost, el, onOverlay, isOverlayOn, debounce, keepEvents, getSettings, onSettings,
 } from './ui.js';
-import { loadWeights, saveWeights, loadGoal, saveGoal, loadSeenGrades, saveSeenGrades } from './coursedata.js';
+import { loadWeights, saveWeights, loadMarks, saveMarks, loadGoal, saveGoal, loadSeenGrades, saveSeenGrades } from './coursedata.js';
 import { freshGrades } from './newgrades.js';
 import { THEMES, themeOf, paint } from './theme.js';
 
@@ -329,7 +332,8 @@ function newPill(box, o) {
 async function mountCourse({ doc, root: scope, courseId, all = false }) {
   const rows = parseGrades(scope, { els: true });
   if (!rows.length) return null;
-  const course = currentPeriod(periodsFromRows(rows));
+  const marks = await loadMarks(courseId); // item id → 'out' | 'in': the student's own say on what counts
+  const course = currentPeriod(periodsFromRows(rows, { marks }));
   if (!course) return null;
 
   // New grades: scores that appeared or changed since this course was last
@@ -344,7 +348,16 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
   const typed = await loadWeights(courseId); // only for categories Schoology shows no (N%) for
   const whatIf = new Map(); // item id → { earned, possible } — ungraded rows, or a graded row's override
   const plans = new Map(); // category title → { name, possible, score } (null: none open)
-  const dropped = new Set(); // item ids left out of the math
+  const dropped = new Set(); // item ids left out of the math, this page view only
+  // A mark that sticks (saved per course): Schoology can count an item for
+  // nothing and not say so, and only the student can know which.
+  const setMark = (cat, it, v) => {
+    if (v) marks[it.id] = v; else delete marks[it.id];
+    saveMarks(courseId, { ...marks });
+    dropped.delete(it.id);
+    calibrate(cat, marks);
+    update();
+  };
   let goal = (await loadGoal(courseId)) ?? A_CUTOFF; // the grade to aim for, a percent
   const L = () => letter(goal);
   const aL = () => `${/^A/.test(L()) ? 'an' : 'a'} ${L()}`;
@@ -629,6 +642,18 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
     }
 
     const { host: catProjHost, root: catProj } = inline(gradeCell(ctr), 'np-grade-proj');
+    // Whether the items, left out as marked, give Schoology's own percent.
+    const { host: addsHost, root: addsRoot } = inline(gradeCell(ctr), 'np-grade-adds');
+    const addsMark = el('span', 'pct');
+    addsRoot.append(addsMark);
+    updates.push(() => {
+      const marked = cat.items.some((it) => it.uncounted);
+      addsHost.hidden = cat.adds == null || (cat.adds && !marked);
+      addsMark.textContent = cat.adds ? '✓' : '≈';
+      addsMark.title = cat.adds
+        ? `Adds up to Schoology's ${cat.title} percent with the items marked not counted left out`
+        : `Schoology's ${cat.title} percent doesn't add up from these scores, so it's scaled to match. Mark the items that don't count to fix it.`;
+    });
     updates.push(() => {
       const base = grade(course, { weights: weights() }).categories.find((c) => c.title === cat.title)?.pct;
       const now = grade(course, opts()).categories.find((c) => c.title === cat.title)?.pct;
@@ -663,20 +688,22 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
           root.append(tag);
         }
 
-        if (it.uncounted) {
-          // Schoology's own percent for the category leaves this item out.
-          const same = cat.items.filter((x) => x.earned === it.earned && x.possible === it.possible);
-          updates.push(() => {
-            pctSpan.hidden = !getSettings().percent || !(it.possible > 0);
-            if (it.possible > 0) pctSpan.textContent = pctText((it.earned / it.possible) * 100);
-            const n = el('span', 'note quiet', it.uncounted === 'sure' ? 'not counted' : 'may not count');
-            n.title = it.uncounted === 'sure'
-              ? `Schoology's percent for ${cat.title} only adds up without this item, so it's left out of the math here too.`
-              : `Schoology's percent for ${cat.title} only adds up if ${same.filter((x) => x.uncounted).length} of the ${same.length} items scored ${it.earned} / ${it.possible} don't count. It doesn't say which; the totals are right either way.`;
-            cell(tr, n);
-          });
-          continue;
-        }
+        // Left out of the category (Dewey's guess, or the student's mark).
+        const same = cat.items.filter((x) => x.earned === it.earned && x.possible === it.possible);
+        // The note is its own undo: click it to say the item does count
+        // (or, on one you marked yourself, that it counts again).
+        const uncountedNote = () => {
+          const u = it.uncounted;
+          const n = el('button', 'linkbtn quiet', u === 'sure' || u === 'mine' ? 'not counted' : 'may not count');
+          n.type = 'button';
+          n.title = (u === 'mine' ? 'You marked this as not counted'
+            : u === 'sure' ? `Schoology's percent for ${cat.title} only adds up without this item, so it's left out of the math here too`
+            : u === 'column' ? `Typed straight into the gradebook, and Schoology's percent for ${cat.title} is closer without these columns`
+            : `Schoology's percent for ${cat.title} only adds up if ${same.filter((x) => x.uncounted).length} of the ${same.length} items scored ${it.earned} / ${it.possible} don't count. It doesn't say which; the totals are right either way`)
+            + '. Click if it counts.';
+          n.addEventListener('click', () => setMark(cat, it, u === 'mine' ? null : 'in'));
+          return n;
+        };
 
         // Trying a score: click Schoology's score (or the "→ 12" of one being
         // tried) and a box opens here; clicking away or Enter closes it and
@@ -705,8 +732,17 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
         const clear = () => { score.value = ''; whatIf.delete(it.id); };
         dropBtn.addEventListener('mousedown', (e) => e.preventDefault()); // keep the box's focus until the click lands
         dropBtn.addEventListener('click', () => { clear(); dropped.add(it.id); editing = false; update(); });
-        const undo = el('button', 'linkbtn', 'Count it');
+        const undo = el('button', 'linkbtn', 'Undo');
+        undo.type = 'button';
+        undo.title = 'Count it again';
         undo.addEventListener('click', () => { dropped.delete(it.id); update(); });
+        const never = el('button', 'linkbtn quiet', 'Never counts');
+        never.type = 'button';
+        never.title = 'Schoology doesn\'t count this one: leave it out for good';
+        never.addEventListener('click', () => setMark(cat, it, 'out'));
+        const droppedCell = el('span', 'wrap');
+        droppedCell.style.whiteSpace = 'nowrap';
+        droppedCell.append(undo, ' ', never);
         tried.addEventListener('click', () => edit(true));
         score.addEventListener('input', () => {
           const earned = num(score.value);
@@ -718,15 +754,26 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
           if (e.key === 'Escape') { clear(); score.blur(); update(); }
         });
         resetters.push(() => { score.value = ''; });
-        tryScore(tr, () => edit(true), () => !editing && !dropped.has(it.id));
+        tryScore(tr, () => edit(true), () => !editing && !dropped.has(it.id) && !it.uncounted);
 
         updates.push(() => {
+          if (it.uncounted) {
+            if (editing) { editing = false; clear(); }
+            strike(tr, false);
+            tint(tr, false);
+            host.hidden = false;
+            editWrap.hidden = true;
+            tried.hidden = true;
+            pctSpan.hidden = !getSettings().percent || !(it.possible > 0);
+            if (it.possible > 0) pctSpan.textContent = pctText((it.earned / it.possible) * 100);
+            return cell(tr, uncountedNote());
+          }
           const isDropped = dropped.has(it.id);
           strike(tr, isDropped);
           host.hidden = isDropped;
           if (isDropped) {
             tint(tr, false);
-            return cell(tr, undo); // the struck-through score says it's left out
+            return cell(tr, droppedCell); // the struck-through score says it's left out
           }
           const wi = whatIf.get(it.id);
           const val = wi && wi.earned != null ? wi.earned : it.earned;

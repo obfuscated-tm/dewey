@@ -258,15 +258,30 @@ The sidebar is the extension's spine ([CATCH-UP-SPEC.md](CATCH-UP-SPEC.md)). The
   row reads "7 / 7" like any other, and nothing in the row's markup, the page
   settings or the assignment page says so (checked 2026-11-12 on AP Physics 1,
   where Quizzes added up to 98 / 100 but Schoology showed 97.67% = 84 / 86).
-  The only trace is the category's own percent, so `periodsFromRows` runs
-  `calibrate` on each category: if the sum of its items doesn't give the
-  percent Schoology shows, it looks for the fewest graded items (up to 4)
-  that, left out, do, and marks them `uncounted` ('sure' when only those items
-  fit; 'guess' when others with the same score would fit too, since the totals
-  are right either way). All the math skips an uncounted item, what-ifs on it
-  included. If no such set exists, or sets with different totals fit, the
-  category's earned points are scaled to Schoology's percent (`cat.scale`)
-  instead. Either way the category and course percent match Schoology's.
+  What the page does carry (checked again 2026-11-27, AP Physics 1):
+  - `tr.is-grade-column`: a column the teacher typed straight into the
+    gradebook (raw scores, "with corrections" copies). These are the usual
+    stand-ins; the parser sets `gradeOnly`.
+  - `.rounded-grade[title]`: the exact score ("97.4537" behind "97.45"), read
+    as `exact`.
+  - a `[title]` like "98.795180722892%" in a category, period or course cell:
+    the exact percent, read as `exactPct` (tolerance 0.001 instead of the
+    rounded 0.005).
+  Factors like x0.5 are never shown (Labs only fits with one lab at half).
+  So `periodsFromRows` runs `calibrate(cat, marks)` on each category: if the
+  kept items already add up to Schoology's percent, `cat.adds` is true.
+  Otherwise it first tries leaving out the unmarked `gradeOnly` columns
+  ('column'), then looks for the fewest graded items (up to 4) that, left
+  out, fit ('sure' when only those fit; 'guess' when others with the same
+  score would too). If nothing fits, `cat.adds` is false and the earned
+  points are scaled to Schoology's percent (`cat.scale`), with the columns
+  left out if that got closer. Either way the category and course percent
+  match Schoology's. All the math skips an uncounted item, what-ifs included.
+- **The student's marks win.** `gradeMarks` in storage is
+  `{ [courseId]: { [itemId]: 'out' | 'in' } }` (`coursedata.loadMarks` /
+  `saveMarks`). 'out' makes an item uncounted ('mine'); 'in' means it is
+  never a candidate. A wrong mark just leaves the category not adding up,
+  and it is scaled as above.
 
 ## 1. Grades page (inline in Schoology's table)
 
@@ -318,7 +333,12 @@ Always:
   since the row doesn't say what it's out of ("→ 18/20"). Beside a graded
   row's box, a faint **Leave out** drops the item from the math:
   Schoology's score is struck through and faded and the right column offers
-  **Count it**. Only listeners, the hover underline and the strike touch
+  **Undo** and **Never counts** (saves an 'out' mark). An uncounted row's
+  right column reads **not counted** (Dewey is sure, or the student said so)
+  or **may not count** (a guess or a gradebook-only column); clicking it
+  saves 'in' (or clears the student's own 'out'). A category with uncounted
+  items shows a faint ✓ beside its percent when the rest adds up exactly,
+  and ≈ when nothing fits and Dewey scaled it; the title says which. Only listeners, the hover underline and the strike touch
   Schoology's cell. Several classes can have tried scores at once.
 - **New grades:** a small "New" pill beside a graded item's percent when its
   score appeared or changed since the student last looked at this course's

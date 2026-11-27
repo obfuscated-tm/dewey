@@ -26,6 +26,7 @@ const CACHE_MS = 10 * 60_000;
 const CACHE_SECTIONS = 8;
 const MAX_FOLDERS = 80;
 const WEIGHTS_KEY = 'gradeWeights'; // { [course id]: { [category title]: percent } }
+const MARKS_KEY = 'gradeMarks'; // { [course id]: { [item id]: 'out' | 'in' } } — the student's own "doesn't count" / "counts"
 const GOALS_KEY = 'gradeGoals'; // { [course id]: percent } — the grade the student aims for; absent: the A line
 
 export function chromeStore() {
@@ -202,6 +203,18 @@ export async function saveWeights(courseId, w) {
     const all = (await chrome.storage.local.get(WEIGHTS_KEY))?.[WEIGHTS_KEY] || {};
     if (Object.keys(w).length) all[courseId] = w; else delete all[courseId];
     await chrome.storage.local.set({ [WEIGHTS_KEY]: all });
+  } catch { /* not in the extension */ }
+}
+
+/** Items the student said don't count ('out') or do ('in'), over Dewey's guess (grademath.calibrate). */
+export async function loadMarks(courseId) {
+  try { return (await chrome.storage.local.get(MARKS_KEY))?.[MARKS_KEY]?.[courseId] || {}; } catch { return {}; }
+}
+export async function saveMarks(courseId, m) {
+  try {
+    const all = (await chrome.storage.local.get(MARKS_KEY))?.[MARKS_KEY] || {};
+    if (Object.keys(m).length) all[courseId] = m; else delete all[courseId];
+    await chrome.storage.local.set({ [MARKS_KEY]: all });
   } catch { /* not in the extension */ }
 }
 

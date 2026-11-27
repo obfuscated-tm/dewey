@@ -4,7 +4,9 @@
      look at overlays/grades.js outside Schoology. Serve extension/
      (python3 -m http.server) and open /test/grades-page.html. ?noweights drops the
      (N%) so the weight boxes show. ?all is /grades/grades instead: two
-     courses, each collapsed until its title is clicked. -->
+     courses, each collapsed until its title is clicked. ?physics is fixtures/physics-grades.md:
+     exact scores and percents in title attributes, gradebook-only columns, and the
+     student's marks kept in sessionStorage. -->
 <html><head><meta charset="utf-8"><title>Grades stand-in</title>
 <style>
 body { font: 13px Arial, sans-serif; color: #333; background: #fff; margin: 24px; }
@@ -25,7 +27,8 @@ tr.item-row th { padding-left: 28px; }
 <script type="module">
 const q = new URLSearchParams(location.search), ALL = q.has('all');
 const WEIGHTS = q.has('noweights') ? {} : { 'Labs & Homework': 30, 'Tests & Quizzes': 70 };
-const md = await (await fetch('./fixtures/demo-grades.md')).text();
+const PHYS = q.has('physics');
+const md = await (await fetch(PHYS ? './fixtures/physics-grades.md' : './fixtures/demo-grades.md')).text();
 if (ALL) document.getElementById('h').textContent = 'Grades';
 // /grades/grades: each course a .gradebook-course, its grades hidden until
 // its title is clicked, and its Course Grade row display: none.
@@ -49,19 +52,26 @@ const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
 for (const line of md.split('\n')) {
   const m = line.match(/^\| (.*?) \| (.*?) \| (.*?) \| (.*?) \|$/);
   if (!m || m[1] === 'Item' || m[1].startsWith('---')) continue;
-  const raw = m[1], title = raw.replace(/^↳ /, '').replace(/^\*\*(.*)\*\*$/, '$1').trim();
+  let raw = m[1];
+  const gc = / \[gc\]$/.test(raw); raw = raw.replace(/ \[gc\]$/, '');
+  let title = raw.replace(/^↳ /, '').replace(/^\*\*(.*)\*\*$/, '$1').trim();
+  const w = title.match(/ \((\d+)%\)$/); if (w) { title = title.replace(w[0], ''); WEIGHTS[title] = Number(w[1]); }
   const level = raw.startsWith('↳') ? 'category' : !raw.startsWith('**') ? 'item' : n === 0 ? 'course' : 'period';
   const id = level === 'item' ? `I-${9000 + n}` : `${level[0]}-${n}`;
   const parent = level === 'category' ? period : level === 'item' ? cat : level === 'period' ? 'c-0' : '';
   if (level === 'period') { period = id; hidePeriod = /no grading period/.test(title); }
   if (level === 'category') cat = id;
-  const g = m[3].trim(), sc = g.match(/^(.*?)(\d+(?:\.\d+)?) \/ (\d+(?:\.\d+)?)$/);
-  const gradeHtml = sc ? `<span class="awarded-grade"><span class="rounded-grade">${sc[2]}</span></span><span class="max-grade"> / ${sc[3]}</span>`
+  let g = m[3].trim();
+  const ex = g.match(/ \{(%?)([\d.]+)\}$/); if (ex) g = g.replace(ex[0], '');
+  const sc = g.match(/^(.*?)(\d+(?:\.\d+)?) \/ (\d+(?:\.\d+)?)$/);
+  const exAttr = ex && !ex[1] ? ` title="${ex[2]}"` : sc ? ` title="${sc[2]}"` : '';
+  const gradeHtml = level === 'category' && ex?.[1] ? `<span class="awarded-grade"><span title="${ex[2]}%">${esc(g)}</span></span>`
+    : sc ? `<span class="awarded-grade"><span class="rounded-grade"${exAttr}>${sc[2]}</span></span><span class="max-grade"> / ${sc[3]}</span>`
     : level === 'item' ? '<span class="no-grade">—</span>' : `<span class="awarded-grade">${esc(g)}</span>`;
   const contrib = level === 'category' && WEIGHTS[title] ? `<span class="percentage-contrib">(${WEIGHTS[title]}%)</span>` : '';
   const due = m[2].trim() ? `<span class="due-date">${m[2].trim()}</span>` : '';
   const tr = document.createElement('tr');
-  tr.className = `report-row ${level}-row${hidePeriod && level !== 'period' ? ' hidden' : ''}`;
+  tr.className = `report-row ${level}-row${gc ? ' is-grade-column' : ''}${hidePeriod && level !== 'period' ? ' hidden' : ''}`;
   if (ALL && level === 'course') tr.style.display = 'none';
   tr.dataset.id = id; if (parent) tr.dataset.parentId = parent;
   tr.innerHTML = `<th scope="row" class="title-column"><div class="td-content-wrapper"><span class="title">${esc(title)}${level === 'category' ? '<span class="visually-hidden">Category</span>' : ''}</span>${contrib}${due}</div></th>`
@@ -77,7 +87,7 @@ document.addEventListener('click', (e) => {
 });
 // ?new: a saved copy of the scores with two missing, so two rows read "New"
 // (chrome.storage stood in by sessionStorage; the page loads twice).
-if (q.has('new')) {
+if (q.has('new') || PHYS) {
   const read = () => JSON.parse(sessionStorage.getItem('np-store') || '{}');
   globalThis.chrome = { storage: { local: {
     get: async (k) => ({ [k]: read()[k] }),

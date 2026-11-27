@@ -447,13 +447,16 @@ const finite = (x) => (typeof x === 'number' && Number.isFinite(x) ? x : null);
  * { period, pct, letter, mode, categories: [{ title, weight, earned, possible,
  * pct, floor, floorStatus }], items: [{ id, category, title, due, grade,
  * comment, rubric, earned, possible, pct, impact, uncounted }], history, periods }.
- * `uncounted` ('sure' | 'guess' | null): the item is left out of the grade,
- * because Schoology's category percent only adds up without it (grademath.calibrate).
- * `opts` is grademath's (weights, whatIf, extra, drop); `target` the A line.
+ * `uncounted` ('sure' | 'guess' | 'column' | 'mine' | null): the item is left
+ * out of the grade, because Schoology's category percent only adds up without
+ * it, or the student said so (grademath.calibrate). A category's `adds`: its
+ * items, left out as marked, give Schoology's percent (null: nothing to check).
+ * `opts` is grademath's (weights, whatIf, extra, drop) plus `marks`
+ * ({ [item id]: 'out' | 'in' }, the student's own); `target` the A line.
  * pct is null when nothing is graded.
  */
 export function courseGrade({ rows = [], opts = {}, target = grademath.A_CUTOFF } = {}) {
-  const periods = grademath.periodsFromRows(rows);
+  const periods = grademath.periodsFromRows(rows, { marks: opts.marks });
   const course = grademath.currentPeriod(periods) || periods.find((p) => p.title && !/no grading period/i.test(p.title)) || periods[0] || null;
   const titles = periods.map((p) => p.title);
   if (!course) return { period: null, pct: null, letter: null, mode: 'points', categories: [], items: [], history: [], periods: titles };
@@ -463,6 +466,7 @@ export function courseGrade({ rows = [], opts = {}, target = grademath.A_CUTOFF 
     return {
       title: c.title, weight: c.weight, earned: c.earned, possible: c.possible, pct: c.pct,
       floor: finite(f), floorStatus: f == null ? 'none' : f <= 0 ? 'any' : f > 100 ? 'out' : 'need',
+      adds: course.categories.find((x) => x.title === c.title)?.adds ?? null,
     };
   });
   // Categories with no grades yet still get a row.
@@ -499,7 +503,7 @@ export function courseGrade({ rows = [], opts = {}, target = grademath.A_CUTOFF 
 
 /** A planned item: { status: 'any' | 'out' | 'need', need? } (grademath.needFor). */
 export function planTest({ rows = [], category, possible, target = grademath.A_CUTOFF, opts = {} } = {}) {
-  const course = grademath.currentPeriod(grademath.periodsFromRows(rows));
+  const course = grademath.currentPeriod(grademath.periodsFromRows(rows, { marks: opts.marks }));
   if (!course || !category || !(possible > 0)) return { status: 'none' };
   return grademath.needFor(course, { category, possible, target }, opts);
 }

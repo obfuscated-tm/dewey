@@ -52,10 +52,11 @@ export const SEARCH_CSS = `
 .panel.searching > :not(.sbox):not(.sresults) { display: none; }
 .panel.searching > .sresults { display: block; }
 .scount { color: var(--dim); font-size: 12px; margin: -4px 0 8px; }
-.sbusy { position: relative; height: 3px; margin: -6px 0 10px; border-radius: 2px; background: var(--line); overflow: hidden; }
-.sbusy::after { content: ""; position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; background: var(--accent); animation: np-sbusy 1.2s ease-in-out infinite; }
-@keyframes np-sbusy { to { left: 100%; } }
-@media (prefers-reduced-motion: reduce) { .sbusy::after { animation: none; left: 0; width: 100%; opacity: .35; } }
+/* How far the read has got: a line along the box's bottom edge, filling as folders are read. */
+.sbox { position: relative; }
+.sbox .sprog { position: absolute; left: 6px; right: 6px; bottom: -1px; height: 2px; border-radius: 1px; background: var(--line); overflow: hidden; pointer-events: none; }
+.sbox .sprog::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: calc(var(--p, 0) * 100%); background: var(--accent); transition: width .3s ease; }
+@media (prefers-reduced-motion: reduce) { .sbox .sprog::after { transition: none; } }
 .sgroup + .sgroup { margin-top: 12px; }
 .sgroup .ghead { display: flex; align-items: center; gap: 8px; padding: 2px 0 4px; border-bottom: 2px solid var(--cls, var(--line)); }
 .sgroup .gname { font-weight: 600; }
@@ -210,7 +211,7 @@ export function staleClasses(classes, walks, nowMs) {
 }
 
 /** One class's whole Materials tree: { rows: [{ kind, title, id, url, path }], truncated }. */
-export async function walkCourse(sectionId, { fetchImpl = limitedFetch } = {}) {
+export async function walkCourse(sectionId, { fetchImpl = limitedFetch, onFolder = () => {} } = {}) {
   const rows = [];
   let folders = 0;
   let truncated = false;
@@ -225,6 +226,7 @@ export async function walkCourse(sectionId, { fetchImpl = limitedFetch } = {}) {
         const f = batch[j];
         if (r.status === 'rejected') { if (first) throw r.reason; return; }
         folders++;
+        onFolder(folders);
         for (const row of r.value) {
           rows.push({ kind: row.kind, title: row.title, id: row.id, url: row.url, path: f.path });
           if (row.kind !== 'folder' || !row.id || f.d >= MAX_DEPTH) continue;
@@ -240,16 +242,30 @@ export async function walkCourse(sectionId, { fetchImpl = limitedFetch } = {}) {
 }
 
 /**
- * The busy line. On Home, how many classes. On a class page it is only about
- * that class: its name while it's read, "Nothing in <class>" if it had no
- * match, then nothing (the other classes fill in quietly under the bar).
+ * The line under the box. On Home, while some class has never been read: how
+ * many are. On a class page: its name while it's read; "Nothing in <class>"
+ * when it had no match, with how many classes are still to look through (their
+ * results show under it as they come); nothing when it had matches.
  */
 export function lookingText(classes, walks, currentSection, groups = []) {
+  const missing = classes.filter((c) => !walks.has(String(c.section_id))).length;
+  const plural = (n) => `${n} ${n === 1 ? 'class' : 'classes'}`;
   const here = currentSection && classes.find((c) => String(c.section_id) === String(currentSection));
-  if (!here) return `Looking through ${classes.length} ${classes.length === 1 ? 'class' : 'classes'}`;
+  if (!here) return missing ? `${classes.length - missing} of ${plural(classes.length)} read` : '';
   if (!walks.has(String(here.section_id))) return `Looking through ${here.name}`;
   const hereHits = groups.some((g) => String(g.course.section_id) === String(here.section_id));
-  return hereHits ? '' : `Nothing in ${here.name}`;
+  if (hereHits) return '';
+  return missing ? `Nothing in ${here.name} · looking through ${missing} more ${missing === 1 ? 'class' : 'classes'}` : `Nothing in ${here.name}`;
+}
+
+/**
+ * How far a read pass has got, 0–1: classes finished plus the share of the
+ * current one's folders read, against its folder count last time (else 20).
+ */
+export function passProgress({ total = 0, done = 0, read = 0, expect = 20 } = {}) {
+  if (!total) return 0;
+  const part = Math.min(read / Math.max(expect, 1), 0.95);
+  return Math.min((done + part) / total, 1);
 }
 
 /**
@@ -300,7 +316,10 @@ export function createSearch({
   clear.type = 'button';
   clear.setAttribute('aria-label', 'Clear search');
   clear.hidden = true;
-  box.append(input, key, clear);
+  const prog = el('span', 'sprog');
+  prog.setAttribute('aria-hidden', 'true');
+  prog.hidden = true;
+  box.append(input, key, clear, prog);
 
   const results = el('div', 'sresults');
   results.setAttribute('role', 'region');
@@ -351,12 +370,21 @@ export function createSearch({
   }
   const loaded = loadCache().then(() => draw());
 
+  let pass = null; // { total, done, read, expect } while a read runs
+  function showProgress() {
+    prog.hidden = !pass;
+    if (pass) box.style.setProperty('--p', String(passProgress(pass)));
+  }
+
   async function readClass(c) {
     const id = String(c.section_id);
     if (currentSection && id === String(currentSection) && currentWalk) {
       try { const w = await currentWalk(); if (w?.rows) return w; } catch { /* walk it ourselves */ }
     }
-    return walk(c.section_id);
+    const before = walks.get(id)?.rows;
+    pass.read = 0;
+    pass.expect = before ? before.filter((r) => r.kind === 'folder').length + 1 : 20;
+    return walk(c.section_id, { onFolder: (n) => { if (pass) { pass.read = n; showProgress(); } } });
   }
 
   function startWalk({ fromIdle = false } = {}) {
@@ -366,11 +394,14 @@ export function createSearch({
       await loaded;
       await loadCache();
       draw();
+      const todo = staleClasses(list(), walks, now());
+      pass = { total: todo.length, done: 0, read: 0, expect: 20 };
+      showProgress();
       // One class at a time, the page's own first; the limiter paces requests.
-      for (const c of staleClasses(list(), walks, now())) {
+      for (const c of todo) {
         await loadCache(); // another tab may have just read it
         const id = String(c.section_id);
-        if (!staleClasses([c], walks, now()).length) continue;
+        if (!staleClasses([c], walks, now()).length) { pass.done++; showProgress(); continue; }
         try {
           const w = await readClass(c);
           walks.set(id, { ...w, at: now() });
@@ -378,9 +409,12 @@ export function createSearch({
         } catch (e) {
           if (!walks.get(id)?.rows) walks.set(id, { error: String(e?.message || e) });
         }
+        pass.done++;
+        pass.read = 0;
+        showProgress();
         draw();
       }
-    })().finally(() => { walking = null; quiet = false; draw(); });
+    })().finally(() => { walking = null; quiet = false; pass = null; showProgress(); draw(); });
     return walking;
   }
 
@@ -413,11 +447,6 @@ export function createSearch({
     const groups = searchWalks(classes, walks, q);
     const found = groups.reduce((n, g) => n + g.hits.length, 0);
     const busy = !done();
-    if (busy && !quiet) {
-      const b = el('div', 'sbusy');
-      b.setAttribute('aria-hidden', 'true');
-      results.append(b);
-    }
     const hereRead = !!currentSection && walks.has(String(currentSection));
     const { shown, hidden } = pageGroups(groups, currentSection, { hereRead, othersOpen });
     const looking = busy || (currentSection && found) ? lookingText(classes, walks, currentSection, groups) : '';

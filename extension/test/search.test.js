@@ -6,7 +6,7 @@
 
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lookingText, pageGroups, rowsFromTree, staleClasses, WALK_FRESH_MS, matchesQuery, highlight, orderCourses, searchWalks, placeOf, walkCourse } from '../overlays/search.js';
+import { lookingText, passProgress, pageGroups, rowsFromTree, staleClasses, WALK_FRESH_MS, matchesQuery, highlight, orderCourses, searchWalks, placeOf, walkCourse } from '../overlays/search.js';
 import { classCourses } from '../overlays/todo.js';
 
 test('matchesQuery: every word, in the title or the folder path, any case', () => {
@@ -91,8 +91,11 @@ test('lookingText: a class page only talks about its class; Home counts', () => 
   assert.equal(lookingText(classes, new Map(), '1'), 'Looking through AP Comp Sci A');
   const read = new Map([['1', { rows: [] }]]);
   assert.equal(lookingText(classes, read, '1', [{ course: classes[0], hits: [{}] }]), '');
-  assert.equal(lookingText(classes, read, '1', [{ course: classes[1], hits: [{}] }]), 'Nothing in AP Comp Sci A');
-  assert.equal(lookingText(classes, new Map(), null), 'Looking through 2 classes');
+  assert.equal(lookingText(classes, read, '1', [{ course: classes[1], hits: [{}] }]), 'Nothing in AP Comp Sci A · looking through 1 more class');
+  const both = new Map([['1', { rows: [] }], ['2', { rows: [] }]]);
+  assert.equal(lookingText(classes, both, '1', []), 'Nothing in AP Comp Sci A');
+  assert.equal(lookingText(classes, read, null), '1 of 2 classes read');
+  assert.equal(lookingText(classes, both, null), '');
 });
 
 test('pageGroups: a class page shows its class and hides the others behind a count', () => {
@@ -132,4 +135,11 @@ test('staleClasses: no copy or a day-old copy is read again', () => {
     ['3', { error: 'x' }],
   ]);
   assert.deepEqual(staleClasses(classes, walks, now).map((c) => c.section_id), ['2', '3', '4']);
+});
+
+test('passProgress: classes done plus the share of the current one', () => {
+  assert.equal(passProgress({ total: 0 }), 0);
+  assert.equal(passProgress({ total: 4, done: 1, read: 10, expect: 20 }), 0.375);
+  assert.ok(passProgress({ total: 1, done: 0, read: 50, expect: 20 }) < 1); // more folders than last time: never shows done early
+  assert.equal(passProgress({ total: 2, done: 2 }), 1);
 });

@@ -350,10 +350,10 @@ Always:
   since the row doesn't say what it's out of ("→ 18/20"). Beside a graded
   row's box, a faint **Leave out** drops the item from the math:
   Schoology's score is struck through and faded and the right column offers
-  **Undo** and **Never counts** (saves an 'out' mark). An uncounted row's
+  **Undo** and **Doesn't count** (saves an 'out' mark). An uncounted row's
   right column reads **not counted** (Dewey is sure, or the student said so)
   or **may not count** (a guess or a gradebook-only column); clicking it
-  saves 'in' (or clears the student's own 'out'). A category with uncounted
+  asks **Counts** / **Doesn't count**, and the answer is saved ('in' / 'out'). A category with uncounted
   items shows a faint ✓ beside its percent when the rest adds up exactly,
   and ≈ when nothing fits and Dewey scaled it; the title says which. Only listeners, the hover underline and the strike touch
   Schoology's cell. Several classes can have tried scores at once.

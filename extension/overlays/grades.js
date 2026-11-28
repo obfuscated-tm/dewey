@@ -29,8 +29,8 @@
 // the course-level additions sit on the current period's row then. Tried
 // scores, left-out items and planned items live only in this page view;
 // typed weights are saved per course, and so are the student's own marks on
-// what counts: "Never counts" beside "Undo" on a left-out item; a click
-// on "not counted" / "may not count" says it does count. A category whose items left out as marked
+// what counts: "Doesn't count" beside "Undo" on a left-out item; a click
+// on "not counted" / "may not count" asks "Counts" or "Doesn't count". A category whose items left out as marked
 // give Schoology's percent gets a faint ✓; one that doesn't add up, a ≈.
 //
 // Only the current grading period (grademath.currentPeriod) is annotated.
@@ -690,18 +690,37 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
 
         // Left out of the category (Dewey's guess, or the student's mark).
         const same = cat.items.filter((x) => x.earned === it.earned && x.possible === it.possible);
-        // The note is its own undo: click it to say the item does count
-        // (or, on one you marked yourself, that it counts again).
+        // Clicking the note asks the student: "Counts" or "Doesn't count".
+        // Either answer is saved and beats Dewey's guess.
+        let asking = false;
         const uncountedNote = () => {
           const u = it.uncounted;
+          if (asking) {
+            const wrap = el('span', 'wrap');
+            wrap.style.whiteSpace = 'nowrap';
+            const yes = el('button', 'linkbtn', 'Counts');
+            yes.type = 'button';
+            yes.title = 'Schoology counts this one: put it back in the math for good';
+            const no = el('button', 'linkbtn quiet', "Doesn't count");
+            no.type = 'button';
+            no.title = "Schoology doesn't count this one: leave it out for good";
+            const pick = (v) => { asking = false; setMark(cat, it, v); };
+            yes.addEventListener('click', () => pick('in'));
+            no.addEventListener('click', () => pick('out'));
+            wrap.addEventListener('focusout', (e) => { if (!wrap.contains(e.relatedTarget) && asking) { asking = false; update(); } });
+            wrap.addEventListener('keydown', (e) => { if (e.key === 'Escape') { asking = false; update(); } });
+            wrap.append(yes, ' ', no);
+            queueMicrotask(() => yes.focus());
+            return wrap;
+          }
           const n = el('button', 'linkbtn quiet', u === 'sure' || u === 'mine' ? 'not counted' : 'may not count');
           n.type = 'button';
           n.title = (u === 'mine' ? 'You marked this as not counted'
             : u === 'sure' ? `Schoology's percent for ${cat.title} only adds up without this item, so it's left out of the math here too`
             : u === 'column' ? `Typed straight into the gradebook, and Schoology's percent for ${cat.title} is closer without these columns`
             : `Schoology's percent for ${cat.title} only adds up if ${same.filter((x) => x.uncounted).length} of the ${same.length} items scored ${it.earned} / ${it.possible} don't count. It doesn't say which; the totals are right either way`)
-            + '. Click if it counts.';
-          n.addEventListener('click', () => setMark(cat, it, u === 'mine' ? null : 'in'));
+            + '. Click to say whether it counts.';
+          n.addEventListener('click', () => { asking = true; update(); });
           return n;
         };
 
@@ -736,7 +755,7 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
         undo.type = 'button';
         undo.title = 'Count it again';
         undo.addEventListener('click', () => { dropped.delete(it.id); update(); });
-        const never = el('button', 'linkbtn quiet', 'Never counts');
+        const never = el('button', 'linkbtn quiet', "Doesn't count");
         never.type = 'button';
         never.title = 'Schoology doesn\'t count this one: leave it out for good';
         never.addEventListener('click', () => setMark(cat, it, 'out'));

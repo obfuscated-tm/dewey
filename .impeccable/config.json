@@ -45,6 +45,12 @@
         ],
         "createdAt": "2026-11-18T23:47:38.639Z",
         "reason": "Claude: mockup copies the shipped overlay's font, documented in docs/extension/OVERLAY-UI.md; not a new font choice"
+      },
+      {
+        "rule": "overused-font",
+        "value": "instrument sans",
+        "createdAt": "2026-11-27T19:25:42.950Z",
+        "reason": "Project brand font: docs/extension/OVERLAY-UI.md sets Instrument Sans for the overlay; the mockup copies it"
       }
     ]
   }

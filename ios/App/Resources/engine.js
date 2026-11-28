@@ -400,6 +400,7 @@ ${t.trim()}
     calibrate: () => calibrate,
     categoryFloor: () => categoryFloor,
     currentPeriod: () => currentPeriod,
+    exactPct: () => exactPct,
     grade: () => grade,
     history: () => history,
     impact: () => impact,
@@ -409,6 +410,7 @@ ${t.trim()}
     parseScore: () => parseScore,
     periodsFromRows: () => periodsFromRows,
     statedPct: () => statedPct,
+    ticks: () => ticks,
     weightFromText: () => weightFromText
   });
   var SCALE = [["A", 93], ["A-", 90], ["B+", 87], ["B", 83], ["B-", 80], ["C+", 77], ["C", 73], ["C-", 70], ["D", 60], ["F", 0]];
@@ -440,18 +442,62 @@ ${t.trim()}
     return m ? { pct: Number(m[1]), tol: 0.5 * 10 ** -(m[2]?.length || 0) } : null;
   }
   var agrees = (pct, s) => Math.abs(pct - s.pct) <= s.tol + 1e-9 || pct > s.pct && pct - s.pct < 2 * s.tol;
-  function calibrate(cat) {
+  function exactPct(pct) {
+    return Number.isFinite(pct) ? { pct, tol: 1e-3 } : null;
+  }
+  function calibrate(cat, marks = {}) {
+    delete cat.scale;
+    for (const it of cat.items) delete it.uncounted;
     const s = cat.stated;
-    const graded = cat.items.filter((it) => it.earned != null && it.possible != null && (it.possible > 0 || it.earned !== 0));
-    if (!s || !graded.length) return;
+    const isGraded = (it) => it.earned != null && it.possible != null && (it.possible > 0 || it.earned !== 0);
+    for (const it of cat.items) if (marks[it.id] === "out") it.uncounted = "mine";
+    const kept = cat.items.filter((it) => isGraded(it) && !it.uncounted);
+    cat.adds = null;
+    if (!s || !kept.length) return;
+    const sum = (xs) => xs.reduce((a, it) => [a[0] + it.earned, a[1] + it.possible], [0, 0]);
+    const pctOf = ([E2, P2]) => P2 > 0 ? E2 / P2 * 100 : null;
+    const fits = (xs) => {
+      const p = pctOf(sum(xs));
+      return p != null && agrees(p, s);
+    };
+    if (fits(kept)) {
+      cat.adds = true;
+      return;
+    }
+    const free = kept.filter((it) => marks[it.id] !== "in");
+    const cols = free.filter((it) => it.gradeOnly);
+    const noCols = kept.filter((it) => !cols.includes(it));
+    const off = (xs) => Math.abs((pctOf(sum(xs)) ?? Infinity) - s.pct);
+    const tryCols = cols.length && noCols.length && off(noCols) < off(kept);
+    if (tryCols) {
+      for (const it of cols) it.uncounted = "column";
+      if (fits(noCols)) {
+        cat.adds = true;
+        return;
+      }
+      if (search(noCols, free.filter((it) => !cols.includes(it)), s)) {
+        cat.adds = true;
+        return;
+      }
+      for (const it of cols) delete it.uncounted;
+    }
+    if (search(kept, free, s)) {
+      cat.adds = true;
+      return;
+    }
+    if (tryCols) for (const it of cols) it.uncounted = "column";
+    cat.adds = false;
+    const [E, P] = sum(tryCols ? noCols : kept);
+    if (E > 0) cat.scale = s.pct / 100 * P / E;
+  }
+  function search(pool, free, s) {
     let E = 0, P = 0;
-    for (const it of graded) {
+    for (const it of pool) {
       E += it.earned;
       P += it.possible;
     }
-    if (P <= 0 || agrees(E / P * 100, s)) return;
     const groups = /* @__PURE__ */ new Map();
-    for (const it of graded) {
+    for (const it of free) {
       const k = `${it.earned}/${it.possible}`;
       if (!groups.has(k)) groups.set(k, { earned: it.earned, possible: it.possible, items: [] });
       groups.get(k).items.push(it);
@@ -475,19 +521,19 @@ ${t.trim()}
         pick[i] = 0;
       };
       walk(0, k, 0, 0);
-      if (budget <= 0) break;
+      if (budget <= 0) return false;
       if (!found.length) continue;
       const f = found[0];
-      if (!found.every((x) => Math.abs(x.e - f.e) < 1e-9 && Math.abs(x.p - f.p) < 1e-9)) break;
+      if (!found.every((x) => Math.abs(x.e - f.e) < 1e-9 && Math.abs(x.p - f.p) < 1e-9)) return false;
       gs.forEach((g, i) => {
         const sure = found.length === 1 && f.pick[i] === g.items.length;
         for (const it of g.items.slice(0, f.pick[i])) it.uncounted = sure ? "sure" : "guess";
       });
-      return;
+      return true;
     }
-    if (E > 0) cat.scale = s.pct / 100 * P / E;
+    return false;
   }
-  function periodsFromRows(rows) {
+  function periodsFromRows(rows, { marks = {} } = {}) {
     const periods = [];
     let period = null;
     let category = null;
@@ -499,14 +545,17 @@ ${t.trim()}
         category = null;
       } else if (r.level === "category") {
         if (!period) periods.push(period = { title: "", categories: [] });
-        category = { title: r.title, weight: r.weight ?? weightFromText(r.title), stated: statedPct(r.grade), items: [], src: r };
+        category = { title: r.title, weight: r.weight ?? weightFromText(r.title), stated: exactPct(r.exactPct) || statedPct(r.grade), items: [], src: r };
         period.categories.push(category);
       } else if (r.level === "item" && category) {
-        const { earned, possible } = parseScore(r.grade);
-        category.items.push({ id: r.id ?? `${category.title}/${r.title}/${r.due}`, title: r.title, due: parseDue(r.due), earned, possible, src: r });
+        let { earned, possible } = parseScore(r.grade);
+        if (earned != null && Number.isFinite(r.exact)) earned = r.exact;
+        const item = { id: r.id ?? `${category.title}/${r.title}/${r.due}`, title: r.title, due: parseDue(r.due), earned, possible, src: r };
+        if (r.gradeOnly) item.gradeOnly = true;
+        category.items.push(item);
       }
     }
-    for (const p of periods) for (const c of p.categories) calibrate(c);
+    for (const p of periods) for (const c of p.categories) calibrate(c, marks);
     return periods;
   }
   function currentPeriod(periods) {
@@ -596,6 +645,15 @@ ${t.trim()}
     }
     return out;
   }
+  function ticks(lo, hi, max = 6) {
+    if (!Number.isFinite(lo) || !Number.isFinite(hi) || hi < lo) return [];
+    const raw = Math.max((hi - lo) / max, 1);
+    const mag = 10 ** Math.floor(Math.log10(raw));
+    const step = [1, 2, 5, 10].map((m) => m * mag).find((s) => s >= raw);
+    const out = [];
+    for (let v = Math.ceil(lo / step) * step; v <= hi; v += step) out.push(v);
+    return out;
+  }
   function categoryFloor(course, title, target = A_CUTOFF, opts = {}) {
     const g = grade(course, opts);
     const cat = g.categories.find((c) => c.title === title);
@@ -678,6 +736,13 @@ ${t.trim()}
       const row = { level, title: due ? title.replace(due, "").trim() : title, due, grade: grade2, comment };
       if (level === "category") row.weight = weightFromText((th?.querySelector(".percentage-contrib") || th)?.textContent);
       if (level === "item") row.id = ((tr.getAttribute("data-id") || "").match(/^I-(\d+)$/) || [])[1] || null;
+      const exact = tr.querySelector(".grade-column .rounded-grade")?.getAttribute("title");
+      if (level === "item" && exact && Number.isFinite(Number(exact))) row.exact = Number(exact);
+      if (level === "category" || level === "period" || level === "course") {
+        const t = [...tr.querySelectorAll(".grade-column [title]")].map((n) => n.getAttribute("title")).find((v) => /^\s*-?\d+(\.\d+)?\s*%\s*$/.test(v));
+        if (t) row.exactPct = parseFloat(t);
+      }
+      if (level === "item" && tr.classList.contains("is-grade-column")) row.gradeOnly = true;
       if (rubricBtn) row.rubric = rubricIds(rubricBtn, root);
       if (els) row.el = tr;
       rows.push(row);
@@ -1360,9 +1425,133 @@ ${t.trim()}
     rankIn: () => rankIn,
     rankText: () => rankText,
     signed: () => signed,
+    stampFor: () => stampFor,
     whatIfGrade: () => whatIfGrade,
     zeroCost: () => zeroCost
   });
+
+  // ../extension/overlays/todologic.js
+  var todologic_exports = {};
+  __export(todologic_exports, {
+    AUTO_ADD_OVERDUE_DAYS: () => AUTO_ADD_OVERDUE_DAYS,
+    TYPE_LABEL: () => TYPE_LABEL,
+    annotateItems: () => annotateItems,
+    autoAddable: () => autoAddable,
+    calendarDays: () => calendarDays,
+    cardStamp: () => cardStamp,
+    dueTail: () => dueTail,
+    formatDue: () => formatDue,
+    formatLate: () => formatLate,
+    formatOverdue: () => formatOverdue,
+    isOwed: () => isOwed,
+    showsLate: () => showsLate,
+    sortDueItems: () => sortDueItems,
+    tagFor: () => tagFor,
+    testCountdown: () => testCountdown,
+    timeLeft: () => timeLeft,
+    typeFor: () => typeFor
+  });
+  var startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  var calendarDays = (a, b) => Math.round((startOfDay(a) - startOfDay(b)) / 864e5);
+  function formatLate(days) {
+    const n = Math.max(0, Math.round(days || 0));
+    return n === 0 ? "late" : `${n} day${n === 1 ? "" : "s"} late`;
+  }
+  var formatOverdue = formatLate;
+  var DONE_KINDS = /* @__PURE__ */ new Set(["submitted", "graded", "removed"]);
+  function showsLate({ overdue, kind, exam, quiz }) {
+    if (!overdue || DONE_KINDS.has(kind)) return false;
+    if (exam) return !!quiz && kind !== "ready";
+    return true;
+  }
+  function isOwed({ kind, exam }) {
+    if (DONE_KINDS.has(kind)) return false;
+    return exam ? kind !== "ready" : true;
+  }
+  function cardStamp(rows, now = /* @__PURE__ */ new Date()) {
+    const at = (r) => r.due ? new Date(r.due) : null;
+    if (rows.some((r) => r.late && at(r) && at(r) < now)) return "late";
+    if (rows.some((r) => r.owed && at(r) && at(r) >= now && calendarDays(at(r), now) === 0)) return "dueToday";
+    return null;
+  }
+  function timeLeft(due, now = /* @__PURE__ */ new Date()) {
+    if (!due) return "";
+    const ms = new Date(due) - now;
+    if (!(ms > 0) || ms > 12 * 36e5) return "";
+    const m = Math.ceil(ms / 6e4);
+    return m >= 60 ? `${Math.floor(m / 60)} h ${m % 60} min left` : `${m} min left`;
+  }
+  function testCountdown(due, now = /* @__PURE__ */ new Date()) {
+    if (!due) return "";
+    const d = new Date(due);
+    if (!(d > now)) return "";
+    const days = calendarDays(d, now);
+    return days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
+  }
+  function dueTail({ due, overdue, days, kind, exam, quiz }, now = /* @__PURE__ */ new Date()) {
+    if (showsLate({ overdue, kind, exam, quiz })) return { text: formatLate(days), late: true };
+    if (exam && isOwed({ kind, exam })) {
+      const c = testCountdown(due, now);
+      if (c) return { text: c, late: false };
+    }
+    if (!exam && isOwed({ kind, exam })) {
+      const left = timeLeft(due, now);
+      if (left) return { text: left, late: false };
+    }
+    return { text: "", late: false };
+  }
+  function formatTime(d) {
+    let h = d.getHours();
+    const m = d.getMinutes();
+    const ap = h >= 12 ? "pm" : "am";
+    h %= 12;
+    if (h === 0) h = 12;
+    return `${h}:${String(m).padStart(2, "0")} ${ap}`;
+  }
+  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  var MONTHS3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function formatDue(due, now = /* @__PURE__ */ new Date()) {
+    if (!due) return "No due date";
+    const d = new Date(due);
+    if (Number.isNaN(d.getTime())) return "";
+    return `${WEEKDAYS[d.getDay()]} ${MONTHS3[d.getMonth()]} ${d.getDate()}, ${formatTime(d)}`;
+  }
+  function annotateItems({ overdue = [], upcoming = [], now = /* @__PURE__ */ new Date() } = {}) {
+    const out = [];
+    for (const e of overdue) {
+      const days = e.due ? calendarDays(now, new Date(e.due)) : 0;
+      out.push({ ...e, overdue: true, days });
+    }
+    for (const e of upcoming) out.push({ ...e, overdue: false });
+    return out;
+  }
+  function sortDueItems(items) {
+    return [...items].sort((a, b) => {
+      if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
+      if (a.overdue) return (b.days ?? 0) - (a.days ?? 0);
+      return new Date(a.due || 0) - new Date(b.due || 0);
+    });
+  }
+  var TYPE_LABEL = { exam: "TEST", assignment: "HW", classwork: "CW", task: "TASK", meeting: "MEET" };
+  function tagFor(item) {
+    if (item) {
+      const text = TYPE_LABEL[item.type] || "";
+      if (!text) return { text: "", cls: "" };
+      return { text, cls: item.removed ? "tag-faint" : item.type === "exam" ? "tag-solid" : "tag-outline" };
+    }
+    if (item === null) return { text: "", cls: "tag-empty" };
+    return { text: "", cls: "" };
+  }
+  var AUTO_ADD_OVERDUE_DAYS = 14;
+  function autoAddable(item) {
+    if (item.graded) return false;
+    return !item.overdue || (item.days ?? 0) <= AUTO_ADD_OVERDUE_DAYS;
+  }
+  function typeFor(item) {
+    return /\/assessments?\//.test(String(item.url || "")) ? "exam" : void 0;
+  }
+
+  // ../extension/overlays/asgstate.js
   function chipState(grade2, item, pageSubmitted) {
     if (grade2 && grade2.earned != null) return "graded";
     if (item?.removed) return "removed";
@@ -1425,6 +1614,21 @@ ${t.trim()}
   function inArchive(manifest, key) {
     const it = key && manifest?.items?.[key];
     return !!(it && !it.removed && it.files?.length);
+  }
+  var MONTHS4 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  var shortDate = (d) => `${MONTHS4[d.getMonth()]} ${d.getDate()}`;
+  function clock(d) {
+    const h = d.getHours();
+    return `${h % 12 || 12}:${String(d.getMinutes()).padStart(2, "0")} ${h >= 12 ? "pm" : "am"}`;
+  }
+  function stampFor({ kind, due, late, days, owed, word }, now = /* @__PURE__ */ new Date()) {
+    if (kind === "submitted") return { tone: "good", s1: "", s2: word || "Submitted" };
+    if (kind === "graded" || kind === "removed" || kind === "unknown") return null;
+    const d = due ? new Date(due) : null;
+    if (!d || Number.isNaN(d.getTime())) return null;
+    if (late) return { tone: "late", s1: `Due ${shortDate(d)}`, s2: formatLate(days) };
+    if (owed && d >= now && calendarDays(d, now) === 0) return { tone: "", s1: clock(d), s2: "Due today" };
+    return { tone: "", s1: "Due", s2: shortDate(d) };
   }
 
   // ../extension/overlays/matstate.js
@@ -1530,76 +1734,6 @@ ${t.trim()}
     if (days < 14) return `${days} days ago`;
     const d = new Date(t);
     return `${d.getMonth() + 1}/${d.getDate()}/${d.getFullYear()}`;
-  }
-
-  // ../extension/overlays/todologic.js
-  var todologic_exports = {};
-  __export(todologic_exports, {
-    AUTO_ADD_OVERDUE_DAYS: () => AUTO_ADD_OVERDUE_DAYS,
-    TYPE_LABEL: () => TYPE_LABEL,
-    annotateItems: () => annotateItems,
-    autoAddable: () => autoAddable,
-    calendarDays: () => calendarDays,
-    formatDue: () => formatDue,
-    formatOverdue: () => formatOverdue,
-    sortDueItems: () => sortDueItems,
-    tagFor: () => tagFor,
-    typeFor: () => typeFor
-  });
-  var startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  var calendarDays = (a, b) => Math.round((startOfDay(a) - startOfDay(b)) / 864e5);
-  function formatOverdue(days) {
-    return `${Math.max(0, Math.round(days))} d overdue`;
-  }
-  function formatTime(d) {
-    let h = d.getHours();
-    const m = d.getMinutes();
-    const ap = h >= 12 ? "pm" : "am";
-    h %= 12;
-    if (h === 0) h = 12;
-    return `${h}:${String(m).padStart(2, "0")} ${ap}`;
-  }
-  var WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  var MONTHS3 = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  function formatDue(due, now = /* @__PURE__ */ new Date()) {
-    if (!due) return "No due date";
-    const d = new Date(due);
-    if (Number.isNaN(d.getTime())) return "";
-    return `${WEEKDAYS[d.getDay()]} ${MONTHS3[d.getMonth()]} ${d.getDate()}, ${formatTime(d)}`;
-  }
-  function annotateItems({ overdue = [], upcoming = [], now = /* @__PURE__ */ new Date() } = {}) {
-    const out = [];
-    for (const e of overdue) {
-      const days = e.due ? calendarDays(now, new Date(e.due)) : 0;
-      out.push({ ...e, overdue: true, days });
-    }
-    for (const e of upcoming) out.push({ ...e, overdue: false });
-    return out;
-  }
-  function sortDueItems(items) {
-    return [...items].sort((a, b) => {
-      if (a.overdue !== b.overdue) return a.overdue ? -1 : 1;
-      if (a.overdue) return (b.days ?? 0) - (a.days ?? 0);
-      return new Date(a.due || 0) - new Date(b.due || 0);
-    });
-  }
-  var TYPE_LABEL = { exam: "TEST", assignment: "HW", classwork: "CW", task: "TASK", meeting: "MEET" };
-  function tagFor(item) {
-    if (item) {
-      const text = TYPE_LABEL[item.type] || "";
-      if (!text) return { text: "", cls: "" };
-      return { text, cls: item.removed ? "tag-faint" : item.type === "exam" ? "tag-solid" : "tag-outline" };
-    }
-    if (item === null) return { text: "", cls: "tag-empty" };
-    return { text: "", cls: "" };
-  }
-  var AUTO_ADD_OVERDUE_DAYS = 14;
-  function autoAddable(item) {
-    if (item.graded) return false;
-    return !item.overdue || (item.days ?? 0) <= AUTO_ADD_OVERDUE_DAYS;
-  }
-  function typeFor(item) {
-    return /\/assessments?\//.test(String(item.url || "")) ? "exam" : void 0;
   }
 
   // ../extension/engine/engine.js
@@ -1984,7 +2118,7 @@ ${t.trim()}
   }
   var finite = (x) => typeof x === "number" && Number.isFinite(x) ? x : null;
   function courseGrade({ rows = [], opts = {}, target = A_CUTOFF } = {}) {
-    const periods = periodsFromRows(rows);
+    const periods = periodsFromRows(rows, { marks: opts.marks });
     const course = currentPeriod(periods) || periods.find((p) => p.title && !/no grading period/i.test(p.title)) || periods[0] || null;
     const titles = periods.map((p) => p.title);
     if (!course) return { period: null, pct: null, letter: null, mode: "points", categories: [], items: [], history: [], periods: titles };
@@ -1998,7 +2132,8 @@ ${t.trim()}
         possible: c.possible,
         pct: c.pct,
         floor: finite(f),
-        floorStatus: f == null ? "none" : f <= 0 ? "any" : f > 100 ? "out" : "need"
+        floorStatus: f == null ? "none" : f <= 0 ? "any" : f > 100 ? "out" : "need",
+        adds: course.categories.find((x) => x.title === c.title)?.adds ?? null
       };
     });
     for (const c of course.categories) {
@@ -2032,7 +2167,7 @@ ${t.trim()}
     };
   }
   function planTest({ rows = [], category, possible, target = A_CUTOFF, opts = {} } = {}) {
-    const course = currentPeriod(periodsFromRows(rows));
+    const course = currentPeriod(periodsFromRows(rows, { marks: opts.marks }));
     if (!course || !category || !(possible > 0)) return { status: "none" };
     return needFor(course, { category, possible, target }, opts);
   }

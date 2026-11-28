@@ -20,12 +20,18 @@ struct TourView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage(TourView.shownKey) private var shown = false
     @AppStorage(Theme.appearanceKey) private var appearance = "system"
-    @State private var page = 0
-    @State private var practicing = false
+    @State private var page: Int
     @State private var connected = NeoPlanClient().connected
 
-    private var cards: [Card] {
+    private var cards: [Card] { Self.cards(mode) }
+    private static func cards(_ mode: Mode) -> [Card] {
         mode == .tour ? [.welcome, .studentID, .neoPlan] : [.places, .marking, .plan, .turningIn, .grades, .settings]
+    }
+
+    /// `from`: the card to open on (the student ID, once the practice is over).
+    init(mode: Mode = .tour, from card: Card? = nil) {
+        self.mode = mode
+        _page = State(initialValue: card.flatMap { Self.cards(mode).firstIndex(of: $0) } ?? 0)
     }
     private var last: Bool { page == cards.count - 1 }
 
@@ -60,12 +66,6 @@ struct TourView: View {
         }
         .preferredColorScheme(Theme.colorScheme(appearance))
         .tint(Theme.accent)
-        .fullScreenCover(isPresented: $practicing) {
-            PracticeView {
-                page = cards.firstIndex(of: .studentID) ?? cards.count - 1
-                practicing = false
-            }
-        }
     }
 
     @ViewBuilder
@@ -96,7 +96,7 @@ struct TourView: View {
                 .accessibilityLabel("Page \(page + 1) of \(cards.count)")
             }
             Button {
-                if cards[page] == .welcome { practicing = true } else if last { finish() } else { go(page + 1) }
+                if cards[page] == .welcome { startPractice() } else if last { finish() } else { go(page + 1) }
             } label: {
                 Text(cards[page] == .welcome ? "Start practice" : last ? "Done" : "Next")
                     .font(Theme.headline)
@@ -118,6 +118,16 @@ struct TourView: View {
     private func finish() {
         shown = true
         dismiss()
+    }
+
+    /// The practice runs at the app's root (TourHost), not in a cover over this one:
+    /// inside a presented screen SwiftUI never attaches press-and-hold menus to views
+    /// outside a List, so the shelf's books and Grades' classes wouldn't open theirs.
+    /// The student ID card comes back over the real app when it ends.
+    private func startPractice() {
+        shown = true
+        dismiss()
+        TourHost.shared.practicing = true
     }
 }
 
@@ -275,7 +285,7 @@ private struct MarkingCard: View {
             Point(symbol: "checkmark.seal.fill", title: "Green seal = turned in",
                   detail: "“Submitted on Schoology” only when Schoology's dropbox has it. “Not on Schoology” when you marked paper or lab-site work.")
             Point(symbol: "hand.draw", title: "Swipe and hold",
-                  detail: "Swipe a row left for Mark turned in, right for Done. Press and hold for every status.")
+                  detail: "Swipe a row left for Mark turned in, or to hand it in. Press and hold to open it in Schoology or take it off your list.")
             NavigationLink { StatusGuideView() } label: {
                 Text("How statuses work").font(Theme.subhead.weight(.semibold))
             }

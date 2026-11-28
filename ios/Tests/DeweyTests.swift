@@ -509,15 +509,15 @@ final class PlanTests: XCTestCase {
         let cal = Calendar.current
         let today = cal.startOfDay(for: now)
         func at(_ d: Int) -> Date { cal.date(byAdding: .hour, value: 20, to: cal.date(byAdding: .day, value: d, to: today)!)! }
-        XCTAssertEqual(PlanLogic.autoBucket(due: at(-2), late: true, isTest: false, mine: false, now: now), .todo)
-        XCTAssertEqual(PlanLogic.autoBucket(due: at(0), late: false, isTest: false, mine: false, now: now), .todo)
-        XCTAssertEqual(PlanLogic.autoBucket(due: at(1), late: false, isTest: false, mine: false, now: now), .todo)
-        XCTAssertEqual(PlanLogic.autoBucket(due: at(2), late: false, isTest: false, mine: false, now: now), .later)
-        XCTAssertEqual(PlanLogic.autoBucket(due: at(2), late: false, isTest: true, mine: false, now: now), .todo)
-        XCTAssertEqual(PlanLogic.autoBucket(due: at(3), late: false, isTest: true, mine: false, now: now), .todo)
-        XCTAssertEqual(PlanLogic.autoBucket(due: at(4), late: false, isTest: true, mine: false, now: now), .later)
-        XCTAssertEqual(PlanLogic.autoBucket(due: nil, late: false, isTest: false, mine: true, now: now), .todo)
-        XCTAssertEqual(PlanLogic.autoBucket(due: nil, late: false, isTest: false, mine: false, now: now), .later)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(-2), late: true, isTest: false, now: now), .todo)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(0), late: false, isTest: false, now: now), .todo)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(1), late: false, isTest: false, now: now), .todo)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(2), late: false, isTest: false, now: now), .later)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(2), late: false, isTest: true, now: now), .todo)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(3), late: false, isTest: true, now: now), .todo)
+        XCTAssertEqual(PlanLogic.autoBucket(due: at(4), late: false, isTest: true, now: now), .later)
+        // No date (your own task, undated gradebook work): To do, at the end (testNewWorkSlotsInBeforeLaterPlacedWork).
+        XCTAssertEqual(PlanLogic.autoBucket(due: nil, late: false, isTest: false, now: now), .todo)
     }
 
     func testOwnTasksStayUntilDoneThenUntilTheDayEnds() {
@@ -529,6 +529,35 @@ final class PlanTests: XCTestCase {
         XCTAssertFalse(TodoLogic.isVisible(s(done: true, today: false)))
         XCTAssertTrue(ItemState.isMine("mine-ABC"))
         XCTAssertFalse(ItemState.isMine("8610387535"))
+    }
+
+    /// Rows as Owen's gradebooks had them on 2026-11-20 (Pre-Calc, World Lit).
+    func testUndatedGradebookWorkThatIsOwed() {
+        func item(_ id: String, due: String? = nil, grade: String, earned: Double? = nil) -> CourseGrade.Item {
+            .init(id: id, category: "Homework/Classwork", title: id, due: due, grade: grade, comment: "", earned: earned, possible: earned == nil ? nil : 5)
+        }
+        let rows = [
+            item("HW #32", grade: "—"),                                   // no date, no score: owed
+            item("blank", due: "", grade: ""),                            // empty cell: owed
+            item("missing", grade: "—Missing"),                           // marked missing: owed
+            item("Verify Blue Trig", grade: "5 / 5", earned: 5),          // scored
+            item("Practice Quiz", grade: "—Collected"),                   // the teacher has it
+            item("Writer's Workshop", grade: "A+"),                       // a letter, no points
+            item("Unit 3 Test", due: "2026-11-24T08:30", grade: "—"),     // dated: Schoology's lists carry it
+        ]
+        XCTAssertEqual(TodoLogic.undatedOwed(rows).map(\.id), ["HW #32", "blank", "missing"])
+    }
+
+    func testUndatedGradebookWorkStaysUntilDoneThenUntilTheDayEnds() {
+        func s(done: Bool = false, today: Bool = false, graded: Bool = false, submitted: Bool = false) -> TodoLogic.Snapshot {
+            .init(inSchoology: true, done: done, turnedIn: false, submitted: submitted, graded: graded, dismissed: false,
+                  finishedToday: today, fromGradebook: true)
+        }
+        XCTAssertTrue(TodoLogic.isVisible(s()))
+        XCTAssertTrue(TodoLogic.isVisible(s(done: true, today: true)))
+        XCTAssertFalse(TodoLogic.isVisible(s(done: true)), "no date, so nothing else would ever drop it")
+        XCTAssertFalse(TodoLogic.isVisible(s(submitted: true)))
+        XCTAssertFalse(TodoLogic.isVisible(s(graded: true)), "scored or collected: gone")
     }
 }
 

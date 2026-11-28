@@ -215,7 +215,8 @@ final class AppModel {
         return allItems().filter {
             TodoLogic.isVisible(.init(inSchoology: $0.inSchoology, done: $0.done, turnedIn: $0.turnedIn,
                                       submitted: $0.submitted, graded: $0.graded, dismissed: $0.dismissed,
-                                      mine: $0.mine, finishedToday: cal.isDate($0.updatedAt, inSameDayAs: now)))
+                                      mine: $0.mine, finishedToday: cal.isDate($0.updatedAt, inSameDayAs: now),
+                                      fromGradebook: $0.fromGradebook))
         }
     }
 
@@ -300,6 +301,8 @@ final class AppModel {
         guard !checking else { return }
         checking = true
         defer { checking = false }
+        // Undated work is only in the gradebooks (takeUndated); each is fetched at most every 30 min.
+        await twoAtATime(classes.map(\.sectionId)) { await self.loadGrades($0) }
         await checkStatuses()
         await syncNeoPlan()
         revision += 1
@@ -332,10 +335,12 @@ final class AppModel {
             it.url = e.url ?? it.url
             it.graded = e.graded ?? false
             it.inSchoology = true
+            it.fromGradebook = false
             it.lastSeen = now
         }
-        // The student's own tasks are never on Schoology's lists.
-        for it in all where !seen.contains(it.schoologyId) && !it.mine {
+        // The student's own tasks are never on Schoology's lists, nor is undated
+        // work (the gradebook keeps that, takeUndated).
+        for it in all where !seen.contains(it.schoologyId) && !it.mine && !it.fromGradebook {
             it.inSchoology = false
         }
         prune(all, now: now)
@@ -552,7 +557,7 @@ final class AppModel {
                 // A past test that isn't an online quiz isn't work any more (TodoLogic.showsLate).
                 if (it.due ?? .distantFuture) < now && !late && !it.mine { continue }
             }
-            let auto = PlanLogic.autoBucket(due: it.due, late: late, isTest: it.type == .exam, mine: it.mine, now: now)
+            let auto = PlanLogic.autoBucket(due: it.due, late: late, isTest: it.type == .exam, now: now)
             let b = it.planSection.flatMap(PlanLogic.Bucket.init(rawValue:)) ?? auto
             if b == .later { later.append(it) } else { todo.append(it) }
         }
@@ -580,7 +585,7 @@ final class AppModel {
             case .todo, .later:
                 if from == .done { setProgress(it, .todo) }
                 // By due date it would be here anyway: leave it to follow its due date.
-                let auto = PlanLogic.autoBucket(due: it.due, late: isOverdue(it, now: now), isTest: it.type == .exam, mine: it.mine, now: now)
+                let auto = PlanLogic.autoBucket(due: it.due, late: isOverdue(it, now: now), isTest: it.type == .exam, now: now)
                 it.planSection = b == auto ? nil : b.rawValue
             }
         }
@@ -760,6 +765,7 @@ final class AppModel {
             gradesAsOf[sectionId] = Date()
             gradeErrors[sectionId] = nil
             learnFromGrades(sectionId: sectionId, g)
+            takeUndated(sectionId: sectionId, g)
         } catch let e as EngineError {
             gradeErrors[sectionId] = e
         } catch {
@@ -815,6 +821,48 @@ final class AppModel {
             if it.categoryHint != gi.category { it.categoryHint = gi.category; changed = true }
         }
         if changed { save() }
+    }
+
+    /// Work with no due date: Schoology's to-do lists leave it out, so it comes from the
+    /// gradebook (TodoLogic.undatedOwed). Added while it's owed; once it has a score, is
+    /// collected or is gone, it leaves the list. Work the lists carry is left to `merge`.
+    func takeUndated(sectionId: String, _ g: CourseGrade, now: Date = Date()) {
+        let all = allItems()
+        var byId = Dictionary(all.map { ($0.schoologyId, $0) }, uniquingKeysWith: { a, _ in a })
+        let owed = TodoLogic.undatedOwed(g.items)
+        let owedIds = Set(owed.map(\.id))
+        let course = courses.first { $0.sectionId == sectionId }?.title
+        var changed = false
+        for gi in owed {
+            if let it = byId[gi.id], it.inSchoology, !it.fromGradebook, it.due != nil { continue }
+            let it = byId[gi.id] ?? {
+                let n = ItemState(schoologyId: gi.id, title: gi.title)
+                context.insert(n)
+                byId[gi.id] = n
+                fetchedItems = nil
+                return n
+            }()
+            it.title = gi.title
+            it.sectionId = sectionId
+            it.courseName = course ?? it.courseName
+            it.due = nil
+            it.url = it.url ?? "/assignment/\(gi.id)"
+            it.categoryHint = gi.category
+            it.graded = false
+            it.inSchoology = true
+            it.fromGradebook = true
+            it.lastSeen = now
+            changed = true
+        }
+        for it in all where it.fromGradebook && it.sectionId == sectionId && !owedIds.contains(it.schoologyId) {
+            it.fromGradebook = false
+            it.inSchoology = false
+            it.graded = true
+            changed = true
+        }
+        guard changed else { return }
+        try? context.save()
+        revision += 1
     }
 
     /// When each score first appeared (nil = already there before the app was

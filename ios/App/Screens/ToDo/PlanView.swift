@@ -100,7 +100,7 @@ struct PlanContent: View {
         Section {
             Button(action: onNewTask) { Label("New task", systemImage: "plus") }
         } footer: {
-            Text("Until you move it, work goes where its due date puts it: late, due today or tomorrow, and tests in the next 3 days in To do; the rest in Later.")
+            Text("Until you move it, work goes where its due date puts it: late, due today or tomorrow, and tests in the next 3 days in To do, with work that has no date at the end; the rest in Later.")
         }
         .listRowBackground(Theme.card)
     }

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Items that don't count (phone)</title>
+<style>
+  :root{
+    --bg:#F6F4EE;--card:#FFFDF8;--border:#E3DED3;--divider:#ECE7DC;
+    --text:#1B1A17;--secondary:#5C5950;--tertiary:#6B675D;
+    --late:#A63A0B;--good:#3F6B12;--accent:#0F6E56;
+  }
+  body{margin:0;background:#E9E6DE;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;color:var(--text);padding:32px;display:flex;flex-direction:column;gap:24px}
+  .intro{max-width:1240px;font-size:14px;line-height:1.5;color:var(--secondary)}
+  .intro b{color:var(--text)}
+  .row-of-phones{display:flex;gap:32px;flex-wrap:wrap;align-items:flex-start}
+  figure{margin:0;display:flex;flex-direction:column;gap:10px;width:390px}
+  figcaption{font-size:13px;line-height:1.45;color:var(--secondary)}
+  figcaption b{color:var(--text)}
+  .phone{width:390px;height:780px;border-radius:44px;background:var(--bg);overflow:hidden;position:relative;box-shadow:0 0 0 10px #1B1A17,0 20px 50px rgba(0,0,0,.25);display:flex;flex-direction:column}
+  .nav{padding:54px 8px 4px;display:flex;justify-content:space-between;align-items:center}
+  .back{color:var(--accent);font-size:17px;display:flex;align-items:center;gap:2px;padding:0 8px;min-height:44px}
+  .pill{height:30px;padding:0 12px;border-radius:15px;border:1px solid var(--border);background:var(--card);color:var(--secondary);font-size:14px;font-weight:600;display:flex;align-items:center;margin-right:8px}
+  .head{padding:0 20px 12px}
+  .head h1{margin:0;font-family:"New York","Iowan Old Style",Georgia,serif;font-size:30px;font-weight:700}
+  .head .g{display:flex;align-items:baseline;gap:8px;margin-top:4px}
+  .head .letter{font-family:"New York","Iowan Old Style",Georgia,serif;font-size:22px;font-weight:700}
+  .head .pct{font-size:17px;font-variant-numeric:tabular-nums}
+  .head .goal{font-size:13px;color:var(--secondary)}
+  .list{padding:0 12px;display:flex;flex-direction:column;gap:12px;overflow:hidden;flex:1}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden}
+  .cat{display:flex;justify-content:space-between;align-items:baseline;padding:12px 14px}
+  .cat .t{font-size:17px;font-weight:600}
+  .cat .w{font-size:13px;color:var(--secondary);margin-left:6px;font-weight:400}
+  .cat .p{font-size:15px;font-variant-numeric:tabular-nums;font-weight:600}
+  .cat .approx{color:var(--tertiary);font-weight:400;margin-right:3px}
+  .item{display:flex;gap:10px;padding:11px 14px;border-top:1px solid var(--divider);align-items:flex-start}
+  .item .l{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+  .item .ti{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .item .d{font-size:12px;color:var(--tertiary);font-variant-numeric:tabular-nums}
+  .item .r{display:flex;flex-direction:column;align-items:flex-end;gap:3px}
+  .item .s{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+  .item .m{display:flex;gap:6px;font-size:12px;font-variant-numeric:tabular-nums}
+  .item .pc{color:var(--secondary)}
+  .pos{color:var(--good)} .neg{color:var(--late)}
+  .nc{color:var(--tertiary)}
+  .out .ti,.out .s{color:var(--tertiary)}
+  .held{position:relative;z-index:3;background:var(--card);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.18);border-top:none;margin:0 -4px}
+  .dim{position:absolute;inset:0;background:rgba(246,244,238,.55);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);z-index:2}
+  .menu{position:absolute;z-index:4;right:22px;width:250px;background:rgba(255,253,248,.96);border-radius:13px;box-shadow:0 10px 40px rgba(0,0,0,.22);overflow:hidden}
+  .menu div{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;font-size:17px;border-top:.5px solid var(--border)}
+  .menu div:first-child{border-top:none}
+  .menu svg{flex:none}
+  .tabbar{height:82px;border-top:1px solid var(--border);background:var(--card);display:flex;justify-content:space-around;padding-top:8px;font-size:10px;color:var(--tertiary)}
+  .tabbar span.on{color:var(--accent)}
+  .toast{font-size:12px;color:var(--tertiary);text-align:center;padding:4px 0 0}
+  .notes{max-width:1240px;display:grid;grid-template-columns:1fr 1fr;gap:24px;font-size:14px;line-height:1.5}
+  .notes h2{font-size:15px;margin:0 0 6px}
+  .notes ul{margin:0;padding-left:18px;color:var(--secondary)}
+  .notes li b{color:var(--text)}
+</style>
+</head>
+<body>
+
+<div class="intro">
+  <b>Items that don't count, on the phone</b> (2b Course grades, AP Physics 1, made-up rows with the real scores). Same rule as the Chrome extension; the extension's "click the +0.2%" becomes the app's usual <b>press and hold</b>, since a tap opens the graded work and a 12 pt number is no 44 pt target.
+</div>
+
+<div class="row-of-phones">
+
+<!-- 1 · What Dewey shows -->
+<figure>
+<div class="phone">
+  <div class="nav"><span class="back">‹ Grades</span><span class="pill">What-if</span></div>
+  <div class="head"><h1>AP Physics 1</h1><div class="g"><span class="letter">A</span><span class="pct">99.15%</span><span class="goal">6.15 above Goal A</span></div></div>
+  <div class="list">
+    <div class="card">
+      <div class="cat"><span><span class="t">Tests</span><span class="w">40%</span></span><span class="p"><span class="approx">≈</span>99.59%</span></div>
+      <div class="item"><div class="l"><span class="ti">Unit 1 Test (Curved)</span><span class="d">Sep 16</span></div><div class="r"><span class="s">100 / 100</span><span class="m"><span class="pc">100%</span><span class="pos">+0.20</span></span></div></div>
+      <div class="item out"><div class="l"><span class="ti">Unit 1 Test Raw Score</span><span class="d">Sep 16</span></div><div class="r"><span class="s">24 / 24</span><span class="m"><span class="nc">May not count</span></span></div></div>
+      <div class="item"><div class="l"><span class="ti">Unit 1 Test Corrections</span><span class="d">Oct 2</span></div><div class="r"><span class="s">5 / 5</span><span class="m"><span class="pc">100%</span><span class="pos">+0.01</span></span></div></div>
+      <div class="item out"><div class="l"><span class="ti">Unit 2a Test FRQs Raw</span><span class="d">Oct 21</span></div><div class="r"><span class="s">100 / 20</span><span class="m"><span class="nc">May not count</span></span></div></div>
+      <div class="item out"><div class="l"><span class="ti">Unit 2a Test MCQ Raw</span><span class="d">Oct 21</span></div><div class="r"><span class="s">18 / 20</span><span class="m"><span class="nc">May not count</span></span></div></div>
+      <div class="item"><div class="l"><span class="ti">Unit 2a Test</span><span class="d">Oct 21</span></div><div class="r"><span class="s">99.9 / 100</span><span class="m"><span class="pc">100%</span><span class="pos">+0.18</span></span></div></div>
+      <div class="item"><div class="l"><span class="ti">Unit 2b Test</span><span class="d">Nov 4</span></div><div class="r"><span class="s">97.45 / 100</span><span class="m"><span class="pc">97%</span><span class="neg">−0.39</span></span></div></div>
+    </div>
+  </div>
+  <div class="tabbar"><span>To Do</span><span class="on">Grades</span><span>Classes</span><span>Schoology</span></div>
+</div>
+<figcaption><b>1 · What Dewey worked out.</b> A row Dewey leaves out shows "May not count" (a guess or a gradebook-only column) or "Not counted" (sure, or you said so) where its percent and +/− were: <b>a swap, not a new line</b>. Title and score go grey. ≈ before a category's percent: nothing on the page explains it exactly, so Dewey matched Schoology's percent by scaling. No ✓ on the phone (the extension's ✓ is noise here).</figcaption>
+</figure>
+
+<!-- 2 · Press and hold -->
+<figure>
+<div class="phone">
+  <div class="nav"><span class="back">‹ Grades</span><span class="pill">What-if</span></div>
+  <div class="head"><h1>AP Physics 1</h1><div class="g"><span class="letter">A</span><span class="pct">99.15%</span><span class="goal">6.15 above Goal A</span></div></div>
+  <div class="list" style="position:relative">
+    <div class="card">
+      <div class="cat"><span><span class="t">Tests</span><span class="w">40%</span></span><span class="p"><span class="approx">≈</span>99.59%</span></div>
+      <div class="item"><div class="l"><span class="ti">Unit 1 Test (Curved)</span><span class="d">Sep 16</span></div><div class="r"><span class="s">100 / 100</span><span class="m"><span class="pc">100%</span><span class="pos">+0.20</span></span></div></div>
+      <div class="item out"><div class="l"><span class="ti">Unit 1 Test Raw Score</span><span class="d">Sep 16</span></div><div class="r"><span class="s">24 / 24</span><span class="m"><span class="nc">May not count</span></span></div></div>
+      <div class="item"><div class="l"><span class="ti">Unit 1 Test Corrections</span><span class="d">Oct 2</span></div><div class="r"><span class="s">5 / 5</span><span class="m"><span class="pc">100%</span><span class="pos">+0.01</span></span></div></div>
+    </div>
+    <div class="dim"></div>
+    <div class="item held" style="position:absolute;top:183px;left:12px;right:12px"><div class="l"><span class="ti">Unit 2a Test MCQ Raw</span><span class="d">Oct 21</span></div><div class="r"><span class="s">18 / 20</span><span class="m"><span class="nc">May not count</span></span></div></div>
+    <div class="menu" style="top:240px">
+      <div>Counts in my grade<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B1A17" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.7 2.7L16 9.8"/></svg></div>
+      <div>Open<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1B1A17" stroke-width="1.8" stroke-linecap="round"><path d="M9 6l6 6-6 6"/></svg></div>
+    </div>
+  </div>
+  <div class="tabbar"><span>To Do</span><span class="on">Grades</span><span>Classes</span><span>Schoology</span></div>
+</div>
+<figcaption><b>2 · Press and hold to change it.</b> One item, the opposite of what the row says: "Counts in my grade" on a row left out, "Doesn't count" on a row that counts. It's saved for the class and beats Dewey's guess; holding again flips it back. A tap still opens the graded work, which says the same in its effect line ("Not counted").</figcaption>
+</figure>
+
+<!-- 3 · After -->
+<figure>
+<div class="phone">
+  <div class="nav"><span class="back">‹ Grades</span><span class="pill">What-if</span></div>
+  <div class="head"><h1>AP Physics 1</h1><div class="g"><span class="letter">A</span><span class="pct">99.15%</span><span class="goal">6.15 above Goal A</span></div></div>
+  <div class="list" style="position:relative">
+    <div class="card">
+      <div class="cat"><span><span class="t">Tests</span><span class="w">40%</span></span><span class="p"><span class="approx">≈</span>99.59%</span></div>
+      <div class="item"><div class="l"><span class="ti">Unit 1 Test (Curved)</span><span class="d">Sep 16</span></div><div class="r"><span class="s">100 / 100</span><span class="m"><span class="pc">100%</span><span class="pos">+0.19</span></span></div></div>
+      <div class="item out"><div class="l"><span class="ti">Unit 1 Test Raw Score</span><span class="d">Sep 16</span></div><div class="r"><span class="s">24 / 24</span><span class="m"><span class="nc">May not count</span></span></div></div>
+      <div class="item"><div class="l"><span class="ti">Unit 1 Test Corrections</span><span class="d">Oct 2</span></div><div class="r"><span class="s">5 / 5</span><span class="m"><span class="pc">100%</span><span class="pos">+0.01</span></span></div></div>
+      <div class="item out"><div class="l"><span class="ti">Unit 2a Test FRQs Raw</span><span class="d">Oct 21</span></div><div class="r"><span class="s">100 / 20</span><span class="m"><span class="nc">May not count</span></span></div></div>
+      <div class="item"><div class="l"><span class="ti">Unit 2a Test MCQ Raw</span><span class="d">Oct 21</span></div><div class="r"><span class="s">18 / 20</span><span class="m"><span class="pc">90%</span><span class="neg">−0.21</span></span></div></div>
+      <div class="item"><div class="l"><span class="ti">Unit 2a Test</span><span class="d">Oct 21</span></div><div class="r"><span class="s">99.9 / 100</span><span class="m"><span class="pc">100%</span><span class="pos">+0.17</span></span></div></div>
+      <div class="item"><div class="l"><span class="ti">Unit 2b Test</span><span class="d">Nov 4</span></div><div class="r"><span class="s">97.45 / 100</span><span class="m"><span class="pc">97%</span><span class="neg">−0.40</span></span></div></div>
+    </div>
+  </div>
+  <div class="tabbar"><span>To Do</span><span class="on">Grades</span><span>Classes</span><span>Schoology</span></div>
+</div>
+<figcaption><b>3 · After "Counts in my grade".</b> The row gets its percent and +/− back, and the others' +/− shift a little. The class grade stays 99.15%: Dewey always matches Schoology's own percent, so a mark only changes the +/− numbers and what-ifs, never the grade Schoology shows. In What-if mode a left-out row has no score box.</figcaption>
+</figure>
+
+</div>
+
+<div class="notes">
+  <div>
+    <h2>Removed or merged (one in, one out)</h2>
+    <ul>
+      <li><b>No new line, colour or badge.</b> The note takes the percent and +/− slot; grey is the tertiary text colour already used for dates.</li>
+      <li><b>≈ only, no ✓.</b> The extension's ✓ says "all explained"; on a phone the absence of ≈ says the same.</li>
+      <li><b>Why</b> lives in Help ("Why does a score say May not count?"), not on the screen.</li>
+    </ul>
+  </div>
+  <div>
+    <h2>Android</h2>
+    <ul>
+      <li>Same screen in Compose: long-press opens the row's DropdownMenu with the one item; same words, same grey, same ≈.</li>
+      <li>Marks are saved per class on the phone; they don't sync with the extension or between phones.</li>
+    </ul>
+  </div>
+</div>
+
+</body>
+</html>

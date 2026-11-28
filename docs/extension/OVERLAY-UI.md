@@ -144,10 +144,10 @@ always grows to fit (`scrolling="no"`, height clamped to 40–4000px).
 
 The first time the overlay shows on a Schoology page, `switch.js` opens the
 Welcome card (`overlays/intro.js`) once, unless `introSeen` is set in
-`chrome.storage.local`. Three steps with dots and Back/Next: what Dewey adds and
+`chrome.storage.local`. Two steps with dots and Back/Next: what Dewey adds and
 where its three buttons are; where archives go (optional, same controls as
-Settings); connect neo-plan (optional, the frame with `?view=connect`: the token
-only). **Skip setup**, ×, Esc and **Done** all close it and set `introSeen`;
+Settings). neo-plan isn't on it: it's optional, and lives in Settings → neo-plan.
+**Skip setup**, ×, Esc and **Done** all close it and set `introSeen`;
 Settings → **Welcome tour** opens it again.
 
 Theme and Grades are one setting object in `chrome.storage.local`

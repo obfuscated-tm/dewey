@@ -118,7 +118,9 @@ struct ToDoView: View {
                     WeekStrip(items: open, now: now, selected: $filter)
                 }, month: {
                     MonthGrid(items: open, now: now, selected: $filter, month: $shownMonth, forward: $monthForward)
-                        .coachTarget("todo.month")
+                        // The month stays mounted (faded) while shut, so the tour's "month is
+                        // open" mark lives only while it is open.
+                        .overlay { if showMonth { Color.clear.coachTarget("todo.month") } }
                 })
                 // The strip and its chevron: the tour's month step points here.
                 .coachTarget("todo.calendar")

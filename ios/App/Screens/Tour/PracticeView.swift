@@ -43,6 +43,15 @@ struct PracticeView: View {
     }
 }
 
+/// Where the tour's practice runs: the app's root swaps the real tabs for it,
+/// then puts the tour's student ID card back over the real app (DeweyApp).
+@Observable @MainActor
+final class TourHost {
+    static let shared = TourHost()
+    var practicing = false
+    var cardsAfter = false
+}
+
 /// What Dewey says, step by step. Ids are Practice's pretend week.
 @MainActor
 enum TourScript {
@@ -179,7 +188,7 @@ enum TourScript {
               done: { _ in seen("settings.page.todo") },
               free: true, tab: 3, rewind: 5),
         .init(target: "settings.schoolDay",
-              text: "When does your school day start and end? Before school and After school in new tasks use these times. Fix them if they're off. (View, at the top, picks how List looks.)",
+              text: "When does your school day start and end? Before school and After school in new tasks use these times. Fix them if they're off.",
               hint: .none, button: "Looks right", free: true, tab: 3, rewind: 6),
         .init(target: "settings.calendar",
               text: "Want your work in the iPhone Calendar app too? It goes in its own Dewey calendar, which you can hide any time.",

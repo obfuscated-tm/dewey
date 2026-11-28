@@ -94,6 +94,7 @@ struct RootView: View {
 
     var body: some View {
         @Bindable var model = model
+        @Bindable var tourHost = TourHost.shared
         Group {
             switch model.session {
             case .checking:
@@ -105,7 +106,12 @@ struct RootView: View {
                 SignInView()
             case .signedIn:
                 // The open iPhone Duo (regular width): a rail of tabs, and what you tap opens over the right half.
-                if wide ?? (sizeClass == .regular) { WideShell() } else { MainTabs() }
+                if TourHost.shared.practicing {
+                    PracticeView {
+                        TourHost.shared.practicing = false
+                        TourHost.shared.cardsAfter = true
+                    }
+                } else if wide ?? (sizeClass == .regular) { WideShell() } else { MainTabs() }
             }
         }
         .onChange(of: sizeClass, initial: true) { _, c in
@@ -119,6 +125,7 @@ struct RootView: View {
         }
         .task { await model.boot() }
         .sheet(item: $model.sheet) { SchoologySheet(target: $0) }
+        .fullScreenCover(isPresented: $tourHost.cardsAfter) { TourView(from: .studentID) }
         .onChange(of: model.sheet) { _, t in AppLog.note(t == nil ? "sheet closed" : "sheet open") }
         .overlay(alignment: .bottom) {
             if let t = model.toast {

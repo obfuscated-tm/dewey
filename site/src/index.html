@@ -261,6 +261,7 @@
   .dtabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px; background: var(--chip); margin-bottom: 24px; }
   .dtabs button { border: 0; background: transparent; color: var(--soft); font: 600 .95rem var(--sans); padding: 9px 18px; border-radius: 999px; cursor: pointer; min-height: 40px; transition: background-color var(--quick) var(--settle), color var(--quick) var(--settle); }
   .dtabs button[aria-selected="true"] { background: var(--text); color: var(--bg); }
+  @media (max-width: 440px) { .dtabs button { padding: 9px 12px; } }
   .pane-lede { font-size: 1.1rem; margin: 0; max-width: 36em; }
   .steps { list-style: none; padding: 0; margin: 24px 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; counter-reset: step; }
   #pane-android .steps { grid-template-columns: repeat(2, 1fr); max-width: 760px; }
@@ -417,6 +418,7 @@
         <button role="tab" id="tab-chrome" aria-controls="pane-chrome" aria-selected="true">Chrome</button>
         <button role="tab" id="tab-android" aria-controls="pane-android" aria-selected="false" tabindex="-1">Android</button>
         <button role="tab" id="tab-iphone" aria-controls="pane-iphone" aria-selected="false" tabindex="-1">iPhone</button>
+        <button role="tab" id="tab-claude" aria-controls="pane-claude" aria-selected="false" tabindex="-1">Claude</button>
       </div>
 
       <div role="tabpanel" id="pane-chrome" aria-labelledby="tab-chrome">
@@ -460,6 +462,34 @@
       <div role="tabpanel" id="pane-iphone" aria-labelledby="tab-iphone" hidden>
         <p class="pane-lede">Everything the Android app does, built for iPhone. It's in testing and not in the App Store yet.</p>
         <span class="stamp soon">Coming soon</span>
+      </div>
+
+      <div role="tabpanel" id="pane-claude" aria-labelledby="tab-claude" hidden>
+        <p class="pane-lede">Ask Claude what's due, or have it quiz you on your actual slides and notes. Needs <a href="https://claude.ai/download">Claude Desktop</a> and Dewey in Chrome.</p>
+        <!--mcp-download-->
+        <ol class="steps">
+          <li>
+            <h3>Download the add-on</h3>
+            <p>On the computer where you use Chrome.</p>
+            <a class="btn" href="/download/dewey-claude.mcpb">Download ({{MCP_VERSION}})</a>
+          </li>
+          <li>
+            <h3>Open it</h3>
+            <p>Double-click the file. Claude Desktop opens it; click <b>Install</b>, and pick your saved classes folder if you have one.</p>
+          </li>
+          <li>
+            <h3>Ask Claude</h3>
+            <p>Try <i>"What's my Schoology status?"</i> With Chrome open, Claude sees Schoology live. Without it, Claude uses your saved classes.</p>
+          </li>
+        </ol>
+        <details>
+          <summary>Updating to a new version</summary>
+          <p>Download the new file and open it the same way. It replaces the old one.</p>
+        </details>
+        <!--/mcp-download-->
+        <!--mcp-source-->
+        <p><a class="btn" href="https://github.com/obfuscated-tm/dewey#-study-with-claude-optional">Set it up (about 5 minutes)</a></p>
+        <!--/mcp-source-->
       </div>
     </section>
 

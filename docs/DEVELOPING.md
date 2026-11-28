@@ -204,7 +204,7 @@ For the website, **major** is a redesign, **minor** a new page or section, **pat
 
 If a change touches the bridge contract ([`docs/mcp/MCP-BRIDGE.md`](mcp/MCP-BRIDGE.md)), bump both.
 
-**To release:** bump the version, add a [`CHANGELOG.md`](../CHANGELOG.md) entry, run both test suites, commit, then tag and push:
+**To release:** bump the version, add a [`CHANGELOG.md`](../CHANGELOG.md) entry headed `## <date> — <Component> <version>` (its body becomes the release notes), run both test suites, commit, then tag and push:
 
 ```bash
 git tag -a ext-v1.14.0 -m "Extension 1.14.0"
@@ -214,7 +214,22 @@ git tag -a ext-v1.14.0 -m "Extension 1.14.0"
 git push origin main --tags
 ```
 
-Pushing an `ext-v*` tag runs [`.github/workflows/release-extension.yml`](../.github/workflows/release-extension.yml), which packs `extension/` (minus `test/`) into `dewey-extension.zip` and attaches it to a GitHub release. The README's Download button always points at the latest one. To re-pack the current version without a new tag, run the workflow by hand from the **Actions** tab.
+Each tag runs its own workflow, which builds the download, attaches it to a GitHub release, and redeploys the website so its buttons offer the new version:
+
+| Tag | Workflow | Download | On the site |
+|---|---|---|---|
+| `ext-v*` | [`release-extension.yml`](../.github/workflows/release-extension.yml) | `dewey-extension.zip` (`extension/` minus `test/`) | Chrome tab |
+| `android-v*` | [`release-android.yml`](../.github/workflows/release-android.yml) | `dewey-android-<version>.apk` (pre-release); runs the unit tests first | Android tab |
+| `mcp-v*` | [`release-mcp.yml`](../.github/workflows/release-mcp.yml) | `dewey-claude.mcpb`, a one-click Claude Desktop extension ([`mcp/scripts/pack.sh`](../mcp/scripts/pack.sh)); runs the MCP tests first | Claude tab |
+| `site-v*` | none: pushing site changes to main deploys them | | |
+
+Only extension releases are marked **Latest**: the README's Download button is `releases/latest/download/dewey-extension.zip`. The workflow checks the tag matches the version in the file, so a tag on an unbumped version fails. To rebuild the current version's download without a new tag, run the workflow by hand from the **Actions** tab.
+
+**Android signing:** every APK so far is signed with Owen's `~/.android/debug.keystore`, and Android only installs an update over the old app when the key matches. CI gets that keystore from the repo secret `DEWEY_KEYSTORE_B64` (set it once: `base64 -i ~/.android/debug.keystore | gh secret set DEWEY_KEYSTORE_B64`). Lose that key and everyone has to uninstall to update.
+
+**iPhone:** no release. The app is built with a free developer account, which can't distribute it; it waits for a paid account and TestFlight. The site's iPhone tab says "Coming soon".
+
+To pack the Claude add-on locally: `mcp/scripts/pack.sh` (writes `mcp/dist/dewey-claude.mcpb`; double-click it to install into Claude Desktop).
 
 ## More documentation
 

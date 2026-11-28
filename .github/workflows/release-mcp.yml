@@ -1,0 +1,72 @@
+# Packs the Claude add-on (mcp/) into dewey-claude.mcpb, a one-click Claude
+# Desktop extension, attaches it to a GitHub release, then redeploys the site
+# so its Claude button offers the new version.
+#
+# Runs when an mcp-v* tag is pushed, or by hand from the Actions tab
+# (it then releases whatever version mcp/package.json says).
+name: Release Claude add-on
+
+on:
+  push:
+    tags: ["mcp-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the version
+        run: |
+          VERSION=$(jq -r .version mcp/package.json)
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "mcp-v$VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match mcp/package.json ($VERSION). Bump the version, commit, then tag mcp-v<that version>."
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: mcp/package-lock.json
+
+      - name: Test
+        working-directory: mcp
+        run: npm ci && npm test
+
+      - name: Pack
+        run: mcp/scripts/pack.sh "$GITHUB_WORKSPACE/dewey-claude.mcpb"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="mcp-v$VERSION"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dewey-claude.mcpb --clobber
+            exit 0
+          fi
+          {
+            scripts/release-notes.sh "MCP $VERSION"
+            echo
+            echo "**Install:** with the Dewey extension in Chrome, download **dewey-claude.mcpb** and double-click it. Claude Desktop opens it; click **Install**. To update, do the same with the new file."
+            echo
+            echo "See [CHANGELOG.md](https://github.com/obfuscated-tm/dewey/blob/main/CHANGELOG.md) for every version."
+          } > notes.md
+          # --latest=false: "Latest" stays on the extension, which the README's
+          # releases/latest/download/dewey-extension.zip link depends on.
+          gh release create "$TAG" dewey-claude.mcpb \
+            --target "$GITHUB_SHA" --latest=false \
+            --title "Dewey for Claude $VERSION" --notes-file notes.md
+
+  # A release made with the Actions token doesn't fire deploy-site.yml's
+  # `release` trigger, so call it directly.
+  deploy-site:
+    needs: release
+    uses: ./.github/workflows/deploy-site.yml
+    secrets: inherit

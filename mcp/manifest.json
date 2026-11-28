@@ -1,0 +1,49 @@
+{
+  "manifest_version": "0.3",
+  "name": "dewey-mcp",
+  "display_name": "Dewey for Schoology",
+  "version": "0.0.0",
+  "description": "Ask Claude about your Schoology classes: what's due, your grades, and your actual slides and notes.",
+  "long_description": "Read-only. Claude gets live answers through the Dewey Chrome extension while Chrome is open, and falls back to your saved classes (the Schoology Archive folder) when it isn't. Needs the Dewey extension installed in Chrome. The version is filled in from package.json by scripts/pack.sh.",
+  "author": { "name": "Owen", "url": "https://dewey.owen64.me" },
+  "homepage": "https://dewey.owen64.me",
+  "support": "mailto:legal@owen64.me",
+  "icon": "icon.png",
+  "server": {
+    "type": "node",
+    "entry_point": "server.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server.js"],
+      "env": { "SCHOOLOGY_ARCHIVE": "${user_config.archive}" }
+    }
+  },
+  "user_config": {
+    "archive": {
+      "type": "directory",
+      "title": "Saved classes folder",
+      "description": "Your Schoology Archive folder, where the extension saves your classes. Leave empty if you haven't saved any.",
+      "required": false
+    }
+  },
+  "tools": [
+    { "name": "status", "description": "Is Chrome connected, and which classes are saved" },
+    { "name": "get_todo", "description": "What's due" },
+    { "name": "get_grades", "description": "Your gradebook" },
+    { "name": "get_assignment", "description": "One assignment's instructions and status" },
+    { "name": "get_updates", "description": "Announcements" },
+    { "name": "list_courses", "description": "Your classes" },
+    { "name": "list_materials", "description": "A class's materials" },
+    { "name": "find_material", "description": "Find a material by name" },
+    { "name": "open_material", "description": "Read a file, page or link" },
+    { "name": "search", "description": "Search your saved classes" },
+    { "name": "read_file", "description": "Read a saved file" },
+    { "name": "fetch_page", "description": "Read a course website or Google Doc" },
+    { "name": "add_course_site", "description": "Remember a course's website" }
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "win32"],
+    "runtimes": { "node": ">=18.0.0" }
+  },
+  "privacy_policies": ["https://dewey.owen64.me/privacy"]
+}

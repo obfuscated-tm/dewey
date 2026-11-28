@@ -6,7 +6,11 @@ Entries before extension 1.10.0 / MCP 1.1.0 were reconstructed from the git hist
 
 ## Unreleased
 
+### Website
+- New **Claude** tab under Get Dewey, with the add-on's download once an MCP release has one.
+
 ### MCP
+- One-click install: each MCP release now comes with **dewey-claude.mcpb**. Double-click it and Claude Desktop installs Dewey; no Node.js, no Terminal, no config file. It asks for your saved classes folder.
 - Security: `fetch_page` opens only course sites, Google Docs/Drive, and sites a teacher linked in a material or assignment Claude opened, on every redirect hop too. A post or page can no longer get Claude to send your grades to a URL of its choosing.
 - Security: the address guard also refuses IPv4 addresses written as IPv6 (`::ffff:7f00:1`, NAT64, 6to4), benchmarking and multicast addresses.
 - Course sites are your own list now, in `~/.schoology-mcp/sites.json` (an old `mcp/sites.json` is still read). New `add_course_site` tool: ask Claude to set up your course sites; a site no teacher linked needs your yes in a prompt.

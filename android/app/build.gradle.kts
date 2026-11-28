@@ -30,11 +30,23 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    // Sideloaded builds are signed with Owen's debug key, so each APK installs
+    // over the last one. CI (release-android.yml) has no such key of its own,
+    // so it passes that same keystore in DEWEY_KEYSTORE; locally the debug key is used.
+    val ciKeystore = System.getenv("DEWEY_KEYSTORE")?.takeIf { it.isNotBlank() }
+    if (ciKeystore != null) {
+        signingConfigs.create("ci") {
+            storeFile = file(ciKeystore)
+            storePassword = System.getenv("DEWEY_KEYSTORE_PASSWORD") ?: "android"
+            keyAlias = System.getenv("DEWEY_KEY_ALIAS") ?: "androiddebugkey"
+            keyPassword = System.getenv("DEWEY_KEY_PASSWORD") ?: "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
-            // Sideloaded builds: sign with the debug key so `assembleRelease` installs too.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (ciKeystore != null) "ci" else "debug")
         }
     }
     compileOptions {

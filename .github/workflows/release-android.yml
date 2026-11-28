@@ -1,0 +1,100 @@
+# Builds the Android APK and attaches it to a GitHub pre-release, then
+# redeploys the site so its Android button offers the new version.
+#
+# Runs when an android-v* tag is pushed, or by hand from the Actions tab
+# (it then releases whatever versionName android/app/build.gradle.kts says).
+#
+# Needs the repo secret DEWEY_KEYSTORE_B64: Owen's ~/.android/debug.keystore,
+# base64-encoded. Every APK so far was signed with it, and Android only installs
+# an update over the old app when the key matches. Set it once with:
+#   base64 -i ~/.android/debug.keystore | gh secret set DEWEY_KEYSTORE_B64
+name: Release Android
+
+on:
+  push:
+    tags: ["android-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check the version
+        run: |
+          VERSION=$(sed -nE 's/^ *versionName = "([^"]+)".*/\1/p' android/app/build.gradle.kts)
+          if [ "$GITHUB_REF_TYPE" = tag ] && [ "$GITHUB_REF_NAME" != "android-v$VERSION" ]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match versionName ($VERSION) in android/app/build.gradle.kts. Bump versionName and versionCode, commit, then tag android-v<that version>."
+            exit 1
+          fi
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Unpack the signing key
+        env:
+          KEYSTORE_B64: ${{ secrets.DEWEY_KEYSTORE_B64 }}
+        run: |
+          if [ -z "$KEYSTORE_B64" ]; then
+            echo "::error::The DEWEY_KEYSTORE_B64 secret isn't set, so this APK wouldn't install over the last one. See the top of release-android.yml."
+            exit 1
+          fi
+          echo "$KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/dewey.keystore"
+          echo "DEWEY_KEYSTORE=$RUNNER_TEMP/dewey.keystore" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: ios/package-lock.json
+
+      # build-engine.sh bundles the engine with the esbuild installed in ios/.
+      - name: Install esbuild
+        working-directory: ios
+        run: npm ci
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Test and build
+        working-directory: android
+        run: |
+          echo "sdk.dir=$ANDROID_HOME" > local.properties
+          ./gradlew --no-daemon testDebugUnitTest assembleRelease
+          cp app/build/outputs/apk/release/app-release.apk "$GITHUB_WORKSPACE/dewey-android-$VERSION.apk"
+
+      - name: Publish the pre-release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="android-v$VERSION"
+          APK="dewey-android-$VERSION.apk"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$APK" --clobber
+            exit 0
+          fi
+          {
+            scripts/release-notes.sh "Android $VERSION"
+            echo
+            echo "**Install or update:** download **$APK** on your phone and open it. It installs over the last version and keeps you signed in."
+            echo
+            echo "Not on the Play Store. See [CHANGELOG.md](https://github.com/obfuscated-tm/dewey/blob/main/CHANGELOG.md) for every version."
+          } > notes.md
+          # --latest=false: "Latest" stays on the extension, which the README's
+          # releases/latest/download/dewey-extension.zip link depends on.
+          gh release create "$TAG" "$APK" \
+            --target "$GITHUB_SHA" --prerelease --latest=false \
+            --title "Dewey for Android $VERSION" --notes-file notes.md
+
+  # A release made with the Actions token doesn't fire deploy-site.yml's
+  # `release` trigger, so call it directly.
+  deploy-site:
+    needs: release
+    uses: ./.github/workflows/deploy-site.yml
+    secrets: inherit

@@ -52,6 +52,9 @@ final class ItemState {
     var categoryHint: String?         // gradebook category, for the type rule
     var labURL: String?               // an outside submit page from the instructions
     var external: Bool = false        // a Google Assignment
+    /// Work with no due date, found in the gradebook: Schoology's to-do lists
+    /// leave it out (FINDINGS.md). Cleared once those lists carry it.
+    var fromGradebook: Bool = false
 
     var neoPlanId: String?
 
@@ -141,13 +144,19 @@ enum TodoLogic {
         /// The student's own task, and (for one) whether it was finished today.
         var mine = false
         var finishedToday = false
+        /// Undated work from the gradebook (ItemState.fromGradebook).
+        var fromGradebook = false
     }
 
     /// On the list: everything Schoology still lists (done rows stay until it
     /// drops them), plus work it dropped that the student hasn't finished.
     /// The student's own tasks stay until done, and a done one until the day ends.
+    /// So does undated gradebook work: with no date, nothing else would ever drop
+    /// an optional one the teacher never scores.
     static func isVisible(_ s: Snapshot) -> Bool {
-        if s.mine { return !s.dismissed && (!(s.done || s.turnedIn) || s.finishedToday) }
+        if s.mine || s.fromGradebook {
+            return !s.dismissed && !s.graded && (!(s.done || s.turnedIn || s.submitted) || s.finishedToday)
+        }
         if s.dismissed || s.graded { return false }
         if s.inSchoology { return true }
         return !(s.done || s.turnedIn || s.submitted)
@@ -200,6 +209,17 @@ enum TodoLogic {
 
     static func isOlder(due: Date?, now: Date = Date()) -> Bool {
         (daysLate(due: due, now: now) ?? 0) > olderDays
+    }
+
+    /// Gradebook items that belong on To Do although Schoology's to-do lists leave
+    /// them out: no due date and nothing in the grade cell yet, or "Missing".
+    /// A score, a letter or another exception word ("—Collected": the teacher has it) means it's handed in.
+    static func undatedOwed(_ items: [CourseGrade.Item]) -> [CourseGrade.Item] {
+        items.filter { it in
+            guard (it.due ?? "").trimmingCharacters(in: .whitespaces).isEmpty, it.earned == nil else { return false }
+            let word = it.grade.trimmingCharacters(in: CharacterSet(charactersIn: "—–- ").union(.whitespaces))
+            return word.isEmpty || word.localizedCaseInsensitiveCompare("Missing") == .orderedSame
+        }
     }
 
     enum Bucket { case overdue, today, week, later }

@@ -4,8 +4,9 @@ import Foundation
 /// Later and Done, in their own order. Pure, so tests can run it (PlanTests).
 ///
 /// - Where an item goes until the student moves it (by due date): To do for
-///   late work, work due today or tomorrow, a test in the next 3 days, and an
-///   own task with no date; Later for the rest. Done holds what was finished today.
+///   late work, work due today or tomorrow, a test in the next 3 days, and
+///   anything with no date (your own tasks, undated gradebook work), which sorts
+///   to the end; Later for the rest. Done holds what was finished today.
 /// - Dragging a row into another section keeps it there (`planSection`);
 ///   dragging it into Done marks it done, out of Done marks it to do.
 /// - Order inside a section: the student's ranks. Work not placed yet is
@@ -17,9 +18,9 @@ enum PlanLogic {
     }
 
     /// Where an item goes when the student hasn't put it anywhere.
-    static func autoBucket(due: Date?, late: Bool, isTest: Bool, mine: Bool, now: Date, calendar: Calendar = .current) -> Bucket {
+    static func autoBucket(due: Date?, late: Bool, isTest: Bool, now: Date, calendar: Calendar = .current) -> Bucket {
         if late { return .todo }
-        guard let due else { return mine ? .todo : .later }
+        guard let due else { return .todo }
         let today = calendar.startOfDay(for: now)
         let days = isTest ? 4 : 2   // a test: today + the next 3 days, so there's time to study
         return due < calendar.date(byAdding: .day, value: days, to: today)! ? .todo : .later

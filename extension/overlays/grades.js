@@ -29,8 +29,8 @@
 // the course-level additions sit on the current period's row then. Tried
 // scores, left-out items and planned items live only in this page view;
 // typed weights are saved per course, and so are the student's own marks on
-// what counts: "Doesn't count" beside "Undo" on a left-out item; a click
-// on "not counted" / "may not count" asks "Counts" or "Doesn't count". A category whose items left out as marked
+// what counts: click an item's impact ("+0.2%") and it doesn't count; click
+// "not counted" / "may not count" and it does. A category whose items left out as marked
 // give Schoology's percent gets a faint ✓; one that doesn't add up, a ≈.
 //
 // Only the current grading period (grademath.currentPeriod) is annotated.
@@ -55,6 +55,8 @@ const CSS = `
 }
 .imp.pos { color: var(--good); background: var(--good-soft); }
 .imp.neg { color: var(--bad); background: var(--bad-soft); }
+button.imp { border: 0; cursor: pointer; }
+button.imp:hover { text-decoration: line-through; }
 .pct { font-family: var(--sans); font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums; }
 .acc { color: var(--accent); }
 .note { font-size: 12px; color: var(--accent); white-space: nowrap; }
@@ -172,10 +174,11 @@ function pctText(p) {
   return `${Number.isInteger(r) ? r : r.toFixed(1)}%`;
 }
 
-function impTag(d, title) {
+function impTag(d, title, onClick) {
   if (d == null || Math.abs(d) < EPS) return null;
-  const t = el('span', `imp ${d < 0 ? 'neg' : 'pos'}`, signed(d));
+  const t = el(onClick ? 'button' : 'span', `imp ${d < 0 ? 'neg' : 'pos'}`, signed(d));
   if (title) t.title = title;
+  if (onClick) { t.type = 'button'; t.addEventListener('click', onClick); }
   return t;
 }
 
@@ -355,6 +358,7 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
     if (v) marks[it.id] = v; else delete marks[it.id];
     saveMarks(courseId, { ...marks });
     dropped.delete(it.id);
+    whatIf.delete(it.id);
     calibrate(cat, marks);
     update();
   };
@@ -690,37 +694,18 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
 
         // Left out of the category (Dewey's guess, or the student's mark).
         const same = cat.items.filter((x) => x.earned === it.earned && x.possible === it.possible);
-        // Clicking the note asks the student: "Counts" or "Doesn't count".
-        // Either answer is saved and beats Dewey's guess.
-        let asking = false;
+        // Clicking the note says it does count (saved); the impact that
+        // replaces it is the way back.
         const uncountedNote = () => {
           const u = it.uncounted;
-          if (asking) {
-            const wrap = el('span', 'wrap');
-            wrap.style.whiteSpace = 'nowrap';
-            const yes = el('button', 'linkbtn', 'Counts');
-            yes.type = 'button';
-            yes.title = 'Schoology counts this one: put it back in the math for good';
-            const no = el('button', 'linkbtn quiet', "Doesn't count");
-            no.type = 'button';
-            no.title = "Schoology doesn't count this one: leave it out for good";
-            const pick = (v) => { asking = false; setMark(cat, it, v); };
-            yes.addEventListener('click', () => pick('in'));
-            no.addEventListener('click', () => pick('out'));
-            wrap.addEventListener('focusout', (e) => { if (!wrap.contains(e.relatedTarget) && asking) { asking = false; update(); } });
-            wrap.addEventListener('keydown', (e) => { if (e.key === 'Escape') { asking = false; update(); } });
-            wrap.append(yes, ' ', no);
-            queueMicrotask(() => yes.focus());
-            return wrap;
-          }
           const n = el('button', 'linkbtn quiet', u === 'sure' || u === 'mine' ? 'not counted' : 'may not count');
           n.type = 'button';
           n.title = (u === 'mine' ? 'You marked this as not counted'
             : u === 'sure' ? `Schoology's percent for ${cat.title} only adds up without this item, so it's left out of the math here too`
             : u === 'column' ? `Typed straight into the gradebook, and Schoology's percent for ${cat.title} is closer without these columns`
             : `Schoology's percent for ${cat.title} only adds up if ${same.filter((x) => x.uncounted).length} of the ${same.length} items scored ${it.earned} / ${it.possible} don't count. It doesn't say which; the totals are right either way`)
-            + '. Click to say whether it counts.';
-          n.addEventListener('click', () => { asking = true; update(); });
+            + '. Click if it counts.';
+          n.addEventListener('click', () => setMark(cat, it, 'in'));
           return n;
         };
 
@@ -755,13 +740,8 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
         undo.type = 'button';
         undo.title = 'Count it again';
         undo.addEventListener('click', () => { dropped.delete(it.id); update(); });
-        const never = el('button', 'linkbtn quiet', "Doesn't count");
-        never.type = 'button';
-        never.title = 'Schoology doesn\'t count this one: leave it out for good';
-        never.addEventListener('click', () => setMark(cat, it, 'out'));
         const droppedCell = el('span', 'wrap');
-        droppedCell.style.whiteSpace = 'nowrap';
-        droppedCell.append(undo, ' ', never);
+        droppedCell.append(undo);
         tried.addEventListener('click', () => edit(true));
         score.addEventListener('input', () => {
           const earned = num(score.value);
@@ -806,7 +786,10 @@ async function mountCourse({ doc, root: scope, courseId, all = false }) {
           // Untouched rows keep the impact as it really is; a row being
           // tried shows its impact under everything else tried right now.
           const impactOpts = wi != null ? opts() : { weights: weights(), drop: [...dropped] };
-          cell(tr, impTag(impact(course, it.id, impactOpts), 'Course grade with this item minus without it'));
+          // Clicking the impact says Schoology doesn't count this one (saved).
+          cell(tr, wi != null
+            ? impTag(impact(course, it.id, impactOpts), 'Course grade with this item minus without it')
+            : impTag(impact(course, it.id, impactOpts), "Course grade with this item minus without it. Click if Schoology doesn't count it", () => setMark(cat, it, 'out')));
         });
         continue;
       }

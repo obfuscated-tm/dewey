@@ -151,6 +151,8 @@ struct CourseGrade: Codable {
         var earned: Double
         var possible: Double
         var pct: Double?
+        /// true: the kept items give Schoology's percent exactly; false: Dewey scaled it (shown as ≈).
+        var adds: Bool?
         var floor: Double?
         var floorStatus: String   // none | any | out | need
     }
@@ -166,6 +168,8 @@ struct CourseGrade: Codable {
         var possible: Double?
         var pct: Double?
         var impact: Double?
+        /// Left out of its category: "sure" | "guess" | "column" | "mine" (the student said so); nil counts.
+        var uncounted: String?
     }
     struct Point: Codable, Hashable {
         var day: String?

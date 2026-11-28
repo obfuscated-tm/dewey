@@ -88,7 +88,9 @@ struct GradeDetailView: View {
                 Text(scoreText(it)).font(Theme.largeTitle.monospacedDigit())
                 if let p = it.pct { Text(Fmt.pct(p)).font(Theme.body.monospacedDigit()).foregroundStyle(Theme.secondary) }
             }
-            if let i = it.impact {
+            if let note = CourseGradesView.uncountedText(it.uncounted) {
+                Text(note).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.tertiary)
+            } else if let i = it.impact {
                 Text(abs(i) < 0.005 ? "Didn't move your course grade" : "Moved your course grade \(Fmt.signed(i))")
                     .font(Theme.subhead.weight(.medium))
                     .foregroundStyle(abs(i) < 0.005 ? Theme.secondary : i < 0 ? Theme.late : Theme.good)
@@ -274,7 +276,7 @@ struct WhatIfSheet: View {
         gen += 1
         let g = gen
         Task {
-            let r = try? await model.summarize(rows: rows, whatIf: [itemId: ["earned": e, "possible": possible]])
+            let r = try? await model.summarize(rows: rows, sectionId: sid, whatIf: [itemId: ["earned": e, "possible": possible]])
             if g == gen { result = r }
         }
     }

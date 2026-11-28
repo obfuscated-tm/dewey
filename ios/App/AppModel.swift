@@ -746,7 +746,7 @@ final class AppModel {
             // The saved summary shows at once; working it out again waits for the engine page.
             if let s = Cache.load(Self.summaryKey(sectionId), as: CourseGrade.self), s.savedAt >= cached.1.addingTimeInterval(-5) {
                 grades[sectionId] = s.value
-            } else if let g = try? await summarize(rows: cached.0) {
+            } else if let g = try? await summarize(rows: cached.0, sectionId: sectionId) {
                 grades[sectionId] = g
             } else if let s = Cache.load(Self.anySummaryKey(sectionId), as: CourseGrade.self) {
                 // Offline, or the engine page won't load: an older build's summary beats nothing.
@@ -757,7 +757,7 @@ final class AppModel {
         do {
             let raw = try await engine.callRaw("gradebook", ["sectionId": sectionId])
             Cache.saveRaw("grades-\(sectionId)", raw)
-            let g = try await summarize(rows: raw)
+            let g = try await summarize(rows: raw, sectionId: sectionId)
             Cache.save(Self.summaryKey(sectionId), g)
             Cache.save(Self.anySummaryKey(sectionId), g)
             noteNewGrades(sectionId: sectionId, old: grades[sectionId], new: g)
@@ -781,10 +781,10 @@ final class AppModel {
         "gradeSummary-\(sectionId)-\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "0")"
     }
 
-    func summarize(rows: Data, whatIf: [String: [String: Double]] = [:], extra: [[String: Any]] = [],
+    func summarize(rows: Data, sectionId: String, whatIf: [String: [String: Double]] = [:], extra: [[String: Any]] = [],
                    drop: [String] = [], weights: [String: Double] = [:]) async throws -> CourseGrade {
         let rowsObj = try JSONSerialization.jsonObject(with: rows)
-        var opts: [String: Any] = ["whatIf": whatIf, "extra": extra, "drop": drop]
+        var opts: [String: Any] = ["whatIf": whatIf, "extra": extra, "drop": drop, "marks": marks(sectionId)]
         if !weights.isEmpty { opts["weights"] = weights }
         return try await engine.call("courseGrade", ["rows": rowsObj, "opts": opts])
     }
@@ -793,7 +793,7 @@ final class AppModel {
     func plan(sectionId: String, category: String, possible: Double, target: Double,
               whatIf: [String: [String: Double]] = [:], extra: [[String: Any]] = [], drop: [String] = []) async -> PlanResult? {
         guard let raw = gradeRows(sectionId), let rows = try? JSONSerialization.jsonObject(with: raw) else { return nil }
-        let opts: [String: Any] = ["whatIf": whatIf, "extra": extra, "drop": drop]
+        let opts: [String: Any] = ["whatIf": whatIf, "extra": extra, "drop": drop, "marks": marks(sectionId)]
         return try? await engine.call("planTest", ["rows": rows, "category": category, "possible": possible, "target": target, "opts": opts])
     }
 
@@ -803,6 +803,25 @@ final class AppModel {
     func setGoal(_ sectionId: String, _ pct: Double) {
         courseState(sectionId).goal = pct
         save()
+    }
+
+    /// The student's marks on what counts in a class (item id → "out" | "in").
+    func marks(_ sectionId: String) -> [String: String] {
+        guard let s = courseState(sectionId).marksJSON?.data(using: .utf8) else { return [:] }
+        return (try? JSONDecoder().decode([String: String].self, from: s)) ?? [:]
+    }
+
+    /// Says an item counts (true) or doesn't (false), for good, then works the class out again
+    /// so the saved summary and every screen use it.
+    func setCounts(_ sectionId: String, itemId: String, _ counts: Bool) async {
+        var m = marks(sectionId)
+        m[itemId] = counts ? "in" : "out"
+        courseState(sectionId).marksJSON = (try? JSONEncoder().encode(m)).flatMap { String(data: $0, encoding: .utf8) }
+        save()
+        guard let raw = gradeRows(sectionId), let g = try? await summarize(rows: raw, sectionId: sectionId) else { return }
+        Cache.save(Self.summaryKey(sectionId), g)
+        Cache.save(Self.anySummaryKey(sectionId), g)
+        grades[sectionId] = g
     }
 
     func turnInSite(_ sectionId: String?) -> String? { sectionId.flatMap { courseState($0).turnInSite } }

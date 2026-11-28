@@ -407,6 +407,8 @@ private struct GradesCard: View {
         } details: {
             Point(symbol: "sparkles", title: "New grades first",
                   detail: "New scores sit at the top until you've seen them. Tap a class for every item, its effect on your grade, comments and rubrics.")
+            Point(symbol: "minus.circle", title: "Scores that don't count",
+                  detail: "Grey \"May not count\" means Dewey thinks the class leaves that score out, so its % adds up to Schoology's. Wrong? Press and hold the score: Counts in my grade, or Doesn't count. A ≈ before a category's % means the scores don't quite add up.")
             Point(symbol: "slider.horizontal.3", title: "What-if",
                   detail: "In a class, tap What-if (top right) and type a score for anything not graded yet to see your new grade.")
             Point(symbol: "flag", title: "Your goal",

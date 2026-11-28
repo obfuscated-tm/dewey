@@ -838,7 +838,7 @@ struct WhatIfLine: View {
         gen += 1
         let g = gen
         Task {
-            let r = try? await model.summarize(rows: rows, whatIf: [itemId: ["earned": e, "possible": p]])
+            let r = try? await model.summarize(rows: rows, sectionId: sectionId, whatIf: [itemId: ["earned": e, "possible": p]])
             if g == gen { result = r }
         }
     }

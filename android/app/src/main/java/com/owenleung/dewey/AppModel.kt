@@ -778,7 +778,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
                 // The saved summary shows at once; working it out again waits for the engine page.
                 val saved = Cache.load(summaryKey(sectionId), CourseGrade.serializer())
                 if (saved != null && saved.second.time >= at.time - 5_000) grades[sectionId] = saved.first
-                else runCatching { summarize(raw) }.getOrNull()?.let { grades[sectionId] = it }
+                else runCatching { summarize(raw, sectionId = sectionId) }.getOrNull()?.let { grades[sectionId] = it }
                     // Offline, or the engine page won't load: an older build's summary beats nothing.
                     ?: Cache.load(anySummaryKey(sectionId), CourseGrade.serializer())?.let { grades[sectionId] = it.first }
             }
@@ -788,7 +788,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         try {
             val raw = engine.callRaw("gradebook", com.owenleung.dewey.engine.jsonArgs(mapOf("sectionId" to sectionId))).toString()
             Cache.saveRaw("grades-$sectionId", raw)
-            val g = summarize(raw)
+            val g = summarize(raw, sectionId = sectionId)
             Cache.save(summaryKey(sectionId), CourseGrade.serializer(), g)
             Cache.save(anySummaryKey(sectionId), CourseGrade.serializer(), g)
             noteNewGrades(sectionId, grades[sectionId], g)
@@ -815,11 +815,22 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
 
     suspend fun summarize(rows: String, whatIf: Map<String, Map<String, Double>> = emptyMap(),
                           extra: List<Map<String, Any>> = emptyList(), drop: List<String> = emptyList(),
-                          weights: Map<String, Double> = emptyMap()): CourseGrade {
+                          weights: Map<String, Double> = emptyMap(), sectionId: String? = null): CourseGrade {
         val rowsEl: JsonElement = EngineJson.json.parseToJsonElement(rows)
         val opts = mutableMapOf<String, Any>("whatIf" to whatIf, "extra" to extra, "drop" to drop)
+        if (sectionId != null) opts["marks"] = store.marks(sectionId)
         if (weights.isNotEmpty()) opts["weights"] = weights
         return engine.call("courseGrade", mapOf("rows" to rowsEl, "opts" to opts))
+    }
+
+    /** The student says an item counts in their grade or doesn't (per class, this device), and the summary is worked out again. */
+    suspend fun setCounts(sectionId: String, itemId: String, counts: Boolean) {
+        store.setMark(sectionId, itemId, if (counts) "in" else "out")
+        val raw = gradeRows(sectionId) ?: return
+        val g = runCatching { summarize(raw, sectionId = sectionId) }.getOrNull() ?: return
+        Cache.save(summaryKey(sectionId), CourseGrade.serializer(), g)
+        Cache.save(anySummaryKey(sectionId), CourseGrade.serializer(), g)
+        grades[sectionId] = g
     }
 
     /** The score a planned item needs, counting the what-if scores on screen (same opts as `summarize`). */
@@ -829,7 +840,7 @@ class AppModel internal constructor(val context: Context, /** The tour's pretend
         val raw = gradeRows(sectionId) ?: return null
         return runCatching {
             engine.call<PlanResult>("planTest", mapOf("rows" to EngineJson.json.parseToJsonElement(raw), "category" to category,
-                "possible" to possible, "target" to target, "opts" to mapOf("whatIf" to whatIf, "extra" to extra, "drop" to drop)))
+                "possible" to possible, "target" to target, "opts" to mapOf("whatIf" to whatIf, "extra" to extra, "drop" to drop, "marks" to store.marks(sectionId))))
         }.getOrNull()
     }
 

@@ -183,7 +183,7 @@ enum Demo {
             ("Labs", 25, [("9501", "Lab: Density", -40, 19, 20, ""), ("9504", "Lab: Flame Test", -20, 18, 20, "")]),
             ("Homework", 15, [("9505", "Ch. 1 Problems", -45, 10, 10, ""), ("9506", "Ch. 2 Problems", -30, 8, 10, ""),
                               ("9502", "Stoichiometry Worksheet", 1, nil, 10, "")]),
-            ("Tests", 60, [("9507", "Unit 1 Test", -25, 42, 50, ""), ("9503", "Unit 2 Quiz", 1, nil, 25, "")]),
+            ("Tests", 60, [("9507", "Unit 1 Test", -25, 42, 50, ""), ("9508", "Unit 1 Test Raw", -25, 38, 50, ""), ("9503", "Unit 2 Quiz", 1, nil, 25, "")]),
         ],
         "US History": [
             ("Assignments", 40, [("9601", "Primary Source Analysis 1", -35, 20, 20, ""), ("9602", "Chapter 3 Notes", -22, 10, 10, ""),
@@ -205,10 +205,17 @@ enum Demo {
         var rows: [[String: Any]] = [["level": "course", "title": "Course Grade", "due": "", "grade": "", "comment": ""],
                                      ["level": "period", "title": "26-27 T1", "due": "", "grade": "", "comment": ""]]
         for (cat, weight, items) in book {
-            rows.append(["level": "category", "title": cat, "due": "", "grade": "", "comment": "", "weight": weight])
+            // A "… Raw" row is a column typed straight into the gradebook that doesn't count,
+            // like a real teacher's raw scores; the category's percent leaves it out.
+            let counted = items.filter { $0.3 != nil && !$0.1.hasSuffix(" Raw") }
+            let (e, p) = counted.reduce((0.0, 0.0)) { ($0.0 + ($1.3 ?? 0), $0.1 + $1.4) }
+            let stated = p > 0 ? String(format: "(%.2f%%)", e / p * 100) : ""
+            rows.append(["level": "category", "title": cat, "due": "", "grade": stated, "comment": "", "weight": weight])
             for (id, title, day, earned, possible, comment) in items {
                 let score = earned.map { "\(fmt($0)) / \(fmt(possible))" } ?? "—"
-                rows.append(["level": "item", "title": title, "due": wall.string(from: at(day, 23, 59)), "grade": score, "comment": comment, "id": id])
+                var row: [String: Any] = ["level": "item", "title": title, "due": wall.string(from: at(day, 23, 59)), "grade": score, "comment": comment, "id": id]
+                if title.hasSuffix(" Raw") { row["gradeOnly"] = true }
+                rows.append(row)
             }
         }
         return rows

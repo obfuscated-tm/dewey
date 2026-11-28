@@ -148,7 +148,9 @@ private fun ScoreCard(it: CourseGrade.Item) {
             Text(scoreText(it), style = Theme.largeTitle, color = C.text)
             it.pct?.let { p -> Spacer(Modifier.width(10.dp)); Text(Fmt.pct(p), style = Theme.body, color = C.secondary, modifier = Modifier.padding(bottom = 6.dp)) }
         }
-        it.impact?.let { i ->
+        val note = uncountedText(it.uncounted)
+        if (note != null) Text(note, style = Theme.subhead.copy(fontWeight = FontWeight.Medium), color = C.tertiary)
+        else it.impact?.let { i ->
             Text(if (abs(i) < 0.005) "Didn't move your course grade" else "Moved your course grade ${Fmt.signed(i)}",
                 style = Theme.subhead.copy(fontWeight = FontWeight.Medium), color = if (abs(i) < 0.005) C.secondary else if (i < 0) C.late else C.good)
         }
@@ -210,7 +212,7 @@ fun WhatIfSheet(itemId: String, sectionId: String?, onClose: () -> Unit) {
         if (e == null || rows == null || item?.possible == null) { result = null; return }
         val mine = ++gen
         scope.launch {
-            val r = runCatching { model.summarize(rows, mapOf(itemId to mapOf("earned" to e, "possible" to item.possible))) }.getOrNull()
+            val r = runCatching { model.summarize(rows, mapOf(itemId to mapOf("earned" to e, "possible" to item.possible)), sectionId = sectionId) }.getOrNull()
             if (mine == gen) result = r
         }
     }

@@ -675,7 +675,7 @@ private fun WhatIfLine(itemId: String, sectionId: String, known: Double?) {
         if (e == null || p == null || rows == null) { result = null; return }
         val mine = ++gen
         scope.launch {
-            val r = runCatching { model.summarize(rows, mapOf(itemId to mapOf("earned" to e, "possible" to p))) }.getOrNull()
+            val r = runCatching { model.summarize(rows, mapOf(itemId to mapOf("earned" to e, "possible" to p)), sectionId = sectionId) }.getOrNull()
             if (mine == gen) result = r
         }
     }

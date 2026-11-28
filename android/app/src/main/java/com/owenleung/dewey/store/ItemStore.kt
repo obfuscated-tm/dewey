@@ -105,7 +105,7 @@ object Goal {
  * gets its own in-memory store that is never written.
  */
 class ItemStore private constructor(private val file: File?, private val courseFile: File?, private val goalFile: File? = null,
-                                    private val siteFile: File? = null) {
+                                    private val siteFile: File? = null, private val markFile: File? = null) {
     private val items = LinkedHashMap<String, ItemState>()
     /** Per class: the A line the student set (CourseState.aCutoff on iOS). */
     private val cutoffs = HashMap<String, Double>()
@@ -113,6 +113,8 @@ class ItemStore private constructor(private val file: File?, private val courseF
     private val goals = HashMap<String, Double>()
     /** Per class: where it turns in work with no Schoology dropbox (CourseState.turnInSite on iOS). */
     private val sites = HashMap<String, String>()
+    /** Per class: item id → "out" | "in", the student's say on what counts (CourseState.marksJSON on iOS). */
+    private val marks = HashMap<String, Map<String, String>>()
     private val lock = Any()
 
     companion object {
@@ -122,7 +124,7 @@ class ItemStore private constructor(private val file: File?, private val courseF
         fun init(dir: File) {
             if (this::real.isInitialized) return
             real = ItemStore(File(dir, "items.json"), File(dir, "courses-state.json"), File(dir, "goals-state.json"),
-                File(dir, "turnin-sites.json")).also { it.load() }
+                File(dir, "turnin-sites.json"), File(dir, "grade-marks.json")).also { it.load() }
         }
 
         /** The tour's pretend week: in memory only. */
@@ -136,7 +138,10 @@ class ItemStore private constructor(private val file: File?, private val courseF
         runCatching { cutoffs.putAll(Cache.json.decodeFromString(MapSerializer(String.serializer(), Double.serializer()), courseFile!!.readText())) }
         runCatching { goals.putAll(Cache.json.decodeFromString(MapSerializer(String.serializer(), Double.serializer()), goalFile!!.readText())) }
         runCatching { sites.putAll(Cache.json.decodeFromString(MapSerializer(String.serializer(), String.serializer()), siteFile!!.readText())) }
+        runCatching { marks.putAll(Cache.json.decodeFromString(markSerializer, markFile!!.readText())) }
     }
+
+    private val markSerializer = MapSerializer(String.serializer(), MapSerializer(String.serializer(), String.serializer()))
 
     fun item(id: String): ItemState? = synchronized(lock) { items[id] }
     fun all(): List<ItemState> = synchronized(lock) { items.values.toList() }
@@ -154,6 +159,8 @@ class ItemStore private constructor(private val file: File?, private val courseF
         cutoffs.clear()
         goals.clear()
         sites.clear()
+        marks.clear()
+        markFile?.delete()
         courseFile?.delete()
         goalFile?.delete()
         siteFile?.delete()
@@ -184,6 +191,13 @@ class ItemStore private constructor(private val file: File?, private val courseF
         if (site == null) sites.remove(sectionId) else sites[sectionId] = site
         val f = siteFile ?: return@synchronized
         runCatching { Cache.atomicWrite(f, Cache.json.encodeToString(MapSerializer(String.serializer(), String.serializer()), sites)) }
+    }
+
+    fun marks(sectionId: String): Map<String, String> = synchronized(lock) { marks[sectionId] ?: emptyMap() }
+    fun setMark(sectionId: String, itemId: String, mark: String) = synchronized(lock) {
+        marks[sectionId] = (marks[sectionId] ?: emptyMap()) + (itemId to mark)
+        val f = markFile ?: return@synchronized
+        runCatching { Cache.atomicWrite(f, Cache.json.encodeToString(markSerializer, marks)) }
     }
 }
 

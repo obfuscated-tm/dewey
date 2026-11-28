@@ -269,6 +269,10 @@ struct CourseGradesView: View {
                             if moved {
                                 Text(Fmt.pct(realCat?.pct)).font(Theme.caption.monospacedDigit()).foregroundStyle(Theme.tertiary).strikethrough()
                             }
+                            // ≈: nothing on the page explains Schoology's percent exactly, so Dewey scaled to it.
+                            if cat.adds == false && !moved {
+                                Text("≈").font(Theme.subhead).foregroundStyle(Theme.tertiary).accessibilityLabel("about")
+                            }
                             Text(Fmt.pct(cat.pct)).font(Theme.subhead.weight(.semibold).monospacedDigit())
                                 .foregroundStyle(moved ? Theme.accent : Theme.text)
                         }
@@ -287,10 +291,12 @@ struct CourseGradesView: View {
                 ForEach(items) { it in
                     Theme.divider.frame(height: 1)
                     if whatIfOn {
-                        whatIfRow(it)
+                        // A row Schoology leaves out gets no score box: a what-if on it changes nothing.
+                        if it.uncounted != nil { itemRow(it) } else { whatIfRow(it) }
                     } else {
                         NavigationLink { GradeDetailView(sectionId: course.sectionId, itemId: it.id) } label: { itemRow(it) }
                             .buttonStyle(.plain)
+                            .contextMenu { countsButton(it) }
                     }
                 }
                 if whatIfOn {
@@ -326,11 +332,31 @@ struct CourseGradesView: View {
         }
     }
 
+    /// Press and hold: the opposite of what the row says, saved for the class (beats Dewey's guess).
+    @ViewBuilder private func countsButton(_ it: CourseGrade.Item) -> some View {
+        if it.earned != nil {
+            let out = it.uncounted != nil
+            Button(out ? "Counts in my grade" : "Doesn't count", systemImage: out ? "checkmark.circle" : "minus.circle") {
+                Task { await model.setCounts(course.sectionId, itemId: it.id, out) }
+            }
+        }
+    }
+
+    /// "Not counted" when Dewey is sure or the student said so; "May not count" for a guess.
+    static func uncountedText(_ u: String?) -> String? {
+        switch u {
+        case nil: nil
+        case "sure", "mine": "Not counted"
+        default: "May not count"
+        }
+    }
+
     private func itemRow(_ it: CourseGrade.Item) -> some View {
-        HStack(alignment: .top, spacing: 10) {
+        let note = Self.uncountedText(it.uncounted)
+        return HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
-                    Text(it.title).font(Theme.subhead.weight(.medium)).foregroundStyle(Theme.text).maxLines(2)
+                    Text(it.title).font(Theme.subhead.weight(.medium)).foregroundStyle(note == nil ? Theme.text : Theme.tertiary).maxLines(2)
                     if newIds.contains(it.id) { NewTag() }
                 }
                 HStack(spacing: 6) {
@@ -341,10 +367,14 @@ struct CourseGradesView: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 3) {
-                Text(scoreText(it)).font(Theme.subhead.weight(.semibold).monospacedDigit()).foregroundStyle(it.earned == nil ? Theme.tertiary : Theme.text)
+                Text(scoreText(it)).font(Theme.subhead.weight(.semibold).monospacedDigit()).foregroundStyle(it.earned == nil || note != nil ? Theme.tertiary : Theme.text)
                 HStack(spacing: 6) {
-                    if let p = it.pct { Text(Fmt.pct(p, digits: 0)).font(Theme.caption.monospacedDigit()).foregroundStyle(Theme.secondary) }
-                    if let i = it.impact { Text(Fmt.signed(i)).font(Theme.caption.monospacedDigit()).foregroundStyle(Fmt.impactColor(i)) }
+                    if let note {
+                        Text(note).font(Theme.caption).foregroundStyle(Theme.tertiary)
+                    } else {
+                        if let p = it.pct { Text(Fmt.pct(p, digits: 0)).font(Theme.caption.monospacedDigit()).foregroundStyle(Theme.secondary) }
+                        if let i = it.impact { Text(Fmt.signed(i)).font(Theme.caption.monospacedDigit()).foregroundStyle(Fmt.impactColor(i)) }
+                    }
                 }
             }
         }
@@ -505,7 +535,7 @@ struct CourseGradesView: View {
         previewGen += 1
         let gen = previewGen
         Task {
-            let r = try? await model.summarize(rows: rows, whatIf: s.whatIf, extra: s.extra, drop: s.drop)
+            let r = try? await model.summarize(rows: rows, sectionId: course.sectionId, whatIf: s.whatIf, extra: s.extra, drop: s.drop)
             if gen == previewGen { preview = r }
         }
         replan()

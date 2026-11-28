@@ -62,6 +62,7 @@ import androidx.compose.material.icons.outlined.NotificationsActive
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.RemoveCircleOutline
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material.icons.outlined.TouchApp
 import androidx.compose.material.icons.outlined.TrackChanges
@@ -331,6 +332,8 @@ private fun GradesCard() = CardLayout("Grades and what-if", "Your real grade fir
 }) {
     Point(Icons.Outlined.AutoAwesome, "New grades first",
         "New scores sit at the top until you've seen them. Tap a class for every item, its effect on your grade, comments and rubrics.")
+    Point(Icons.Outlined.RemoveCircleOutline, "Scores that don't count",
+        "Grey \"May not count\" means Dewey thinks the class leaves that score out, so its % adds up to Schoology's. Wrong? Press and hold the score: Counts in my grade, or Doesn't count. A ≈ before a category's % means the scores don't quite add up.")
     Point(Icons.Outlined.Tune, "What-if", "In a class, tap Try what-if scores and type a score for anything not graded yet to see your new grade.")
     Point(Icons.Outlined.Flag, "Your goal",
         "The Goal chip under a class's grade: the letter you're aiming for and how far you are from it. The graph's line and the test planner follow it.")

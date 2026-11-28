@@ -49,6 +49,27 @@ final class DecodingTests: XCTestCase {
         XCTAssertEqual(g.items[0].impact, -1.2)
     }
 
+    func testUncountedItemsAndApproxCategory() throws {
+        let json = #"""
+        {"period":"T1","pct":99.15,"letter":"A","mode":"weighted",
+         "categories":[{"title":"Tests","weight":40,"earned":400,"possible":402,"pct":99.59,"adds":false,"floor":null,"floor_status":"none"}],
+         "items":[{"id":"1","category":"Tests","title":"Unit 1 Test Raw Score","due":null,"grade":"24 / 24","comment":"","rubric":null,
+                   "earned":24,"possible":24,"pct":100,"impact":null,"uncounted":"column"},
+                  {"id":"2","category":"Tests","title":"Unit 1 Test","due":null,"grade":"100 / 100","comment":"","rubric":null,
+                   "earned":100,"possible":100,"pct":100,"impact":0.2,"uncounted":null}],
+         "history":[],"periods":["T1"]}
+        """#
+        let g = try JSONDecoder.engine.decode(CourseGrade.self, from: Data(json.utf8))
+        XCTAssertEqual(g.categories[0].adds, false)
+        XCTAssertEqual(g.items[0].uncounted, "column")
+        XCTAssertNil(g.items[1].uncounted)
+        XCTAssertEqual(CourseGradesView.uncountedText("column"), "May not count")
+        XCTAssertEqual(CourseGradesView.uncountedText("guess"), "May not count")
+        XCTAssertEqual(CourseGradesView.uncountedText("mine"), "Not counted")
+        XCTAssertEqual(CourseGradesView.uncountedText("sure"), "Not counted")
+        XCTAssertNil(CourseGradesView.uncountedText(nil))
+    }
+
     func testQuizAssignment() throws {
         // engine.js assignment op on a newer quiz's landing page
         let json = #"{"id":"8610387535","title":"Worksheet 2.4 Quiz","type":"quiz","due":null,"instructions_md":"","attachments":[],"submission":null,"dropboxUrl":null,"quiz":{"title":"Worksheet 2.4 Quiz","instructions":null,"attempts_allowed":2,"attempts_taken":1,"time_limit_min":null,"opens_at":null,"closes_at":null,"overdue":false,"score":10,"max_points":10,"letter":"A","state":"submitted","attempts":[{"n":1,"finished":true,"at":"2026-10-14T23:16:00.000Z","minutes":1,"can_view":true}]}}"#

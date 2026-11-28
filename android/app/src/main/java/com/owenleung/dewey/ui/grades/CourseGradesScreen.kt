@@ -9,7 +9,9 @@ import com.owenleung.dewey.store.Goal
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -150,7 +152,7 @@ fun CourseGradesScreen(sectionId: String) {
         val sc = scenario()
         val mine = ++gen
         scope.launch {
-            val r = runCatching { model.summarize(rows, sc.whatIf, sc.extra, sc.drop) }.getOrNull()
+            val r = runCatching { model.summarize(rows, sc.whatIf, sc.extra, sc.drop, sectionId = sectionId) }.getOrNull()
             if (mine == gen) preview = r
         }
     }
@@ -201,12 +203,13 @@ fun CourseGradesScreen(sectionId: String) {
                         if (open) {
                             for (it in items) {
                                 Divider()
-                                if (whatIfOn) WhatIfRow(it, possibleOf(it), cutoff, whatIf[it.id] ?: "", outOf[it.id] ?: "", it.id in dropped,
+                                if (whatIfOn && it.uncounted != null) ItemRow(it, it.id in newIds, onCounts = null) { nav.push(Route.GradeDetail(sectionId, it.id)) }
+                                else if (whatIfOn) WhatIfRow(it, possibleOf(it), cutoff, whatIf[it.id] ?: "", outOf[it.id] ?: "", it.id in dropped,
                                     onScore = { s -> whatIf[it.id] = s; recompute() },
                                     onOutOf = { s -> outOf[it.id] = s; recompute() },
                                     onDrop = { d -> if (d) { dropped += it.id; whatIf.remove(it.id) } else dropped.remove(it.id); recompute() },
                                     onReset = { dropped.remove(it.id); whatIf.remove(it.id); recompute() })
-                                else ItemRow(it, it.id in newIds) { nav.push(Route.GradeDetail(sectionId, it.id)) }
+                                else ItemRow(it, it.id in newIds, onCounts = { c -> scope.launch { model.setCounts(sectionId, it.id, c) } }) { nav.push(Route.GradeDetail(sectionId, it.id)) }
                             }
                             if (whatIfOn) {
                                 for (x in extras.filter { it.category == cat.title }) {
@@ -313,6 +316,8 @@ private fun CategoryHeader(cat: CourseGrade.Category, count: Int, newCount: Int,
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (moved) { Text(Fmt.pct(realPct), style = Theme.caption.copy(textDecoration = TextDecoration.LineThrough), color = C.tertiary); Spacer(Modifier.width(4.dp)) }
+                // ≈: the scores here don't add up to Schoology's %, so something is counted that shouldn't be (or the other way).
+                if (cat.adds == false && !moved) { Text("≈", style = Theme.subhead, color = C.tertiary, modifier = Modifier.semantics { contentDescription = "about" }); Spacer(Modifier.width(3.dp)) }
                 Text(Fmt.pct(cat.pct), style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = if (moved) C.accent else C.text)
             }
             cat.weight?.let { Text("${Fmt.num(it)}% of grade", style = Theme.caption, color = C.tertiary) }
@@ -329,12 +334,28 @@ private fun floorText(c: CourseGrade.Category) = when (c.floorStatus) {
     else -> if (c.possible > 0) "" else "No grades yet"
 }
 
+/** "Not counted" when the student or the class said so, "May not count" when Dewey only guessed; nil when it counts. */
+fun uncountedText(u: String?): String? = when (u) {
+    null -> null
+    "sure", "mine" -> "Not counted"
+    else -> "May not count"
+}
+
+/** A graded row; press and hold says it counts in the grade or doesn't (`onCounts`, null in What-if). */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ItemRow(it: CourseGrade.Item, isNew: Boolean, open: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clickable(onClick = open).padding(14.dp), verticalAlignment = Alignment.Top) {
+private fun ItemRow(it: CourseGrade.Item, isNew: Boolean, onCounts: ((Boolean) -> Unit)?, open: () -> Unit) {
+    var menu by remember { mutableStateOf(false) }
+    val note = uncountedText(it.uncounted)
+    val canMark = onCounts != null && it.earned != null
+    Box {
+    Row(Modifier.fillMaxWidth()
+        .combinedClickable(onClick = open, onLongClick = if (canMark) ({ menu = true }) else null,
+            onLongClickLabel = if (note == null) "Doesn't count" else "Counts in my grade")
+        .padding(14.dp), verticalAlignment = Alignment.Top) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(it.title, style = Theme.subhead.copy(fontWeight = FontWeight.Medium), color = C.text, maxLines = 2, modifier = Modifier.weight(1f, fill = false))
+                Text(it.title, style = Theme.subhead.copy(fontWeight = FontWeight.Medium), color = if (note != null) C.tertiary else C.text, maxLines = 2, modifier = Modifier.weight(1f, fill = false))
                 if (isNew) { Spacer(Modifier.width(6.dp)); NewTag() }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -345,12 +366,18 @@ private fun ItemRow(it: CourseGrade.Item, isNew: Boolean, open: () -> Unit) {
         }
         Spacer(Modifier.width(10.dp))
         Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-            Text(scoreText(it), style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = if (it.earned == null) C.tertiary else C.text)
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(scoreText(it), style = Theme.subhead.copy(fontWeight = FontWeight.SemiBold), color = if (it.earned == null || note != null) C.tertiary else C.text)
+            if (note != null) Text(note, style = Theme.caption, color = C.tertiary)
+            else Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 it.pct?.let { p -> Text(Fmt.pct(p, 0), style = Theme.caption, color = C.secondary) }
                 it.impact?.let { i -> Text(Fmt.signed(i), style = Theme.caption, color = com.owenleung.dewey.ui.impactColor(i)) }
             }
         }
+    }
+    DropdownMenu(menu, { menu = false }) {
+        if (note == null) DropdownMenuItem(text = { Text("Doesn't count") }, onClick = { menu = false; onCounts?.invoke(false) })
+        else DropdownMenuItem(text = { Text("Counts in my grade") }, onClick = { menu = false; onCounts?.invoke(true) })
+    }
     }
 }
 

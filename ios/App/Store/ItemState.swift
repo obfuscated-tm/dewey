@@ -110,6 +110,9 @@ final class CourseState {
     /// Where this class turns in work with no Schoology dropbox ("https://apcs.tinocs.com"),
     /// learned when the student opens it. nil = guess from each assignment's links.
     var turnInSite: String?
+    /// The student's own say on what counts, item id → "out" | "in" as JSON
+    /// (grademath.calibrate's `marks`). nil = none: Dewey's guess stands.
+    var marksJSON: String?
 
     init(sectionId: String) { self.sectionId = sectionId }
 }

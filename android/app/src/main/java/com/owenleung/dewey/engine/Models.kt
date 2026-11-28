@@ -117,6 +117,7 @@ data class CourseGrade(
         val pct: Double? = null,
         val floor: Double? = null,
         val floorStatus: String = "none", // none | any | out | need
+        val adds: Boolean? = null,        // false: the scores don't add up to Schoology's %, so it's shown as ≈
     )
 
     @Serializable
@@ -132,6 +133,7 @@ data class CourseGrade(
         val possible: Double? = null,
         val pct: Double? = null,
         val impact: Double? = null,
+        val uncounted: String? = null,    // sure | guess | column | mine: left out of the grade
     )
 
     @Serializable
